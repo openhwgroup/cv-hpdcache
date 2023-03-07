@@ -113,7 +113,7 @@ import hpdcache_pkg::*;
 
     //  Declaration of constants and types
     //  {{{
-    localparam int unsigned REFILL_REQ_RATIO = HPDCACHE_DATA_RAM_X_WORDS/HPDCACHE_REQ_WORDS;
+    localparam int unsigned REFILL_REQ_RATIO = HPDCACHE_ACCESS_WORDS/HPDCACHE_REQ_WORDS;
 
     typedef enum logic {
         MISS_REQ_IDLE = 1'b0,
@@ -320,7 +320,7 @@ import hpdcache_pkg::*;
                 //  Respond to the core (when needed)
                 if (refill_cnt_q == 0) begin
                     automatic hpdcache_uint _core_rsp_word;
-                    _core_rsp_word = hpdcache_uint'(mshr_ack_word)/HPDCACHE_DATA_RAM_X_WORDS;
+                    _core_rsp_word = hpdcache_uint'(mshr_ack_word)/HPDCACHE_ACCESS_WORDS;
 
                     if (mshr_ack_need_rsp) begin
                         refill_core_rsp_valid = (hpdcache_uint'(_core_rsp_word) == 0);
@@ -333,11 +333,11 @@ import hpdcache_pkg::*;
                 end else begin
                     automatic hpdcache_uint _core_rsp_word;
                     _core_rsp_word = hpdcache_uint'(refill_core_rsp_word_q)/
-                                     HPDCACHE_DATA_RAM_X_WORDS;
+                                     HPDCACHE_ACCESS_WORDS;
 
                     if (refill_need_rsp_q) begin
                         automatic hpdcache_uint _refill_cnt;
-                        _refill_cnt = hpdcache_uint'(refill_cnt_q)/HPDCACHE_DATA_RAM_X_WORDS;
+                        _refill_cnt = hpdcache_uint'(refill_cnt_q)/HPDCACHE_ACCESS_WORDS;
                         refill_core_rsp_valid = (_core_rsp_word == _refill_cnt);
                     end
 
@@ -366,9 +366,9 @@ import hpdcache_pkg::*;
                 refill_fifo_resp_data_r = 1'b1;
 
                 //  Update directory on the last chunk of data
-                refill_cnt_d = refill_cnt_q + hpdcache_word_t'(HPDCACHE_DATA_RAM_X_WORDS);
+                refill_cnt_d = refill_cnt_q + hpdcache_word_t'(HPDCACHE_ACCESS_WORDS);
                 if (hpdcache_uint'(refill_cnt_q) ==
-                        (HPDCACHE_CL_WORDS - HPDCACHE_DATA_RAM_X_WORDS)) begin
+                        (HPDCACHE_CL_WORDS - HPDCACHE_ACCESS_WORDS)) begin
                     //  Write the new entry in the cache directory
                     refill_write_dir_o  = ~refill_is_error;
 

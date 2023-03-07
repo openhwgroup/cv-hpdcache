@@ -253,6 +253,8 @@ module hpdcache_ctrl_pe
         st2_req_mshr_alloc_o                = 1'b0;
         st2_nop                             = 1'b0;
 
+        nop                                 = 1'b0;
+
         rtab_check_o                        = 1'b0;
         st0_rtab_alloc_o                    = 1'b0;
         st0_rtab_mshr_hit_o                 = 1'b0;
