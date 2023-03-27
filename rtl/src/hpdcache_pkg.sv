@@ -48,13 +48,6 @@ package hpdcache_pkg;
     localparam int unsigned HPDCACHE_WAYS = 4;
 `endif
 
-    //  HPDcache cache-line width (bits)
-`ifdef CONF_HPDCACHE_CL_WIDTH
-    localparam int unsigned HPDCACHE_CL_WIDTH = `CONF_HPDCACHE_CL_WIDTH;
-`else
-    localparam int unsigned HPDCACHE_CL_WIDTH = 512;
-`endif
-
     //  HPDcache word width (bits)
 `ifdef CONF_HPDCACHE_WORD_WIDTH
     localparam int unsigned HPDCACHE_WORD_WIDTH = `CONF_HPDCACHE_WORD_WIDTH;
@@ -62,11 +55,18 @@ package hpdcache_pkg;
     localparam int unsigned HPDCACHE_WORD_WIDTH = 64;
 `endif
 
-    //  HPDcache request data width (bits)
-`ifdef CONF_HPDCACHE_REQ_DATA_WIDTH
-    localparam int unsigned HPDCACHE_REQ_DATA_WIDTH = `CONF_HPDCACHE_REQ_DATA_WIDTH;
+    //  HPDcache cache-line width (bits)
+`ifdef CONF_HPDCACHE_CL_WORDS
+    localparam int unsigned HPDCACHE_CL_WORDS = `CONF_HPDCACHE_CL_WORDS;
 `else
-    localparam int unsigned HPDCACHE_REQ_DATA_WIDTH = 128;
+    localparam int unsigned HPDCACHE_CL_WORDS = 8;
+`endif
+
+    //  HPDcache number of words in the request data channels (request and response)
+`ifdef CONF_HPDCACHE_REQ_WORDS
+    localparam int unsigned HPDCACHE_REQ_WORDS = `CONF_HPDCACHE_REQ_WORDS;
+`else
+    localparam int unsigned HPDCACHE_REQ_WORDS = 1;
 `endif
 
     //  HPDcache request transaction ID width (bits)
@@ -96,11 +96,11 @@ package hpdcache_pkg;
 
     //  Definition of constants and types for HPDcache directory memory
     //  {{{
+    localparam int unsigned HPDCACHE_CL_WIDTH       = HPDCACHE_CL_WORDS*HPDCACHE_WORD_WIDTH;
     localparam int unsigned HPDCACHE_OFFSET_WIDTH   = $clog2(HPDCACHE_CL_WIDTH/8);
     localparam int unsigned HPDCACHE_NLINE_WIDTH    = HPDCACHE_PA_WIDTH - HPDCACHE_OFFSET_WIDTH;
     localparam int unsigned HPDCACHE_SET_WIDTH      = $clog2(HPDCACHE_SETS);
     localparam int unsigned HPDCACHE_TAG_WIDTH      = HPDCACHE_NLINE_WIDTH - HPDCACHE_SET_WIDTH;
-    localparam int unsigned HPDCACHE_CL_WORDS       = HPDCACHE_CL_WIDTH/HPDCACHE_WORD_WIDTH;
     localparam int unsigned HPDCACHE_WORD_IDX_WIDTH = $clog2(HPDCACHE_CL_WORDS);
 
     typedef logic unsigned [  HPDCACHE_OFFSET_WIDTH-1:0] hpdcache_offset_t;
@@ -133,24 +133,45 @@ package hpdcache_pkg;
 
     //  Definition of constants and types for HPDcache data memory
     //  {{{
-    localparam int unsigned HPDCACHE_DATA_RAM_WORDS   = 2;
-    localparam int unsigned HPDCACHE_DATA_RAM_X_WORDS = 4;
+`ifdef CONF_HPDCACHE_DATA_WAYS_PER_RAM_WORD
+    localparam int unsigned HPDCACHE_DATA_WAYS_PER_RAM_WORD = `CONF_HPDCACHE_DATA_WAYS_PER_RAM_WORD;
+`else
+    localparam int unsigned HPDCACHE_DATA_WAYS_PER_RAM_WORD = 2;
+`endif
 
-    localparam int unsigned HPDCACHE_DATA_RAM_WIDTH        = HPDCACHE_DATA_RAM_WORDS*HPDCACHE_WORD_WIDTH;
-    localparam int unsigned HPDCACHE_DATA_RAM_Y_CUTS       = HPDCACHE_WAYS/HPDCACHE_DATA_RAM_WORDS;
-    localparam int unsigned HPDCACHE_DATA_RAM_X_CUTS       = HPDCACHE_DATA_RAM_X_WORDS;
-    localparam int unsigned HPDCACHE_DATA_RAM_X_WIDTH      = HPDCACHE_DATA_RAM_X_WORDS*HPDCACHE_WORD_WIDTH;
-    localparam int unsigned HPDCACHE_DATA_RAM_ENTR_PER_SET = HPDCACHE_CL_WORDS/HPDCACHE_DATA_RAM_X_WORDS;
+`ifdef CONF_HPDCACHE_DATA_SETS_PER_RAM
+    localparam int unsigned HPDCACHE_DATA_SETS_PER_RAM = `CONF_HPDCACHE_DATA_SETS_PER_RAM;
+`else
+    localparam int unsigned HPDCACHE_DATA_SETS_PER_RAM = HPDCACHE_SETS;
+`endif
+
+    //  Define the number of memory contiguous words that can be accessed
+    //  simultaneously from the cache.
+    //  -  This limits the maximum width for the data channel from requesters
+    //  -  This impacts the refill latency
+`ifdef CONF_HPDCACHE_ACCESS_WORDS
+    localparam int unsigned HPDCACHE_ACCESS_WORDS = `CONF_HPDCACHE_ACCESS_WORDS;
+`else
+    localparam int unsigned HPDCACHE_ACCESS_WORDS = 4;
+`endif
+
+
+    localparam int unsigned HPDCACHE_DATA_RAM_WIDTH        =
+            HPDCACHE_DATA_WAYS_PER_RAM_WORD*HPDCACHE_WORD_WIDTH;
+    localparam int unsigned HPDCACHE_DATA_RAM_Y_CUTS       = HPDCACHE_WAYS/HPDCACHE_DATA_WAYS_PER_RAM_WORD;
+    localparam int unsigned HPDCACHE_DATA_RAM_X_CUTS       = HPDCACHE_ACCESS_WORDS;
+    localparam int unsigned HPDCACHE_DATA_RAM_ACCESS_WIDTH = HPDCACHE_ACCESS_WORDS*HPDCACHE_WORD_WIDTH;
+    localparam int unsigned HPDCACHE_DATA_RAM_ENTR_PER_SET = HPDCACHE_CL_WORDS/HPDCACHE_ACCESS_WORDS;
     localparam int unsigned HPDCACHE_DATA_RAM_DEPTH        = HPDCACHE_SETS*HPDCACHE_DATA_RAM_ENTR_PER_SET;
     localparam int unsigned HPDCACHE_DATA_RAM_ADDR_WIDTH   = $clog2(HPDCACHE_DATA_RAM_DEPTH);
 
-    typedef logic [             HPDCACHE_WORD_WIDTH-1:0]      hpdcache_data_word_t;
-    typedef logic [           HPDCACHE_WORD_WIDTH/8-1:0]      hpdcache_data_be_t;
-    typedef logic [$clog2(HPDCACHE_DATA_RAM_Y_CUTS)-1:0]      hpdcache_data_ram_row_idx_t;
-    typedef logic [ $clog2(HPDCACHE_DATA_RAM_WORDS)-1:0]      hpdcache_data_ram_way_idx_t;
+    typedef logic [                     HPDCACHE_WORD_WIDTH-1:0]      hpdcache_data_word_t;
+    typedef logic [                   HPDCACHE_WORD_WIDTH/8-1:0]      hpdcache_data_be_t;
+    typedef logic [        $clog2(HPDCACHE_DATA_RAM_Y_CUTS)-1:0]      hpdcache_data_ram_row_idx_t;
+    typedef logic [ $clog2(HPDCACHE_DATA_WAYS_PER_RAM_WORD)-1:0]      hpdcache_data_ram_way_idx_t;
 
-    typedef logic [HPDCACHE_DATA_RAM_ADDR_WIDTH-1:0]          hpdcache_data_ram_addr_t;
-    typedef hpdcache_data_word_t[HPDCACHE_DATA_RAM_WORDS-1:0] hpdcache_data_ram_data_t;
+    typedef logic [HPDCACHE_DATA_RAM_ADDR_WIDTH-1:0]                  hpdcache_data_ram_addr_t;
+    typedef hpdcache_data_word_t[HPDCACHE_DATA_WAYS_PER_RAM_WORD-1:0] hpdcache_data_ram_data_t;
 
     typedef hpdcache_data_ram_data_t
         [HPDCACHE_DATA_RAM_Y_CUTS-1:0]
@@ -174,17 +195,18 @@ package hpdcache_pkg;
     //  Definition of interface with miss handler
     //  {{{
     localparam int unsigned HPDCACHE_REFILL_WORD_INDEX_WIDTH = $clog2(HPDCACHE_DATA_RAM_ENTR_PER_SET);
-    localparam int unsigned HPDCACHE_REFILL_DATA_WIDTH       = HPDCACHE_DATA_RAM_X_WIDTH;
+    localparam int unsigned HPDCACHE_REFILL_DATA_WIDTH       = HPDCACHE_DATA_RAM_ACCESS_WIDTH;
 
-    typedef hpdcache_data_word_t[HPDCACHE_DATA_RAM_X_WORDS-1:0] hpdcache_refill_data_t;
-    typedef hpdcache_data_be_t  [HPDCACHE_DATA_RAM_X_WORDS-1:0] hpdcache_refill_be_t;
+    typedef hpdcache_data_word_t[HPDCACHE_ACCESS_WORDS-1:0] hpdcache_refill_data_t;
+    typedef hpdcache_data_be_t  [HPDCACHE_ACCESS_WORDS-1:0] hpdcache_refill_be_t;
     //  }}}
 
     //  Definition of interface with requesters
     //  {{{
-    localparam int unsigned HPDCACHE_REQ_WORDS = HPDCACHE_REQ_DATA_WIDTH/HPDCACHE_WORD_WIDTH;
+    localparam int unsigned HPDCACHE_REQ_DATA_WIDTH = HPDCACHE_REQ_WORDS*HPDCACHE_WORD_WIDTH;
+    localparam int unsigned HPDCACHE_REQ_DATA_BYTES = HPDCACHE_REQ_DATA_WIDTH/8;
     localparam int unsigned HPDCACHE_REQ_WORD_INDEX_WIDTH = $clog2(HPDCACHE_REQ_WORDS);
-    localparam int unsigned HPDCACHE_REQ_BYTE_OFFSET_WIDTH = $clog2(HPDCACHE_REQ_DATA_WIDTH/8);
+    localparam int unsigned HPDCACHE_REQ_BYTE_OFFSET_WIDTH = $clog2(HPDCACHE_REQ_DATA_BYTES);
 
     typedef logic                [       HPDCACHE_PA_WIDTH-1:0] hpdcache_req_addr_t;
     typedef hpdcache_data_word_t [      HPDCACHE_REQ_WORDS-1:0] hpdcache_req_data_t;
@@ -463,6 +485,20 @@ package hpdcache_pkg;
     localparam int unsigned HPDCACHE_MSHR_WAYS = 2;
 `endif
 
+    //  HPDcache MSHR number of ways in the same SRAM word
+`ifdef CONF_HPDCACHE_MSHR_WAYS_PER_RAM_WORD
+    localparam int unsigned HPDCACHE_MSHR_WAYS_PER_RAM_WORD = `CONF_HPDCACHE_MSHR_WAYS_PER_RAM_WORD;
+`else
+    localparam int unsigned HPDCACHE_MSHR_WAYS_PER_RAM_WORD = 2;
+`endif
+
+    //  HPDcache MSHR number of sets in the same SRAM
+`ifdef CONF_HPDCACHE_MSHR_SETS_PER_RAM
+    localparam int unsigned HPDCACHE_MSHR_SETS_PER_RAM = `CONF_HPDCACHE_MSHR_SETS_PER_RAM;
+`else
+    localparam int unsigned HPDCACHE_MSHR_SETS_PER_RAM = HPDCACHE_MSHR_SETS;
+`endif
+
     localparam int unsigned HPDCACHE_MSHR_SET_WIDTH = $clog2(HPDCACHE_MSHR_SETS);
     localparam int unsigned HPDCACHE_MSHR_WAY_WIDTH = $clog2(HPDCACHE_MSHR_WAYS);
     localparam int unsigned HPDCACHE_MSHR_TAG_WIDTH = HPDCACHE_NLINE_WIDTH - HPDCACHE_MSHR_SET_WIDTH;
@@ -475,16 +511,18 @@ package hpdcache_pkg;
     //  Definition of interface with memory
     //  {{{
 `ifdef CONF_HPDCACHE_MEM_ID_WIDTH
-    localparam int unsigned HPDCACHE_MEM_ID_WIDTH   = `CONF_HPDCACHE_MEM_ID_WIDTH;
+    localparam int unsigned HPDCACHE_MEM_ID_WIDTH = `CONF_HPDCACHE_MEM_ID_WIDTH;
 `else
-    localparam int unsigned HPDCACHE_MEM_ID_WIDTH   = 8;
+    localparam int unsigned HPDCACHE_MEM_ID_WIDTH = 8;
 `endif
 
-`ifdef CONF_HPDCACHE_MEM_DATA_WIDTH
-    localparam int unsigned HPDCACHE_MEM_DATA_WIDTH = `CONF_HPDCACHE_MEM_DATA_WIDTH;
+`ifdef CONF_HPDCACHE_MEM_WORDS
+    localparam int unsigned HPDCACHE_MEM_WORDS = `CONF_HPDCACHE_MEM_WORDS;
 `else
-    localparam int unsigned HPDCACHE_MEM_DATA_WIDTH = 512;
+    localparam int unsigned HPDCACHE_MEM_WORDS = 8;
 `endif
+
+    localparam int unsigned HPDCACHE_MEM_DATA_WIDTH = HPDCACHE_MEM_WORDS*HPDCACHE_WORD_WIDTH;
 
     typedef logic [HPDCACHE_PA_WIDTH-1:0]         hpdcache_mem_addr_t;
     typedef logic [7:0]                           hpdcache_mem_len_t;
@@ -582,30 +620,29 @@ package hpdcache_pkg;
     localparam int unsigned HPDCACHE_WBUF_DATA_ENTRIES = 4;
 `endif
 
-`ifdef CONF_HPDCACHE_WBUF_WORDS_PER_ENTRY
-    localparam int unsigned HPDCACHE_WBUF_DATA_WORDS_PER_ENTRY = `CONF_HPDCACHE_WBUF_WORDS_PER_ENTRY;
+`ifdef CONF_HPDCACHE_WBUF_WORDS
+    localparam int unsigned HPDCACHE_WBUF_WORDS = `CONF_HPDCACHE_WBUF_WORDS;
 `else
-    localparam int unsigned HPDCACHE_WBUF_DATA_WORDS_PER_ENTRY = 256/HPDCACHE_REQ_DATA_WIDTH;
+    localparam int unsigned HPDCACHE_WBUF_WORDS = 256/HPDCACHE_REQ_DATA_WIDTH;
 `endif
 
-`ifdef CONF_HPDCACHE_WBUF_TIMECNT_MAX
-    localparam int unsigned HPDCACHE_WBUF_TIMECNT_MAX = `CONF_HPDCACHE_WBUF_TIMECNT_MAX;
+`ifdef CONF_HPDCACHE_WBUF_TIMECNT_WIDTH
+    localparam int unsigned HPDCACHE_WBUF_TIMECNT_WIDTH = `CONF_HPDCACHE_WBUF_TIMECNT_WIDTH;
 `else
-    localparam int unsigned HPDCACHE_WBUF_TIMECNT_MAX = 8;
+    localparam int unsigned HPDCACHE_WBUF_TIMECNT_WIDTH = 4;
 `endif
 
     localparam int unsigned HPDCACHE_WBUF_DATA_WIDTH     = HPDCACHE_REQ_DATA_WIDTH*
-                                                           HPDCACHE_WBUF_DATA_WORDS_PER_ENTRY;
+                                                           HPDCACHE_WBUF_WORDS;
     localparam int unsigned HPDCACHE_WBUF_DATA_PTR_WIDTH = $clog2(HPDCACHE_WBUF_DATA_ENTRIES);
     localparam int unsigned HPDCACHE_WBUF_DIR_PTR_WIDTH  = $clog2(HPDCACHE_WBUF_DIR_ENTRIES);
-    localparam int unsigned HPDCACHE_WBUF_TIMECNT_WIDTH  = $clog2(HPDCACHE_WBUF_TIMECNT_MAX);
 
     typedef hpdcache_req_addr_t                                 wbuf_addr_t;
     typedef hpdcache_nline_t                                    wbuf_match_t;
     typedef hpdcache_req_data_t                                 wbuf_data_t;
     typedef hpdcache_req_be_t                                   wbuf_be_t;
-    typedef wbuf_data_t[HPDCACHE_WBUF_DATA_WORDS_PER_ENTRY-1:0] wbuf_data_buf_t;
-    typedef wbuf_be_t  [HPDCACHE_WBUF_DATA_WORDS_PER_ENTRY-1:0] wbuf_be_buf_t;
+    typedef wbuf_data_t[HPDCACHE_WBUF_WORDS-1:0]                wbuf_data_buf_t;
+    typedef wbuf_be_t  [HPDCACHE_WBUF_WORDS-1:0]                wbuf_be_buf_t;
     typedef logic unsigned   [ HPDCACHE_WBUF_TIMECNT_WIDTH-1:0] wbuf_timecnt_t;
     typedef logic unsigned   [ HPDCACHE_WBUF_DIR_PTR_WIDTH-1:0] wbuf_dir_ptr_t;
     typedef logic unsigned   [HPDCACHE_WBUF_DATA_PTR_WIDTH-1:0] wbuf_data_ptr_t;

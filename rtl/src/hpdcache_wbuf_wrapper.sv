@@ -102,9 +102,9 @@ import hpdcache_pkg::*;
         .WBUF_DIR_ENTRIES              (HPDCACHE_WBUF_DIR_ENTRIES),
         .WBUF_DATA_ENTRIES             (HPDCACHE_WBUF_DATA_ENTRIES),
         .WBUF_WORD_WIDTH               (HPDCACHE_REQ_DATA_WIDTH),
-        .WBUF_WORDS                    (HPDCACHE_WBUF_DATA_WORDS_PER_ENTRY),
+        .WBUF_WORDS                    (HPDCACHE_WBUF_WORDS),
         .WBUF_PA_WIDTH                 (HPDCACHE_PA_WIDTH),
-        .WBUF_TIMECNT_MAX              (HPDCACHE_WBUF_TIMECNT_MAX),
+        .WBUF_TIMECNT_MAX              ((2**HPDCACHE_WBUF_TIMECNT_WIDTH) - 1),
         .WBUF_READ_MATCH_WIDTH         (HPDCACHE_NLINE_WIDTH)
     ) hpdcache_wbuf_i (
         .clk_i,

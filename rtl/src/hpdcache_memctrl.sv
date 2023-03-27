@@ -106,8 +106,8 @@ import hpdcache_pkg::*;
     //  Definition of constants
     //  {{{
     localparam int unsigned HPDCACHE_ALL_CUTS = HPDCACHE_DATA_RAM_X_CUTS*HPDCACHE_DATA_RAM_Y_CUTS;
-    localparam int unsigned HPDCACHE_ALL_WORDS = HPDCACHE_ALL_CUTS*HPDCACHE_DATA_RAM_WORDS;
-    localparam int unsigned HPDCACHE_DATA_REQ_RATIO = HPDCACHE_DATA_RAM_X_WORDS/HPDCACHE_REQ_WORDS;
+    localparam int unsigned HPDCACHE_ALL_WORDS = HPDCACHE_ALL_CUTS*HPDCACHE_DATA_WAYS_PER_RAM_WORD;
+    localparam int unsigned HPDCACHE_DATA_REQ_RATIO = HPDCACHE_ACCESS_WORDS/HPDCACHE_REQ_WORDS;
     //  }}}
 
     //  Definition of functions
@@ -133,14 +133,14 @@ import hpdcache_pkg::*;
             default: ret = hpdcache_data_row_enable_t'({8{1'b1}});
         endcase
 
-        off = hpdcache_uint'(word_i[0 +: $clog2(HPDCACHE_DATA_RAM_X_WORDS)]);
+        off = hpdcache_uint'(word_i[0 +: $clog2(HPDCACHE_ACCESS_WORDS)]);
         return hpdcache_data_row_enable_t'(ret << off);
     endfunction
 
     function automatic hpdcache_data_ram_row_idx_t hpdcache_way_to_data_ram_row(
             input hpdcache_way_vector_t way);
         for (hpdcache_uint i = 0; i < HPDCACHE_WAYS; i++) begin
-            if (way[i]) return hpdcache_data_ram_row_idx_t'(i / HPDCACHE_DATA_RAM_WORDS);
+            if (way[i]) return hpdcache_data_ram_row_idx_t'(i / HPDCACHE_DATA_WAYS_PER_RAM_WORD);
         end
         return 0;
     endfunction
@@ -148,7 +148,7 @@ import hpdcache_pkg::*;
     function automatic hpdcache_data_ram_way_idx_t hpdcache_way_to_data_ram_word(
             input hpdcache_way_vector_t way);
         for (hpdcache_uint i = 0; i < HPDCACHE_WAYS; i++) begin
-            if (way[i]) return hpdcache_data_ram_way_idx_t'(i % HPDCACHE_DATA_RAM_WORDS);
+            if (way[i]) return hpdcache_data_ram_way_idx_t'(i % HPDCACHE_DATA_WAYS_PER_RAM_WORD);
         end
         return 0;
     endfunction
@@ -158,8 +158,8 @@ import hpdcache_pkg::*;
             input hpdcache_word_t word);
         hpdcache_uint ret;
 
-        ret = (hpdcache_uint'(set)*(HPDCACHE_CL_WORDS / HPDCACHE_DATA_RAM_X_WORDS)) +
-              (hpdcache_uint'(word) / HPDCACHE_DATA_RAM_X_WORDS);
+        ret = (hpdcache_uint'(set)*(HPDCACHE_CL_WORDS / HPDCACHE_ACCESS_WORDS)) +
+              (hpdcache_uint'(word) / HPDCACHE_ACCESS_WORDS);
 
         return hpdcache_data_ram_addr_t'(ret);
     endfunction
@@ -439,7 +439,7 @@ import hpdcache_pkg::*;
 
     //  Upsize the AMO data interface to match the maximum access width of the data RAM
     generate
-        localparam hpdcache_uint AMO_DATA_RATIO       = HPDCACHE_DATA_RAM_X_WIDTH/64;
+        localparam hpdcache_uint AMO_DATA_RATIO       = HPDCACHE_DATA_RAM_ACCESS_WIDTH/64;
         localparam hpdcache_uint AMO_DATA_INDEX_WIDTH = $clog2(AMO_DATA_RATIO);
 
         if (AMO_DATA_RATIO > 1) begin
@@ -465,7 +465,7 @@ import hpdcache_pkg::*;
                 data_write        = 1'b1;
                 data_write_enable = 1'b1;
                 data_write_set    = data_refill_set_i;
-                data_write_size   = hpdcache_req_size_t'($clog2(HPDCACHE_DATA_RAM_X_WIDTH/8));
+                data_write_size   = hpdcache_req_size_t'($clog2(HPDCACHE_DATA_RAM_ACCESS_WIDTH/8));
                 data_write_word   = data_refill_word_i;
                 data_write_data   = data_refill_data_i;
                 data_write_be     = '1;
@@ -506,7 +506,7 @@ import hpdcache_pkg::*;
     //  Generate the write mask
     generate
         genvar gen_be;
-        for (gen_i = 0; gen_i < int'(HPDCACHE_DATA_RAM_X_WORDS); gen_i++) begin : wmask_word_gen
+        for (gen_i = 0; gen_i < int'(HPDCACHE_ACCESS_WORDS); gen_i++) begin : wmask_word_gen
             for (gen_be = 0; gen_be < int'(HPDCACHE_WORD_WIDTH/8); gen_be++) begin : wmask_be_gen
                 assign data_write_wmask[gen_i][gen_be*8 +: 8] = {8{data_write_be[gen_i][gen_be]}};
             end
@@ -546,7 +546,7 @@ import hpdcache_pkg::*;
 
                 for (int unsigned i = 0; i < HPDCACHE_DATA_RAM_Y_CUTS; i++) begin
                     for (int unsigned j = 0; j < HPDCACHE_DATA_RAM_X_CUTS; j++) begin
-                        data_wentry[i][j] = {HPDCACHE_DATA_RAM_WORDS{data_write_data[j]}};
+                        data_wentry[i][j] = {HPDCACHE_DATA_WAYS_PER_RAM_WORD{data_write_data[j]}};
                     end
                 end
 
@@ -560,8 +560,8 @@ import hpdcache_pkg::*;
                     end
 
                     //  Build the write mask
-                    for (int unsigned j = 0; j < HPDCACHE_DATA_RAM_X_WORDS; j++) begin
-                        for (int unsigned k = 0; k < HPDCACHE_DATA_RAM_WORDS; k++) begin
+                    for (int unsigned j = 0; j < HPDCACHE_ACCESS_WORDS; j++) begin
+                        for (int unsigned k = 0; k < HPDCACHE_DATA_WAYS_PER_RAM_WORD; k++) begin
                             data_wmask[i][j][k] = (k == hpdcache_uint'(data_ram_word)) ?
                                     data_write_wmask[j] : '0;
                         end
@@ -592,9 +592,9 @@ import hpdcache_pkg::*;
             for (gen_j = 0; gen_j < int'(HPDCACHE_WAYS); gen_j++) begin
                 for (gen_k = 0; gen_k < int'(HPDCACHE_REQ_WORDS); gen_k++) begin
                     assign data_read_words[gen_i][gen_j][gen_k] =
-                            data_rentry[(gen_j / HPDCACHE_DATA_RAM_WORDS)]
+                            data_rentry[(gen_j / HPDCACHE_DATA_WAYS_PER_RAM_WORD)]
                                        [(gen_i * HPDCACHE_REQ_WORDS     ) + gen_k]
-                                       [(gen_j % HPDCACHE_DATA_RAM_WORDS)];
+                                       [(gen_j % HPDCACHE_DATA_WAYS_PER_RAM_WORD)];
                 end
             end
         end
@@ -654,7 +654,7 @@ import hpdcache_pkg::*;
     //  pragma translate_off
     initial
     begin
-        req_access_width_assert: assert (HPDCACHE_REQ_WORDS <= HPDCACHE_DATA_RAM_X_WORDS) else
+        req_access_width_assert: assert (HPDCACHE_REQ_WORDS <= HPDCACHE_ACCESS_WORDS) else
                 $error("hpdcache_memctrl: request data width not compatible with the DATA ram layout");
     end
 

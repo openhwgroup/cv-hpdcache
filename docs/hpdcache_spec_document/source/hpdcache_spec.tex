@@ -222,8 +222,8 @@ Number of entries in the data part of the write buffer \\
 $\mathsf{CONF\_DCACHE\_WBUF\_WORDS}$ &%
 Number of data words per entry in the write buffer \\
 \midrule%
-$\mathsf{CONF\_DCACHE\_WBUF\_TIMECNT\_MAX}$ &%
-Maximum value of the time counter in write buffer entries \\
+$\mathsf{CONF\_DCACHE\_WBUF\_TIMECNT\_WIDTH}$ &%
+Width (in bits) of the time counter in write buffer entries \\
 \midrule%
 $\mathsf{CONF\_DCACHE\_RTAB\_ENTRIES}$ &%
 Number of entries in the replay table \\
@@ -233,6 +233,12 @@ Number of sets in the \ac{MSHR} \\
 \midrule%
 $\mathsf{CONF\_DCACHE\_MSHR\_WAYS}$ &%
 Number of ways (associativity) in the \ac{MSHR} \\
+\midrule%
+$\mathsf{CONF\_DCACHE\_MEM\_WORDS}$ &%
+Number of words in the data channels from/to the memory interface \\
+\midrule%
+$\mathsf{CONF\_DCACHE\_MEM\_ID\_WIDTH}$ &%
+Width (in bits) of the transaction ID from the memory interface \\
 \end{tabular}}
 \end{center}
 \end{table}

@@ -441,6 +441,20 @@ module hpdcache_wbuf
     //  {{{
     always_comb
     begin : wbuf_update_comb
+        automatic bit timeout;
+        automatic bit write_hit;
+        automatic bit read_close_hit;
+        automatic bit match_open_ptr;
+        automatic bit match_free;
+        automatic bit close;
+
+        timeout = 1'b0;
+        write_hit = 1'b0;
+        read_close_hit = 1'b0;
+        match_open_ptr = 1'b0;
+        match_free = 1'b0;
+        close = 1'b0;
+
         wbuf_dir_state_d = wbuf_dir_state_q;
         wbuf_dir_d = wbuf_dir_q;
         wbuf_data_d = wbuf_data_q;
@@ -451,12 +465,9 @@ module hpdcache_wbuf
         for (int unsigned i = 0; i < WBUF_DIR_ENTRIES; i++) begin
             case (wbuf_dir_state_q[i])
                 WBUF_FREE: begin
-                    automatic bit match_free;
-
                     match_free = wbuf_write_free && (i == int'(wbuf_dir_free_ptr_q));
 
                     if (write_i && match_free) begin
-                        automatic bit close;
 
                         close = (cfg_threshold_i == 0) || write_uc_i || close_all_i;
 
@@ -478,11 +489,6 @@ module hpdcache_wbuf
                 end
 
                 WBUF_OPEN: begin
-                    automatic bit timeout;
-                    automatic bit write_hit;
-                    automatic bit read_close_hit;
-                    automatic bit match_open_ptr;
-
                     match_open_ptr  = (i == int'(wbuf_write_hit_open_dir_ptr)) && wbuf_write_hit_open;
                     timeout         = (wbuf_dir_q[i].cnt == (cfg_threshold_i - 1));
                     write_hit       = write_i          & match_open_ptr;
