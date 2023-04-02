@@ -28,7 +28,13 @@ import hpdcache_pkg::*;
     //  Parameters
     //  {{{
 #(
-    parameter int unsigned NREQUESTERS = 1
+    parameter int  NREQUESTERS           = 1,
+    parameter int  HPDcacheMemIdWidth    = 8,
+    parameter int  HPDcacheMemDataWidth  = 512,
+    parameter type hpdcache_mem_req_t    = logic,
+    parameter type hpdcache_mem_req_w_t  = logic,
+    parameter type hpdcache_mem_resp_r_t = logic,
+    parameter type hpdcache_mem_resp_w_t = logic
 )
     //  }}}
 
@@ -55,7 +61,6 @@ import hpdcache_pkg::*;
     input  wire logic                          mem_req_miss_read_ready_i,
     output wire logic                          mem_req_miss_read_valid_o,
     output wire hpdcache_mem_req_t             mem_req_miss_read_o,
-    input  wire hpdcache_mem_id_t              mem_req_miss_read_base_id_i,
 
     output var  logic                          mem_resp_miss_read_ready_o,
     input  wire logic                          mem_resp_miss_read_valid_i,
@@ -65,7 +70,6 @@ import hpdcache_pkg::*;
     input  wire logic                          mem_req_wbuf_write_ready_i,
     output wire logic                          mem_req_wbuf_write_valid_o,
     output wire hpdcache_mem_req_t             mem_req_wbuf_write_o,
-    input  wire hpdcache_mem_id_t              mem_req_wbuf_write_base_id_i,
 
     input  wire logic                          mem_req_wbuf_write_data_ready_i,
     output wire logic                          mem_req_wbuf_write_data_valid_o,
@@ -79,7 +83,6 @@ import hpdcache_pkg::*;
     input  wire logic                          mem_req_uc_read_ready_i,
     output wire logic                          mem_req_uc_read_valid_o,
     output wire hpdcache_mem_req_t             mem_req_uc_read_o,
-    input  wire hpdcache_mem_id_t              mem_req_uc_read_base_id_i,
 
     output var  logic                          mem_resp_uc_read_ready_o,
     input  wire logic                          mem_resp_uc_read_valid_i,
@@ -89,7 +92,6 @@ import hpdcache_pkg::*;
     input  wire logic                          mem_req_uc_write_ready_i,
     output wire logic                          mem_req_uc_write_valid_o,
     output wire hpdcache_mem_req_t             mem_req_uc_write_o,
-    input  wire hpdcache_mem_id_t              mem_req_uc_write_base_id_i,
 
     input  wire logic                          mem_req_uc_write_data_ready_i,
     output wire logic                          mem_req_uc_write_data_valid_o,
@@ -234,6 +236,9 @@ import hpdcache_pkg::*;
     hpdcache_req_t          arb_req;
 
     genvar                  gen_i;
+
+    localparam logic [HPDcacheMemIdWidth-1:0] HPDCACHE_UC_READ_ID  = {HPDcacheMemIdWidth{1'b1}};
+    localparam logic [HPDcacheMemIdWidth-1:0] HPDCACHE_UC_WRITE_ID = {HPDcacheMemIdWidth{1'b1}};
     //  }}}
 
     //  Requesters arbiter
@@ -411,7 +416,13 @@ import hpdcache_pkg::*;
 
     //  HPDcache write-buffer
     //  {{{
-    hpdcache_wbuf_wrapper hpdcache_wbuf_i(
+    hpdcache_wbuf_wrapper #(
+        .HPDcacheMemIdWidth                 (HPDcacheMemIdWidth),
+        .HPDcacheMemDataWidth               (HPDcacheMemDataWidth),
+        .hpdcache_mem_req_t                 (hpdcache_mem_req_t),
+        .hpdcache_mem_req_w_t               (hpdcache_mem_req_w_t),
+        .hpdcache_mem_resp_w_t              (hpdcache_mem_resp_w_t)
+    ) hpdcache_wbuf_i(
         .clk_i,
         .rst_ni,
 
@@ -457,7 +468,12 @@ import hpdcache_pkg::*;
 
     //  Miss handler
     //  {{{
-    hpdcache_miss_handler hpdcache_miss_handler_i(
+    hpdcache_miss_handler #(
+        .HPDcacheMemIdWidth                 (HPDcacheMemIdWidth),
+        .HPDcacheMemDataWidth               (HPDcacheMemDataWidth),
+        .hpdcache_mem_req_t                 (hpdcache_mem_req_t),
+        .hpdcache_mem_resp_r_t              (hpdcache_mem_resp_r_t)
+    ) hpdcache_miss_handler_i(
         .clk_i,
         .rst_ni,
 
@@ -511,7 +527,14 @@ import hpdcache_pkg::*;
 
     //  Uncacheable request handler
     //  {{{
-    hpdcache_uncached hpdcache_uc_i(
+    hpdcache_uncached #(
+        .HPDcacheMemIdWidth            (HPDcacheMemIdWidth),
+        .HPDcacheMemDataWidth          (HPDcacheMemDataWidth),
+        .hpdcache_mem_req_t            (hpdcache_mem_req_t),
+        .hpdcache_mem_req_w_t          (hpdcache_mem_req_w_t),
+        .hpdcache_mem_resp_r_t         (hpdcache_mem_resp_r_t),
+        .hpdcache_mem_resp_w_t         (hpdcache_mem_resp_w_t)
+    ) hpdcache_uc_i(
         .clk_i,
         .rst_ni,
 
@@ -556,8 +579,8 @@ import hpdcache_pkg::*;
         .core_rsp_valid_o              (uc_core_rsp_valid),
         .core_rsp_o                    (uc_core_rsp),
 
-        .mem_read_id_i                 (mem_req_uc_read_base_id_i),
-        .mem_write_id_i                (mem_req_uc_write_base_id_i),
+        .mem_read_id_i                 (HPDCACHE_UC_READ_ID),
+        .mem_write_id_i                (HPDCACHE_UC_WRITE_ID),
 
         .mem_req_read_ready_i          (mem_req_uc_read_ready_i),
         .mem_req_read_valid_o          (mem_req_uc_read_valid_o),

@@ -28,7 +28,8 @@ import hpdcache_pkg::*;
 //  Parameters
 //  {{{
 #(
-    parameter hpdcache_uint N = 0
+    parameter hpdcache_uint N = 0,
+    parameter type hpdcache_mem_req_t = logic
 )
 //  }}}
 

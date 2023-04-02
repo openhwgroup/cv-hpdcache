@@ -25,6 +25,19 @@
  */
 module hpdcache_uncached
 import hpdcache_pkg::*;
+    //  Parameters
+    //  {{{
+#(
+    parameter int  HPDcacheMemIdWidth    = 8,
+    parameter int  HPDcacheMemDataWidth  = 512,
+    parameter type hpdcache_mem_req_t    = logic,
+    parameter type hpdcache_mem_req_w_t  = logic,
+    parameter type hpdcache_mem_resp_r_t = logic,
+    parameter type hpdcache_mem_resp_w_t = logic,
+
+    localparam type hpdcache_mem_id_t = logic [HPDcacheMemIdWidth-1:0]
+)
+    //  }}}
 //  Ports
 //  {{{
 (
@@ -128,7 +141,7 @@ import hpdcache_pkg::*;
 
 //  Definition of constants and types
 //  {{{
-    localparam hpdcache_uint MEM_REQ_RATIO = HPDCACHE_MEM_DATA_WIDTH / HPDCACHE_REQ_DATA_WIDTH;
+    localparam hpdcache_uint MEM_REQ_RATIO = HPDcacheMemDataWidth/HPDCACHE_REQ_DATA_WIDTH;
     localparam hpdcache_uint MEM_REQ_WORD_INDEX_WIDTH = $clog2(MEM_REQ_RATIO);
 
     typedef enum {
@@ -147,10 +160,10 @@ import hpdcache_pkg::*;
     localparam logic AMO_SC_FAILURE = 1'b1;
 
     function automatic logic [63:0] prepare_amo_data_operand(
-            input logic [63:0]      data_i,
+            input logic [63:0]        data_i,
             input hpdcache_req_size_t size_i,
             input hpdcache_req_addr_t addr_i,
-            input logic             sign_extend_i
+            input logic               sign_extend_i
     );
         // 64-bits AMOs are already aligned, thus do nothing
         if (size_i == hpdcache_req_size_t'(3)) begin

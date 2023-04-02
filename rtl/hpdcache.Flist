@@ -23,6 +23,7 @@
 //  Description   : File list for the HPDcache
 //  History       :
 //
++incdir+${HPDCACHE_DIR}/rtl/include
 ${HPDCACHE_DIR}/rtl/src/hpdcache_pkg.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_demux.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_fifo_reg.sv

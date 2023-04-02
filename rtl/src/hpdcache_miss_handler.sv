@@ -39,6 +39,16 @@
 module hpdcache_miss_handler
 //  {{{
 import hpdcache_pkg::*;
+//  Parameters
+//  {{{
+#(
+    parameter  int  HPDcacheMemIdWidth    = 8,
+    parameter  int  HPDcacheMemDataWidth  = 512,
+    parameter  type hpdcache_mem_req_t    = logic,
+    parameter  type hpdcache_mem_resp_r_t = logic,
+    localparam type hpdcache_mem_id_t     = logic [HPDcacheMemIdWidth-1:0]
+)
+//  }}}
 //  Ports
 //  {{{
 (
@@ -223,8 +233,8 @@ import hpdcache_pkg::*;
         endcase
     end
 
-    localparam hpdcache_uint REFILL_REQ_SIZE = $clog2(HPDCACHE_MEM_DATA_WIDTH/8);
-    localparam hpdcache_uint REFILL_REQ_LEN = HPDCACHE_CL_WIDTH/HPDCACHE_MEM_DATA_WIDTH;
+    localparam hpdcache_uint REFILL_REQ_SIZE = $clog2(HPDcacheMemDataWidth/8);
+    localparam hpdcache_uint REFILL_REQ_LEN = HPDCACHE_CL_WIDTH/HPDcacheMemDataWidth;
 
     assign mem_req_o.mem_req_addr = {mshr_alloc_tag_q, mshr_alloc_set_q, {HPDCACHE_OFFSET_WIDTH{1'b0}} },
            mem_req_o.mem_req_len = hpdcache_mem_len_t'(REFILL_REQ_LEN-1),
@@ -454,9 +464,9 @@ import hpdcache_pkg::*;
     );
 
     generate
-        if (HPDCACHE_MEM_DATA_WIDTH < HPDCACHE_REFILL_DATA_WIDTH) begin
+        if (HPDcacheMemDataWidth < HPDCACHE_REFILL_DATA_WIDTH) begin
             hpdcache_data_upsize #(
-                .WR_WIDTH(HPDCACHE_MEM_DATA_WIDTH),
+                .WR_WIDTH(HPDcacheMemDataWidth),
                 .RD_WIDTH(HPDCACHE_REFILL_DATA_WIDTH),
                 .DEPTH(2*(HPDCACHE_CL_WIDTH/HPDCACHE_REFILL_DATA_WIDTH))
             ) i_rdata_upsize (
@@ -472,11 +482,11 @@ import hpdcache_pkg::*;
                 .rok_o    (/* unused */),
                 .rdata_o  (refill_fifo_resp_data_rdata)
             );
-        end else if (HPDCACHE_MEM_DATA_WIDTH > HPDCACHE_REFILL_DATA_WIDTH) begin
+        end else if (HPDcacheMemDataWidth > HPDCACHE_REFILL_DATA_WIDTH) begin
             hpdcache_data_downsize #(
-                .WR_WIDTH(HPDCACHE_MEM_DATA_WIDTH),
+                .WR_WIDTH(HPDcacheMemDataWidth),
                 .RD_WIDTH(HPDCACHE_REFILL_DATA_WIDTH),
-                .DEPTH(2*(HPDCACHE_CL_WIDTH/HPDCACHE_MEM_DATA_WIDTH))
+                .DEPTH(2*(HPDCACHE_CL_WIDTH/HPDcacheMemDataWidth))
             ) i_rdata_downsize (
                 .clk_i,
                 .rst_ni,
@@ -598,7 +608,7 @@ import hpdcache_pkg::*;
     //  Assertions
     //  {{{
     //  pragma translate_off
-    initial assert (HPDCACHE_MEM_ID_WIDTH >= (HPDCACHE_MSHR_SET_WIDTH + HPDCACHE_MSHR_WAY_WIDTH)) else
+    initial assert (HPDcacheMemIdWidth >= (HPDCACHE_MSHR_SET_WIDTH + HPDCACHE_MSHR_WAY_WIDTH)) else
             $error("miss_handler: not enough ID bits in the memory interface");
     //  pragma translate_on
     //  }}}

@@ -28,6 +28,18 @@
  */
 module hpdcache_wbuf_wrapper
 import hpdcache_pkg::*;
+    //  Parameters
+    //  {{{
+#(
+    parameter  int  HPDcacheMemIdWidth    = 8,
+    parameter  int  HPDcacheMemDataWidth  = 512,
+    parameter  type hpdcache_mem_req_t    = logic,
+    parameter  type hpdcache_mem_req_w_t  = logic,
+    parameter  type hpdcache_mem_resp_w_t = logic,
+
+    localparam type hpdcache_mem_id_t = logic [HPDcacheMemIdWidth-1:0]
+)
+    //  }}}
     //  Ports
     //  {{{
 (
@@ -157,7 +169,7 @@ import hpdcache_pkg::*;
             mem_req_write_o.mem_req_cacheable   = ~send_uc;
 
     generate
-        localparam int unsigned WBUF_MEM_DATA_RATIO = HPDCACHE_MEM_DATA_WIDTH/HPDCACHE_WBUF_DATA_WIDTH;
+        localparam int unsigned WBUF_MEM_DATA_RATIO = HPDcacheMemDataWidth/HPDCACHE_WBUF_DATA_WIDTH;
         localparam int unsigned WBUF_MEM_DATA_WORD_INDEX_WIDTH = $clog2(WBUF_MEM_DATA_RATIO);
 
         assign mem_req_write_data_o.mem_req_w_last = 1'b1;
@@ -187,7 +199,7 @@ import hpdcache_pkg::*;
         //  pragma translate_off
         initial assert(WBUF_MEM_DATA_RATIO > 0) else
                 $error($sformatf("WBUF: data width of mem interface (%d) shall be g.e. to wbuf data width(%d)",
-                                 HPDCACHE_MEM_DATA_WIDTH, HPDCACHE_WBUF_DATA_WIDTH));
+                                 HPDcacheMemDataWidth, HPDCACHE_WBUF_DATA_WIDTH));
         //  pragma translate_on
         //  }}}
     endgenerate

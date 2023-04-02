@@ -510,26 +510,8 @@ package hpdcache_pkg;
 
     //  Definition of interface with memory
     //  {{{
-`ifdef CONF_HPDCACHE_MEM_ID_WIDTH
-    localparam int unsigned HPDCACHE_MEM_ID_WIDTH = `CONF_HPDCACHE_MEM_ID_WIDTH;
-`else
-    localparam int unsigned HPDCACHE_MEM_ID_WIDTH = 8;
-`endif
-
-`ifdef CONF_HPDCACHE_MEM_WORDS
-    localparam int unsigned HPDCACHE_MEM_WORDS = `CONF_HPDCACHE_MEM_WORDS;
-`else
-    localparam int unsigned HPDCACHE_MEM_WORDS = 8;
-`endif
-
-    localparam int unsigned HPDCACHE_MEM_DATA_WIDTH = HPDCACHE_MEM_WORDS*HPDCACHE_WORD_WIDTH;
-
-    typedef logic [HPDCACHE_PA_WIDTH-1:0]         hpdcache_mem_addr_t;
     typedef logic [7:0]                           hpdcache_mem_len_t;
     typedef logic [2:0]                           hpdcache_mem_size_t;
-    typedef logic [HPDCACHE_MEM_ID_WIDTH-1:0]     hpdcache_mem_id_t;
-    typedef logic [HPDCACHE_MEM_DATA_WIDTH-1:0]   hpdcache_mem_data_t;
-    typedef logic [HPDCACHE_MEM_DATA_WIDTH/8-1:0] hpdcache_mem_be_t;
 
     typedef enum logic [1:0] {
         HPDCACHE_MEM_RESP_OK  = 2'b00,
@@ -561,35 +543,6 @@ package hpdcache_pkg;
         //  Reserved           = 4'b1110,
         //  Reserved           = 4'b1111
     } hpdcache_mem_atomic_e;
-
-    typedef struct packed {
-        hpdcache_mem_addr_t     mem_req_addr;
-        hpdcache_mem_len_t      mem_req_len;
-        hpdcache_mem_size_t     mem_req_size;
-        hpdcache_mem_id_t       mem_req_id;
-        hpdcache_mem_command_e  mem_req_command;
-        hpdcache_mem_atomic_e   mem_req_atomic;
-        logic                   mem_req_cacheable;
-    } hpdcache_mem_req_t;
-
-    typedef struct packed {
-        hpdcache_mem_error_e    mem_resp_r_error;
-        hpdcache_mem_id_t       mem_resp_r_id;
-        hpdcache_mem_data_t     mem_resp_r_data;
-        logic                   mem_resp_r_last;
-    } hpdcache_mem_resp_r_t;
-
-    typedef struct packed {
-        hpdcache_mem_data_t     mem_req_w_data;
-        hpdcache_mem_be_t       mem_req_w_be;
-        logic                   mem_req_w_last;
-    } hpdcache_mem_req_w_t;
-
-    typedef struct packed {
-        logic                   mem_resp_w_is_atomic;
-        hpdcache_mem_error_e    mem_resp_w_error;
-        hpdcache_mem_id_t       mem_resp_w_id;
-    } hpdcache_mem_resp_w_t;
 
     function automatic hpdcache_mem_size_t get_hpdcache_mem_size(int unsigned bytes);
         if      (bytes ==   0) return 0;
