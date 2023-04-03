@@ -176,7 +176,7 @@ import hpdcache_pkg::*;
 
         if (WBUF_MEM_DATA_RATIO > 1)
         begin : wbuf_data_upsizing_gen
-            assign mem_req_write_data_o.mem_req_w_data = {WBUF_MEM_DATA_RATIO{send_data}};
+            logic [HPDCACHE_WBUF_DATA_WIDTH/8-1:0][WBUF_MEM_DATA_RATIO-1:0] mem_req_be;
 
             //  demux send BE
             hpdcache_demux #(
@@ -186,8 +186,12 @@ import hpdcache_pkg::*;
             ) mem_write_be_demux_i (
                 .data_i      (send_be),
                 .sel_i       (send_data_tag[0 +: WBUF_MEM_DATA_WORD_INDEX_WIDTH]),
-                .data_o      (mem_req_write_data_o.mem_req_w_be)
+                .data_o      (mem_req_be)
             );
+
+            assign mem_req_write_data_o.mem_req_w_data = {WBUF_MEM_DATA_RATIO{send_data}},
+                   mem_req_write_data_o.mem_req_w_be   = mem_req_be;
+
         end else if (WBUF_MEM_DATA_RATIO == 1)
         begin : wbuf_data_forwarding_gen
             assign mem_req_write_data_o.mem_req_w_data = send_data,
