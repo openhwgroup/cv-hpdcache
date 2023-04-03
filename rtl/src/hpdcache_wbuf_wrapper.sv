@@ -205,8 +205,8 @@ import hpdcache_pkg::*;
     endgenerate
 
     assign  mem_resp_write_ready_o = 1'b1,
-            ack_id                 = mem_resp_write_i.mem_resp_w_id[0 +: HPDCACHE_WBUF_DIR_PTR_WIDTH],
-            ack_error              = (mem_resp_write_i.mem_resp_w_error != 0) ? 1'b1 : 1'b0;
+            ack_id                 =  mem_resp_write_i.mem_resp_w_id[0 +: HPDCACHE_WBUF_DIR_PTR_WIDTH],
+            ack_error              = (mem_resp_write_i.mem_resp_w_error != HPDCACHE_MEM_RESP_OK);
     //  }}}
 
 endmodule
