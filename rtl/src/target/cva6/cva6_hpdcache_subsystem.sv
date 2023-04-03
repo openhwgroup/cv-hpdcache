@@ -32,14 +32,15 @@ module cva6_hpdcache_subsystem
   parameter ariane_pkg::ariane_cfg_t ArianeCfg = ariane_pkg::ArianeDefaultConfig,  // contains cacheable regions
   parameter int NrHwPrefetchers = 4,
 
-  parameter int unsigned AxiAddrWidth = ariane_axi::AddrWidth,
-  parameter int unsigned AxiDataWidth = ariane_axi::DataWidth,
-  parameter int unsigned AxiIdWidth = ariane_axi::IdWidth,
-  parameter type axi_ar_chan_t = ariane_axi::ar_chan_t,
-  parameter type axi_aw_chan_t = ariane_axi::aw_chan_t,
-  parameter type axi_w_chan_t = ariane_axi::w_chan_t,
-  parameter type axi_req_t = ariane_axi::req_t,
-  parameter type axi_rsp_t = ariane_axi::resp_t,
+  parameter int unsigned AxiAddrWidth = 0,
+  parameter int unsigned AxiDataWidth = 0,
+  parameter int unsigned AxiIdWidth = 0,
+  parameter int unsigned AxiUserWidth = 0,
+  parameter type axi_ar_chan_t = logic,
+  parameter type axi_aw_chan_t = logic,
+  parameter type axi_w_chan_t = logic,
+  parameter type axi_req_t = logic,
+  parameter type axi_rsp_t = logic,
   parameter type cmo_req_t = logic,
   parameter type cmo_rsp_t = logic
 )
@@ -330,7 +331,7 @@ module cva6_hpdcache_subsystem
     .hpdcache_mem_req_w_t              (hpdcache_mem_req_w_t),
     .hpdcache_mem_resp_r_t             (hpdcache_mem_resp_r_t),
     .hpdcache_mem_resp_w_t             (hpdcache_mem_resp_w_t)
-  ) i_hpdcache (
+  ) i_hpdcache(
     .clk_i,
     .rst_ni,
 
@@ -417,7 +418,23 @@ module cva6_hpdcache_subsystem
   //  AXI arbiter instantiation
   //  {{{
   cva6_hpdcache_subsystem_axi_arbiter #(
-    .ArianeCfg                                       (ArianeCfg)
+    .ArianeCfg                                       (ArianeCfg),
+    .HPDcacheMemIdWidth                              (ariane_pkg::MEM_TID_WIDTH),
+    .HPDcacheMemDataWidth                            (AxiDataWidth),
+    .hpdcache_mem_req_t                              (hpdcache_mem_req_t),
+    .hpdcache_mem_req_w_t                            (hpdcache_mem_req_w_t),
+    .hpdcache_mem_resp_r_t                           (hpdcache_mem_resp_r_t),
+    .hpdcache_mem_resp_w_t                           (hpdcache_mem_resp_w_t),
+
+    .AxiAddrWidth                                    (AxiAddrWidth),
+    .AxiDataWidth                                    (AxiDataWidth),
+    .AxiIdWidth                                      (AxiIdWidth),
+    .AxiUserWidth                                    (AxiUserWidth),
+    .axi_ar_chan_t                                   (axi_ar_chan_t),
+    .axi_aw_chan_t                                   (axi_aw_chan_t),
+    .axi_w_chan_t                                    (axi_w_chan_t),
+    .axi_req_t                                       (axi_req_t),
+    .axi_rsp_t                                       (axi_rsp_t)
   ) i_axi_arbiter (
     .clk_i,
     .rst_ni,

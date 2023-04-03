@@ -38,14 +38,15 @@ module cva6_hpdcache_subsystem_axi_arbiter
   parameter type hpdcache_mem_resp_r_t = logic,
   parameter type hpdcache_mem_resp_w_t = logic,
 
-  parameter int unsigned AxiAddrWidth = ariane_axi::AddrWidth,
-  parameter int unsigned AxiDataWidth = ariane_axi::DataWidth,
-  parameter int unsigned AxiIdWidth = ariane_axi::IdWidth,
-  parameter type axi_ar_chan_t = ariane_axi::ar_chan_t,
-  parameter type axi_aw_chan_t = ariane_axi::aw_chan_t,
-  parameter type axi_w_chan_t = ariane_axi::w_chan_t,
-  parameter type axi_req_t = ariane_axi::req_t,
-  parameter type axi_rsp_t = ariane_axi::resp_t,
+  parameter int unsigned AxiAddrWidth = 1,
+  parameter int unsigned AxiDataWidth = 1,
+  parameter int unsigned AxiIdWidth = 1,
+  parameter int unsigned AxiUserWidth = 1,
+  parameter type axi_ar_chan_t = logic,
+  parameter type axi_aw_chan_t = logic,
+  parameter type axi_w_chan_t = logic,
+  parameter type axi_req_t = logic,
+  parameter type axi_rsp_t = logic,
 
   localparam type hpdcache_mem_id_t = logic [HPDcacheMemIdWidth-1:0]
 )
@@ -131,13 +132,13 @@ module cva6_hpdcache_subsystem_axi_arbiter
       logic [AxiDataWidth-1:0]    data;
       axi_pkg::resp_t             resp;
       logic                       last;
-      //logic [AxiUserWidth-1:0]  user;
+      logic [AxiUserWidth-1:0]    user;
   } axi_r_chan_t;
 
   typedef struct packed {
       logic [AxiIdWidth-1:0]      id;
       axi_pkg::resp_t             resp;
-      //logic [AxiUserWidth-1:0]  user;
+      logic [AxiUserWidth-1:0]    user;
   } axi_b_chan_t;
 
   localparam int MEM_RESP_RT_DEPTH = (1 << HPDcacheMemIdWidth);
