@@ -26,9 +26,12 @@
 module hpdcache_mem_to_axi_write
 import hpdcache_pkg::*;
 #(
+    parameter type hpdcache_mem_req_t = logic,
+    parameter type hpdcache_mem_req_w_t = logic,
+    parameter type hpdcache_mem_resp_w_t = logic,
     parameter type aw_chan_t = logic,
-    parameter type w_chan_t  = logic,
-    parameter type b_chan_t  = logic
+    parameter type w_chan_t = logic,
+    parameter type b_chan_t = logic
 )
 (
     output wire logic                          req_ready_o,

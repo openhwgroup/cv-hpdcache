@@ -26,6 +26,8 @@
 module hpdcache_mem_to_axi_read
 import hpdcache_pkg::*;
 #(
+    parameter type hpdcache_mem_req_t    = logic,
+    parameter type hpdcache_mem_resp_r_t = logic,
     parameter type ar_chan_t = logic,
     parameter type r_chan_t  = logic
 )
