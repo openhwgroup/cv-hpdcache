@@ -284,6 +284,9 @@ module cva6_hpdcache_subsystem
           hpdcache_pkg::is_cmo_prefetch(dcache_req[3].op, dcache_req[3].size);
   assign snoop_valid[2] = dcache_req_valid[3] & dcache_req_ready[3] & dcache_cmo_req_is_prefetch,
           snoop_addr[2] = dcache_req[3].addr;
+`else
+  assign snoop_valid[2] = 1'b0,
+          snoop_addr[2] = '0;
 `endif
 
   generate
