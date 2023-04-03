@@ -39,7 +39,9 @@ module cva6_hpdcache_subsystem
   parameter type axi_aw_chan_t = ariane_axi::aw_chan_t,
   parameter type axi_w_chan_t = ariane_axi::w_chan_t,
   parameter type axi_req_t = ariane_axi::req_t,
-  parameter type axi_rsp_t = ariane_axi::resp_t
+  parameter type axi_rsp_t = ariane_axi::resp_t,
+  parameter type cmo_req_t = logic,
+  parameter type cmo_rsp_t = logic
 )
 //  }}}
 
@@ -74,8 +76,8 @@ module cva6_hpdcache_subsystem
   input  ariane_pkg::amo_req_t            dcache_amo_req_i,       // from LSU
   output ariane_pkg::amo_resp_t           dcache_amo_resp_o,      // to LSU
   //  CMO interface
-  input  ariane_pkg::cmo_req_t            dcache_cmo_req_i,       // from CMO FU
-  output ariane_pkg::cmo_resp_t           dcache_cmo_resp_o,      // to CMO FU
+  input  cmo_req_t                        dcache_cmo_req_i,       // from CMO FU
+  output cmo_rsp_t                        dcache_cmo_resp_o,      // to CMO FU
   //  Request ports
   input  ariane_pkg::dcache_req_i_t [2:0] dcache_req_ports_i,     // from LSU
   output ariane_pkg::dcache_req_o_t [2:0] dcache_req_ports_o,     // to LSU
@@ -240,8 +242,11 @@ module cva6_hpdcache_subsystem
 
     assign dcache_amo_resp_o = dcache_amo_resp[2];
 
+`ifdef HPDCACHE_ENABLE_CMO
     cva6_hpdcache_cmo_if_adapter #(
-      .ArianeCfg                                   (ArianeCfg)
+      .ArianeCfg                                   (ArianeCfg),
+      .cmo_req_t                                   (cmo_req_t),
+      .cmo_rsp_t                                   (cmo_rsp_t)
     ) i_cva6_hpdcache_cmo_if_adapter (
       .clk_i,
       .rst_ni,
@@ -258,6 +263,10 @@ module cva6_hpdcache_subsystem
       .dcache_rsp_valid_i                          (dcache_rsp_valid[3]),
       .dcache_rsp_i                                (dcache_rsp[3])
     );
+`else
+    assign dcache_req_valid[3] = 1'b0,
+           dcache_req[3]       = '0;
+`endif
   endgenerate
 
   //  Snoop load port
@@ -268,11 +277,13 @@ module cva6_hpdcache_subsystem
   assign snoop_valid[1] = dcache_req_valid[2] & dcache_req_ready[2],
           snoop_addr[1] = dcache_req[2].addr;
 
+`ifdef HPDCACHE_ENABLE_CMO
   //  Snoop CMO port (in case of read prefetch accesses)
   assign dcache_cmo_req_is_prefetch =
           hpdcache_pkg::is_cmo_prefetch(dcache_req[3].op, dcache_req[3].size);
   assign snoop_valid[2] = dcache_req_valid[3] & dcache_req_ready[3] & dcache_cmo_req_is_prefetch,
           snoop_addr[2] = dcache_req[3].addr;
+`endif
 
   generate
     for (genvar h = 0; h < NrHwPrefetchers; h++) begin : hwpf_throttle_gen

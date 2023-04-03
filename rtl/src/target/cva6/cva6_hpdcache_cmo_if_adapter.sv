@@ -30,6 +30,8 @@ import hpdcache_pkg::*;
 //  {{{
 #(
     parameter ariane_pkg::ariane_cfg_t ArianeCfg = ariane_pkg::ArianeDefaultConfig
+    parameter type cmo_req_t = logic,
+    parameter type cmo_rsp_t = logic
 )
 //  }}}
 
@@ -44,8 +46,8 @@ import hpdcache_pkg::*;
   input  wire hpdcache_pkg::hpdcache_req_sid_t dcache_req_sid_i,
 
   //  Request/response ports from/to the CVA6 core
-  input  wire ariane_pkg::cmo_req_t            cva6_cmo_req_i,
-  output var  ariane_pkg::cmo_resp_t           cva6_cmo_resp_o,
+  input  wire cmo_req_t                        cva6_cmo_req_i,
+  output var  cmo_rsp_t                        cva6_cmo_resp_o,
 
   //  Request port to the L1 Dcache
   output var  logic                            dcache_req_valid_o,
