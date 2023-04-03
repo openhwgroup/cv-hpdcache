@@ -112,7 +112,7 @@ module cva6_hpdcache_subsystem
   logic icache_miss_resp_valid;
   wt_cache_pkg::icache_rtrn_t icache_miss_resp;
 
-  localparam int ICACHE_RDTXID = 1 << (ariane_pkg::MEM_ID_WIDTH - 1);
+  localparam int ICACHE_RDTXID = 1 << (ariane_pkg::MEM_TID_WIDTH - 1);
 
   cva6_icache #(
     // use ID 0 for icache reads
@@ -141,10 +141,10 @@ module cva6_hpdcache_subsystem
   `include "hpdcache_typedef.svh"
 
   localparam int HPDCACHE_NREQUESTERS = 5;
-  typedef logic [AxiAddrWidth-1:0]             hpdcache_mem_addr_t;
-  typedef logic [ariane_pkg::MEM_ID_WIDTH-1:0] hpdcache_mem_id_t;
-  typedef logic [AxiDataWidth-1:0]             hpdcache_mem_data_t;
-  typedef logic [AxiDataWidth/8-1:0]           hpdcache_mem_be_t;
+  typedef logic [AxiAddrWidth-1:0]              hpdcache_mem_addr_t;
+  typedef logic [ariane_pkg::MEM_TID_WIDTH-1:0] hpdcache_mem_id_t;
+  typedef logic [AxiDataWidth-1:0]              hpdcache_mem_data_t;
+  typedef logic [AxiDataWidth/8-1:0]            hpdcache_mem_be_t;
   `HPDCACHE_TYPEDEF_MEM_REQ_T(hpdcache_mem_req_t, hpdcache_mem_addr_t, hpdcache_mem_id_t);
   `HPDCACHE_TYPEDEF_MEM_RESP_R_T(hpdcache_mem_resp_r_t, hpdcache_mem_id_t, hpdcache_mem_data_t);
   `HPDCACHE_TYPEDEF_MEM_REQ_W_T(hpdcache_mem_req_w_t, hpdcache_mem_data_t, hpdcache_mem_be_t);
@@ -160,7 +160,7 @@ module cva6_hpdcache_subsystem
   logic                                     dcache_read_miss, dcache_write_miss;
 
   logic [2:0]                               snoop_valid;
-  hpdcache_req_addr_t [2:0]                 snoop_addr;
+  hpdcache_pkg::hpdcache_req_addr_t [2:0]   snoop_addr;
   logic                                     dcache_cmo_req_is_prefetch;
 
   logic                                     dcache_miss_ready;
@@ -313,7 +313,7 @@ module cva6_hpdcache_subsystem
 
   hpdcache #(
     .NREQUESTERS                       (HPDCACHE_NREQUESTERS),
-    .HPDcacheMemIdWidth                (ariane_pkg::MEM_ID_WIDTH),
+    .HPDcacheMemIdWidth                (ariane_pkg::MEM_TID_WIDTH),
     .HPDcacheMemDataWidth              (AxiDataWidth),
     .hpdcache_mem_req_t                (hpdcache_mem_req_t),
     .hpdcache_mem_req_w_t              (hpdcache_mem_req_w_t),

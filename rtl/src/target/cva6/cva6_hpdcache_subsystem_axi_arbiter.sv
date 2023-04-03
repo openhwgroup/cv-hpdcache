@@ -118,8 +118,8 @@ module cva6_hpdcache_subsystem_axi_arbiter
 
   //  AXI port to upstream memory/peripherals
   //  {{{
-  output req_t                                    axi_req_o,
-  input  resp_t                                   axi_resp_i
+  output axi_req_t                                axi_req_o,
+  input  axi_rsp_t                                axi_resp_i
   //  }}}
 );
 //  }}}
@@ -400,7 +400,7 @@ module cva6_hpdcache_subsystem_axi_arbiter
          mem_req_write_data[1]        = dcache_uc_write_data_i;
 
   hpdcache_mem_req_write_arbiter #(
-    .N                          (2)
+    .N                          (2),
     .hpdcache_mem_req_t         (hpdcache_mem_req_t),
     .hpdcache_mem_req_w_t       (hpdcache_mem_req_w_t)
   ) i_mem_req_write_arbiter (
