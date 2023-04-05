@@ -39,7 +39,7 @@ module hpdcache_sram
     output logic [DATA_SIZE-1:0]  rdata
 );
 
-    hpdcache_ram_1rw #(
+    hpdcache_sram_1rw #(
         .ADDR_SIZE(ADDR_SIZE),
         .DATA_SIZE(DATA_SIZE),
         .DEPTH(DEPTH)
@@ -50,7 +50,6 @@ module hpdcache_sram
         .we,
         .addr,
         .wdata,
-        .wmask({DATA_SIZE{1'b1}}),
         .rdata
     );
 

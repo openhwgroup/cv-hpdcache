@@ -20,27 +20,27 @@
 /*
  *  Authors       : Cesar Fuguet
  *  Creation Date : March, 2020
- *  Description   : Wrapper for 1RW SRAM macros implementing write bit mask
+ *  Description   : Wrapper for 1RW SRAM macros implementing a write byte enable
  *  History       :
  */
-module hpdcache_sram_wmask
+module hpdcache_sram_wbyteenable
 #(
     parameter int unsigned ADDR_SIZE = 0,
     parameter int unsigned DATA_SIZE = 0,
     parameter int unsigned DEPTH = 2**ADDR_SIZE
 )
 (
-    input  logic                  clk,
-    input  logic                  rst_n,
-    input  logic                  cs,
-    input  logic                  we,
-    input  logic [ADDR_SIZE-1:0]  addr,
-    input  logic [DATA_SIZE-1:0]  wdata,
-    input  logic [DATA_SIZE-1:0]  wmask,
-    output logic [DATA_SIZE-1:0]  rdata
+    input  logic                   clk,
+    input  logic                   rst_n,
+    input  logic                   cs,
+    input  logic                   we,
+    input  logic [ADDR_SIZE-1:0]   addr,
+    input  logic [DATA_SIZE-1:0]   wdata,
+    input  logic [DATA_SIZE/8-1:0] wbyteenable,
+    output logic [DATA_SIZE-1:0]   rdata
 );
 
-    hpdcache_sram_wmask_1rw #(
+    hpdcache_sram_wbyteenable_1rw #(
         .ADDR_SIZE(ADDR_SIZE),
         .DATA_SIZE(DATA_SIZE),
         .DEPTH(DEPTH)
@@ -51,8 +51,8 @@ module hpdcache_sram_wmask
         .we,
         .addr,
         .wdata,
-        .wmask,
+        .wbyteenable,
         .rdata
     );
 
-endmodule : hpdcache_sram_wmask
+endmodule : hpdcache_sram_wbyteenable

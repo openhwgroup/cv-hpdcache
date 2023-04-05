@@ -20,10 +20,10 @@
 /*
  *  Authors       : Cesar Fuguet
  *  Creation Date : March, 2020
- *  Description   : Wrapper for 1RW SRAM macros implementing write bit mask
+ *  Description   : SRAM behavioral model
  *  History       :
  */
-module hpdcache_sram_wmask
+module hpdcache_sram_1rw
 #(
     parameter int unsigned ADDR_SIZE = 0,
     parameter int unsigned DATA_SIZE = 0,
@@ -36,23 +36,25 @@ module hpdcache_sram_wmask
     input  logic                  we,
     input  logic [ADDR_SIZE-1:0]  addr,
     input  logic [DATA_SIZE-1:0]  wdata,
-    input  logic [DATA_SIZE-1:0]  wmask,
     output logic [DATA_SIZE-1:0]  rdata
 );
 
-    hpdcache_sram_wmask_1rw #(
-        .ADDR_SIZE(ADDR_SIZE),
-        .DATA_SIZE(DATA_SIZE),
-        .DEPTH(DEPTH)
-    ) ram_i (
-        .clk,
-        .rst_n,
-        .cs,
-        .we,
-        .addr,
-        .wdata,
-        .wmask,
-        .rdata
-    );
+    /*
+     *  Internal memory array declaration
+     */
+    typedef logic [DATA_SIZE-1:0] mem_t [DEPTH];
+    mem_t mem;
 
-endmodule : hpdcache_sram_wmask
+    /*
+     *  Process to update or read the memory array
+     */
+    always_ff @(posedge clk)
+    begin : mem_update_ff
+        if (cs == 1'b1) begin
+            if (we == 1'b1) begin
+                mem[addr] <= wdata;
+            end
+            rdata <= mem[addr];
+        end
+    end : mem_update_ff
+endmodule : hpdcache_sram_1rw

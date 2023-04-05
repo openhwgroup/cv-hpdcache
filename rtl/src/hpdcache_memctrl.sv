@@ -182,14 +182,13 @@ import hpdcache_pkg::*;
     hpdcache_dir_addr_t                        dir_addr;
     hpdcache_way_vector_t                      dir_cs;
     hpdcache_way_vector_t                      dir_we;
-    hpdcache_dir_entry_t  [HPDCACHE_WAYS-1:0]  dir_wmask;
     hpdcache_dir_entry_t  [HPDCACHE_WAYS-1:0]  dir_wentry;
     hpdcache_dir_entry_t  [HPDCACHE_WAYS-1:0]  dir_rentry;
 
     hpdcache_data_addr_t                       data_addr;
     hpdcache_data_enable_t                     data_cs;
     hpdcache_data_enable_t                     data_we;
-    hpdcache_data_entry_t                      data_wmask;
+    hpdcache_data_be_entry_t                   data_wbyteenable;
     hpdcache_data_entry_t                      data_wentry;
     hpdcache_data_entry_t                      data_rentry;
 
@@ -200,7 +199,6 @@ import hpdcache_pkg::*;
     hpdcache_word_t                            data_write_word;
     hpdcache_refill_data_t                     data_write_data;
     hpdcache_refill_be_t                       data_write_be;
-    hpdcache_refill_data_t                     data_write_wmask;
 
     hpdcache_refill_data_t                     data_req_write_data;
     hpdcache_refill_be_t                       data_req_write_be;
@@ -266,14 +264,13 @@ import hpdcache_pkg::*;
         .dir_addr_i         (dir_addr),
         .dir_cs_i           (dir_cs),
         .dir_we_i           (dir_we),
-        .dir_wmask_i        (dir_wmask),
         .dir_wentry_i       (dir_wentry),
         .dir_rentry_o       (dir_rentry),
 
         .data_addr_i        (data_addr),
         .data_cs_i          (data_cs),
         .data_we_i          (data_we),
-        .data_wmask_i       (data_wmask),
+        .data_wbyteenable_i (data_wbyteenable),
         .data_wentry_i      (data_wentry),
         .data_rentry_o      (data_rentry)
     );
@@ -283,7 +280,6 @@ import hpdcache_pkg::*;
     //  {{{
     always_comb
     begin : dir_ctrl_comb
-        dir_wmask = '1;
         case (1'b1)
             //  Cache directory initialization
             ~init_q: begin
@@ -503,16 +499,6 @@ import hpdcache_pkg::*;
         endcase
     end
 
-    //  Generate the write mask
-    generate
-        genvar gen_be;
-        for (gen_i = 0; gen_i < int'(HPDCACHE_ACCESS_WORDS); gen_i++) begin : wmask_word_gen
-            for (gen_be = 0; gen_be < int'(HPDCACHE_WORD_WIDTH/8); gen_be++) begin : wmask_be_gen
-                assign data_write_wmask[gen_i][gen_be*8 +: 8] = {8{data_write_be[gen_i][gen_be]}};
-            end
-        end
-    endgenerate
-
     //  Multiplex between read and write access on the data RAM
     assign  data_way = data_refill_i    ? data_refill_way_i :
                        data_amo_write_i ? dir_amo_hit_way_o :
@@ -530,9 +516,9 @@ import hpdcache_pkg::*;
                 data_addr = {HPDCACHE_ALL_CUTS{hpdcache_set_to_data_ram_addr(data_req_read_set_i,
                                                                          data_req_read_word_i)}};
 
-                data_we     = '0;
-                data_wmask  = '0;
-                data_wentry = '0;
+                data_we          = '0;
+                data_wbyteenable = '0;
+                data_wentry      = '0;
                 for (int unsigned i = 0; i < HPDCACHE_DATA_RAM_Y_CUTS; i++) begin
                     data_cs[i] = hpdcache_compute_data_ram_cs(data_req_read_size_i,
                                                               data_req_read_word_i);
@@ -562,8 +548,8 @@ import hpdcache_pkg::*;
                     //  Build the write mask
                     for (int unsigned j = 0; j < HPDCACHE_ACCESS_WORDS; j++) begin
                         for (int unsigned k = 0; k < HPDCACHE_DATA_WAYS_PER_RAM_WORD; k++) begin
-                            data_wmask[i][j][k] = (k == hpdcache_uint'(data_ram_word)) ?
-                                    data_write_wmask[j] : '0;
+                            data_wbyteenable[i][j][k] = (k == hpdcache_uint'(data_ram_word)) ?
+                                                        data_write_be[j] : '0;
                         end
                     end
                 end
@@ -571,11 +557,11 @@ import hpdcache_pkg::*;
 
             //  Do nothing
             default: begin
-                data_addr   = '0;
-                data_cs     = '0;
-                data_we     = '0;
-                data_wmask  = '0;
-                data_wentry = '0;
+                data_addr        = '0;
+                data_cs          = '0;
+                data_we          = '0;
+                data_wbyteenable = '0;
+                data_wentry      = '0;
             end
         endcase
     end

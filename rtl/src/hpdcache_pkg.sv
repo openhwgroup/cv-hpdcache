@@ -145,6 +145,13 @@ package hpdcache_pkg;
     localparam int unsigned HPDCACHE_DATA_SETS_PER_RAM = HPDCACHE_SETS;
 `endif
 
+    //  HPDcache DATA RAM implements write byte enable
+`ifdef CONF_HPDCACHE_DATA_RAM_WBYTEENABLE
+    localparam bit HPDCACHE_DATA_RAM_WBYTEENABLE = `CONF_HPDCACHE_DATA_RAM_WBYTEENABLE;
+`else
+    localparam bit HPDCACHE_DATA_RAM_WBYTEENABLE = 0;
+`endif
+
     //  Define the number of memory contiguous words that can be accessed
     //  simultaneously from the cache.
     //  -  This limits the maximum width for the data channel from requesters
@@ -172,11 +179,17 @@ package hpdcache_pkg;
 
     typedef logic [HPDCACHE_DATA_RAM_ADDR_WIDTH-1:0]                  hpdcache_data_ram_addr_t;
     typedef hpdcache_data_word_t[HPDCACHE_DATA_WAYS_PER_RAM_WORD-1:0] hpdcache_data_ram_data_t;
+    typedef hpdcache_data_be_t  [HPDCACHE_DATA_WAYS_PER_RAM_WORD-1:0] hpdcache_data_ram_be_t;
 
     typedef hpdcache_data_ram_data_t
         [HPDCACHE_DATA_RAM_Y_CUTS-1:0]
         [HPDCACHE_DATA_RAM_X_CUTS-1:0]
         hpdcache_data_entry_t;
+
+    typedef hpdcache_data_ram_be_t
+        [HPDCACHE_DATA_RAM_Y_CUTS-1:0]
+        [HPDCACHE_DATA_RAM_X_CUTS-1:0]
+        hpdcache_data_be_entry_t;
 
     typedef logic
         [HPDCACHE_DATA_RAM_X_CUTS-1:0]
@@ -497,6 +510,13 @@ package hpdcache_pkg;
     localparam int unsigned HPDCACHE_MSHR_SETS_PER_RAM = `CONF_HPDCACHE_MSHR_SETS_PER_RAM;
 `else
     localparam int unsigned HPDCACHE_MSHR_SETS_PER_RAM = HPDCACHE_MSHR_SETS;
+`endif
+
+    //  HPDcache MSHR implements write byte enable
+`ifdef CONF_HPDCACHE_MSHR_RAM_WBYTEENABLE
+    localparam bit HPDCACHE_MSHR_RAM_WBYTEENABLE = `CONF_HPDCACHE_MSHR_RAM_WBYTEENABLE;
+`else
+    localparam bit HPDCACHE_MSHR_RAM_WBYTEENABLE = 0;
 `endif
 
     localparam int unsigned HPDCACHE_MSHR_SET_WIDTH = $clog2(HPDCACHE_MSHR_SETS);

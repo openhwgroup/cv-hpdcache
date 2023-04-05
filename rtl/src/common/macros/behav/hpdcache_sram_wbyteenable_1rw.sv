@@ -20,24 +20,24 @@
 /*
  *  Authors       : Cesar Fuguet
  *  Creation Date : March, 2020
- *  Description   : SRAM behavioral model
+ *  Description   : Behavioral model of a 1RW SRAM with write byte enable
  *  History       :
  */
-module hpdcache_ram_1rw
+module hpdcache_sram_wbyteenable_1rw
 #(
     parameter int unsigned ADDR_SIZE = 0,
     parameter int unsigned DATA_SIZE = 0,
     parameter int unsigned DEPTH = 2**ADDR_SIZE
 )
 (
-    input  logic                  clk,
-    input  logic                  rst_n,
-    input  logic                  cs,
-    input  logic                  we,
-    input  logic [ADDR_SIZE-1:0]  addr,
-    input  logic [DATA_SIZE-1:0]  wdata,
-    input  logic [DATA_SIZE-1:0]  wmask,
-    output logic [DATA_SIZE-1:0]  rdata
+    input  logic                   clk,
+    input  logic                   rst_n,
+    input  logic                   cs,
+    input  logic                   we,
+    input  logic [ADDR_SIZE-1:0]   addr,
+    input  logic [DATA_SIZE-1:0]   wdata,
+    input  logic [DATA_SIZE/8-1:0] wbyteenable,
+    output logic [DATA_SIZE-1:0]   rdata
 );
 
     /*
@@ -52,10 +52,12 @@ module hpdcache_ram_1rw
     always_ff @(posedge clk)
     begin : mem_update_ff
         if (cs == 1'b1) begin
-            if (we == 1'b1)
-                mem[addr] <= (mem[addr] & ~wmask) | (wdata & wmask);
-            else
-                rdata <= mem[addr];
+            if (we == 1'b1) begin
+                for (int i = 0; i < DATA_SIZE/8; i++) begin
+                    if (wbyteenable[i]) mem[addr][i*8 +: 8] <= wdata[i*8 +: 8];
+                end
+            end
+            rdata <= mem[addr];
         end
     end : mem_update_ff
-endmodule : hpdcache_ram_1rw
+endmodule : hpdcache_sram_wbyteenable_1rw

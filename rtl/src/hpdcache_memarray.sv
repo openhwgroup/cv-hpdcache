@@ -34,14 +34,13 @@ import hpdcache_pkg::*;
     input  wire hpdcache_dir_addr_t                      dir_addr_i,
     input  wire hpdcache_way_vector_t                    dir_cs_i,
     input  wire hpdcache_way_vector_t                    dir_we_i,
-    input  wire hpdcache_dir_entry_t [HPDCACHE_WAYS-1:0] dir_wmask_i,
     input  wire hpdcache_dir_entry_t [HPDCACHE_WAYS-1:0] dir_wentry_i,
     output wire hpdcache_dir_entry_t [HPDCACHE_WAYS-1:0] dir_rentry_o,
 
     input  wire hpdcache_data_addr_t                     data_addr_i,
     input  wire hpdcache_data_enable_t                   data_cs_i,
     input  wire hpdcache_data_enable_t                   data_we_i,
-    input  wire hpdcache_data_entry_t                    data_wmask_i,
+    input  wire hpdcache_data_be_entry_t                 data_wbyteenable_i,
     input  wire hpdcache_data_entry_t                    data_wentry_i,
     output wire hpdcache_data_entry_t                    data_rentry_o
 );
@@ -50,43 +49,70 @@ import hpdcache_pkg::*;
     //  Memory arrays
     //  {{{
     generate
-        genvar x, y, w;
+        genvar x, y, dir_w;
 
         //  Directory
         //
-        for (w = 0; w < int'(HPDCACHE_WAYS); w++) begin
-            hpdcache_sram_wmask #(
+        for (dir_w = 0; dir_w < int'(HPDCACHE_WAYS); dir_w++) begin : dir_sram_gen
+            hpdcache_sram #(
                 .DATA_SIZE (HPDCACHE_DIR_RAM_WIDTH),
                 .ADDR_SIZE (HPDCACHE_DIR_RAM_ADDR_WIDTH)
             ) dir_sram (
                 .clk       (clk_i),
                 .rst_n     (rst_ni),
-                .cs        (dir_cs_i[w]),
-                .we        (dir_we_i[w]),
+                .cs        (dir_cs_i[dir_w]),
+                .we        (dir_we_i[dir_w]),
                 .addr      (dir_addr_i),
-                .wdata     (dir_wentry_i[w]),
-                .wmask     (dir_wmask_i[w]),
-                .rdata     (dir_rentry_o[w])
+                .wdata     (dir_wentry_i[dir_w]),
+                .rdata     (dir_rentry_o[dir_w])
             );
         end
 
         //  Data
         //
-        for (y = 0; y < int'(HPDCACHE_DATA_RAM_Y_CUTS); y++) begin
-            for (x = 0; x < int'(HPDCACHE_DATA_RAM_X_CUTS); x++) begin
-                hpdcache_sram_wmask #(
-                    .DATA_SIZE (HPDCACHE_DATA_RAM_WIDTH),
-                    .ADDR_SIZE (HPDCACHE_DATA_RAM_ADDR_WIDTH)
-                ) data_sram (
-                    .clk       (clk_i),
-                    .rst_n     (rst_ni),
-                    .cs        (data_cs_i[y][x]),
-                    .we        (data_we_i[y][x]),
-                    .addr      (data_addr_i[y][x]),
-                    .wdata     (data_wentry_i[y][x]),
-                    .wmask     (data_wmask_i[y][x]),
-                    .rdata     (data_rentry_o[y][x])
-                );
+        for (y = 0; y < int'(HPDCACHE_DATA_RAM_Y_CUTS); y++) begin : data_sram_row_gen
+            for (x = 0; x < int'(HPDCACHE_DATA_RAM_X_CUTS); x++) begin : data_sram_col_gen
+                if (HPDCACHE_DATA_RAM_WBYTEENABLE) begin : data_sram_wbyteenable_gen
+                    hpdcache_sram_wbyteenable #(
+                        .DATA_SIZE   (HPDCACHE_DATA_RAM_WIDTH),
+                        .ADDR_SIZE   (HPDCACHE_DATA_RAM_ADDR_WIDTH)
+                    ) data_sram (
+                        .clk         (clk_i),
+                        .rst_n       (rst_ni),
+                        .cs          (data_cs_i[y][x]),
+                        .we          (data_we_i[y][x]),
+                        .addr        (data_addr_i[y][x]),
+                        .wdata       (data_wentry_i[y][x]),
+                        .wbyteenable (data_wbyteenable_i[y][x]),
+                        .rdata       (data_rentry_o[y][x])
+                    );
+                end else begin : data_sram_wmask_gen
+                    hpdcache_data_ram_data_t data_wmask;
+
+                    //  build the bitmask from the write byte enable signal
+                    always_comb
+                    begin : data_wmask_comb
+                        for (int w = 0; w < HPDCACHE_DATA_WAYS_PER_RAM_WORD; w++) begin
+                            for (int b = 0; b < HPDCACHE_DATA_RAM_WIDTH/8; b++) begin
+                                data_wmask[w][8*b +: 8] = {8{data_wbyteenable_i[y][x][w][b]}};
+                            end
+                        end
+                    end
+
+                    hpdcache_sram_wmask #(
+                        .DATA_SIZE   (HPDCACHE_DATA_RAM_WIDTH),
+                        .ADDR_SIZE   (HPDCACHE_DATA_RAM_ADDR_WIDTH)
+                    ) data_sram (
+                        .clk         (clk_i),
+                        .rst_n       (rst_ni),
+                        .cs          (data_cs_i[y][x]),
+                        .we          (data_we_i[y][x]),
+                        .addr        (data_addr_i[y][x]),
+                        .wdata       (data_wentry_i[y][x]),
+                        .wmask       (data_wmask),
+                        .rdata       (data_rentry_o[y][x])
+                    );
+                end
             end
         end
     endgenerate
