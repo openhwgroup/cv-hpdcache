@@ -79,7 +79,7 @@ import hpdcache_pkg::*;
     localparam int NLINES_WIDTH     = $bits(csr_param_i.nlines);
     localparam int NWAIT_WIDTH      = $bits(csr_throttle_i.nwait);
     localparam int INFLIGHT_WIDTH   = $bits(csr_throttle_i.ninflight);
-    localparam int NLINES_CNT_WIDTH = 2**NLINES_WIDTH;
+    localparam int NLINES_CNT_WIDTH = NLINES_WIDTH;
     //  }}}
 
     //  Internal registers and signals
