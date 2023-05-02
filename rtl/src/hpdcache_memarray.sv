@@ -93,7 +93,7 @@ import hpdcache_pkg::*;
                     always_comb
                     begin : data_wmask_comb
                         for (int w = 0; w < HPDCACHE_DATA_WAYS_PER_RAM_WORD; w++) begin
-                            for (int b = 0; b < HPDCACHE_DATA_RAM_WIDTH/8; b++) begin
+                            for (int b = 0; b < HPDCACHE_WORD_WIDTH/8; b++) begin
                                 data_wmask[w][8*b +: 8] = {8{data_wbyteenable_i[y][x][w][b]}};
                             end
                         end
