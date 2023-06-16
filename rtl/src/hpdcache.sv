@@ -110,6 +110,9 @@ import hpdcache_pkg::*;
     output wire  logic                         evt_read_req_o,
     output wire  logic                         evt_prefetch_req_o,
     output wire  logic                         evt_req_on_hold_o,
+    output wire  logic                         evt_rtab_rollback_o,
+    output wire  logic                         evt_stall_refill_o,
+    output wire  logic                         evt_stall_o,
 
     //      Status interface
     output wire  logic                         wbuf_empty_o,
@@ -410,7 +413,10 @@ import hpdcache_pkg::*;
         .evt_write_req_o,
         .evt_read_req_o,
         .evt_prefetch_req_o,
-        .evt_req_on_hold_o
+        .evt_req_on_hold_o,
+        .evt_rtab_rollback_o,
+        .evt_stall_refill_o,
+        .evt_stall_o
     );
     //  }}}
 

@@ -163,7 +163,10 @@ import hpdcache_pkg::*;
     output wire logic                  evt_write_req_o,
     output wire logic                  evt_read_req_o,
     output wire logic                  evt_prefetch_req_o,
-    output wire logic                  evt_req_on_hold_o
+    output wire logic                  evt_req_on_hold_o,
+    output wire logic                  evt_rtab_rollback_o,
+    output wire logic                  evt_stall_refill_o,
+    output wire logic                  evt_stall_o
 );
     // }}}
 
@@ -337,6 +340,9 @@ import hpdcache_pkg::*;
 
     assign core_req_ready_o   = st0_req_ready    & ~rtab_sel,
            rtab_req_ready     = st0_req_ready    &  rtab_sel;
+
+    //  Trigger an event signal when the pipeline is stalled (new request is not consumed)
+    assign evt_stall_o        = core_req_valid_i & ~core_req_ready_o;
     //  }}}
 
     //  Cache controller protocol engine
@@ -433,7 +439,9 @@ import hpdcache_pkg::*;
         .evt_write_req_o,
         .evt_read_req_o,
         .evt_prefetch_req_o,
-        .evt_req_on_hold_o
+        .evt_req_on_hold_o,
+        .evt_rtab_rollback_o,
+        .evt_stall_refill_o
     );
 
     assign ctrl_empty_o = ~(st1_req_valid_q | st2_req_valid_q);

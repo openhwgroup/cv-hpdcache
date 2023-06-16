@@ -153,7 +153,9 @@ module hpdcache_ctrl_pe
     output var  logic                   evt_write_req_o,
     output var  logic                   evt_read_req_o,
     output var  logic                   evt_prefetch_req_o,
-    output var  logic                   evt_req_on_hold_o
+    output var  logic                   evt_req_on_hold_o,
+    output var  logic                   evt_rtab_rollback_o,
+    output var  logic                   evt_stall_refill_o
     //   }}}
 );
     // }}}
@@ -215,7 +217,8 @@ module hpdcache_ctrl_pe
            st1_rtab_rback_o = st1_rtab_alloc &  st1_req_rtab_i;
 
     //      Performance event
-    assign evt_req_on_hold_o = st0_rtab_alloc_o | st1_rtab_alloc;
+    assign evt_req_on_hold_o   = st0_rtab_alloc_o | st1_rtab_alloc,
+           evt_rtab_rollback_o = st1_rtab_rback_o;
     //  }}}
 
     //  Data-cache control lines
@@ -277,6 +280,7 @@ module hpdcache_ctrl_pe
         evt_write_req_o                     = 1'b0;
         evt_read_req_o                      = 1'b0;
         evt_prefetch_req_o                  = 1'b0;
+        evt_stall_refill_o                  = 1'b0;
 
         //  Wait for the cache to be initialized
         //  {{{
@@ -289,6 +293,7 @@ module hpdcache_ctrl_pe
         //  {{{
         else if (refill_busy_i) begin
             //  miss handler has the control of the cache
+            evt_stall_refill_o = arb_st0_req_valid_i;
         end
         //  }}}
 
