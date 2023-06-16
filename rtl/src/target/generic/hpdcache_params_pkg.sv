@@ -84,7 +84,7 @@ package hpdcache_params_pkg;
     localparam int unsigned PARAM_DATA_WAYS_PER_RAM_WORD = `CONF_HPDCACHE_DATA_WAYS_PER_RAM_WORD;
 
     `ifndef CONF_HPDCACHE_DATA_SETS_PER_RAM
-        `define CONF_HPDCACHE_DATA_SETS_PER_RAM PARAMS_SETS
+        `define CONF_HPDCACHE_DATA_SETS_PER_RAM PARAM_SETS
     `endif
     localparam int unsigned PARAM_DATA_SETS_PER_RAM = `CONF_HPDCACHE_DATA_SETS_PER_RAM;
 
@@ -125,7 +125,7 @@ package hpdcache_params_pkg;
 
     //  HPDcache MSHR number of sets in the same SRAM
     `ifndef CONF_HPDCACHE_MSHR_SETS_PER_RAM
-        `define CONF_HPDCACHE_MSHR_SETS_PER_RAM HPDCACHE_MSHR_SETS
+        `define CONF_HPDCACHE_MSHR_SETS_PER_RAM PARAM_MSHR_SETS
     `endif
     localparam int unsigned PARAM_MSHR_SETS_PER_RAM = `CONF_HPDCACHE_MSHR_SETS_PER_RAM;
 
