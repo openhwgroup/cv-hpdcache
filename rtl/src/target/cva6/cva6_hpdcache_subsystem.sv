@@ -395,6 +395,9 @@ module cva6_hpdcache_subsystem
     .evt_read_req_o                    (/* unused */),
     .evt_prefetch_req_o                (/* unused */),
     .evt_req_on_hold_o                 (/* unused */),
+    .evt_rtab_rollback_o               (/* unused */),
+    .evt_stall_refill_o                (/* unused */),
+    .evt_stall_o                       (/* unused */),
 
     .wbuf_empty_o                      (wbuffer_empty_o),
 
