@@ -23,10 +23,9 @@
 //  Description   : File list for the HPDcache and adapters for the CVA6 core
 //  History       :
 //
--F ${HPDCACHE_DIR}/rtl/hpdcache.Flist
-${HPDCACHE_DIR}/rtl/src/utils/hpdcache_mem_to_axi_read.sv
-${HPDCACHE_DIR}/rtl/src/utils/hpdcache_mem_to_axi_write.sv
-${HPDCACHE_DIR}/rtl/src/target/cva6/cva6_hpdcache_subsystem.sv
-${HPDCACHE_DIR}/rtl/src/target/cva6/cva6_hpdcache_subsystem_axi_arbiter.sv
-${HPDCACHE_DIR}/rtl/src/target/cva6/cva6_hpdcache_cmo_if_adapter.sv
-${HPDCACHE_DIR}/rtl/src/target/cva6/cva6_hpdcache_if_adapter.sv
+src/utils/hpdcache_mem_to_axi_read.sv
+src/utils/hpdcache_mem_to_axi_write.sv
+src/target/cva6/cva6_hpdcache_subsystem.sv
+src/target/cva6/cva6_hpdcache_subsystem_axi_arbiter.sv
+src/target/cva6/cva6_hpdcache_if_adapter.sv
+//src/target/cva6/cva6_hpdcache_cmo_if_adapter.sv

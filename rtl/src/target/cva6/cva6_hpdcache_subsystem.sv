@@ -65,8 +65,8 @@ module cva6_hpdcache_subsystem
   input  ariane_pkg::amo_req_t            dcache_amo_req_i,       // from LSU
   output ariane_pkg::amo_resp_t           dcache_amo_resp_o,      // to LSU
   //  CMO interface
-  input  ariane_pkg::cmo_req_t            dcache_cmo_req_i,       // from CMO FU
-  output ariane_pkg::cmo_resp_t           dcache_cmo_resp_o,      // to CMO FU
+  //input  ariane_pkg::cmo_req_t            dcache_cmo_req_i,       // from CMO FU
+  //output ariane_pkg::cmo_resp_t           dcache_cmo_resp_o,      // to CMO FU
   //  Request ports
   input  ariane_pkg::dcache_req_i_t [2:0] dcache_req_ports_i,     // from LSU
   output ariane_pkg::dcache_req_o_t [2:0] dcache_req_ports_o,     // to LSU
@@ -219,7 +219,7 @@ module cva6_hpdcache_subsystem
     end
 
     assign dcache_amo_resp_o = dcache_amo_resp[2];
-
+  /*
     cva6_hpdcache_cmo_if_adapter #(
       .ArianeCfg                                   (ArianeCfg)
     ) i_cva6_hpdcache_cmo_if_adapter (
@@ -238,6 +238,7 @@ module cva6_hpdcache_subsystem
       .dcache_rsp_valid_i                          (dcache_rsp_valid[3]),
       .dcache_rsp_i                                (dcache_rsp[3])
     );
+    */
   endgenerate
 
   //  Snoop load port
