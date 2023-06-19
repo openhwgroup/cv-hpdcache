@@ -246,6 +246,7 @@ module hpdcache_wbuf
     logic                                       wbuf_write_hit_closed;
     logic                                       wbuf_write_hit_sent;
     wbuf_dir_ptr_t                              wbuf_write_hit_open_dir_ptr;
+    wbuf_dir_ptr_t                              wbuf_write_hit_closed_dir_ptr;
 
     logic                                       send_meta_valid;
     logic                                       send_meta_ready;
@@ -349,6 +350,7 @@ module hpdcache_wbuf
         wbuf_write_hit_sent = 1'b0;
 
         wbuf_write_hit_open_dir_ptr = 0;
+        wbuf_write_hit_closed_dir_ptr = 0;
         for (int unsigned i = 0; i < WBUF_DIR_ENTRIES; i++) begin
             if (wbuf_dir_q[i].tag == write_tag) begin
                 unique case (wbuf_dir_state_q[i])
@@ -358,6 +360,7 @@ module hpdcache_wbuf
                     end
                     WBUF_CLOSED: begin
                         wbuf_write_hit_closed = 1'b1;
+                        wbuf_write_hit_closed_dir_ptr = wbuf_dir_ptr_t'(i);
                     end
                     WBUF_SENT: begin
                         wbuf_write_hit_sent = 1'b1;
@@ -442,7 +445,7 @@ module hpdcache_wbuf
             &  ~wbuf_write_hit_closed
             & ~(wbuf_write_hit_sent & cfg_sequential_waw_i);
 
-    assign write_ready_o = wbuf_write_free | wbuf_write_hit_open;
+    assign write_ready_o = wbuf_write_free | wbuf_write_hit_open | wbuf_write_hit_closed;
     //  }}}
 
     //  Update control
@@ -453,6 +456,7 @@ module hpdcache_wbuf
         automatic bit write_hit;
         automatic bit read_close_hit;
         automatic bit match_open_ptr;
+        automatic bit match_closed_ptr;
         automatic bit match_free;
         automatic bit close;
 
@@ -497,10 +501,10 @@ module hpdcache_wbuf
                 end
 
                 WBUF_OPEN: begin
-                    match_open_ptr  = (i == int'(wbuf_write_hit_open_dir_ptr)) && wbuf_write_hit_open;
+                    match_open_ptr  = (i == int'(wbuf_write_hit_open_dir_ptr));
                     timeout         = (wbuf_dir_q[i].cnt == (cfg_threshold_i - 1));
-                    write_hit       = write_i          & match_open_ptr;
-                    read_close_hit  = read_close_hit_i & match_open_ptr;
+                    write_hit       = write_i          & wbuf_write_hit_open & match_open_ptr;
+                    read_close_hit  = read_close_hit_i & wbuf_write_hit_open & match_open_ptr;
 
                     if (!close_all_i) begin
                         if (write_hit && cfg_reset_timecnt_on_write_i) begin
@@ -530,6 +534,20 @@ module hpdcache_wbuf
                 end
 
                 WBUF_CLOSED: begin
+                    match_closed_ptr = (i == int'(wbuf_write_hit_closed_dir_ptr));
+                    write_hit = write_i & wbuf_write_hit_closed & match_closed_ptr;
+
+                    if (write_hit) begin
+                        wbuf_data_write(
+                            wbuf_data_d[wbuf_dir_q[i].ptr].data,
+                            wbuf_data_d[wbuf_dir_q[i].ptr].be,
+                            wbuf_data_q[wbuf_dir_q[i].ptr].data,
+                            wbuf_data_q[wbuf_dir_q[i].ptr].be,
+                            write_data,
+                            write_be
+                        );
+                    end
+
                     if (i == int'(wbuf_dir_send_ptr_q)) begin
                         fifo_send_data_w = send_meta_ready;
                         send_meta_valid  = fifo_send_data_wok;
