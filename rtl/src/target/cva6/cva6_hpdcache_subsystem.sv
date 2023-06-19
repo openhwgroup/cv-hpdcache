@@ -79,6 +79,7 @@ module cva6_hpdcache_subsystem
   //  CMO interface
   input  cmo_req_t                   dcache_cmo_req_i,       // from CMO FU
   output cmo_rsp_t                   dcache_cmo_resp_o,      // to CMO FU
+
   //  Request ports
   input  ariane_pkg::dcache_req_i_t [2:0] dcache_req_ports_i,     // from LSU
   output ariane_pkg::dcache_req_o_t [2:0] dcache_req_ports_o,     // to LSU

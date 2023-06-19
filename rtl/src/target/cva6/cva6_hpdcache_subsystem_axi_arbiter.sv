@@ -148,12 +148,13 @@ module cva6_hpdcache_subsystem_axi_arbiter
 
   //  Adapt the I$ interface to the HPDcache memory interface
   //  {{{
-  localparam int ICACHE_CL_WORDS = ariane_pkg::ICACHE_LINE_WIDTH/64;
-  localparam int ICACHE_CL_WORD_INDEX = $clog2(ICACHE_CL_WORDS);
-  localparam int ICACHE_CL_SIZE = $clog2(ariane_pkg::ICACHE_LINE_WIDTH/8);
-  localparam int ICACHE_WORD_SIZE = ArianeCfg.AxiCompliant ? 3 : 2;
-  localparam int ICACHE_MEM_REQ_CL_LEN =
+  localparam int ICACHE_CL_WORDS        = ariane_pkg::ICACHE_LINE_WIDTH/64;
+  localparam int ICACHE_CL_WORD_INDEX   = $clog2(ICACHE_CL_WORDS);
+  localparam int ICACHE_CL_SIZE         = $clog2(ariane_pkg::ICACHE_LINE_WIDTH/8);
+  localparam int ICACHE_WORD_SIZE       = ArianeCfg.Axi64BitCompliant ? 3 : 2;
+  localparam int ICACHE_MEM_REQ_CL_LEN  =
     (ariane_pkg::ICACHE_LINE_WIDTH + HPDcacheMemDataWidth - 1)/HPDcacheMemDataWidth;
+
   localparam int ICACHE_MEM_REQ_CL_SIZE =
     (HPDcacheMemDataWidth <= ariane_pkg::ICACHE_LINE_WIDTH) ?
       $clog2(HPDcacheMemDataWidth/8) : ICACHE_CL_SIZE;
