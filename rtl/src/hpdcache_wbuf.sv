@@ -120,7 +120,7 @@ module hpdcache_wbuf
     output wire logic                  replay_open_hit_o,
     output wire logic                  replay_closed_hit_o,
     output wire logic                  replay_sent_hit_o,
-    output wire logic                  replay_not_ready_o,
+    output var  logic                  replay_not_ready_o,
 
     //  Send interface
     input  wire logic                  send_meta_ready_i,
@@ -421,11 +421,19 @@ module hpdcache_wbuf
 
     assign replay_open_hit_o   = |replay_open_hit,
            replay_closed_hit_o = |replay_closed_hit,
-           replay_sent_hit_o   = |replay_sent_hit,
-           replay_not_ready_o  =   ~wbuf_dir_free
-                                 | ~wbuf_data_free
-                                 |  replay_closed_hit_o
-                                 | (replay_sent_hit_o & cfg_sequential_waw_i);
+           replay_sent_hit_o   = |replay_sent_hit;
+
+    always_comb
+    begin : replay_wbuf_not_ready_comb
+        replay_not_ready_o = 1'b0;
+        if (replay_closed_hit_o) begin
+            replay_not_ready_o = 1'b1;
+        end else if (replay_sent_hit_o && cfg_sequential_waw_i) begin
+            replay_not_ready_o = 1'b1;
+        end else if (!replay_open_hit_o && (!wbuf_dir_free || !wbuf_data_free)) begin
+            replay_not_ready_o = 1'b1;
+        end
+    end
 
     assign wbuf_write_free =
                 wbuf_dir_free

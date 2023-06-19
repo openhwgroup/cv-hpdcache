@@ -35,7 +35,7 @@ import hpdcache_pkg::*;
     //  Global control signals
     output wire logic                  empty_o,          // RTAB is empty
     output wire logic                  full_o,           // RTAB is full
-    output wire logic                  req_valid_o,      // Request ready to be replayed
+    output var  logic                  req_valid_o,      // Request ready to be replayed
 
     //  Check RTAB signals
     //     This interface allows to check if there is an address-overlapping
@@ -133,12 +133,25 @@ import hpdcache_pkg::*;
             input hpdcache_nline_t y);
         return (x[0 +: HPDCACHE_MSHR_SET_WIDTH] == y[0 +: HPDCACHE_MSHR_SET_WIDTH]);
     endfunction
+
+    function automatic logic [N-1:0] rtab_next(rtab_ptr_t [N-1:0] next, rtab_ptr_t x);
+        return rtab_index_to_bv(next[x]);
+    endfunction
+
+    typedef enum {
+        POP_TRY_HEAD,
+        POP_TRY_NEXT,
+        POP_TRY_NEXT_WAIT
+    } rtab_pop_try_state_e;
 //  }}}
 
 //  Internal signals and registers
 //  {{{
     hpdcache_req_t      [N-1:0]  req_q;
     rtab_ptr_t          [N-1:0]  next_q;
+
+    rtab_pop_try_state_e         pop_try_state_q, pop_try_state_d;
+    logic               [N-1:0]  pop_try_next_q, pop_try_next_d;
 
     logic               [N-1:0]  valid_q;
     logic               [N-1:0]  valid_set, valid_rst;
@@ -208,7 +221,6 @@ import hpdcache_pkg::*;
     logic                        alloc_wbuf_hit;
     logic                        alloc_wbuf_not_ready;
 
-    logic               [N-1:0]  pop_rd_ready, pop_wr_ready;
     logic               [N-1:0]  pop_match_next;
     logic               [N-1:0]  pop_rback_ptr_bv;
     logic               [N-1:0]  pop_try_bv;
@@ -226,10 +238,7 @@ import hpdcache_pkg::*;
                             deps_wbuf_hit_q |
                             deps_wbuf_not_ready_q);
 
-    assign ready        = valid_q & head_q & nodeps,
-           req_valid_o  = |ready,
-           pop_rd_ready = ready &  is_read,
-           pop_wr_ready = ready & ~is_read;
+    assign ready        = valid_q & head_q & nodeps;
 
     assign free         = ~valid_q;
 
@@ -401,14 +410,208 @@ import hpdcache_pkg::*;
 
 //  Pop interface
 //  {{{
-    logic [N-1:0]  pop_rd_gnt, pop_wr_gnt;
-    logic [  1:0]  pop_pending;
-    logic [  1:0]  pop_gnt;
-    logic          pop_ready;
     logic [N-1:0]  pop_sel;
+    logic [N-1:0]  pop_commit_bv;
+
+    assign pop_commit_bv = rtab_index_to_bv(pop_commit_ptr_i);
 
     //  Pop try process
     //  {{{
+`ifdef HPDCACHE_RTAB_LIST_POP_2
+    logic          pop_head;
+    logic [N-1:0]  pop_rd_gnt, pop_wr_gnt;
+    logic [  1:0]  pop_gnt;
+
+    hpdcache_rrarb #(
+        .N              (N)
+    ) pop_rd_arb_i (
+        .clk_i,
+        .rst_ni,
+        .req_i          (ready & is_read),
+        .gnt_o          (pop_rd_gnt),
+        .ready_i        (pop_gnt[0] & pop_head)
+    );
+
+    hpdcache_rrarb #(
+        .N              (N)
+    ) pop_wr_arb_i (
+        .clk_i,
+        .rst_ni,
+        .req_i          (ready & ~is_read),
+        .gnt_o          (pop_wr_gnt),
+        .ready_i        (pop_gnt[1] & pop_head)
+    );
+
+    hpdcache_fxarb #(
+        .N              (2)
+    ) pop_pending_arb_i (
+        .clk_i,
+        .rst_ni,
+        .req_i          ({|pop_wr_gnt, |pop_rd_gnt}),
+        .gnt_o          (pop_gnt),
+        .ready_i        (pop_head)
+    );
+
+    always_comb
+    begin : pop_entry_sel_comb
+        pop_try_state_d = pop_try_state_q;
+        pop_try_next_d = pop_try_next_q;
+        pop_head = 1'b0;
+        pop_sel = '0;
+        req_valid_o = 1'b0;
+
+        case (pop_try_state_q)
+            POP_TRY_HEAD: begin
+                // This FSM may be in this state after forwarding the tail of
+                // a list. In that case, a rollback may arrive in this cycle.
+                req_valid_o = |ready;
+                pop_sel     = pop_gnt[0] ? pop_rd_gnt : pop_wr_gnt;
+                if (!pop_rback_i && req_valid_o) begin
+                    if (pop_try_i) begin
+                        //  If the request interface accepts the request, go to the next request
+                        //  in the list (if the current request is not the tail). Otherwise, stay in
+                        //  the same state to to forward a request from a new list
+                        pop_head = 1'b1;
+                        if (pop_sel & ~tail_q) begin
+                            pop_try_state_d = POP_TRY_NEXT;
+                            pop_try_next_d = rtab_next(next_q, pop_try_ptr_o);
+                        end
+                    end
+                end
+            end
+            POP_TRY_NEXT: begin
+                req_valid_o = pop_commit_i;
+                pop_sel     = pop_try_next_q;
+                if (pop_rback_i) begin
+                    pop_try_state_d = POP_TRY_HEAD;
+                end else begin
+                    if (pop_try_i) begin
+                        //  If the request interface accepts the new request, go to the next request
+                        //  in the list (if the current request is not the tail). Otherwise, return
+                        //  to the POP_TRY_HEAD state to forward a request from a new list
+                        if (pop_try_next_q & ~tail_q) begin
+                            pop_try_state_d = POP_TRY_NEXT;
+                            pop_try_next_d  = rtab_next(next_q, pop_try_ptr_o);
+                        end else begin
+                            pop_try_state_d = POP_TRY_HEAD;
+                        end
+                    end else begin
+                        //  If the request interface is not ready to consume the new request, wait
+                        //  until it is
+                        pop_try_state_d = POP_TRY_NEXT_WAIT;
+                    end
+                end
+            end
+            POP_TRY_NEXT_WAIT: begin
+                //  Wait for the current request to be accepted. Then go to the next request in the
+                //  list or to a new list
+                req_valid_o = 1'b1;
+                pop_sel     = pop_try_next_q;
+                if (pop_try_i) begin
+                    if (pop_try_next_q & ~tail_q) begin
+                        pop_try_state_d = POP_TRY_NEXT;
+                        pop_try_next_d  = rtab_next(next_q, pop_try_ptr_o);
+                    end else begin
+                        pop_try_state_d = POP_TRY_HEAD;
+                    end
+                end
+            end
+            default: begin
+            end
+        endcase
+    end
+
+    assign pop_commit_head_set  = '0;
+`elsif HPDCACHE_RTAB_LIST_POP
+    logic [N-1:0]  pop_gnt;
+    logic          pop_head;
+
+    hpdcache_rrarb #(
+        .N              (N)
+    ) pop_arb_i (
+        .clk_i,
+        .rst_ni,
+        .req_i          (ready),
+        .gnt_o          (pop_gnt),
+        .ready_i        (pop_head)
+    );
+
+    always_comb
+    begin : pop_entry_sel_comb
+        pop_try_state_d = pop_try_state_q;
+        pop_try_next_d = pop_try_next_q;
+        pop_head = 1'b0;
+        pop_sel = '0;
+        req_valid_o = 1'b0;
+
+        case (pop_try_state_q)
+            POP_TRY_HEAD: begin
+                // This FSM may be in this state after forwarding the tail of
+                // a list. In that case, a rollback may arrive in this cycle.
+                req_valid_o = |ready;
+                pop_sel     = pop_gnt;
+                if (!pop_rback_i && req_valid_o) begin
+                    if (pop_try_i) begin
+                        //  If the request interface accepts the request, go to the next request
+                        //  in the list (if the current request is not the tail). Otherwise, stay in
+                        //  the same state to to forward a request from a new list
+                        pop_head = 1'b1;
+                        if (pop_sel & ~tail_q) begin
+                            pop_try_state_d = POP_TRY_NEXT;
+                            pop_try_next_d = rtab_next(next_q, pop_try_ptr_o);
+                        end
+                    end
+                end
+            end
+            POP_TRY_NEXT: begin
+                req_valid_o = pop_commit_i;
+                pop_sel     = pop_try_next_q;
+                if (pop_rback_i) begin
+                    pop_try_state_d = POP_TRY_HEAD;
+                end else begin
+                    if (pop_try_i) begin
+                        //  If the request interface accepts the new request, go to the next request
+                        //  in the list (if the current request is not the tail). Otherwise, return
+                        //  to the POP_TRY_HEAD state to forward a request from a new list
+                        if (pop_try_next_q & ~tail_q) begin
+                            pop_try_state_d = POP_TRY_NEXT;
+                            pop_try_next_d  = rtab_next(next_q, pop_try_ptr_o);
+                        end else begin
+                            pop_try_state_d = POP_TRY_HEAD;
+                        end
+                    end else begin
+                        //  If the request interface is not ready to consume the new request, wait
+                        //  until it is
+                        pop_try_state_d = POP_TRY_NEXT_WAIT;
+                    end
+                end
+            end
+            POP_TRY_NEXT_WAIT: begin
+                //  Wait for the current request to be accepted. Then go to the next request in the
+                //  list or to a new list
+                req_valid_o = 1'b1;
+                pop_sel     = pop_try_next_q;
+                if (pop_try_i) begin
+                    if (pop_try_next_q & ~tail_q) begin
+                        pop_try_state_d = POP_TRY_NEXT;
+                        pop_try_next_d  = rtab_next(next_q, pop_try_ptr_o);
+                    end else begin
+                        pop_try_state_d = POP_TRY_HEAD;
+                    end
+                end
+            end
+            default: begin
+            end
+        endcase
+    end
+
+    assign pop_commit_head_set  = '0;
+`else
+    logic [N-1:0]  pop_rd_ready, pop_wr_ready;
+    logic [N-1:0]  pop_rd_gnt, pop_wr_gnt;
+    logic [  1:0]  pop_pending;
+    logic [  1:0]  pop_gnt;
+
     hpdcache_rrarb #(
         .N              (N)
     ) pop_rd_arb_i (
@@ -416,7 +619,7 @@ import hpdcache_pkg::*;
         .rst_ni,
         .req_i          (pop_rd_ready),
         .gnt_o          (pop_rd_gnt),
-        .ready_i        (pop_gnt[0] & pop_ready)
+        .ready_i        (pop_gnt[0] & pop_try_i)
     );
 
     hpdcache_rrarb #(
@@ -426,11 +629,12 @@ import hpdcache_pkg::*;
         .rst_ni,
         .req_i          (pop_wr_ready),
         .gnt_o          (pop_wr_gnt),
-        .ready_i        (pop_gnt[1] & pop_ready)
+        .ready_i        (pop_gnt[1] & pop_try_i)
     );
 
-    assign pop_pending = {|pop_wr_gnt, |pop_rd_gnt},
-           pop_ready   = pop_try_i;
+    assign pop_rd_ready = ready &  is_read,
+           pop_wr_ready = ready & ~is_read,
+           pop_pending = {|pop_wr_gnt, |pop_rd_gnt};
 
     hpdcache_fxarb #(
         .N              (2)
@@ -439,10 +643,19 @@ import hpdcache_pkg::*;
         .rst_ni,
         .req_i          (pop_pending),
         .gnt_o          (pop_gnt),
-        .ready_i        (pop_ready)
+        .ready_i        (pop_try_i)
     );
 
-    assign pop_sel = pop_gnt[0] ? pop_rd_gnt : pop_wr_gnt;
+    assign pop_sel     = pop_gnt[0] ? pop_rd_gnt : pop_wr_gnt;
+
+    assign req_valid_o  = |ready;
+
+    //  Set the head bit of the following request (change the head request)
+    logic pop_entry_is_not_tail;
+
+    assign pop_entry_is_not_tail = pop_commit_i & |(pop_commit_bv & ~tail_q),
+           pop_commit_head_set   = {N{pop_entry_is_not_tail}} & rtab_next(next_q, pop_commit_ptr_i);
+`endif
 
     hpdcache_mux #(
         .NINPUT         (N),
@@ -458,24 +671,15 @@ import hpdcache_pkg::*;
     assign pop_try_bv       = pop_sel & {N{pop_try_i}},
            pop_try_head_rst = pop_try_bv;
 
+
     //  Forward the index of the entry being popped. This is used later by the
     //  commit or rollback operations
-    assign pop_try_ptr_o    = rtab_bv_to_index(pop_sel);
+    assign pop_try_ptr_o = rtab_bv_to_index(pop_sel);
+
     //  }}}
 
     //  Pop commit process
     //  {{{
-    //  Look for the next request following the head of the linked list
-    always_comb
-    begin : pop_match_next_comb
-        for (int i = 0; i < N; i++) begin
-            pop_match_next[i] = (rtab_ptr_t'(i) != pop_commit_ptr_i) && (next_q[i] == pop_commit_ptr_i);
-        end
-    end
-
-    //  Set the head bit of the following request (change the head request)
-    assign pop_commit_head_set  = {N{pop_commit_i}} & valid_q & pop_match_next;
-
     //  Invalidate the entry being popped (head of the linked list)
     assign pop_commit_valid_rst = {N{pop_commit_i}} & rtab_index_to_bv(pop_commit_ptr_i);
     //  }}}
@@ -549,10 +753,21 @@ import hpdcache_pkg::*;
 
             //  update the next pointers
             for (int i = 0; i < N; i++) begin
-                if (alloc_and_link_i && free_alloc[i]) begin
-                    next_q[i] <= rtab_bv_to_index(match_check_tail);
+                if (alloc_and_link_i && match_check_tail[i]) begin
+                    next_q[i] <= rtab_bv_to_index(free_alloc);
                 end
             end
+        end
+    end
+
+    always_ff @(posedge clk_i or negedge rst_ni)
+    begin : pop_try_ff
+        if (!rst_ni) begin
+            pop_try_state_q <= POP_TRY_HEAD;
+            pop_try_next_q  <= '0;
+        end else begin
+            pop_try_state_q <= pop_try_state_d;
+            pop_try_next_q  <= pop_try_next_d;
         end
     end
 
@@ -564,7 +779,6 @@ import hpdcache_pkg::*;
                 req_q[i] <= alloc_req;
             end
         end
-
     end
 //  }}}
 
@@ -572,40 +786,44 @@ import hpdcache_pkg::*;
 //  {{{
 //  pragma translate_off
     assert property (@(posedge clk_i)
-            check_i -> $onehot0(match_check_tail)) else
+            check_i |-> $onehot0(match_check_tail)) else
                     $error("rtab: more than one entry matching");
 
     assert property (@(posedge clk_i)
-            alloc_and_link_i -> (check_i & check_hit_o)) else
+            alloc_and_link_i |-> (check_i & check_hit_o)) else
                     $error("rtab: alloc and link shall be performed in case of check hit");
 
     assert property (@(posedge clk_i)
-            alloc_and_link_i ->
+            alloc_and_link_i |->
                     (hpdcache_get_req_nline(alloc_and_link_req_i.addr) == check_nline_i)) else
                     $error("rtab: nline for alloc and link shall match the one being checked");
 
     assert property (@(posedge clk_i)
-            alloc_i -> !alloc_and_link_i) else
+            alloc_i |-> !alloc_and_link_i) else
                     $error("rtab: only one allocation per cycle is allowed");
 
     assert property (@(posedge clk_i)
-            pop_commit_i -> valid_q[pop_commit_ptr_i]) else
+            pop_try_i |-> ##1 (pop_commit_i | pop_rback_i)) else
+                    $error("rtab: a pop try shall be followed by a commit or rollback");
+
+    assert property (@(posedge clk_i)
+            pop_commit_i |-> valid_q[pop_commit_ptr_i]) else
                     $error("rtab: commiting an invalid entry");
 
     assert property (@(posedge clk_i)
-            pop_rback_i -> valid_q[pop_rback_ptr_i]) else
+            pop_rback_i |-> valid_q[pop_rback_ptr_i]) else
                     $error("rtab: rolling-back an invalid entry");
 
     assert property (@(posedge clk_i)
-            alloc_i -> ~full_o) else
+            pop_rback_i |-> !pop_try_i) else
+                    $error("rtab: cache shall not accept a new request while rolling back");
+
+    assert property (@(posedge clk_i)
+            (alloc_i | alloc_and_link_i) |-> ~full_o) else
                     $error("rtab: trying to allocate while the table is full");
 
     assert property (@(posedge clk_i)
-            alloc_and_link_i -> ~full_o) else
-                    $error("rtab: trying to allocate while the table is full");
-
-    assert property (@(posedge clk_i)
-            alloc_and_link_i -> ~cfg_single_entry_i) else
+            alloc_and_link_i |-> ~cfg_single_entry_i) else
                     $error("rtab: trying to link a request in single entry mode");
 //  pragma translate_on
 //  }}}
