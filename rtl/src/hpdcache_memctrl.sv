@@ -106,7 +106,6 @@ import hpdcache_pkg::*;
     //  Definition of constants
     //  {{{
     localparam int unsigned HPDCACHE_ALL_CUTS = HPDCACHE_DATA_RAM_X_CUTS*HPDCACHE_DATA_RAM_Y_CUTS;
-    localparam int unsigned HPDCACHE_ALL_WORDS = HPDCACHE_ALL_CUTS*HPDCACHE_DATA_WAYS_PER_RAM_WORD;
     localparam int unsigned HPDCACHE_DATA_REQ_RATIO = HPDCACHE_ACCESS_WORDS/HPDCACHE_REQ_WORDS;
     //  }}}
 
