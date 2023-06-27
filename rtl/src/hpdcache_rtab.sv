@@ -450,7 +450,7 @@ import hpdcache_pkg::*;
                         //  in the list (if the current request is not the tail). Otherwise, stay in
                         //  the same state to to forward a request from a new list
                         pop_head = 1'b1;
-                        if (pop_sel & ~tail_q) begin
+                        if ((pop_gnt & ~tail_q) != 0) begin
                             pop_try_state_d = POP_TRY_NEXT;
                             pop_try_next_d = rtab_next(next_q, pop_try_ptr_o);
                         end
@@ -467,7 +467,7 @@ import hpdcache_pkg::*;
                         //  If the request interface accepts the new request, go to the next request
                         //  in the list (if the current request is not the tail). Otherwise, return
                         //  to the POP_TRY_HEAD state to forward a request from a new list
-                        if (pop_try_next_q & ~tail_q) begin
+                        if ((pop_try_next_q & ~tail_q) != 0) begin
                             pop_try_state_d = POP_TRY_NEXT;
                             pop_try_next_d  = rtab_next(next_q, pop_try_ptr_o);
                         end else begin
@@ -486,7 +486,7 @@ import hpdcache_pkg::*;
                 req_valid_o = 1'b1;
                 pop_sel     = pop_try_next_q;
                 if (pop_try_i) begin
-                    if (pop_try_next_q & ~tail_q) begin
+                    if ((pop_try_next_q & ~tail_q) != 0) begin
                         pop_try_state_d = POP_TRY_NEXT;
                         pop_try_next_d  = rtab_next(next_q, pop_try_ptr_o);
                     end else begin
