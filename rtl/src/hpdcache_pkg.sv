@@ -104,7 +104,7 @@ package hpdcache_pkg;
     localparam int unsigned HPDCACHE_DATA_WAYS_PER_RAM_WORD =
         hpdcache_params_pkg::PARAM_DATA_WAYS_PER_RAM_WORD;
 
-    localparam int unsigned HPDCACHE_DATA_SETS_PER_RAM =
+    localparam int unsigned HPDCACHE_DATA_SETS_PER_RAM = /* FIXME this parameter is currently ignored */
         hpdcache_params_pkg::PARAM_DATA_SETS_PER_RAM;
 
     //  HPDcache DATA RAM implements write byte enable
@@ -449,11 +449,11 @@ package hpdcache_pkg;
 
     //  HPDcache MSHR number of ways in the same SRAM word
     localparam int unsigned HPDCACHE_MSHR_WAYS_PER_RAM_WORD =
-        hpdcache_params_pkg::PARAM_MSHR_WAYS_PER_RAM_WORD;
+        hpdcache_params_pkg::PARAM_MSHR_WAYS_PER_RAM_WORD; /* FIXME this parameter is currently ignored */
 
     //  HPDcache MSHR number of sets in the same SRAM
     localparam int unsigned HPDCACHE_MSHR_SETS_PER_RAM =
-        hpdcache_params_pkg::PARAM_MSHR_SETS_PER_RAM;
+        hpdcache_params_pkg::PARAM_MSHR_SETS_PER_RAM; /* FIXME this parameter is currently ignored */
 
     //  HPDcache MSHR implements write byte enable
     localparam bit HPDCACHE_MSHR_RAM_WBYTEENABLE =
