@@ -646,9 +646,11 @@ import hpdcache_pkg::*;
             alloc_i |-> !alloc_and_link_i) else
                     $error("rtab: only one allocation per cycle is allowed");
 
+`ifndef VERILATOR
     assert property (@(posedge clk_i)
             pop_try_i |-> ##1 (pop_commit_i | pop_rback_i)) else
                     $error("rtab: a pop try shall be followed by a commit or rollback");
+`endif
 
     assert property (@(posedge clk_i)
             pop_commit_i |-> valid_q[pop_commit_ptr_i]) else
