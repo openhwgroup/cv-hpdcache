@@ -464,6 +464,7 @@ module hpdcache_wbuf
         write_hit = 1'b0;
         read_close_hit = 1'b0;
         match_open_ptr = 1'b0;
+        match_closed_ptr = 1'b0;
         match_free = 1'b0;
         close = 1'b0;
 
