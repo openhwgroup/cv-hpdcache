@@ -339,7 +339,8 @@ import hpdcache_pkg::*;
                     refill_core_rsp_sid_d = mshr_ack_src_id;
                     refill_core_rsp_tid_d = mshr_ack_req_id;
                     refill_core_rsp_error_d = refill_is_error;
-                    refill_core_rsp_word = hpdcache_word_t'(mshr_ack_word)/HPDCACHE_REQ_WORDS;
+                    refill_core_rsp_word = hpdcache_word_t'(
+                        hpdcache_uint'(mshr_ack_word)/HPDCACHE_REQ_WORDS);
                 end else begin
                     automatic hpdcache_uint _core_rsp_word;
                     _core_rsp_word = hpdcache_uint'(refill_core_rsp_word_q)/
@@ -354,8 +355,8 @@ import hpdcache_pkg::*;
                     refill_core_rsp_sid_d = refill_sid_q;
                     refill_core_rsp_tid_d = refill_tid_q;
                     refill_core_rsp_error_d = refill_is_error;
-                    refill_core_rsp_word = hpdcache_word_t'(refill_core_rsp_word_q)/
-                                           HPDCACHE_REQ_WORDS;
+                    refill_core_rsp_word = hpdcache_word_t'(
+                        hpdcache_uint'(refill_core_rsp_word_q)/HPDCACHE_REQ_WORDS);
                 end
 
                 //  Write the the data in the cache data array
