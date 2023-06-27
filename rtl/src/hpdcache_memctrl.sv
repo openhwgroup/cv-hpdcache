@@ -30,75 +30,75 @@ import hpdcache_pkg::*;
 (
     //      Global clock and reset signals
     //      {{{
-    input  wire logic                                clk_i,
-    input  wire logic                                rst_ni,
+    input  logic                                clk_i,
+    input  logic                                rst_ni,
     //      }}}
 
     //      Global control signals
     //      {{{
-    output wire logic                                ready_o,
+    output logic                                ready_o,
     //      }}}
 
     //      DIR array access interface
     //      {{{
-    input  wire logic                                dir_match_i,
-    input  wire hpdcache_set_t                       dir_match_set_i,
-    input  wire hpdcache_tag_t                       dir_match_tag_i,
-    input  wire logic                                dir_update_lru_i,
-    output wire hpdcache_way_vector_t                dir_hit_way_o,
+    input  logic                                dir_match_i,
+    input  hpdcache_set_t                       dir_match_set_i,
+    input  hpdcache_tag_t                       dir_match_tag_i,
+    input  logic                                dir_update_lru_i,
+    output hpdcache_way_vector_t                dir_hit_way_o,
 
-    input  wire logic                                dir_amo_match_i,
-    input  wire hpdcache_set_t                       dir_amo_match_set_i,
-    input  wire hpdcache_tag_t                       dir_amo_match_tag_i,
-    input  wire logic                                dir_amo_update_plru_i,
-    output wire hpdcache_way_vector_t                dir_amo_hit_way_o,
+    input  logic                                dir_amo_match_i,
+    input  hpdcache_set_t                       dir_amo_match_set_i,
+    input  hpdcache_tag_t                       dir_amo_match_tag_i,
+    input  logic                                dir_amo_update_plru_i,
+    output hpdcache_way_vector_t                dir_amo_hit_way_o,
 
-    input  wire logic                                dir_refill_i,
-    input  wire hpdcache_set_t                       dir_refill_set_i,
-    input  wire hpdcache_dir_entry_t                 dir_refill_entry_i,
-    input  wire logic                                dir_refill_updt_plru_i,
-    output wire hpdcache_way_vector_t                dir_victim_way_o,
+    input  logic                                dir_refill_i,
+    input  hpdcache_set_t                       dir_refill_set_i,
+    input  hpdcache_dir_entry_t                 dir_refill_entry_i,
+    input  logic                                dir_refill_updt_plru_i,
+    output hpdcache_way_vector_t                dir_victim_way_o,
 
-    input  wire logic                                dir_cmo_check_i,
-    input  wire hpdcache_set_t                       dir_cmo_check_set_i,
-    input  wire hpdcache_tag_t                       dir_cmo_check_tag_i,
-    output wire hpdcache_way_vector_t                dir_cmo_check_hit_way_o,
+    input  logic                                dir_cmo_check_i,
+    input  hpdcache_set_t                       dir_cmo_check_set_i,
+    input  hpdcache_tag_t                       dir_cmo_check_tag_i,
+    output hpdcache_way_vector_t                dir_cmo_check_hit_way_o,
 
-    input  wire logic                                dir_cmo_inval_i,
-    input  wire hpdcache_set_t                       dir_cmo_inval_set_i,
-    input  wire hpdcache_way_vector_t                dir_cmo_inval_way_i,
+    input  logic                                dir_cmo_inval_i,
+    input  hpdcache_set_t                       dir_cmo_inval_set_i,
+    input  hpdcache_way_vector_t                dir_cmo_inval_way_i,
 
     //      }}}
 
     //      DATA array access interface
     //      {{{
-    input  wire logic                                data_req_read_i,
-    input  wire hpdcache_set_t                       data_req_read_set_i,
-    input  wire hpdcache_req_size_t                  data_req_read_size_i,
-    input  wire hpdcache_word_t                      data_req_read_word_i,
-    output var  hpdcache_req_data_t                  data_req_read_data_o,
+    input  logic                                data_req_read_i,
+    input  hpdcache_set_t                       data_req_read_set_i,
+    input  hpdcache_req_size_t                  data_req_read_size_i,
+    input  hpdcache_word_t                      data_req_read_word_i,
+    output hpdcache_req_data_t                  data_req_read_data_o,
 
-    input  wire logic                                data_req_write_i,
-    input  wire logic                                data_req_write_enable_i,
-    input  wire hpdcache_set_t                       data_req_write_set_i,
-    input  wire hpdcache_req_size_t                  data_req_write_size_i,
-    input  wire hpdcache_word_t                      data_req_write_word_i,
-    input  wire hpdcache_req_data_t                  data_req_write_data_i,
-    input  wire hpdcache_req_be_t                    data_req_write_be_i,
+    input  logic                                data_req_write_i,
+    input  logic                                data_req_write_enable_i,
+    input  hpdcache_set_t                       data_req_write_set_i,
+    input  hpdcache_req_size_t                  data_req_write_size_i,
+    input  hpdcache_word_t                      data_req_write_word_i,
+    input  hpdcache_req_data_t                  data_req_write_data_i,
+    input  hpdcache_req_be_t                    data_req_write_be_i,
 
-    input  wire logic                                data_amo_write_i,
-    input  wire logic                                data_amo_write_enable_i,
-    input  wire hpdcache_set_t                       data_amo_write_set_i,
-    input  wire hpdcache_req_size_t                  data_amo_write_size_i,
-    input  wire hpdcache_word_t                      data_amo_write_word_i,
-    input  wire logic [63:0]                         data_amo_write_data_i,
-    input  wire logic  [7:0]                         data_amo_write_be_i,
+    input  logic                                data_amo_write_i,
+    input  logic                                data_amo_write_enable_i,
+    input  hpdcache_set_t                       data_amo_write_set_i,
+    input  hpdcache_req_size_t                  data_amo_write_size_i,
+    input  hpdcache_word_t                      data_amo_write_word_i,
+    input  logic [63:0]                         data_amo_write_data_i,
+    input  logic  [7:0]                         data_amo_write_be_i,
 
-    input  wire logic                                data_refill_i,
-    input  wire hpdcache_way_vector_t                data_refill_way_i,
-    input  wire hpdcache_set_t                       data_refill_set_i,
-    input  wire hpdcache_word_t                      data_refill_word_i,
-    input  wire hpdcache_refill_data_t               data_refill_data_i
+    input  logic                                data_refill_i,
+    input  hpdcache_way_vector_t                data_refill_way_i,
+    input  hpdcache_set_t                       data_refill_set_i,
+    input  hpdcache_word_t                      data_refill_word_i,
+    input  hpdcache_refill_data_t               data_refill_data_i
     //      }}}
 );
     //  }}}

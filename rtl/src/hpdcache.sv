@@ -42,89 +42,89 @@ import hpdcache_pkg::*;
     //  {{{
 (
     //      Clock and reset signals
-    input  wire logic                          clk_i,
-    input  wire logic                          rst_ni,
+    input  logic                          clk_i,
+    input  logic                          rst_ni,
 
     //      Force the write buffer to send all pending writes
-    input  wire logic                          wbuf_flush_i,
+    input  logic                          wbuf_flush_i,
 
     //      Core request interface
-    input  wire logic                          core_req_valid_i [NREQUESTERS-1:0],
-    output wire logic                          core_req_ready_o [NREQUESTERS-1:0],
-    input  wire hpdcache_req_t                 core_req_i       [NREQUESTERS-1:0],
+    input  logic                          core_req_valid_i [NREQUESTERS-1:0],
+    output logic                          core_req_ready_o [NREQUESTERS-1:0],
+    input  hpdcache_req_t                 core_req_i       [NREQUESTERS-1:0],
 
     //      Core response interface
-    output var  logic                          core_rsp_valid_o [NREQUESTERS-1:0],
-    output var  hpdcache_rsp_t                 core_rsp_o       [NREQUESTERS-1:0],
+    output logic                          core_rsp_valid_o [NREQUESTERS-1:0],
+    output hpdcache_rsp_t                 core_rsp_o       [NREQUESTERS-1:0],
 
     //      Miss read interface
-    input  wire logic                          mem_req_miss_read_ready_i,
-    output wire logic                          mem_req_miss_read_valid_o,
-    output wire hpdcache_mem_req_t             mem_req_miss_read_o,
+    input  logic                          mem_req_miss_read_ready_i,
+    output logic                          mem_req_miss_read_valid_o,
+    output hpdcache_mem_req_t             mem_req_miss_read_o,
 
-    output var  logic                          mem_resp_miss_read_ready_o,
-    input  wire logic                          mem_resp_miss_read_valid_i,
-    input  wire hpdcache_mem_resp_r_t          mem_resp_miss_read_i,
+    output logic                          mem_resp_miss_read_ready_o,
+    input  logic                          mem_resp_miss_read_valid_i,
+    input  hpdcache_mem_resp_r_t          mem_resp_miss_read_i,
 
     //      Write-buffer write interface
-    input  wire logic                          mem_req_wbuf_write_ready_i,
-    output wire logic                          mem_req_wbuf_write_valid_o,
-    output wire hpdcache_mem_req_t             mem_req_wbuf_write_o,
+    input  logic                          mem_req_wbuf_write_ready_i,
+    output logic                          mem_req_wbuf_write_valid_o,
+    output hpdcache_mem_req_t             mem_req_wbuf_write_o,
 
-    input  wire logic                          mem_req_wbuf_write_data_ready_i,
-    output wire logic                          mem_req_wbuf_write_data_valid_o,
-    output wire hpdcache_mem_req_w_t           mem_req_wbuf_write_data_o,
+    input  logic                          mem_req_wbuf_write_data_ready_i,
+    output logic                          mem_req_wbuf_write_data_valid_o,
+    output hpdcache_mem_req_w_t           mem_req_wbuf_write_data_o,
 
-    output var  logic                          mem_resp_wbuf_write_ready_o,
-    input  wire logic                          mem_resp_wbuf_write_valid_i,
-    input  wire hpdcache_mem_resp_w_t          mem_resp_wbuf_write_i,
+    output logic                          mem_resp_wbuf_write_ready_o,
+    input  logic                          mem_resp_wbuf_write_valid_i,
+    input  hpdcache_mem_resp_w_t          mem_resp_wbuf_write_i,
 
     //      Uncached read interface
-    input  wire logic                          mem_req_uc_read_ready_i,
-    output wire logic                          mem_req_uc_read_valid_o,
-    output wire hpdcache_mem_req_t             mem_req_uc_read_o,
+    input  logic                          mem_req_uc_read_ready_i,
+    output logic                          mem_req_uc_read_valid_o,
+    output hpdcache_mem_req_t             mem_req_uc_read_o,
 
-    output var  logic                          mem_resp_uc_read_ready_o,
-    input  wire logic                          mem_resp_uc_read_valid_i,
-    input  wire hpdcache_mem_resp_r_t          mem_resp_uc_read_i,
+    output logic                          mem_resp_uc_read_ready_o,
+    input  logic                          mem_resp_uc_read_valid_i,
+    input  hpdcache_mem_resp_r_t          mem_resp_uc_read_i,
 
     //      Uncached write interface
-    input  wire logic                          mem_req_uc_write_ready_i,
-    output wire logic                          mem_req_uc_write_valid_o,
-    output wire hpdcache_mem_req_t             mem_req_uc_write_o,
+    input  logic                          mem_req_uc_write_ready_i,
+    output logic                          mem_req_uc_write_valid_o,
+    output hpdcache_mem_req_t             mem_req_uc_write_o,
 
-    input  wire logic                          mem_req_uc_write_data_ready_i,
-    output wire logic                          mem_req_uc_write_data_valid_o,
-    output wire hpdcache_mem_req_w_t           mem_req_uc_write_data_o,
+    input  logic                          mem_req_uc_write_data_ready_i,
+    output logic                          mem_req_uc_write_data_valid_o,
+    output hpdcache_mem_req_w_t           mem_req_uc_write_data_o,
 
-    output var  logic                          mem_resp_uc_write_ready_o,
-    input  wire logic                          mem_resp_uc_write_valid_i,
-    input  wire hpdcache_mem_resp_w_t          mem_resp_uc_write_i,
+    output logic                          mem_resp_uc_write_ready_o,
+    input  logic                          mem_resp_uc_write_valid_i,
+    input  hpdcache_mem_resp_w_t          mem_resp_uc_write_i,
 
     //      Performance events
-    output wire  logic                         evt_cache_write_miss_o,
-    output wire  logic                         evt_cache_read_miss_o,
-    output wire  logic                         evt_uncached_req_o,
-    output wire  logic                         evt_cmo_req_o,
-    output wire  logic                         evt_write_req_o,
-    output wire  logic                         evt_read_req_o,
-    output wire  logic                         evt_prefetch_req_o,
-    output wire  logic                         evt_req_on_hold_o,
-    output wire  logic                         evt_rtab_rollback_o,
-    output wire  logic                         evt_stall_refill_o,
-    output wire  logic                         evt_stall_o,
+    output logic                         evt_cache_write_miss_o,
+    output logic                         evt_cache_read_miss_o,
+    output logic                         evt_uncached_req_o,
+    output logic                         evt_cmo_req_o,
+    output logic                         evt_write_req_o,
+    output logic                         evt_read_req_o,
+    output logic                         evt_prefetch_req_o,
+    output logic                         evt_req_on_hold_o,
+    output logic                         evt_rtab_rollback_o,
+    output logic                         evt_stall_refill_o,
+    output logic                         evt_stall_o,
 
     //      Status interface
-    output wire  logic                         wbuf_empty_o,
+    output logic                         wbuf_empty_o,
 
     //      Configuration interface
-    input  wire logic                          cfg_enable_i,
-    input  wire wbuf_timecnt_t                 cfg_wbuf_threshold_i,
-    input  wire logic                          cfg_wbuf_reset_timecnt_on_write_i,
-    input  wire logic                          cfg_wbuf_sequential_waw_i,
-    input  wire logic                          cfg_prefetch_updt_plru_i,
-    input  wire logic                          cfg_error_on_cacheable_amo_i,
-    input  wire logic                          cfg_rtab_single_entry_i
+    input  logic                          cfg_enable_i,
+    input  wbuf_timecnt_t                 cfg_wbuf_threshold_i,
+    input  logic                          cfg_wbuf_reset_timecnt_on_write_i,
+    input  logic                          cfg_wbuf_sequential_waw_i,
+    input  logic                          cfg_prefetch_updt_plru_i,
+    input  logic                          cfg_error_on_cacheable_amo_i,
+    input  logic                          cfg_rtab_single_entry_i
 );
 
     //  }}}

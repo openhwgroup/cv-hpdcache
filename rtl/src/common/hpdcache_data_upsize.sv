@@ -40,17 +40,17 @@ import hpdcache_pkg::*;
 //  Ports
 //  {{{
 (
-    input  wire    logic   clk_i,
-    input  wire    logic   rst_ni,
+    input  logic   clk_i,
+    input  logic   rst_ni,
 
-    input  wire    logic   w_i,
-    input  wire    logic   wlast_i,
-    output wire    logic   wok_o,
-    input  wire    wdata_t wdata_i,
+    input  logic   w_i,
+    input  logic   wlast_i,
+    output logic   wok_o,
+    input  wdata_t wdata_i,
 
-    input  wire    logic   r_i,
-    output wire    logic   rok_o,
-    output var     rdata_t rdata_o
+    input  logic   r_i,
+    output logic   rok_o,
+    output rdata_t rdata_o
 );
 //  }}}
 //  Architecture

@@ -35,14 +35,14 @@ module hpdcache_fifo_reg
     //  Ports
     //  {{{
 (
-    input  wire logic                  clk_i,
-    input  wire logic                  rst_ni,
-    input  wire logic                  w_i,
-    output wire logic                  wok_o,
-    input  wire fifo_data_t            wdata_i,
-    input  wire logic                  r_i,
-    output wire logic                  rok_o,
-    output wire fifo_data_t            rdata_o
+    input  logic                  clk_i,
+    input  logic                  rst_ni,
+    input  logic                  w_i,
+    output logic                  wok_o,
+    input  fifo_data_t            wdata_i,
+    input  logic                  r_i,
+    output logic                  rok_o,
+    output fifo_data_t            rdata_o
 );
     //  }}}
 

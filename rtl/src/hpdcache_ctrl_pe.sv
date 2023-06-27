@@ -29,133 +29,133 @@ module hpdcache_ctrl_pe
 (
     //   Refill arbiter
     //   {{{
-    input  wire logic                   arb_st0_req_valid_i,
-    output var  logic                   arb_st0_req_ready_o,
-    input  wire logic                   arb_refill_valid_i,
-    output var  logic                   arb_refill_ready_o,
+    input  logic                   arb_st0_req_valid_i,
+    output logic                   arb_st0_req_ready_o,
+    input  logic                   arb_refill_valid_i,
+    output logic                   arb_refill_ready_o,
     //   }}}
 
     //   Pipeline stage 0
     //   {{{
-    input  wire logic                   st0_req_is_uncacheable_i,
-    input  wire logic                   st0_req_need_rsp_i,
-    input  wire logic                   st0_req_is_load_i,
-    input  wire logic                   st0_req_is_store_i,
-    input  wire logic                   st0_req_is_amo_i,
-    input  wire logic                   st0_req_is_cmo_fence_i,
-    input  wire logic                   st0_req_is_cmo_inval_i,
-    input  wire logic                   st0_req_is_cmo_prefetch_i,
-    output var  logic                   st0_req_mshr_check_o,
-    output var  logic                   st0_req_cachedir_read_o,
-    output var  logic                   st0_req_cachedata_read_o,
+    input  logic                   st0_req_is_uncacheable_i,
+    input  logic                   st0_req_need_rsp_i,
+    input  logic                   st0_req_is_load_i,
+    input  logic                   st0_req_is_store_i,
+    input  logic                   st0_req_is_amo_i,
+    input  logic                   st0_req_is_cmo_fence_i,
+    input  logic                   st0_req_is_cmo_inval_i,
+    input  logic                   st0_req_is_cmo_prefetch_i,
+    output logic                   st0_req_mshr_check_o,
+    output logic                   st0_req_cachedir_read_o,
+    output logic                   st0_req_cachedata_read_o,
     //   }}}
 
     //   Pipeline stage 1
     //   {{{
-    input  wire logic                   st1_req_valid_i,
-    input  wire logic                   st1_req_rtab_i,
-    input  wire logic                   st1_req_is_uncacheable_i,
-    input  wire logic                   st1_req_need_rsp_i,
-    input  wire logic                   st1_req_is_load_i,
-    input  wire logic                   st1_req_is_store_i,
-    input  wire logic                   st1_req_is_amo_i,
-    input  wire logic                   st1_req_is_cmo_inval_i,
-    input  wire logic                   st1_req_is_cmo_fence_i,
-    input  wire logic                   st1_req_is_cmo_prefetch_i,
-    output var  logic                   st1_req_valid_o,
-    output var  logic                   st1_rsp_valid_o,
-    output var  logic                   st1_req_cachedir_updt_lru_o,
-    output var  logic                   st1_req_cachedata_write_o,
-    output var  logic                   st1_req_cachedata_write_enable_o,
+    input  logic                   st1_req_valid_i,
+    input  logic                   st1_req_rtab_i,
+    input  logic                   st1_req_is_uncacheable_i,
+    input  logic                   st1_req_need_rsp_i,
+    input  logic                   st1_req_is_load_i,
+    input  logic                   st1_req_is_store_i,
+    input  logic                   st1_req_is_amo_i,
+    input  logic                   st1_req_is_cmo_inval_i,
+    input  logic                   st1_req_is_cmo_fence_i,
+    input  logic                   st1_req_is_cmo_prefetch_i,
+    output logic                   st1_req_valid_o,
+    output logic                   st1_rsp_valid_o,
+    output logic                   st1_req_cachedir_updt_lru_o,
+    output logic                   st1_req_cachedata_write_o,
+    output logic                   st1_req_cachedata_write_enable_o,
     //   }}}
 
     //   Pipeline stage 2
     //   {{{
-    input  wire logic                   st2_req_valid_i,
-    input  wire logic                   st2_req_is_prefetch_i,
-    output var  logic                   st2_req_valid_o,
-    output var  logic                   st2_req_we_o,
-    output var  logic                   st2_req_is_prefetch_o,
-    output var  logic                   st2_req_mshr_alloc_o,
-    output var  logic                   st2_req_mshr_alloc_cs_o,
+    input  logic                   st2_req_valid_i,
+    input  logic                   st2_req_is_prefetch_i,
+    output logic                   st2_req_valid_o,
+    output logic                   st2_req_we_o,
+    output logic                   st2_req_is_prefetch_o,
+    output logic                   st2_req_mshr_alloc_o,
+    output logic                   st2_req_mshr_alloc_cs_o,
     //   }}}
 
     //   Replay
     //   {{{
-    input  wire logic                   rtab_full_i,
-    input  wire logic                   rtab_req_valid_i,
-    output wire logic                   rtab_sel_o,
-    output var  logic                   rtab_check_o,
-    input  wire logic                   rtab_check_hit_i,
-    output var  logic                   st0_rtab_alloc_o,
-    output var  logic                   st0_rtab_mshr_hit_o,
-    output var  logic                   st0_rtab_mshr_full_o,
-    output var  logic                   st0_rtab_mshr_ready_o,
-    output var  logic                   st0_rtab_wbuf_hit_o,
-    output var  logic                   st0_rtab_wbuf_not_ready_o,
-    output var  logic                   st1_rtab_alloc_o,
-    output var  logic                   st1_rtab_commit_o,
-    output var  logic                   st1_rtab_rback_o,
-    output var  logic                   st1_rtab_mshr_hit_o,
-    output var  logic                   st1_rtab_mshr_full_o,
-    output var  logic                   st1_rtab_mshr_ready_o,
-    output var  logic                   st1_rtab_wbuf_hit_o,
-    output var  logic                   st1_rtab_wbuf_not_ready_o,
+    input  logic                   rtab_full_i,
+    input  logic                   rtab_req_valid_i,
+    output logic                   rtab_sel_o,
+    output logic                   rtab_check_o,
+    input  logic                   rtab_check_hit_i,
+    output logic                   st0_rtab_alloc_o,
+    output logic                   st0_rtab_mshr_hit_o,
+    output logic                   st0_rtab_mshr_full_o,
+    output logic                   st0_rtab_mshr_ready_o,
+    output logic                   st0_rtab_wbuf_hit_o,
+    output logic                   st0_rtab_wbuf_not_ready_o,
+    output logic                   st1_rtab_alloc_o,
+    output logic                   st1_rtab_commit_o,
+    output logic                   st1_rtab_rback_o,
+    output logic                   st1_rtab_mshr_hit_o,
+    output logic                   st1_rtab_mshr_full_o,
+    output logic                   st1_rtab_mshr_ready_o,
+    output logic                   st1_rtab_wbuf_hit_o,
+    output logic                   st1_rtab_wbuf_not_ready_o,
     //   }}}
 
     //   Cache directory
     //   {{{
-    input  wire logic                   cachedir_hit_i,
-    input  wire logic                   cachedir_init_ready_i,
+    input  logic                   cachedir_hit_i,
+    input  logic                   cachedir_init_ready_i,
     //   }}}
 
     //   Miss Status Holding Register (MSHR)
     //   {{{
-    input  wire logic                   mshr_alloc_ready_i,
-    input  wire logic                   mshr_hit_i,
-    input  wire logic                   mshr_full_i,
+    input  logic                   mshr_alloc_ready_i,
+    input  logic                   mshr_hit_i,
+    input  logic                   mshr_full_i,
     //   }}}
 
     //   Refill interface
     //   {{{
-    input  wire logic                   refill_busy_i,
-    input  wire logic                   refill_core_rsp_valid_i,
+    input  logic                   refill_busy_i,
+    input  logic                   refill_core_rsp_valid_i,
     //   }}}
 
     //   Write buffer
     //   {{{
-    input  wire logic                   wbuf_write_ready_i,
-    input  wire logic                   wbuf_read_hit_i,
-    output var  logic                   wbuf_write_valid_o,
-    output var  logic                   wbuf_write_uncacheable_o,
-    output var  logic                   wbuf_read_close_hit_o,
+    input  logic                   wbuf_write_ready_i,
+    input  logic                   wbuf_read_hit_i,
+    output logic                   wbuf_write_valid_o,
+    output logic                   wbuf_write_uncacheable_o,
+    output logic                   wbuf_read_close_hit_o,
     //   }}}
 
     //   Uncacheable request handler
     //   {{{
-    input  wire logic                   uc_busy_i,
-    output var  logic                   uc_req_valid_o,
-    output wire logic                   uc_core_rsp_ready_o,
+    input  logic                   uc_busy_i,
+    output logic                   uc_req_valid_o,
+    output logic                   uc_core_rsp_ready_o,
     //   }}}
 
     //   Cache Management Operation (CMO)
     //   {{{
-    input  wire logic                   cmo_busy_i,
-    output var  logic                   cmo_req_valid_o,
+    input  logic                   cmo_busy_i,
+    output logic                   cmo_req_valid_o,
     //   }}}
 
     //   Performance events
     //   {{{
-    output var  logic                   evt_cache_write_miss_o,
-    output var  logic                   evt_cache_read_miss_o,
-    output var  logic                   evt_uncached_req_o,
-    output var  logic                   evt_cmo_req_o,
-    output var  logic                   evt_write_req_o,
-    output var  logic                   evt_read_req_o,
-    output var  logic                   evt_prefetch_req_o,
-    output var  logic                   evt_req_on_hold_o,
-    output var  logic                   evt_rtab_rollback_o,
-    output var  logic                   evt_stall_refill_o
+    output logic                   evt_cache_write_miss_o,
+    output logic                   evt_cache_read_miss_o,
+    output logic                   evt_uncached_req_o,
+    output logic                   evt_cmo_req_o,
+    output logic                   evt_write_req_o,
+    output logic                   evt_read_req_o,
+    output logic                   evt_prefetch_req_o,
+    output logic                   evt_req_on_hold_o,
+    output logic                   evt_rtab_rollback_o,
+    output logic                   evt_stall_refill_o
     //   }}}
 );
     // }}}

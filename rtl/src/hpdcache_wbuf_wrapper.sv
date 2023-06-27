@@ -44,55 +44,55 @@ import hpdcache_pkg::*;
     //  {{{
 (
     //      Clock and reset signals
-    input  wire logic                  clk_i,
-    input  wire logic                  rst_ni,
+    input  logic                  clk_i,
+    input  logic                  rst_ni,
 
     //      Global control signals
-    output wire logic                  empty_o,
-    output wire logic                  full_o,
-    input  wire logic                  close_all_i,
+    output logic                  empty_o,
+    output logic                  full_o,
+    input  logic                  close_all_i,
 
     //      Configuration signals
     //          Timer threshold
-    input  wire wbuf_timecnt_t         cfg_threshold_i,
+    input  wbuf_timecnt_t         cfg_threshold_i,
     //          Reset timer on write
-    input  wire logic                  cfg_reset_timecnt_on_write_i,
+    input  logic                  cfg_reset_timecnt_on_write_i,
     //          Sequentialize write-after-write hazards
-    input  wire logic                  cfg_sequential_waw_i,
+    input  logic                  cfg_sequential_waw_i,
 
     //      Write interface
-    input  wire logic                  write_i,
-    output wire logic                  write_ready_o,
-    input  wire wbuf_addr_t            write_addr_i,
-    input  wire wbuf_data_t            write_data_i,
-    input  wire wbuf_be_t              write_be_i,  // byte-enable
-    input  wire logic                  write_uc_i,  // uncacheable write
+    input  logic                  write_i,
+    output logic                  write_ready_o,
+    input  wbuf_addr_t            write_addr_i,
+    input  wbuf_data_t            write_data_i,
+    input  wbuf_be_t              write_be_i,  // byte-enable
+    input  logic                  write_uc_i,  // uncacheable write
 
     //      Read hit interface
-    input  wire wbuf_addr_t            read_addr_i,
-    output wire logic                  read_hit_o,
-    input  wire logic                  read_close_hit_i,
+    input  wbuf_addr_t            read_addr_i,
+    output logic                  read_hit_o,
+    input  logic                  read_close_hit_i,
 
     //      Replay hit interface
-    input  wire wbuf_addr_t            replay_addr_i,
-    input  wire logic                  replay_is_read_i,
-    output wire logic                  replay_open_hit_o,
-    output wire logic                  replay_closed_hit_o,
-    output wire logic                  replay_sent_hit_o,
-    output wire logic                  replay_not_ready_o,
+    input  wbuf_addr_t            replay_addr_i,
+    input  logic                  replay_is_read_i,
+    output logic                  replay_open_hit_o,
+    output logic                  replay_closed_hit_o,
+    output logic                  replay_sent_hit_o,
+    output logic                  replay_not_ready_o,
 
     //      Memory interface
-    input  wire logic                  mem_req_write_ready_i,
-    output wire logic                  mem_req_write_valid_o,
-    output wire hpdcache_mem_req_t     mem_req_write_o,
+    input  logic                  mem_req_write_ready_i,
+    output logic                  mem_req_write_valid_o,
+    output hpdcache_mem_req_t     mem_req_write_o,
 
-    input  wire logic                  mem_req_write_data_ready_i,
-    output wire logic                  mem_req_write_data_valid_o,
-    output wire hpdcache_mem_req_w_t   mem_req_write_data_o,
+    input  logic                  mem_req_write_data_ready_i,
+    output logic                  mem_req_write_data_valid_o,
+    output hpdcache_mem_req_w_t   mem_req_write_data_o,
 
-    output wire logic                  mem_resp_write_ready_o,
-    input  wire logic                  mem_resp_write_valid_i,
-    input  wire hpdcache_mem_resp_w_t  mem_resp_write_i
+    output logic                  mem_resp_write_ready_o,
+    input  logic                  mem_resp_write_valid_i,
+    input  hpdcache_mem_resp_w_t  mem_resp_write_i
 );
     //  }}}
 

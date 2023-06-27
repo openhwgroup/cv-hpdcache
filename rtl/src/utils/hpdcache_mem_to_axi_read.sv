@@ -32,21 +32,21 @@ import hpdcache_pkg::*;
     parameter type r_chan_t  = logic
 )
 (
-    output wire logic                          req_ready_o,
-    input  wire logic                          req_valid_i,
-    input  wire hpdcache_mem_req_t             req_i,
+    output logic                          req_ready_o,
+    input  logic                          req_valid_i,
+    input  hpdcache_mem_req_t             req_i,
 
-    input  var  logic                          resp_ready_i,
-    output wire logic                          resp_valid_o,
-    output wire hpdcache_mem_resp_r_t          resp_o,
+    input  logic                          resp_ready_i,
+    output logic                          resp_valid_o,
+    output hpdcache_mem_resp_r_t          resp_o,
 
-    output wire logic                          axi_ar_valid_o,
-    output wire ar_chan_t                      axi_ar_o,
-    input  wire logic                          axi_ar_ready_i,
+    output logic                          axi_ar_valid_o,
+    output ar_chan_t                      axi_ar_o,
+    input  logic                          axi_ar_ready_i,
 
-    input  wire logic                          axi_r_valid_i,
-    input  wire r_chan_t                       axi_r_i,
-    output wire logic                          axi_r_ready_o
+    input  logic                          axi_r_valid_i,
+    input  r_chan_t                       axi_r_i,
+    output logic                          axi_r_ready_o
 );
 
     logic                lock;

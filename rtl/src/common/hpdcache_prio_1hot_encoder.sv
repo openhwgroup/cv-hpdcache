@@ -30,8 +30,8 @@ module hpdcache_prio_1hot_encoder
 )
     //  Ports
 (
-    input  wire logic [N-1:0] val_i,
-    output var  logic [N-1:0] val_o
+    input  logic [N-1:0] val_i,
+    output logic [N-1:0] val_o
 );
 
     generate

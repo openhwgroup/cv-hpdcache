@@ -34,11 +34,11 @@ module hpdcache_fxarb
     //  Ports
     //  {{{
 (
-    input  wire logic                  clk_i,
-    input  wire logic                  rst_ni,
-    input  wire logic [N-1:0]          req_i,
-    output var  logic [N-1:0]          gnt_o,
-    input  wire logic                  ready_i
+    input  logic                  clk_i,
+    input  logic                  rst_ni,
+    input  logic [N-1:0]          req_i,
+    output logic [N-1:0]          gnt_o,
+    input  logic                  ready_i
 );
     //  }}}
 

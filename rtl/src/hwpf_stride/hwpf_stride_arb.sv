@@ -28,22 +28,22 @@ import hpdcache_pkg::*;
 #(
     parameter NUM_HW_PREFETCH = 4
 )(
-    input  wire logic                                clk_i,
-    input  wire logic                                rst_ni,
+    input  logic                                clk_i,
+    input  logic                                rst_ni,
 
     // D-Cache input interface
-    input  var  logic          [NUM_HW_PREFETCH-1:0] hwpf_stride_req_valid_i,
-    output wire logic          [NUM_HW_PREFETCH-1:0] hwpf_stride_req_ready_o,
-    input  wire hpdcache_req_t [NUM_HW_PREFETCH-1:0] hwpf_stride_req_i,
-    output var  logic          [NUM_HW_PREFETCH-1:0] hwpf_stride_rsp_valid_o,
-    output var  hpdcache_rsp_t [NUM_HW_PREFETCH-1:0] hwpf_stride_rsp_o,       // Not used
+    input  logic          [NUM_HW_PREFETCH-1:0] hwpf_stride_req_valid_i,
+    output logic          [NUM_HW_PREFETCH-1:0] hwpf_stride_req_ready_o,
+    input  hpdcache_req_t [NUM_HW_PREFETCH-1:0] hwpf_stride_req_i,
+    output logic          [NUM_HW_PREFETCH-1:0] hwpf_stride_rsp_valid_o,
+    output hpdcache_rsp_t [NUM_HW_PREFETCH-1:0] hwpf_stride_rsp_o,       // Not used
 
     // D-Cache output interface
-    output var  logic                                dcache_req_valid_o,
-    input  wire logic                                dcache_req_ready_i,
-    output wire hpdcache_req_t                       dcache_req_o,
-    input  wire logic                                dcache_rsp_valid_i,
-    input  wire hpdcache_rsp_t                       dcache_rsp_i             // Not used
+    output logic                                dcache_req_valid_o,
+    input  logic                                dcache_req_ready_i,
+    output hpdcache_req_t                       dcache_req_o,
+    input  logic                                dcache_rsp_valid_i,
+    input  hpdcache_rsp_t                       dcache_rsp_i             // Not used
 );
 
     logic          [NUM_HW_PREFETCH-1:0] hwpf_stride_req_valid;

@@ -49,60 +49,60 @@ module cva6_hpdcache_subsystem
 //  Ports
 //  {{{
 (
-  input logic                             clk_i,
-  input logic                             rst_ni,
+  input  logic                       clk_i,
+  input  logic                       rst_ni,
 
   //  I$
   //  {{{
-  input  logic                            icache_en_i,            // enable icache (or bypass e.g: in debug mode)
-  input  logic                            icache_flush_i,         // flush the icache, flush and kill have to be asserted together
-  output logic                            icache_miss_o,          // to performance counter
+  input  logic                       icache_en_i,            // enable icache (or bypass e.g: in debug mode)
+  input  logic                       icache_flush_i,         // flush the icache, flush and kill have to be asserted together
+  output logic                       icache_miss_o,          // to performance counter
   // address translation requests
-  input  ariane_pkg::icache_areq_i_t      icache_areq_i,          // to/from frontend
-  output ariane_pkg::icache_areq_o_t      icache_areq_o,
+  input  ariane_pkg::icache_areq_i_t icache_areq_i,          // to/from frontend
+  output ariane_pkg::icache_areq_o_t icache_areq_o,
   // data requests
-  input  ariane_pkg::icache_dreq_i_t      icache_dreq_i,          // to/from frontend
-  output ariane_pkg::icache_dreq_o_t      icache_dreq_o,
+  input  ariane_pkg::icache_dreq_i_t icache_dreq_i,          // to/from frontend
+  output ariane_pkg::icache_dreq_o_t icache_dreq_o,
   //   }}}
 
   //  D$
   //  {{{
   //    Cache management
-  input  logic                            dcache_enable_i,        // from CSR
-  input  logic                            dcache_flush_i,         // high until acknowledged
-  output logic                            dcache_flush_ack_o,     // send a single cycle acknowledge signal when the cache is flushed
-  output logic                            dcache_miss_o,          // we missed on a ld/st
+  input  logic                       dcache_enable_i,        // from CSR
+  input  logic                       dcache_flush_i,         // high until acknowledged
+  output logic                       dcache_flush_ack_o,     // send a single cycle acknowledge signal when the cache is flushed
+  output logic                       dcache_miss_o,          // we missed on a ld/st
 
   //  AMO interface
-  input  ariane_pkg::amo_req_t            dcache_amo_req_i,       // from LSU
-  output ariane_pkg::amo_resp_t           dcache_amo_resp_o,      // to LSU
+  input  ariane_pkg::amo_req_t       dcache_amo_req_i,       // from LSU
+  output ariane_pkg::amo_resp_t      dcache_amo_resp_o,      // to LSU
   //  CMO interface
-  input  cmo_req_t                        dcache_cmo_req_i,       // from CMO FU
-  output cmo_rsp_t                        dcache_cmo_resp_o,      // to CMO FU
+  input  cmo_req_t                   dcache_cmo_req_i,       // from CMO FU
+  output cmo_rsp_t                   dcache_cmo_resp_o,      // to CMO FU
   //  Request ports
   input  ariane_pkg::dcache_req_i_t [2:0] dcache_req_ports_i,     // from LSU
   output ariane_pkg::dcache_req_o_t [2:0] dcache_req_ports_o,     // to LSU
   //  Write Buffer status
-  output logic                            wbuffer_empty_o,
-  output logic                            wbuffer_not_ni_o,
+  output logic                       wbuffer_empty_o,
+  output logic                       wbuffer_not_ni_o,
 
   //  Hardware memory prefetcher configuration
-  input  wire logic   [NrHwPrefetchers-1:0]       hwpf_base_set_i,
-  input  wire logic   [NrHwPrefetchers-1:0][63:0] hwpf_base_i,
-  output wire logic   [NrHwPrefetchers-1:0][63:0] hwpf_base_o,
-  input  wire logic   [NrHwPrefetchers-1:0]       hwpf_param_set_i,
-  input  wire logic   [NrHwPrefetchers-1:0][63:0] hwpf_param_i,
-  output wire logic   [NrHwPrefetchers-1:0][63:0] hwpf_param_o,
-  input  wire logic   [NrHwPrefetchers-1:0]       hwpf_throttle_set_i,
-  input  wire logic   [NrHwPrefetchers-1:0][63:0] hwpf_throttle_i,
-  output wire logic   [NrHwPrefetchers-1:0][63:0] hwpf_throttle_o,
-  output wire logic                        [63:0] hwpf_status_o,
+  input  logic   [NrHwPrefetchers-1:0]       hwpf_base_set_i,
+  input  logic   [NrHwPrefetchers-1:0][63:0] hwpf_base_i,
+  output logic   [NrHwPrefetchers-1:0][63:0] hwpf_base_o,
+  input  logic   [NrHwPrefetchers-1:0]       hwpf_param_set_i,
+  input  logic   [NrHwPrefetchers-1:0][63:0] hwpf_param_i,
+  output logic   [NrHwPrefetchers-1:0][63:0] hwpf_param_o,
+  input  logic   [NrHwPrefetchers-1:0]       hwpf_throttle_set_i,
+  input  logic   [NrHwPrefetchers-1:0][63:0] hwpf_throttle_i,
+  output logic   [NrHwPrefetchers-1:0][63:0] hwpf_throttle_o,
+  output logic                        [63:0] hwpf_status_o,
   //  }}}
 
   //  AXI port to upstream memory/peripherals
   //  {{{
-  output wire axi_req_t                           axi_req_o,
-  input  wire axi_rsp_t                           axi_resp_i
+  output axi_req_t                           axi_req_o,
+  input  axi_rsp_t                           axi_resp_i
   //  }}}
 );
 //  }}}

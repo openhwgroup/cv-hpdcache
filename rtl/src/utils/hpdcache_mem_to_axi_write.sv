@@ -34,29 +34,29 @@ import hpdcache_pkg::*;
     parameter type b_chan_t = logic
 )
 (
-    output wire logic                          req_ready_o,
-    input  wire logic                          req_valid_i,
-    input  wire hpdcache_mem_req_t             req_i,
+    output logic                          req_ready_o,
+    input  logic                          req_valid_i,
+    input  hpdcache_mem_req_t             req_i,
 
-    output wire logic                          req_data_ready_o,
-    input  wire logic                          req_data_valid_i,
-    input  wire hpdcache_mem_req_w_t           req_data_i,
+    output logic                          req_data_ready_o,
+    input  logic                          req_data_valid_i,
+    input  hpdcache_mem_req_w_t           req_data_i,
 
-    input  var  logic                          resp_ready_i,
-    output wire logic                          resp_valid_o,
-    output wire hpdcache_mem_resp_w_t          resp_o,
+    input  logic                          resp_ready_i,
+    output logic                          resp_valid_o,
+    output hpdcache_mem_resp_w_t          resp_o,
 
-    output wire logic                          axi_aw_valid_o,
-    output wire aw_chan_t                      axi_aw_o,
-    input  wire logic                          axi_aw_ready_i,
+    output logic                          axi_aw_valid_o,
+    output aw_chan_t                      axi_aw_o,
+    input  logic                          axi_aw_ready_i,
 
-    output wire logic                          axi_w_valid_o,
-    output wire w_chan_t                       axi_w_o,
-    input  wire logic                          axi_w_ready_i,
+    output logic                          axi_w_valid_o,
+    output w_chan_t                       axi_w_o,
+    input  logic                          axi_w_ready_i,
 
-    input  wire logic                          axi_b_valid_i,
-    input  wire b_chan_t                       axi_b_i,
-    output wire logic                          axi_b_ready_o
+    input  logic                          axi_b_valid_i,
+    input  b_chan_t                       axi_b_i,
+    output logic                          axi_b_ready_o
 );
 
     logic                lock;

@@ -48,9 +48,9 @@ module hpdcache_demux
 //  Ports
 //  {{{
 (
-    input  wire data_t               data_i,
-    input  wire sel_t                sel_i,
-    output var  data_t [NOUTPUT-1:0] data_o
+    input  data_t               data_i,
+    input  sel_t                sel_i,
+    output data_t [NOUTPUT-1:0] data_o
 );
 //  }}}
 

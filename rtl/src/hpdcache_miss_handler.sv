@@ -52,71 +52,71 @@ import hpdcache_pkg::*;
 //  Ports
 //  {{{
 (
-    input  wire logic                  clk_i,
-    input  wire logic                  rst_ni,
+    input  logic                  clk_i,
+    input  logic                  rst_ni,
 
     //      Global control signals
     //      {{{
-    output wire logic                  mshr_empty_o,
-    output wire logic                  mshr_full_o,
+    output logic                  mshr_empty_o,
+    output logic                  mshr_full_o,
     //      }}}
 
     //      Configuration signals
     //      {{{
-    input  wire logic                  cfg_prefetch_updt_plru_i,
+    input  logic                  cfg_prefetch_updt_plru_i,
     //      }}}
 
     //      CHECK interface
     //      {{{
-    input  wire logic                  mshr_check_i,
-    input  wire hpdcache_nline_t       mshr_check_nline_i,
-    output wire logic                  mshr_check_hit_o,
+    input  logic                  mshr_check_i,
+    input  hpdcache_nline_t       mshr_check_nline_i,
+    output logic                  mshr_check_hit_o,
     //      }}}
 
     //      MISS interface
     //      {{{
     //          MISS request interface
-    output var  logic                  mshr_alloc_ready_o,
-    input  wire logic                  mshr_alloc_i,
-    input  wire logic                  mshr_alloc_cs_i,
-    input  wire hpdcache_nline_t       mshr_alloc_nline_i,
-    output wire logic                  mshr_alloc_full_o,
-    input  wire hpdcache_req_tid_t     mshr_alloc_tid_i,
-    input  wire hpdcache_req_sid_t     mshr_alloc_sid_i,
-    input  wire hpdcache_word_t        mshr_alloc_word_i,
-    input  wire logic                  mshr_alloc_need_rsp_i,
-    input  wire logic                  mshr_alloc_is_prefetch_i,
+    output logic                  mshr_alloc_ready_o,
+    input  logic                  mshr_alloc_i,
+    input  logic                  mshr_alloc_cs_i,
+    input  hpdcache_nline_t       mshr_alloc_nline_i,
+    output logic                  mshr_alloc_full_o,
+    input  hpdcache_req_tid_t     mshr_alloc_tid_i,
+    input  hpdcache_req_sid_t     mshr_alloc_sid_i,
+    input  hpdcache_word_t        mshr_alloc_word_i,
+    input  logic                  mshr_alloc_need_rsp_i,
+    input  logic                  mshr_alloc_is_prefetch_i,
 
     //          REFILL MISS interface
-    input  wire logic                  refill_req_ready_i,
-    output var  logic                  refill_req_valid_o,
-    output wire logic                  refill_busy_o,
-    output var  logic                  refill_updt_plru_o,
-    output var  hpdcache_set_t         refill_set_o,
-    output var  hpdcache_dir_entry_t   refill_dir_entry_o,
-    input  wire hpdcache_way_vector_t  refill_victim_way_i,
-    output var  logic                  refill_write_dir_o,
-    output var  logic                  refill_write_data_o,
-    output var  hpdcache_way_vector_t  refill_victim_way_o,
-    output var  hpdcache_refill_data_t refill_data_o,
-    output var  hpdcache_word_t        refill_word_o,
-    output wire hpdcache_nline_t       refill_nline_o,
-    output var  logic                  refill_updt_rtab_o,
+    input  logic                  refill_req_ready_i,
+    output logic                  refill_req_valid_o,
+    output logic                  refill_busy_o,
+    output logic                  refill_updt_plru_o,
+    output hpdcache_set_t         refill_set_o,
+    output hpdcache_dir_entry_t   refill_dir_entry_o,
+    input  hpdcache_way_vector_t  refill_victim_way_i,
+    output logic                  refill_write_dir_o,
+    output logic                  refill_write_data_o,
+    output hpdcache_way_vector_t  refill_victim_way_o,
+    output hpdcache_refill_data_t refill_data_o,
+    output hpdcache_word_t        refill_word_o,
+    output hpdcache_nline_t       refill_nline_o,
+    output logic                  refill_updt_rtab_o,
 
     //          REFILL core response interface
-    output var  logic                  refill_core_rsp_valid_o,
-    output wire hpdcache_rsp_t         refill_core_rsp_o,
+    output logic                  refill_core_rsp_valid_o,
+    output hpdcache_rsp_t         refill_core_rsp_o,
     //      }}}
 
     //      MEMORY interface
     //      {{{
-    input  wire logic                  mem_req_ready_i,
-    output var  logic                  mem_req_valid_o,
-    output wire hpdcache_mem_req_t     mem_req_o,
+    input  logic                  mem_req_ready_i,
+    output logic                  mem_req_valid_o,
+    output hpdcache_mem_req_t     mem_req_o,
 
-    output var  logic                  mem_resp_ready_o,
-    input  wire logic                  mem_resp_valid_i,
-    input  wire hpdcache_mem_resp_r_t  mem_resp_i
+    output logic                  mem_resp_ready_o,
+    input  logic                  mem_resp_valid_i,
+    input  hpdcache_mem_resp_r_t  mem_resp_i
     //      }}}
 );
 //  }}}

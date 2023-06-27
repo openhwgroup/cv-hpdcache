@@ -37,26 +37,26 @@ import hpdcache_pkg::*;
 //  {{{
 (
   //  Clock and active-low reset pins
-  input  wire logic                            clk_i,
-  input  wire logic                            rst_ni,
+  input  logic                            clk_i,
+  input  logic                            rst_ni,
 
   //  Port ID
-  input  wire hpdcache_pkg::hpdcache_req_sid_t dcache_req_sid_i,
+  input  hpdcache_pkg::hpdcache_req_sid_t dcache_req_sid_i,
 
   //  Request/response ports from/to the CVA6 core
-  input  wire ariane_pkg::dcache_req_i_t       cva6_req_i,
-  output var  ariane_pkg::dcache_req_o_t       cva6_req_o,
-  input  wire ariane_pkg::amo_req_t            cva6_amo_req_i,
-  output var  ariane_pkg::amo_resp_t           cva6_amo_resp_o,
+  input  ariane_pkg::dcache_req_i_t       cva6_req_i,
+  output ariane_pkg::dcache_req_o_t       cva6_req_o,
+  input  ariane_pkg::amo_req_t            cva6_amo_req_i,
+  output ariane_pkg::amo_resp_t           cva6_amo_resp_o,
 
   //  Request port to the L1 Dcache
-  output var  logic                            dcache_req_valid_o,
-  input  wire logic                            dcache_req_ready_i,
-  output var  hpdcache_pkg::hpdcache_req_t     dcache_req_o,
+  output logic                            dcache_req_valid_o,
+  input  logic                            dcache_req_ready_i,
+  output hpdcache_pkg::hpdcache_req_t     dcache_req_o,
 
   //  Response port from the L1 Dcache
-  input  wire logic                            dcache_rsp_valid_i,
-  input  wire hpdcache_pkg::hpdcache_rsp_t     dcache_rsp_i
+  input  logic                            dcache_rsp_valid_i,
+  input  hpdcache_pkg::hpdcache_rsp_t     dcache_rsp_i
 );
 //  }}}
 

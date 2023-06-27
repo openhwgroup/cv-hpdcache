@@ -28,10 +28,10 @@ import hpdcache_pkg::*;
 //  Ports
 //  {{{
 (
-    input  wire logic [63:0]           ld_data_i,
-    input  wire logic [63:0]           st_data_i,
-    input  wire hpdcache_uc_op_t       op_i,
-    output var  logic [63:0]           result_o
+    input  logic [63:0]           ld_data_i,
+    input  logic [63:0]           st_data_i,
+    input  hpdcache_uc_op_t       op_i,
+    output logic [63:0]           result_o
 );
 //  }}}
 

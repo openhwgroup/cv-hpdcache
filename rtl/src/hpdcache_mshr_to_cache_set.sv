@@ -29,17 +29,17 @@ import hpdcache_pkg::*;
 //  {{{
 (
     //  Clock signals
-    input  wire logic          clk_i,
+    input  logic          clk_i,
 
     //  Write interface
-    input  wire logic          write_i,
-    input  wire hpdcache_set_t write_dcache_set_i,
-    input  wire mshr_way_t     write_mshr_way_i,
+    input  logic          write_i,
+    input  hpdcache_set_t write_dcache_set_i,
+    input  mshr_way_t     write_mshr_way_i,
 
     //  Read interface
-    input  wire mshr_way_t     read_mshr_way_i,
-    input  wire mshr_set_t     read_mshr_set_i,
-    output wire hpdcache_set_t read_dcache_set_o
+    input  mshr_way_t     read_mshr_way_i,
+    input  mshr_set_t     read_mshr_set_i,
+    output hpdcache_set_t read_dcache_set_o
 );
 //  }}}
     //

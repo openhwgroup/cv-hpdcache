@@ -48,9 +48,9 @@ module hpdcache_mux
     //  Ports
     //  {{{
 (
-    input  wire data_t [NINPUT-1:0] data_i,
-    input  wire sel_t               sel_i,
-    output var  data_t              data_o
+    input  data_t [NINPUT-1:0] data_i,
+    input  sel_t               sel_i,
+    output data_t              data_o
 );
     //  }}}
 

@@ -28,21 +28,21 @@ import hpdcache_pkg::*;
     //  Ports
     //  {{{
 (
-    input  wire logic                                    clk_i,
-    input  wire logic                                    rst_ni,
+    input  logic                                    clk_i,
+    input  logic                                    rst_ni,
 
-    input  wire hpdcache_dir_addr_t                      dir_addr_i,
-    input  wire hpdcache_way_vector_t                    dir_cs_i,
-    input  wire hpdcache_way_vector_t                    dir_we_i,
-    input  wire hpdcache_dir_entry_t [HPDCACHE_WAYS-1:0] dir_wentry_i,
-    output wire hpdcache_dir_entry_t [HPDCACHE_WAYS-1:0] dir_rentry_o,
+    input  hpdcache_dir_addr_t                      dir_addr_i,
+    input  hpdcache_way_vector_t                    dir_cs_i,
+    input  hpdcache_way_vector_t                    dir_we_i,
+    input  hpdcache_dir_entry_t [HPDCACHE_WAYS-1:0] dir_wentry_i,
+    output hpdcache_dir_entry_t [HPDCACHE_WAYS-1:0] dir_rentry_o,
 
-    input  wire hpdcache_data_addr_t                     data_addr_i,
-    input  wire hpdcache_data_enable_t                   data_cs_i,
-    input  wire hpdcache_data_enable_t                   data_we_i,
-    input  wire hpdcache_data_be_entry_t                 data_wbyteenable_i,
-    input  wire hpdcache_data_entry_t                    data_wentry_i,
-    output wire hpdcache_data_entry_t                    data_rentry_o
+    input  hpdcache_data_addr_t                     data_addr_i,
+    input  hpdcache_data_enable_t                   data_cs_i,
+    input  hpdcache_data_enable_t                   data_we_i,
+    input  hpdcache_data_be_entry_t                 data_wbyteenable_i,
+    input  hpdcache_data_entry_t                    data_wentry_i,
+    output hpdcache_data_entry_t                    data_rentry_o
 );
     //  }}}
 

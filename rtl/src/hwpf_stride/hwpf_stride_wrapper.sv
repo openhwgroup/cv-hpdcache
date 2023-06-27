@@ -37,40 +37,40 @@ import hpdcache_pkg::*;
 //  Ports
 //  {{{
 (
-    input  wire logic                                       clk_i,
-    input  wire logic                                       rst_ni,
+    input  logic                                       clk_i,
+    input  logic                                       rst_ni,
 
     //  CSR
     //  {{{
-    input  wire logic                  [NUM_HW_PREFETCH-1:0] hwpf_stride_base_set_i,
-    input  wire hwpf_stride_base_t     [NUM_HW_PREFETCH-1:0] hwpf_stride_base_i,
-    output wire hwpf_stride_base_t     [NUM_HW_PREFETCH-1:0] hwpf_stride_base_o,
+    input  logic                  [NUM_HW_PREFETCH-1:0] hwpf_stride_base_set_i,
+    input  hwpf_stride_base_t     [NUM_HW_PREFETCH-1:0] hwpf_stride_base_i,
+    output hwpf_stride_base_t     [NUM_HW_PREFETCH-1:0] hwpf_stride_base_o,
 
-    input  wire logic                  [NUM_HW_PREFETCH-1:0] hwpf_stride_param_set_i,
-    input  wire hwpf_stride_param_t    [NUM_HW_PREFETCH-1:0] hwpf_stride_param_i,
-    output wire hwpf_stride_param_t    [NUM_HW_PREFETCH-1:0] hwpf_stride_param_o,
+    input  logic                  [NUM_HW_PREFETCH-1:0] hwpf_stride_param_set_i,
+    input  hwpf_stride_param_t    [NUM_HW_PREFETCH-1:0] hwpf_stride_param_i,
+    output hwpf_stride_param_t    [NUM_HW_PREFETCH-1:0] hwpf_stride_param_o,
 
-    input  wire logic                  [NUM_HW_PREFETCH-1:0] hwpf_stride_throttle_set_i,
-    input  wire hwpf_stride_throttle_t [NUM_HW_PREFETCH-1:0] hwpf_stride_throttle_i,
-    output wire hwpf_stride_throttle_t [NUM_HW_PREFETCH-1:0] hwpf_stride_throttle_o,
+    input  logic                  [NUM_HW_PREFETCH-1:0] hwpf_stride_throttle_set_i,
+    input  hwpf_stride_throttle_t [NUM_HW_PREFETCH-1:0] hwpf_stride_throttle_i,
+    output hwpf_stride_throttle_t [NUM_HW_PREFETCH-1:0] hwpf_stride_throttle_o,
 
-    output wire hwpf_stride_status_t                         hwpf_stride_status_o,
+    output hwpf_stride_status_t                         hwpf_stride_status_o,
     //  }}}
 
     // Snooping
     //  {{{
-    input  wire logic               [NUM_SNOOP_PORTS-1:0]   snoop_valid_i,
-    input  wire hpdcache_req_addr_t [NUM_SNOOP_PORTS-1:0]   snoop_addr_i,
+    input  logic               [NUM_SNOOP_PORTS-1:0]   snoop_valid_i,
+    input  hpdcache_req_addr_t [NUM_SNOOP_PORTS-1:0]   snoop_addr_i,
     //  }}}
 
     //  DCache interface
     //  {{{
-    input  wire hpdcache_req_sid_t                          dcache_req_sid_i,
-    output var  logic                                       dcache_req_valid_o,
-    input  wire logic                                       dcache_req_ready_i,
-    output wire hpdcache_req_t                              dcache_req_o,
-    input  wire logic                                       dcache_rsp_valid_i,
-    input  wire hpdcache_rsp_t                              dcache_rsp_i
+    input  hpdcache_req_sid_t                          dcache_req_sid_i,
+    output logic                                       dcache_req_valid_o,
+    input  logic                                       dcache_req_ready_i,
+    output hpdcache_req_t                              dcache_req_o,
+    input  logic                                       dcache_rsp_valid_i,
+    input  hpdcache_rsp_t                              dcache_rsp_i
     //  }}}
 );
 //  }}}

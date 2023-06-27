@@ -26,10 +26,10 @@
 module hwpf_stride_snooper
 import hpdcache_pkg::*;
 (
-    input  wire logic            en_i,           // Snooper enable bit.
-    input  wire hpdcache_nline_t base_nline_i,   // Address to check
-    input  wire hpdcache_nline_t snoop_addr_i,   // Input address to snoop
-    output wire                  snoop_match_o   // If high, the Snoopers matched the snoop_address
+    input  logic            en_i,           // Snooper enable bit.
+    input  hpdcache_nline_t base_nline_i,   // Address to check
+    input  hpdcache_nline_t snoop_addr_i,   // Input address to snoop
+    output snoop_match_o   // If high, the Snoopers matched the snoop_address
 );
 
     // The snooper match if enabled and the two addresses are equal

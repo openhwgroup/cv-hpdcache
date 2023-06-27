@@ -28,41 +28,41 @@ import hpdcache_pkg::*;
 //  Ports
 //  {{{
 (
-    input  wire logic                  clk_i,
-    input  wire logic                  rst_ni,
+    input  logic                  clk_i,
+    input  logic                  rst_ni,
 
     //  Global control signals
     //  {{{
-    input  wire logic                  wbuf_empty_i,
-    input  wire logic                  mshr_empty_i,
-    input  wire logic                  rtab_empty_i,
-    input  wire logic                  ctrl_empty_i,
+    input  logic                  wbuf_empty_i,
+    input  logic                  mshr_empty_i,
+    input  logic                  rtab_empty_i,
+    input  logic                  ctrl_empty_i,
     //  }}}
 
     //  Request interface
     //  {{{
-    input  wire logic                  req_valid_i,
-    output wire logic                  req_ready_o,
-    input  wire hpdcache_cmoh_op_t     req_op_i,
-    input  wire hpdcache_req_addr_t    req_addr_i,
-    input  wire hpdcache_req_data_t    req_wdata_i,
+    input  logic                  req_valid_i,
+    output logic                  req_ready_o,
+    input  hpdcache_cmoh_op_t     req_op_i,
+    input  hpdcache_req_addr_t    req_addr_i,
+    input  hpdcache_req_data_t    req_wdata_i,
     //  }}}
 
     //  Write Buffer Interface
     //  {{{
-    output var  logic                  wbuf_close_all_o,
+    output logic                  wbuf_close_all_o,
     //  }}}
 
     //  Cache Directory Interface
     //  {{{
-    output var  logic                  dir_check_o,
-    output var  hpdcache_set_t         dir_check_set_o,
-    output var  hpdcache_tag_t         dir_check_tag_o,
-    input  wire hpdcache_way_vector_t  dir_check_hit_way_i,
+    output logic                  dir_check_o,
+    output hpdcache_set_t         dir_check_set_o,
+    output hpdcache_tag_t         dir_check_tag_o,
+    input  hpdcache_way_vector_t  dir_check_hit_way_i,
 
-    output var  logic                  dir_inval_o,
-    output var  hpdcache_set_t         dir_inval_set_o,
-    output var  hpdcache_way_vector_t  dir_inval_way_o
+    output logic                  dir_inval_o,
+    output hpdcache_set_t         dir_inval_set_o,
+    output hpdcache_way_vector_t  dir_inval_way_o
     // }}}
 );
 //  }}}

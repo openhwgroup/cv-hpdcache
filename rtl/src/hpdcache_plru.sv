@@ -38,21 +38,21 @@ module hpdcache_plru
     //  Ports
     //  {{{
 (
-    input  wire logic                  clk_i,
-    input  wire logic                  rst_ni,
+    input  logic                  clk_i,
+    input  logic                  rst_ni,
 
     //      PLRU update interface
-    input  wire logic                  updt_i,
-    input  wire set_t                  updt_set_i,
-    input  wire way_vector_t           updt_way_i,
+    input  logic                  updt_i,
+    input  set_t                  updt_set_i,
+    input  way_vector_t           updt_way_i,
 
     //      Victim replacement interface
-    input  wire logic                  repl_i,
-    input  wire set_t                  repl_set_i,
-    input  wire way_vector_t           repl_dir_valid_i,
-    input  wire logic                  repl_updt_plru_i,
+    input  logic                  repl_i,
+    input  set_t                  repl_set_i,
+    input  way_vector_t           repl_dir_valid_i,
+    input  logic                  repl_updt_plru_i,
 
-    output wire way_vector_t           victim_way_o
+    output way_vector_t           victim_way_o
 );
     //  }}}
 

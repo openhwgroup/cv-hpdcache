@@ -37,24 +37,24 @@ import hpdcache_pkg::*;
 //  Ports
 //  {{{
 (
-    input  wire logic                  clk_i,
-    input  wire logic                  rst_ni,
+    input  logic                  clk_i,
+    input  logic                  rst_ni,
 
-    output  wire logic                 mem_req_write_ready_o      [N-1:0],
-    input   wire logic                 mem_req_write_valid_i      [N-1:0],
-    input   wire hpdcache_mem_req_t    mem_req_write_i            [N-1:0],
+    output logic                 mem_req_write_ready_o      [N-1:0],
+    input  logic                 mem_req_write_valid_i      [N-1:0],
+    input  hpdcache_mem_req_t    mem_req_write_i            [N-1:0],
 
-    output  wire logic                 mem_req_write_data_ready_o [N-1:0],
-    input   wire logic                 mem_req_write_data_valid_i [N-1:0],
-    input   wire hpdcache_mem_req_w_t  mem_req_write_data_i       [N-1:0],
+    output logic                 mem_req_write_data_ready_o [N-1:0],
+    input  logic                 mem_req_write_data_valid_i [N-1:0],
+    input  hpdcache_mem_req_w_t  mem_req_write_data_i       [N-1:0],
 
-    input   wire logic                 mem_req_write_ready_i,
-    output  wire logic                 mem_req_write_valid_o,
-    output  wire hpdcache_mem_req_t    mem_req_write_o,
+    input  logic                 mem_req_write_ready_i,
+    output logic                 mem_req_write_valid_o,
+    output hpdcache_mem_req_t    mem_req_write_o,
 
-    input   wire logic                 mem_req_write_data_ready_i,
-    output  wire logic                 mem_req_write_data_valid_o,
-    output  wire hpdcache_mem_req_w_t  mem_req_write_data_o
+    input  logic                 mem_req_write_data_ready_i,
+    output logic                 mem_req_write_data_valid_o,
+    output hpdcache_mem_req_w_t  mem_req_write_data_o
 );
 //  }}}
 

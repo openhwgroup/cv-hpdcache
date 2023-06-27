@@ -29,80 +29,80 @@ import hpdcache_pkg::*;
 //  {{{
 (
     //  Clock and reset signals
-    input  wire logic                  clk_i,
-    input  wire logic                  rst_ni,
+    input  logic                  clk_i,
+    input  logic                  rst_ni,
 
     //  Global control signals
-    output wire logic                  empty_o,          // RTAB is empty
-    output wire logic                  full_o,           // RTAB is full
-    output var  logic                  req_valid_o,      // Request ready to be replayed
+    output logic                  empty_o,          // RTAB is empty
+    output logic                  full_o,           // RTAB is full
+    output logic                  req_valid_o,      // Request ready to be replayed
 
     //  Check RTAB signals
     //     This interface allows to check if there is an address-overlapping
     //     request in the RTAB with respect to the given nline.
-    input  wire logic                  check_i,          // Check for hit (nline) in the RTAB
-    input  wire hpdcache_nline_t       check_nline_i,
-    output wire logic                  check_hit_o,
+    input  logic                  check_i,          // Check for hit (nline) in the RTAB
+    input  hpdcache_nline_t       check_nline_i,
+    output logic                  check_hit_o,
 
     //  Allocate signals
     //     This interface allows to allocate a new request in a new linked list
-    input  wire logic                  alloc_i,
-    input  wire hpdcache_req_t         alloc_req_i,
-    input  wire logic                  alloc_mshr_hit_i,
-    input  wire logic                  alloc_mshr_full_i,
-    input  wire logic                  alloc_mshr_ready_i,
-    input  wire logic                  alloc_wbuf_hit_i,
-    input  wire logic                  alloc_wbuf_not_ready_i,
+    input  logic                  alloc_i,
+    input  hpdcache_req_t         alloc_req_i,
+    input  logic                  alloc_mshr_hit_i,
+    input  logic                  alloc_mshr_full_i,
+    input  logic                  alloc_mshr_ready_i,
+    input  logic                  alloc_wbuf_hit_i,
+    input  logic                  alloc_wbuf_not_ready_i,
 
     //  Allocate and link signals
     //     This interface allows to allocate and link a new request into an existing linked list
-    input  wire logic                  alloc_and_link_i,
-    input  wire hpdcache_req_t         alloc_and_link_req_i,
-    input  wire logic                  alloc_and_link_mshr_hit_i,
-    input  wire logic                  alloc_and_link_mshr_full_i,
-    input  wire logic                  alloc_and_link_mshr_ready_i,
-    input  wire logic                  alloc_and_link_wbuf_hit_i,
-    input  wire logic                  alloc_and_link_wbuf_not_ready_i,
+    input  logic                  alloc_and_link_i,
+    input  hpdcache_req_t         alloc_and_link_req_i,
+    input  logic                  alloc_and_link_mshr_hit_i,
+    input  logic                  alloc_and_link_mshr_full_i,
+    input  logic                  alloc_and_link_mshr_ready_i,
+    input  logic                  alloc_and_link_wbuf_hit_i,
+    input  logic                  alloc_and_link_wbuf_not_ready_i,
 
     //  Pop signals
     //     This interface allows to read (and remove) a request from the RTAB
-    input  wire logic                  pop_try_i,
-    output wire hpdcache_req_t         pop_try_req_o,
-    output wire rtab_ptr_t             pop_try_ptr_o,
+    input  logic                  pop_try_i,
+    output hpdcache_req_t         pop_try_req_o,
+    output rtab_ptr_t             pop_try_ptr_o,
 
     //  Pop Commit signals
     //     This interface allows to actually remove a popped request
-    input  wire logic                  pop_commit_i,
-    input  wire rtab_ptr_t             pop_commit_ptr_i,
+    input  logic                  pop_commit_i,
+    input  rtab_ptr_t             pop_commit_ptr_i,
 
     //  Pop Rollback signals
     //     This interface allows to put back a popped request
-    input  wire logic                  pop_rback_i,
-    input  wire rtab_ptr_t             pop_rback_ptr_i,
-    input  wire logic                  pop_rback_mshr_hit_i,
-    input  wire logic                  pop_rback_mshr_full_i,
-    input  wire logic                  pop_rback_mshr_ready_i,
-    input  wire logic                  pop_rback_wbuf_hit_i,
-    input  wire logic                  pop_rback_wbuf_not_ready_i,
+    input  logic                  pop_rback_i,
+    input  rtab_ptr_t             pop_rback_ptr_i,
+    input  logic                  pop_rback_mshr_hit_i,
+    input  logic                  pop_rback_mshr_full_i,
+    input  logic                  pop_rback_mshr_ready_i,
+    input  logic                  pop_rback_wbuf_hit_i,
+    input  logic                  pop_rback_wbuf_not_ready_i,
 
 
     //  Control signals from/to WBUF
-    output wire hpdcache_req_addr_t    wbuf_addr_o,      // address to check against ongoing writes
-    output wire logic                  wbuf_is_read_o,   // monitored request is read
-    input  wire logic                  wbuf_hit_open_i,  // Hit on open entry in the write buf
-    input  wire logic                  wbuf_hit_closed_i,// Hit on closed entry in the write buf
-    input  wire logic                  wbuf_hit_sent_i,  // Hit on sent entry in the write buf
-    input  wire logic                  wbuf_not_ready_i, // Write buffer cannot accept the write
+    output hpdcache_req_addr_t    wbuf_addr_o,      // address to check against ongoing writes
+    output logic                  wbuf_is_read_o,   // monitored request is read
+    input  logic                  wbuf_hit_open_i,  // Hit on open entry in the write buf
+    input  logic                  wbuf_hit_closed_i,// Hit on closed entry in the write buf
+    input  logic                  wbuf_hit_sent_i,  // Hit on sent entry in the write buf
+    input  logic                  wbuf_not_ready_i, // Write buffer cannot accept the write
 
     //  Control signals from the Miss Handler
-    input  wire logic                  miss_ready_i,     // Miss Handler is ready
+    input  logic                  miss_ready_i,     // Miss Handler is ready
 
     //  Control signals from the Refill Handler
-    input  wire logic                  refill_i,         // Active refill
-    input  wire hpdcache_nline_t       refill_nline_i,   // Cache-line index being refilled
+    input  logic                  refill_i,         // Active refill
+    input  hpdcache_nline_t       refill_nline_i,   // Cache-line index being refilled
 
     //  Configuration parameters
-    input  wire logic                  cfg_single_entry_i // Enable only one entry of the table
+    input  logic                  cfg_single_entry_i // Enable only one entry of the table
 );
 //  }}}
 

@@ -29,41 +29,41 @@ import hpdcache_pkg::*;
     //  {{{
 (
     //  Clock and reset signals
-    input  wire logic              clk_i,
-    input  wire logic              rst_ni,
+    input  logic              clk_i,
+    input  logic              rst_ni,
 
     //  Global control signals
-    output wire logic              empty_o,
-    output wire logic              full_o,
+    output logic              empty_o,
+    output logic              full_o,
 
     //  Check and allocation interface
-    input  wire logic              check_i,
-    input  wire hpdcache_nline_t   check_nline_i,
-    output var  logic              hit_o,
-    input  wire logic              alloc_i,
-    input  wire logic              alloc_cs_i,
-    input  wire hpdcache_nline_t   alloc_nline_i,
-    input  wire hpdcache_req_tid_t alloc_req_id_i,
-    input  wire hpdcache_req_sid_t alloc_src_id_i,
-    input  wire hpdcache_word_t    alloc_word_i,
-    input  wire logic              alloc_need_rsp_i,
-    input  wire logic              alloc_is_prefetch_i,
-    output var  logic              alloc_full_o,
-    output wire mshr_set_t         alloc_set_o,
-    output wire mshr_tag_t         alloc_tag_o,
-    output var  mshr_way_t         alloc_way_o,
+    input  logic              check_i,
+    input  hpdcache_nline_t   check_nline_i,
+    output logic              hit_o,
+    input  logic              alloc_i,
+    input  logic              alloc_cs_i,
+    input  hpdcache_nline_t   alloc_nline_i,
+    input  hpdcache_req_tid_t alloc_req_id_i,
+    input  hpdcache_req_sid_t alloc_src_id_i,
+    input  hpdcache_word_t    alloc_word_i,
+    input  logic              alloc_need_rsp_i,
+    input  logic              alloc_is_prefetch_i,
+    output logic              alloc_full_o,
+    output mshr_set_t         alloc_set_o,
+    output mshr_tag_t         alloc_tag_o,
+    output mshr_way_t         alloc_way_o,
 
     //  Acknowledge interface
-    input  wire logic              ack_i,
-    input  wire logic              ack_cs_i,
-    input  wire mshr_set_t         ack_set_i,
-    input  wire mshr_way_t         ack_way_i,
-    output wire hpdcache_req_tid_t ack_req_id_o,
-    output wire hpdcache_req_sid_t ack_src_id_o,
-    output wire hpdcache_nline_t   ack_nline_o,
-    output wire hpdcache_word_t    ack_word_o,
-    output wire logic              ack_need_rsp_o,
-    output wire logic              ack_is_prefetch_o
+    input  logic              ack_i,
+    input  logic              ack_cs_i,
+    input  mshr_set_t         ack_set_i,
+    input  mshr_way_t         ack_way_i,
+    output hpdcache_req_tid_t ack_req_id_o,
+    output hpdcache_req_sid_t ack_src_id_o,
+    output hpdcache_nline_t   ack_nline_o,
+    output hpdcache_word_t    ack_word_o,
+    output logic              ack_need_rsp_o,
+    output logic              ack_is_prefetch_o
 );
     //  }}}
 

@@ -37,36 +37,36 @@ import hpdcache_pkg::*;
 //  Ports
 //  {{{
 (
-    input  wire logic                        clk_i,
-    input  wire logic                        rst_ni,
+    input  logic                        clk_i,
+    input  logic                        rst_ni,
 
     // CSR
-    input  wire logic                        csr_base_set_i,
-    input  wire hwpf_stride_base_t           csr_base_i,
-    input  wire logic                        csr_param_set_i,
-    input  wire hwpf_stride_param_t          csr_param_i,
-    input  wire logic                        csr_throttle_set_i,
-    input  wire hwpf_stride_throttle_t       csr_throttle_i,
+    input  logic                        csr_base_set_i,
+    input  hwpf_stride_base_t           csr_base_i,
+    input  logic                        csr_param_set_i,
+    input  hwpf_stride_param_t          csr_param_i,
+    input  logic                        csr_throttle_set_i,
+    input  hwpf_stride_throttle_t       csr_throttle_i,
 
-    output wire hwpf_stride_base_t           csr_base_o,
-    output wire hwpf_stride_param_t          csr_param_o,
-    output wire hwpf_stride_throttle_t       csr_throttle_o,
+    output hwpf_stride_base_t           csr_base_o,
+    output hwpf_stride_param_t          csr_param_o,
+    output hwpf_stride_throttle_t       csr_throttle_o,
 
     // If high, the prefetcher is enabled and active
-    output var  logic                        busy_o,
+    output logic                        busy_o,
 
     // Snooping
     //   Address to snoop on requests ports
-    output wire hpdcache_nline_t             snoop_addr_o,
+    output hpdcache_nline_t             snoop_addr_o,
     //   If set to one, the snoop address matched one of the requests
-    input  wire                              snoop_match_i,
+    input  snoop_match_i,
 
     // D-Cache interface
-    output var  logic                        dcache_req_valid_o,
-    input  wire logic                        dcache_req_ready_i,
-    output wire hpdcache_req_t               dcache_req_o,
-    input  wire logic                        dcache_rsp_valid_i,
-    input  wire hpdcache_rsp_t               dcache_rsp_i
+    output logic                        dcache_req_valid_o,
+    input  logic                        dcache_req_ready_i,
+    output hpdcache_req_t               dcache_req_o,
+    input  logic                        dcache_rsp_valid_i,
+    input  hpdcache_rsp_t               dcache_rsp_i
 );
 //  }}}
 
