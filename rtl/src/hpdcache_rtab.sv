@@ -431,19 +431,27 @@ import hpdcache_pkg::*;
     );
 
     always_comb
+    begin : req_valid_comb
+        case(pop_try_state_q)
+            POP_TRY_HEAD     : req_valid_o = |ready;
+            POP_TRY_NEXT     : req_valid_o = 1'b1;
+            POP_TRY_NEXT_WAIT: req_valid_o = 1'b1;
+            default          : req_valid_o = 1'b0;
+        endcase
+    end
+
+    always_comb
     begin : pop_entry_sel_comb
         pop_try_state_d = pop_try_state_q;
         pop_try_next_d = pop_try_next_q;
         pop_head = 1'b0;
         pop_sel = '0;
-        req_valid_o = 1'b0;
 
         case (pop_try_state_q)
             POP_TRY_HEAD: begin
                 // This FSM may be in this state after forwarding the tail of
                 // a list. In that case, a rollback may arrive in this cycle.
-                req_valid_o = |ready;
-                pop_sel     = pop_gnt;
+                pop_sel = pop_gnt;
                 if (!pop_rback_i && req_valid_o) begin
                     if (pop_try_i) begin
                         //  If the request interface accepts the request, go to the next request
@@ -458,7 +466,6 @@ import hpdcache_pkg::*;
                 end
             end
             POP_TRY_NEXT: begin
-                req_valid_o = pop_commit_i;
                 pop_sel     = pop_try_next_q;
                 if (pop_rback_i) begin
                     pop_try_state_d = POP_TRY_HEAD;
@@ -483,7 +490,6 @@ import hpdcache_pkg::*;
             POP_TRY_NEXT_WAIT: begin
                 //  Wait for the current request to be accepted. Then go to the next request in the
                 //  list or to a new list
-                req_valid_o = 1'b1;
                 pop_sel     = pop_try_next_q;
                 if (pop_try_i) begin
                     if ((pop_try_next_q & ~tail_q) != 0) begin
