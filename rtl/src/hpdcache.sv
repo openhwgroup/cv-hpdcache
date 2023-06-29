@@ -641,8 +641,25 @@ import hpdcache_pkg::*;
     );
     //  }}}
 
-`ifdef ASSERTIONS_ON
-  `include "hpdcache_sva.sv"
-`endif
+    //  Assertions
+    //  {{{
+    // pragma translate_off
+    initial begin
+        req_access_width_assert:
+            assert (HPDCACHE_REQ_WORDS <= HPDCACHE_ACCESS_WORDS) else
+                $error("req data width shall be l.e. to cache access width");
+        refill_access_width_assert:
+            assert (HPDCACHE_CL_WORDS >= HPDCACHE_ACCESS_WORDS) else
+                $error("cache access width shall be l.e. to cache-line width");
+        miss_mem_id_width_assert:
+            assert (HPDcacheMemIdWidth >= (HPDCACHE_MSHR_WAY_WIDTH + HPDCACHE_MSHR_SET_WIDTH)) else
+                $error("insufficient ID bits on the mem interface to transport misses");
+        wbuf_mem_id_width_assert:
+            assert (HPDcacheMemIdWidth >= HPDCACHE_WBUF_DIR_PTR_WIDTH) else
+                $error("insufficient ID bits on the mem interface to transport writes");
+
+    end
+    // pragma translate_on
+    // }}}
 
 endmodule
