@@ -162,7 +162,6 @@ package hpdcache_pkg;
 
     //  Definition of interface with miss handler
     //  {{{
-    localparam int unsigned HPDCACHE_REFILL_WORD_INDEX_WIDTH = $clog2(HPDCACHE_DATA_RAM_ENTR_PER_SET);
     localparam int unsigned HPDCACHE_REFILL_DATA_WIDTH       = HPDCACHE_DATA_RAM_ACCESS_WIDTH;
 
     typedef hpdcache_data_word_t[HPDCACHE_ACCESS_WORDS-1:0] hpdcache_refill_data_t;
