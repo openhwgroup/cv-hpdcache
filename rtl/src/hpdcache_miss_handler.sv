@@ -132,7 +132,8 @@ import hpdcache_pkg::*;
 
     typedef enum {
         REFILL_IDLE,
-        REFILL_WRITE
+        REFILL_WRITE,
+        REFILL_WRITE_DIR
     } refill_fsm_e;
 
     typedef struct packed {
@@ -267,6 +268,10 @@ import hpdcache_pkg::*;
     //  {{{
     always_comb
     begin : miss_resp_fsm_comb
+        automatic hpdcache_uint REFILL_LAST_CHUNK_WORD;
+
+        REFILL_LAST_CHUNK_WORD = HPDCACHE_CL_WORDS - HPDCACHE_ACCESS_WORDS;
+
         refill_req_valid_o      = 1'b0;
         refill_updt_plru_o      = 1'b0;
         refill_set_o            = '0;
@@ -378,28 +383,67 @@ import hpdcache_pkg::*;
 
                 //  Update directory on the last chunk of data
                 refill_cnt_d = refill_cnt_q + hpdcache_word_t'(HPDCACHE_ACCESS_WORDS);
-                if (hpdcache_uint'(refill_cnt_q) ==
-                        (HPDCACHE_CL_WORDS - HPDCACHE_ACCESS_WORDS)) begin
-                    //  Write the new entry in the cache directory
-                    refill_write_dir_o  = ~refill_is_error;
 
-                    //  Update the PLRU bits. Only in the following cases:
-                    //  - There is no error in response AND
-                    //  - It is a prefetch and the cfg_prefetch_updt_plru_i is set OR
-                    //  - It is a read miss.
-                    refill_updt_plru_o  =  ~refill_is_error &
-                                          (~is_prefetch | cfg_prefetch_updt_plru_i);
+                if (hpdcache_uint'(refill_cnt_q) == REFILL_LAST_CHUNK_WORD) begin
+                    if (REFILL_LAST_CHUNK_WORD == 0) begin
+                        //  Special case: if the cache-line data can be written in a single cycle,
+                        //  wait an additional cycle to write the directory. This allows to prevent
+                        //  a RAM-to-RAM timing path between the MSHR and the DIR.
+                        refill_fsm_d = REFILL_WRITE_DIR;
+                    end else begin
+                        //  Write the new entry in the cache directory
+                        refill_write_dir_o  = ~refill_is_error;
 
-                    //  Update dependency flags in the retry table
-                    refill_updt_rtab_o  = 1'b1;
+                        //  Update the PLRU bits. Only in the following cases:
+                        //  - There is no error in response AND
+                        //  - It is a prefetch and the cfg_prefetch_updt_plru_i is set OR
+                        //  - It is a read miss.
+                        refill_updt_plru_o  =  ~refill_is_error &
+                                              (~is_prefetch | cfg_prefetch_updt_plru_i);
 
-                    //  consume the resposne from the network
-                    refill_fifo_resp_meta_r = 1'b1;
+                        //  Update dependency flags in the retry table
+                        refill_updt_rtab_o  = 1'b1;
 
-                    refill_fsm_d = REFILL_IDLE;
+                        //  consume the response from the network
+                        refill_fifo_resp_meta_r = 1'b1;
+
+                        refill_fsm_d = REFILL_IDLE;
+                    end
                 end
             end
             //  }}}
+
+            //  Write cache directory (this state is only visited when ACCESS_WORDS == CL_WORDS,
+            //  this is when the entire cache-line can be written in a single cycle)
+            //  {{{
+            REFILL_WRITE_DIR: begin
+                automatic logic is_prefetch;
+                is_prefetch = refill_is_prefetch_q;
+
+                //  Write the new entry in the cache directory
+                refill_write_dir_o  = ~refill_is_error;
+
+                //  Update the PLRU bits. Only in the following cases:
+                //  - There is no error in response AND
+                //  - It is a prefetch and the cfg_prefetch_updt_plru_i is set OR
+                //  - It is a read miss.
+                refill_updt_plru_o  =  ~refill_is_error &
+                                      (~is_prefetch | cfg_prefetch_updt_plru_i);
+
+                //  Update dependency flags in the retry table
+                refill_updt_rtab_o  = 1'b1;
+
+                //  consume the response from the network
+                refill_fifo_resp_meta_r = 1'b1;
+
+                refill_fsm_d = REFILL_IDLE;
+            end
+
+            default: begin
+                // pragma translate_off
+                $error("Illegal state");
+                // pragma translate_on
+            end
         endcase
     end
 
