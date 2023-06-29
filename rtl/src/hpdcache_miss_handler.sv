@@ -167,6 +167,7 @@ import hpdcache_pkg::*;
     logic                    refill_need_rsp_q;
     logic                    refill_is_prefetch_q;
     hpdcache_word_t          refill_core_rsp_word_q;
+    logic                    refill_way_bypass;
 
     mem_resp_metadata_t      refill_fifo_resp_meta_wdata, refill_fifo_resp_meta_rdata;
     logic                    refill_fifo_resp_meta_w, refill_fifo_resp_meta_wok;
@@ -266,13 +267,19 @@ import hpdcache_pkg::*;
 
     //  Refill FSM
     //  {{{
+
+    //      ask permission to the refill arbiter if there is a pending refill
+    assign refill_req_valid_o  = refill_fsm_q == REFILL_IDLE ? refill_fifo_resp_meta_rok : 1'b0;
+
+    //      forward the victim way directly from the victim selection logic or
+    //      from the internal register
+    assign refill_victim_way_o = refill_way_bypass ? refill_victim_way_i : refill_way_q;
+
     always_comb
     begin : miss_resp_fsm_comb
         automatic hpdcache_uint REFILL_LAST_CHUNK_WORD;
-
         REFILL_LAST_CHUNK_WORD = HPDCACHE_CL_WORDS - HPDCACHE_ACCESS_WORDS;
 
-        refill_req_valid_o      = 1'b0;
         refill_updt_plru_o      = 1'b0;
         refill_set_o            = '0;
         refill_write_dir_o      = 1'b0;
@@ -281,8 +288,7 @@ import hpdcache_pkg::*;
         refill_data_o           = '0;
         refill_updt_rtab_o      = 1'b0;
         refill_cnt_d            = refill_cnt_q;
-
-        refill_victim_way_o     = '0;
+        refill_way_bypass       = 1'b0;
 
         refill_core_rsp_valid   = 1'b0;
         refill_core_rsp_sid_d   = refill_core_rsp_sid_q;
@@ -303,9 +309,6 @@ import hpdcache_pkg::*;
             //  {{{
             REFILL_IDLE: begin
                 if (refill_fifo_resp_meta_rok) begin
-                    //  ask permission to the refill arbiter
-                    refill_req_valid_o = 1'b1;
-
                     //  anticipate the activation of the MSHR independently of the grant signal from
                     //  the refill arbiter. This is to avoid the introduction of unnecessary timing
                     //  paths (however there could be a minor augmentation of the power
@@ -366,12 +369,12 @@ import hpdcache_pkg::*;
 
                 //  Write the the data in the cache data array
                 if (refill_cnt_q == 0) begin
-                    refill_victim_way_o = refill_victim_way_i;
                     refill_set_o = mshr_ack_nline[0 +: HPDCACHE_SET_WIDTH];
+                    refill_way_bypass = 1'b1;
                     is_prefetch = mshr_ack_is_prefetch;
                 end else begin
-                    refill_victim_way_o = refill_way_q;
                     refill_set_o = refill_set_q;
+                    refill_way_bypass = 1'b0;
                     is_prefetch = refill_is_prefetch_q;
                 end
                 refill_write_data_o = ~refill_is_error;
@@ -419,6 +422,10 @@ import hpdcache_pkg::*;
             REFILL_WRITE_DIR: begin
                 automatic logic is_prefetch;
                 is_prefetch = refill_is_prefetch_q;
+
+                //  Select the target set and way
+                refill_set_o = refill_set_q;
+                refill_way_bypass = 1'b0;
 
                 //  Write the new entry in the cache directory
                 refill_write_dir_o  = ~refill_is_error;
