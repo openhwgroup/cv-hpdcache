@@ -189,55 +189,55 @@ In \apxref{implementations}, we describe different systems where the \ac{HPDcach
 {\footnotesize%
 \begin{tabular}{p{.4\textwidth}p{.6\textwidth}}
 \toprule%
-$\mathsf{CONF\_DCACHE\_PA\_WIDTH}$ &%
+$\mathsf{CONF\_HPDCACHE\_PA\_WIDTH}$ &%
 Physical address width (in bits) \\
 \midrule%
-$\mathsf{CONF\_DCACHE\_WORD\_WIDTH}$ &%
-Width (in bits) of a data word\\
-\midrule%
-$\mathsf{CONF\_DCACHE\_REQ\_WORDS}$ &%
-Number of words in the data channels from/to requesters \\
-\midrule%
-$\mathsf{CONF\_DCACHE\_REQ\_TRANS\_ID\_WIDTH}$ &%
-Width (in bits) of the transaction ID from requesters \\
-\midrule%
-$\mathsf{CONF\_DCACHE\_REQ\_SRC\_ID\_WIDTH}$ &%
-Width (in bits) of the source ID from requesters \\
-\midrule%
-$\mathsf{CONF\_DCACHE\_SETS}$ &%
+$\mathsf{CONF\_HPDCACHE\_SETS}$ &%
 Number of sets \\
 \midrule%
-$\mathsf{CONF\_DCACHE\_WAYS}$ &%
+$\mathsf{CONF\_HPDCACHE\_WAYS}$ &%
 Number of ways (associativity) \\
 \midrule%
-$\mathsf{CONF\_DCACHE\_CL\_WORDS}$ &%
+$\mathsf{CONF\_HPDCACHE\_WORD\_WIDTH}$ &%
+Width (in bits) of a data word\\
+\midrule%
+$\mathsf{CONF\_HPDCACHE\_CL\_WORDS}$ &%
 Number of words in a cacheline\\
 \midrule%
-$\mathsf{CONF\_DCACHE\_WBUF\_DIR\_ENTRIES}$ &%
-Number of entries in the directory of the write buffer \\
+$\mathsf{CONF\_HPDCACHE\_REQ\_WORDS}$ &%
+Number of words in the data channels from/to requesters \\
 \midrule%
-$\mathsf{CONF\_DCACHE\_WBUF\_DATA\_ENTRIES}$ &%
-Number of entries in the data part of the write buffer \\
+$\mathsf{CONF\_HPDCACHE\_REQ\_TRANS\_ID\_WIDTH}$ &%
+Width (in bits) of the transaction ID from requesters \\
 \midrule%
-$\mathsf{CONF\_DCACHE\_WBUF\_WORDS}$ &%
-Number of data words per entry in the write buffer \\
+$\mathsf{CONF\_HPDCACHE\_REQ\_SRC\_ID\_WIDTH}$ &%
+Width (in bits) of the source ID from requesters \\
 \midrule%
-$\mathsf{CONF\_DCACHE\_WBUF\_TIMECNT\_WIDTH}$ &%
-Width (in bits) of the time counter in write buffer entries \\
-\midrule%
-$\mathsf{CONF\_DCACHE\_RTAB\_ENTRIES}$ &%
-Number of entries in the replay table \\
-\midrule%
-$\mathsf{CONF\_DCACHE\_MSHR\_SETS}$ &%
+$\mathsf{CONF\_HPDCACHE\_MSHR\_SETS}$ &%
 Number of sets in the \ac{MSHR} \\
 \midrule%
-$\mathsf{CONF\_DCACHE\_MSHR\_WAYS}$ &%
+$\mathsf{CONF\_HPDCACHE\_MSHR\_WAYS}$ &%
 Number of ways (associativity) in the \ac{MSHR} \\
 \midrule%
-$\mathsf{CONF\_DCACHE\_MEM\_WORDS}$ &%
+$\mathsf{CONF\_HPDCACHE\_WBUF\_DIR\_ENTRIES}$ &%
+Number of entries in the directory of the write buffer \\
+\midrule%
+$\mathsf{CONF\_HPDCACHE\_WBUF\_DATA\_ENTRIES}$ &%
+Number of entries in the data part of the write buffer \\
+\midrule%
+$\mathsf{CONF\_HPDCACHE\_WBUF\_WORDS}$ &%
+Number of data words per entry in the write buffer \\
+\midrule%
+$\mathsf{CONF\_HPDCACHE\_WBUF\_TIMECNT\_WIDTH}$ &%
+Width (in bits) of the time counter in write buffer entries \\
+\midrule%
+$\mathsf{CONF\_HPDCACHE\_RTAB\_ENTRIES}$ &%
+Number of entries in the replay table \\
+\midrule%
+$\mathsf{CONF\_HPDCACHE\_MEM\_WORDS}$ &%
 Number of words in the data channels from/to the memory interface \\
 \midrule%
-$\mathsf{CONF\_DCACHE\_MEM\_ID\_WIDTH}$ &%
+$\mathsf{CONF\_HPDCACHE\_MEM\_ID\_WIDTH}$ &%
 Width (in bits) of the transaction ID from the memory interface \\
 \end{tabular}}
 \end{center}
@@ -256,20 +256,26 @@ These also need to be provided by the user at synthesis-time.
 {\footnotesize%
 \begin{tabular}{p{.42\textwidth}p{.58\textwidth}}
 \toprule%
-$\mathsf{CONF\_DCACHE\_MSHR\_WAYS\_PER\_RAM\_WORD}$ &%
-Number of ways in the same MSHR SRAM word\\
-\midrule%
-$\mathsf{CONF\_DCACHE\_MSHR\_SETS\_PER\_RAM}$ &%
-Number of sets per RAM macro in the MSHR array of the cache\\
-\midrule%
-$\mathsf{CONF\_DCACHE\_DATA\_WAYS\_PER\_RAM\_WORD}$ &%
+$\mathsf{CONF\_HPDCACHE\_DATA\_WAYS\_PER\_RAM\_WORD}$ &%
 Number of ways in the same CACHE data SRAM word\\
 \midrule%
-$\mathsf{CONF\_DCACHE\_DATA\_SETS\_PER\_RAM}$ &%
+$\mathsf{CONF\_HPDCACHE\_DATA\_SETS\_PER\_RAM}$ &%
 Number of sets per RAM macro in the DATA array of the cache\\
 \midrule%
-$\mathsf{CONF\_DCACHE\_ACCESS\_WORDS}$ &%
-Number of words of a given SET that can be accessed simultaneously from the CACHE data array \\
+$\mathsf{CONF\_HPDCACHE\_DATA\_RAM\_WBYTEENABLE}$ &%
+Use RAM macros with byte-enable instead of bit-mask for the CACHE data array\\
+\midrule%
+$\mathsf{CONF\_HPDCACHE\_ACCESS\_WORDS}$ &%
+Number of words that can be accessed simultaneously from the CACHE data array\\
+\midrule%
+$\mathsf{CONF\_HPDCACHE\_MSHR\_WAYS\_PER\_RAM\_WORD}$ &%
+Number of ways in the same MSHR SRAM word\\
+\midrule%
+$\mathsf{CONF\_HPDCACHE\_MSHR\_SETS\_PER\_RAM}$ &%
+Number of sets per RAM macro in the MSHR array of the cache\\
+\midrule%
+$\mathsf{CONF\_HPDCACHE\_MSHR\_RAM\_WBYTEENABLE}$ &%
+Use RAM macros with byte-enable instead of bit-mask for the MSHR\\
 \tablabel{dcache_technology_dependent_parameters}
 \end{tabular}}
 \end{center}
@@ -285,25 +291,25 @@ Several internal configuration values are computed from the above ones.
 {\footnotesize%
 \begin{tabular}{p{.35\textwidth}p{.65\textwidth}}
 \toprule%
-\multirow{2}{*}{$\mathsf{DCACHE\_CL\_WIDTH}$}%
+\multirow{2}{*}{$\mathsf{HPDCACHE\_CL\_WIDTH}$}%
 & Width (in bits) of a cacheline\\%
-& $\mathsf{CONF\_DCACHE\_CL\_WORDS~\times~CONF\_DCACHE\_WORD\_WIDTH}$\\
+& $\mathsf{CONF\_HPDCACHE\_CL\_WORDS~\times~CONF\_HPDCACHE\_WORD\_WIDTH}$\\
 \midrule%
-\multirow{2}{*}{$\mathsf{DCACHE\_NLINE\_WIDTH}$}%
+\multirow{2}{*}{$\mathsf{HPDCACHE\_NLINE\_WIDTH}$}%
 & Width (in bits) of the CACHELINE index part of the address\\%
-& $\mathsf{CONF\_DCACHE\_PA\_WIDTH - log_2(DCACHE\_CL\_WIDTH/8)}$\\
+& $\mathsf{CONF\_HPDCACHE\_PA\_WIDTH - log_2(HPDCACHE\_CL\_WIDTH/8)}$\\
 \midrule%
-\multirow{2}{*}{$\mathsf{DCACHE\_SET\_WIDTH}$}%
+\multirow{2}{*}{$\mathsf{HPDCACHE\_SET\_WIDTH}$}%
 & Width (in bits) of the SET part of the address \\%
-& $\mathsf{log_2(CONF\_DCACHE\_SETS)}$ \\
+& $\mathsf{log_2(CONF\_HPDCACHE\_SETS)}$ \\
 \midrule%
-\multirow{2}{*}{$\mathsf{DCACHE\_TAG\_WIDTH}$}%
+\multirow{2}{*}{$\mathsf{HPDCACHE\_TAG\_WIDTH}$}%
 & Width (in bits) of the TAG part of the address\\%
-& $\mathsf{DCACHE\_NLINE\_WIDTH - DCACHE\_SET\_WIDTH}$\\
+& $\mathsf{HPDCACHE\_NLINE\_WIDTH - HPDCACHE\_SET\_WIDTH}$\\
 \midrule%
-\multirow{2}{*}{$\mathsf{DCACHE\_WBUF\_WIDTH}$}%
+\multirow{2}{*}{$\mathsf{HPDCACHE\_WBUF\_WIDTH}$}%
 & Width (in bits) of an entry in the write-buffer\\%
-& $\mathsf{CONF\_DCACHE\_WBUF\_WORDS~\times~CONF\_DCACHE\_WORD\_WIDTH}$\\
+& $\mathsf{CONF\_HPDCACHE\_WBUF\_WORDS~\times~CONF\_HPDCACHE\_WORD\_WIDTH}$\\
 \end{tabular}}
 \end{center}
 \end{table}
@@ -371,64 +377,64 @@ All these interfaces are synchronous to the rising edge of the global clock $\ma
   & \textbf{Source}
   & \textbf{Description} \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_VALID}$
+  $\mathsf{HPDCACHE\_REQ\_VALID}$
   & Requester
   & Indicates that the channel is signaling a valid request.
   See \secref{if_valid_ready}.\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_READY}$
+  $\mathsf{HPDCACHE\_REQ\_READY}$
   & Cache
   & Indicates that the cache is ready to accept a request.
   See \secref{if_valid_ready}.\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_ADDR}$
+  $\mathsf{HPDCACHE\_REQ\_ADDR}$
   & Requester
   & Target physical address of the request.
-  The address shall be aligned to the $\mathsf{DCACHE\_REQ\_SIZE}$ field.
+  The address shall be aligned to the $\mathsf{HPDCACHE\_REQ\_SIZE}$ field.
   See \secref{if_addr_data_alignment}.\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_OP}$
+  $\mathsf{HPDCACHE\_REQ\_OP}$
   & Requester
   & Indicates the type of operation to be performed.
   See \secref{if_req_op}.\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_WDATA}$
+  $\mathsf{HPDCACHE\_REQ\_WDATA}$
   & Requester
   & Write data (little-endian).
   It shall be naturally aligned to the address.
   See \secref{if_addr_data_alignment}.\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_BE}$
+  $\mathsf{HPDCACHE\_REQ\_BE}$
   & Requester
   & Byte-enable for write data (little-endian).
   It shall be naturally aligned to the address.
   See \secref{if_addr_data_alignment}.\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_SIZE}$
+  $\mathsf{HPDCACHE\_REQ\_SIZE}$
   & Requester
   & Indicate the size of the access.
   The size is encoded as the power-of-two of the number of bytes (e.g. 0 is $\mathsf{2^0~=~1}$, 5 is $\mathsf{2^5~=~32}$).\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_UNCACHEABLE}$
+  $\mathsf{HPDCACHE\_REQ\_UNCACHEABLE}$
   & Requester
   & Indicates whether the access needs to be cached (unset) or not (set).
   Uncacheable accesses are directly forwarded to the memory.
   See \secref{if_req_uncacheable}.\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_SID}$
+  $\mathsf{HPDCACHE\_REQ\_SID}$
   & Requester
   & The identification tag for the requester.
   It shall be identical to the index of the request port binded to that requester.
   See \secref{if_req_sid}.\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_TID}$
+  $\mathsf{HPDCACHE\_REQ\_TID}$
   & Requester
   & The identification tag for the request.
   A requester can issue multiple requests.
   The corresponding response from the cache will return this TID.
   See \secref{if_req_tid}.\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_NEED\_RSP}$
+  $\mathsf{HPDCACHE\_REQ\_NEED\_RSP}$
   & Requester
   & The identification tag for the request.
   Indicates whether the request needs a response from the cache.
@@ -447,30 +453,30 @@ All these interfaces are synchronous to the rising edge of the global clock $\ma
   & \textbf{Source}
   & \textbf{Description} \\
   \midrule
-  $\mathsf{DCACHE\_RSP\_VALID}$
+  $\mathsf{HPDCACHE\_RSP\_VALID}$
   & Cache
   & Indicates that the channel is signaling a valid response.
   See \secref{if_valid_ready}.\\
   \midrule
-  $\mathsf{DCACHE\_RSP\_RDATA}$
+  $\mathsf{HPDCACHE\_RSP\_RDATA}$
   & Cache
   & Response read data.
   It shall be naturally aligned to the request address.
   See \secref{if_addr_data_alignment}.\\
   \midrule
-  $\mathsf{DCACHE\_RSP\_SID}$
+  $\mathsf{HPDCACHE\_RSP\_SID}$
   & Cache
   & The identification tag for the requester.
   It corresponds to the SID transferred with the request.
   See \secref{if_req_sid}.\\
   \midrule
-  $\mathsf{DCACHE\_RSP\_TID}$
+  $\mathsf{HPDCACHE\_RSP\_TID}$
   & Cache
   & The identification tag for the request.
   It corresponds to the TID transferred with the request.
   See \secref{if_req_tid}.\\
   \midrule
-  $\mathsf{DCACHE\_RSP\_ERROR}$
+  $\mathsf{HPDCACHE\_RSP\_ERROR}$
   & Cache
   & Indicates whether there was an error condition while processing the request.
   See \secref{if_rsp_error}.\\
@@ -521,7 +527,7 @@ All these interfaces are synchronous to the rising edge of the global clock $\ma
   & Cache
   & Indicate the size of the access.
   The size is encoded as the power-of-two of the number of bytes.
-  \textbf{In the current design implementation, the size value is equal to $\mathbf{log_2(DCACHE\_CL\_WIDTH/8)}$}.
+  \textbf{In the current design implementation, the size value is equal to $\mathbf{log_2(HPDCACHE\_CL\_WIDTH/8)}$}.
   \textbf{However, smaller values may be used in the future. Thus, it should be decoded}.\\
   \midrule
   $\mathsf{MEM\_REQ\_MISS\_READ\_ID}$
@@ -623,7 +629,7 @@ All these interfaces are synchronous to the rising edge of the global clock $\ma
   & Cache
   & Indicate the size of the access.
   The size is encoded as the power-of-two of the number of bytes.
-  \textbf{In this interface, the size shall be less or equal to $\mathbf{log_2(CONF\_DCACHE\_WBUF\_WORDS)}$}.\\
+  \textbf{In this interface, the size shall be less or equal to $\mathbf{log_2(CONF\_HPDCACHE\_WBUF\_WORDS)}$}.\\
   \midrule
   $\mathsf{MEM\_REQ\_WBUF\_WRITE\_ID}$
   & Cache
@@ -1016,7 +1022,7 @@ Other bits outside that range must be set to 0.
 \subsection{Type of operation}%
 \seclabel{if_req_op}
 
-A requester indicates the required operation on the 4-bit, $\mathsf{DCACHE\_REQ\_OP}$ signal.
+A requester indicates the required operation on the 4-bit, $\mathsf{HPDCACHE\_REQ\_OP}$ signal.
 The supported operation are detailed in \tabref{dcache_req_op}.
 
 \begin{table}[h!]
@@ -1030,59 +1036,59 @@ The supported operation are detailed in \tabref{dcache_req_op}.
   & \textbf{Encoding}
   & \textbf{Type} \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_LOAD}$
+  $\mathsf{HPDCACHE\_REQ\_LOAD}$
   & 0b0000
   & Read operation \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_STORE}$
+  $\mathsf{HPDCACHE\_REQ\_STORE}$
   & 0b0001
   & Write operation \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_AMO\_LR}$
+  $\mathsf{HPDCACHE\_REQ\_AMO\_LR}$
   & 0b0100
   & Atomic Load-reserved operation \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_AMO\_SC}$
+  $\mathsf{HPDCACHE\_REQ\_AMO\_SC}$
   & 0b0101
   & Atomic Store-conditional operation \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_AMO\_SWAP}$
+  $\mathsf{HPDCACHE\_REQ\_AMO\_SWAP}$
   & 0b0110
   & Atomic SWAP operation \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_AMO\_ADD}$
+  $\mathsf{HPDCACHE\_REQ\_AMO\_ADD}$
   & 0b0111
   & Atomic integer ADD operation \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_AMO\_AND}$
+  $\mathsf{HPDCACHE\_REQ\_AMO\_AND}$
   & 0b1000
   & Atomic bitwise AND operation \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_AMO\_OR}$
+  $\mathsf{HPDCACHE\_REQ\_AMO\_OR}$
   & 0b1001
   & Atomic bitwise OR operation \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_AMO\_XOR}$
+  $\mathsf{HPDCACHE\_REQ\_AMO\_XOR}$
   & 0b1010
   & Atomic bitwise XOR operation \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_AMO\_MAX}$
+  $\mathsf{HPDCACHE\_REQ\_AMO\_MAX}$
   & 0b1011
   & Atomic integer signed MAX operation \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_AMO\_MAXU}$
+  $\mathsf{HPDCACHE\_REQ\_AMO\_MAXU}$
   & 0b1100
   & Atomic integer unsigned MAX operation \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_AMO\_MIN}$
+  $\mathsf{HPDCACHE\_REQ\_AMO\_MIN}$
   & 0b1101
   & Atomic integer signed MIN operation \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_AMO\_MINU}$
+  $\mathsf{HPDCACHE\_REQ\_AMO\_MINU}$
   & 0b1110
   & Atomic integer unsigned MIN operation \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_CMO}$
+  $\mathsf{HPDCACHE\_REQ\_CMO}$
   & 0b1111
   & \acf*{CMO} \\
 \end{tabular}}
@@ -1100,10 +1106,10 @@ More details on how this cache implements them are found in \charef{amo}.
 \subsection{Source identifier}
 \seclabel{if_req_sid}
 
-Each request identifies its source through the $\mathsf{DCACHE\_REQ\_SID}$ signal.
-The $\mathsf{DCACHE\_REQ\_SID}$ signal shall be decoded when the $\mathsf{DCACHE\_REQ\_VALID}$ signal is set to 1.
+Each request identifies its source through the $\mathsf{HPDCACHE\_REQ\_SID}$ signal.
+The $\mathsf{HPDCACHE\_REQ\_SID}$ signal shall be decoded when the $\mathsf{HPDCACHE\_REQ\_VALID}$ signal is set to 1.
 
-The width of this signal is $\mathsf{CONF\_DCACHE\_REQ\_SRC\_ID\_WIDTH}$ (\tabref{dcache_parameters}) bits.
+The width of this signal is $\mathsf{CONF\_HPDCACHE\_REQ\_SRC\_ID\_WIDTH}$ (\tabref{dcache_parameters}) bits.
 
 The \ac{HPDcache} reflects the value of the \textbf{SID} of the request into the corresponding \textbf{SID} of the response.
 
@@ -1118,12 +1124,12 @@ The \ac{HPDcache} uses this information to route responses to the correct reques
 \subsection{Transaction identifier}
 \seclabel{if_req_tid}
 
-Each request identifies transactions through the $\mathsf{DCACHE\_REQ\_TID}$ signal.
-The $\mathsf{DCACHE\_REQ\_TID}$ signal shall be decoded when the $\mathsf{DCACHE\_REQ\_VALID}$ signal is set to 1.
+Each request identifies transactions through the $\mathsf{HPDCACHE\_REQ\_TID}$ signal.
+The $\mathsf{HPDCACHE\_REQ\_TID}$ signal shall be decoded when the $\mathsf{HPDCACHE\_REQ\_VALID}$ signal is set to 1.
 
-The width of this signal is $\mathsf{CONF\_DCACHE\_REQ\_TRANS\_ID\_WIDTH}$ bits (\tabref{dcache_parameters}).
+The width of this signal is $\mathsf{CONF\_HPDCACHE\_REQ\_TRANS\_ID\_WIDTH}$ bits (\tabref{dcache_parameters}).
 
-This signal can contain any value from $\mathsf{0}$ to $\mathsf{2^{CONF\_DCACHE\_REQ\_TRANS\_ID\_WIDTH} - 1}$.
+This signal can contain any value from $\mathsf{0}$ to $\mathsf{2^{CONF\_HPDCACHE\_REQ\_TRANS\_ID\_WIDTH} - 1}$.
 
 The \ac{HPDcache} forwards the value of the \textbf{TID} of the request into the \textbf{TID} of the corresponding response.
 
@@ -1145,9 +1151,9 @@ A segment corresponds to an address range: a base address and an end address.
 Some segments are cacheable and others not.
 The \ac{HPDcache} needs to know which segments are cacheable to determine if for a given read request, it needs to replicate read data into the cache.
 
-The request interface implements an uncacheable bit ($\mathsf{DCACHE\_REQ\_UNCACHEABLE}$).
+The request interface implements an uncacheable bit ($\mathsf{HPDCACHE\_REQ\_UNCACHEABLE}$).
 When this bit is set, the access is considered uncacheable.
-The $\mathsf{DCACHE\_REQ\_UNCACHEABLE}$ signal shall be decoded when the $\mathsf{DCACHE\_REQ\_VALID}$ signal is set to 1.
+The $\mathsf{HPDCACHE\_REQ\_UNCACHEABLE}$ signal shall be decoded when the $\mathsf{HPDCACHE\_REQ\_VALID}$ signal is set to 1.
 
 \begin{tcolorbox}[colback=red!10!white,
                   colframe=white!10!red,
@@ -1164,20 +1170,20 @@ In the event that the same address is accessed with different values in the unca
 \subsection{Need response}%
 \seclabel{if_req_need_rsp}
 
-For any given request, a requester can set to 0 the bit $\mathsf{DCACHE\_REQ\_NEED\_RSP}$ to indicate that it does not wish a response for that request.
-The $\mathsf{DCACHE\_REQ\_NEED\_RSP}$ signal shall be decoded when the $\mathsf{DCACHE\_REQ\_VALID}$ signal is set to 1.
+For any given request, a requester can set to 0 the bit $\mathsf{HPDCACHE\_REQ\_NEED\_RSP}$ to indicate that it does not wish a response for that request.
+The $\mathsf{HPDCACHE\_REQ\_NEED\_RSP}$ signal shall be decoded when the $\mathsf{HPDCACHE\_REQ\_VALID}$ signal is set to 1.
 
-When $\mathsf{DCACHE\_REQ\_NEED\_RSP}$ is set to 0, the \ac{HPDcache} processes the request but it does not send an acknowledge to the corresponding requester when the transaction is completed.
+When $\mathsf{HPDCACHE\_REQ\_NEED\_RSP}$ is set to 0, the \ac{HPDcache} processes the request but it does not send an acknowledge to the corresponding requester when the transaction is completed.
 
 
 \subsection{Error response}%
 \seclabel{if_rsp_error}
 
-The response interface contains a single-bit $\mathsf{DCACHE\_RSP\_ERROR}$ signal.
+The response interface contains a single-bit $\mathsf{HPDCACHE\_RSP\_ERROR}$ signal.
 This signal is set to 1 by the \ac{HPDcache} when some error condition occurred during the processing of the corresponding request.
-The $\mathsf{DCACHE\_RSP\_ERROR}$ signal shall be decoded when the $\mathsf{DCACHE\_RSP\_VALID}$ signal is set to 1.
+The $\mathsf{HPDCACHE\_RSP\_ERROR}$ signal shall be decoded when the $\mathsf{HPDCACHE\_RSP\_VALID}$ signal is set to 1.
 
-When the $\mathsf{DCACHE\_RSP\_ERROR}$ signal is set to 1 in the response, the effect of the corresponding request is undetermined.
+When the $\mathsf{HPDCACHE\_RSP\_ERROR}$ signal is set to 1 in the response, the effect of the corresponding request is undetermined.
 In the case of \textbf{LOAD} or \textbf{AMOs} operations (see \secref{if_req_op}), the \textbf{RDATA} signal in the response does not contain any valid data.
 
 
@@ -1198,15 +1204,15 @@ In the case of \textbf{LOAD} or \textbf{AMOs} operations (see \secref{if_req_op}
   & \textbf{Encoding}
   & \textbf{Type} \\
   \midrule
-  $\mathsf{DCACHE\_MEM\_LOAD}$
+  $\mathsf{HPDCACHE\_MEM\_LOAD}$
   & 0b00
   & Read operation \\
   \midrule
-  $\mathsf{DCACHE\_MEM\_STORE}$
+  $\mathsf{HPDCACHE\_MEM\_STORE}$
   & 0b01
   & Write operation \\
   \midrule
-  $\mathsf{DCACHE\_MEM\_ATOMIC}$
+  $\mathsf{HPDCACHE\_MEM\_ATOMIC}$
   & 0b10
   & Atomic operation \\
 \end{tabular}}
@@ -1215,7 +1221,7 @@ In the case of \textbf{LOAD} or \textbf{AMOs} operations (see \secref{if_req_op}
 
 Load and store operations are normal read and write operations from/to the specified address.
 
-In case of an atomic operation request ($\mathsf{DCACHE\_MEM\_ATOMIC}$), the specific operation is specified in the $\mathsf{MEM\_REQ\_ATOMIC}$ signal.
+In case of an atomic operation request ($\mathsf{HPDCACHE\_MEM\_ATOMIC}$), the specific operation is specified in the $\mathsf{MEM\_REQ\_ATOMIC}$ signal.
 
 
 \subsubsection{Atomic operations on the memory interface}
@@ -1235,47 +1241,47 @@ Note that these operations are compatible with those in AXI.
   & \textbf{Encoding}
   & \textbf{Type} \\
   \midrule
-  $\mathsf{DCACHE\_MEM\_ATOMIC\_ADD}$
+  $\mathsf{HPDCACHE\_MEM\_ATOMIC\_ADD}$
   & 0b0000
   & Atomic fetch-and-add operation \\
   \midrule
-  $\mathsf{DCACHE\_MEM\_ATOMIC\_CLR}$
+  $\mathsf{HPDCACHE\_MEM\_ATOMIC\_CLR}$
   & 0b0001
   & Atomic fetch-and-clear operation \\
   \midrule
-  $\mathsf{DCACHE\_MEM\_ATOMIC\_SET}$
+  $\mathsf{HPDCACHE\_MEM\_ATOMIC\_SET}$
   & 0b0010
   & Atomic fetch-and-set operation \\
   \midrule
-  $\mathsf{DCACHE\_MEM\_ATOMIC\_EOR}$
+  $\mathsf{HPDCACHE\_MEM\_ATOMIC\_EOR}$
   & 0b0011
   & Atomic fetch-and-exclusive-or operation \\
   \midrule
-  $\mathsf{DCACHE\_MEM\_ATOMIC\_SMAX}$
+  $\mathsf{HPDCACHE\_MEM\_ATOMIC\_SMAX}$
   & 0b0100
   & Atomic fetch-and-maximum (signed) operation \\
   \midrule
-  $\mathsf{DCACHE\_MEM\_ATOMIC\_SMIN}$
+  $\mathsf{HPDCACHE\_MEM\_ATOMIC\_SMIN}$
   & 0b0101
   & Atomic fetch-and-minimum (signed) operation \\
   \midrule
-  $\mathsf{DCACHE\_MEM\_ATOMIC\_UMAX}$
+  $\mathsf{HPDCACHE\_MEM\_ATOMIC\_UMAX}$
   & 0b0110
   & Atomic fetch-and-maximum (unsigned) operation \\
   \midrule
-  $\mathsf{DCACHE\_MEM\_ATOMIC\_UMIN}$
+  $\mathsf{HPDCACHE\_MEM\_ATOMIC\_UMIN}$
   & 0b0111
   & Atomic fetch-and-minimum (unsigned) operation \\
   \midrule
-  $\mathsf{DCACHE\_MEM\_ATOMIC\_SWAP}$
+  $\mathsf{HPDCACHE\_MEM\_ATOMIC\_SWAP}$
   & 0b1000
   & Atomic swap operation \\
   \midrule
-  $\mathsf{DCACHE\_MEM\_ATOMIC\_LDEX}$
+  $\mathsf{HPDCACHE\_MEM\_ATOMIC\_LDEX}$
   & 0b1100
   & Load-exclusive operation \\
   \midrule
-  $\mathsf{DCACHE\_MEM\_ATOMIC\_STEX}$
+  $\mathsf{HPDCACHE\_MEM\_ATOMIC\_STEX}$
   & 0b1101
   & Store-exclusive operation \\
 \end{tabular}}
@@ -1335,15 +1341,15 @@ As a reminder, the \ac{HPDcache} implements multiple (four) request interfaces t
 \begin{minipage}{\textwidth}
 The requests listed below behave as a read-modify-write operations:
 {\small\begin{itemize}[itemsep=0pt]
-  \item $\mathsf{DCACHE\_MEM\_ATOMIC\_ADD}$
-  \item $\mathsf{DCACHE\_MEM\_ATOMIC\_CLR}$
-  \item $\mathsf{DCACHE\_MEM\_ATOMIC\_SET}$
-  \item $\mathsf{DCACHE\_MEM\_ATOMIC\_EOR}$
-  \item $\mathsf{DCACHE\_MEM\_ATOMIC\_SMAX}$
-  \item $\mathsf{DCACHE\_MEM\_ATOMIC\_SMIN}$
-  \item $\mathsf{DCACHE\_MEM\_ATOMIC\_UMAX}$
-  \item $\mathsf{DCACHE\_MEM\_ATOMIC\_UMIN}$
-  \item $\mathsf{DCACHE\_MEM\_ATOMIC\_SWAP}$
+  \item $\mathsf{HPDCACHE\_MEM\_ATOMIC\_ADD}$
+  \item $\mathsf{HPDCACHE\_MEM\_ATOMIC\_CLR}$
+  \item $\mathsf{HPDCACHE\_MEM\_ATOMIC\_SET}$
+  \item $\mathsf{HPDCACHE\_MEM\_ATOMIC\_EOR}$
+  \item $\mathsf{HPDCACHE\_MEM\_ATOMIC\_SMAX}$
+  \item $\mathsf{HPDCACHE\_MEM\_ATOMIC\_SMIN}$
+  \item $\mathsf{HPDCACHE\_MEM\_ATOMIC\_UMAX}$
+  \item $\mathsf{HPDCACHE\_MEM\_ATOMIC\_UMIN}$
+  \item $\mathsf{HPDCACHE\_MEM\_ATOMIC\_SWAP}$
 \end{itemize}}
 \end{minipage}
 
@@ -1357,7 +1363,7 @@ A particularity of these requests is that they generate two responses from the m
 Both responses may arrive in any given order to the initiating \ac{HPDcache}.
 
 Regarding errors, if any response has its ERROR signal set to 1 ($\mathsf{MEM\_RESP\_UC\_*\_ERROR}$), the \ac{HPDcache} considers that the operation was not completed.
-It waits for both responses and it forwards an error response ($\mathsf{DCACHE\_RSP\_ERROR}$ is set to 1) to the corresponding requester on the \ac{HPDcache} requesters' side.
+It waits for both responses and it forwards an error response ($\mathsf{HPDCACHE\_RSP\_ERROR}$ is set to 1) to the corresponding requester on the \ac{HPDcache} requesters' side.
 
 
 \subsubsection{Responses for exclusive load and store operations on the memory interface}
@@ -1365,11 +1371,11 @@ It waits for both responses and it forwards an error response ($\mathsf{DCACHE\_
 Exclusive load and store operations are issued as normal load and store operations on the memory uncached read request interface (\tabref{if_mem_uc_read}) and memory uncached write request interface (\tabref{if_mem_uc_write}), respectively.
 
 Specific operation types are however used on these exclusive requests:
-$\mathsf{DCACHE\_MEM\_ATOMIC\_LDEX}$ for loads; and $\mathsf{DCACHE\_MEM\_ATOMIC\_STEX}$ for stores.
+$\mathsf{HPDCACHE\_MEM\_ATOMIC\_LDEX}$ for loads; and $\mathsf{HPDCACHE\_MEM\_ATOMIC\_STEX}$ for stores.
 
 These requests behave similarly to normal load and store to the memory but provide some additional properties described in \charef{amo}.
 
-In the case of the $\mathsf{DCACHE\_MEM\_ATOMIC\_STEX}$ request, the write acknowledgement contains an additional information in the $\mathsf{MEM\_RESP\_UC\_WRITE\_IS\_ATOMIC}$.
+In the case of the $\mathsf{HPDCACHE\_MEM\_ATOMIC\_STEX}$ request, the write acknowledgement contains an additional information in the $\mathsf{MEM\_RESP\_UC\_WRITE\_IS\_ATOMIC}$.
 If this signal is set to 1, the exclusive store was "atomic", hence the data was actually written in memory,
 Otherwise, if this signal is set to 0, the exclusive store was "non-atomic".
 Hence the write operation was aborted.
@@ -1535,23 +1541,23 @@ The second part (tracking) of the miss handler contains an essential component o
 Each entry of this component contains the status for each in-flight read miss request to the memory.
 Therefore, the number of entries in the \ac{MSHR} defines the maximum number of in-flight read miss requests.
 
-The number of entries in the \ac{MSHR} depends on two configuration values: $\mathsf{CONF\_DCACHE\_MSHR\_WAYS}$ and $\mathsf{CONF\_DCACHE\_MSHR\_SETS}$.
+The number of entries in the \ac{MSHR} depends on two configuration values: $\mathsf{CONF\_HPDCACHE\_MSHR\_WAYS}$ and $\mathsf{CONF\_HPDCACHE\_MSHR\_SETS}$.
 The number of entries is computed as:
 \begin{equation*}
-\mathsf{DCACHE\_MSHR\_SETS~\times~CONF\_DCACHE\_MSHR\_WAYS}
+\mathsf{HPDCACHE\_MSHR\_SETS~\times~CONF\_HPDCACHE\_MSHR\_WAYS}
 \end{equation*}
 
 As for any set-associative array:
 
 \begin{tabular}{p{\linewidth}}
     \toprule
-    When $\mathsf{CONF\_DCACHE\_MSHR\_SETS = 1}~\text{and}~\mathsf{CONF\_DCACHE\_MSHR\_WAYS > 1}$\\
+    When $\mathsf{CONF\_HPDCACHE\_MSHR\_SETS = 1}~\text{and}~\mathsf{CONF\_HPDCACHE\_MSHR\_WAYS > 1}$\\
     $\rightarrow$~The \ac{MSHR} behaves as a fully-associative access array.\\
     \midrule
-    When $\mathsf{CONF\_DCACHE\_MSHR\_SETS > 1}~\text{and}~\mathsf{CONF\_DCACHE\_MSHR\_WAYS = 1}$\\
+    When $\mathsf{CONF\_HPDCACHE\_MSHR\_SETS > 1}~\text{and}~\mathsf{CONF\_HPDCACHE\_MSHR\_WAYS = 1}$\\
     $\rightarrow$~The \ac{MSHR} behaves as a direct access array.\\
     \midrule
-    When $\mathsf{CONF\_DCACHE\_MSHR\_SETS > 1}~\text{and}~\mathsf{CONF\_DCACHE\_MSHR\_WAYS > 1}$\\
+    When $\mathsf{CONF\_HPDCACHE\_MSHR\_SETS > 1}~\text{and}~\mathsf{CONF\_HPDCACHE\_MSHR\_WAYS > 1}$\\
     $\rightarrow$~The \ac{MSHR} behaves as a set-associative access array\\
 \end{tabular}
 
@@ -1594,16 +1600,16 @@ Need Response\\
 {\bf Width} \\
 \midrule%
 MSHR tag (T) &%
-$\mathsf{T = DCACHE\_NLINE\_WIDTH - log_2(CONF\_DCACHE\_MSHR\_SETS)}$ \\
+$\mathsf{T = HPDCACHE\_NLINE\_WIDTH - log_2(CONF\_HPDCACHE\_MSHR\_SETS)}$ \\
 \midrule%
 Request ID (R) &%
-$\mathsf{R = CONF\_DCACHE\_REQ\_TRANS\_ID\_WIDTH}$ \\
+$\mathsf{R = CONF\_HPDCACHE\_REQ\_TRANS\_ID\_WIDTH}$ \\
 \midrule%
 Source ID (S) &%
-$\mathsf{S = CONF\_DCACHE\_REQ\_SRC\_ID\_WIDTH}$ \\
+$\mathsf{S = CONF\_HPDCACHE\_REQ\_SRC\_ID\_WIDTH}$ \\
 \midrule%
 Word Index (W) &%
-$\mathsf{W = log_2(CONF\_DCACHE\_CL\_WORDS})$ \\
+$\mathsf{W = log_2(CONF\_HPDCACHE\_CL\_WORDS})$ \\
 \end{tabular}
 \end{center}
 
@@ -1611,14 +1617,14 @@ $\mathsf{W = log_2(CONF\_DCACHE\_CL\_WORDS})$ \\
 \seclabel{mshr_implementation}
 
 In order to limit the area cost of the \ac{MSHR}, it can be implemented using SRAM macros.
-The depth of the macros is $\mathsf{CONF\_DCACHE\_MSHR\_SETS\_PER\_RAM}$.
-Multiple ways, for the same set, can be put side-by-side in the same SRAM word ($\mathsf{CONF\_DCACHE\_MSHR\_WAYS\_PER\_RAM\_WORD}$), therefore the width is a multiple of $\mathsf{DCACHE\_MSHR\_ENTRY = T + R + S + W + 1}$ bits.
+The depth of the macros is $\mathsf{CONF\_HPDCACHE\_MSHR\_SETS\_PER\_RAM}$.
+Multiple ways, for the same set, can be put side-by-side in the same SRAM word ($\mathsf{CONF\_HPDCACHE\_MSHR\_WAYS\_PER\_RAM\_WORD}$), therefore the width is a multiple of $\mathsf{HPDCACHE\_MSHR\_ENTRY = T + R + S + W + 1}$ bits.
 The total number of SRAM macros is:
 
 \begin{equation*}
 \begin{split}
-\mathsf{(CONF\_DCACHE\_MSHR\_WAYS/CONF\_DCACHE\_MSHR\_WAYS\_PER\_RAM\_WORD)\times} \\
-\mathsf{\lceil{}CONF\_DCACHE\_MSHR\_SETS/CONF\_DCACHE\_MSHR\_SETS\_PER\_RAM{}\rceil}
+\mathsf{(CONF\_HPDCACHE\_MSHR\_WAYS/CONF\_HPDCACHE\_MSHR\_WAYS\_PER\_RAM\_WORD)\times} \\
+\mathsf{\lceil{}CONF\_HPDCACHE\_MSHR\_SETS/CONF\_HPDCACHE\_MSHR\_SETS\_PER\_RAM{}\rceil}
 \end{split}
 \end{equation*}
 
@@ -1985,7 +1991,7 @@ Additionally, to improve the bandwidth utilization of data channels in the \ac{N
 The write-buffer implements two different parts: directory and data.
 The directory enables tracking of active writes.
 The data buffers are used to coalesce writes from the requester.
-Entries in the data buffers are usually wider ($\mathsf{CONF\_DCACHE\_WBUF\_WORDS}$) than the data interface of requesters.
+Entries in the data buffers are usually wider ($\mathsf{CONF\_HPDCACHE\_WBUF\_WORDS}$) than the data interface of requesters.
 This is to enable the coalescing of multiple writes onto contiguous addresses.
 
 A given entry in the directory of the write-buffer may be in four different states:
@@ -2049,7 +2055,7 @@ A given directory entry is freed (\textbf{SENT}->\textbf{FREE}) when the write a
 The number of cycles to get an acknowledgement from the memory may be significant and it is system-dependent.
 Thus, to improve utilization of data buffers, the number of entries in the directory is generally greater than the number of data buffers.
 However, there is a trade-off between area and performance because the area cost of data buffers is the most critical cost in the write-buffer.
-The synthesis-time parameters $\mathsf{CONF\_DCACHE\_WBUF\_DIR\_ENTRIES}$ and $\mathsf{CONF\_DCACHE\_WBUF\_DATA\_ENTRIES}$ define the number of entries in the write-buffer directory and write-buffer data, respectively.
+The synthesis-time parameters $\mathsf{CONF\_HPDCACHE\_WBUF\_DIR\_ENTRIES}$ and $\mathsf{CONF\_HPDCACHE\_WBUF\_DATA\_ENTRIES}$ define the number of entries in the write-buffer directory and write-buffer data, respectively.
 
 \Todo{Investigate an implementation of the data buffers in RAM.
 At most, only one entry is written and read per cycle in the write buffer.
@@ -2132,7 +2138,7 @@ This is the reason of this choice.
 The $\mathsf{CFIG\_BASE}$ address is specified through an input port of the \ac{HPDcache}.
 The name of this input pin is \lstinline{cfig_base_i}.
 It is a multi-bit signal.
-The number of bits is $\mathsf{CONF\_DCACHE\_PA\_WIDTH}$.
+The number of bits is $\mathsf{CONF\_HPDCACHE\_PA\_WIDTH}$.
 
 \begin{figure}[!htbp]
 \begin{center}
@@ -2259,15 +2265,15 @@ These are mapped on the $\mathsf{CFIG}$ memory address segment in \figref{csr_ad
     & \textbf{Comment}\\
     \toprule
     Sets & Number of sets & RO
-    & $\mathsf{CONF\_DCACHE\_SETS}$
+    & $\mathsf{CONF\_HPDCACHE\_SETS}$
     & Indicates the number of sets implemented.\\
     \midrule
     Ways & Number of ways & RO
-    & $\mathsf{CONF\_DCACHE\_WAYS}$
+    & $\mathsf{CONF\_HPDCACHE\_WAYS}$
     & Indicates the number of ways implemented.\\
     \midrule
     LnSz & Number of bytes per cacheline (power of 2) & RO
-    & $\mathsf{log_2(DCACHE\_CL\_WIDTH/8)}$
+    & $\mathsf{log_2(HPDCACHE\_CL\_WIDTH/8)}$
     & It contains the $\mathsf{log_2}$ of the size in bytes of cachelines.\\
     \midrule
     HwPf & Number of engines in the hardware prefetcher & RO
@@ -2337,7 +2343,7 @@ These are mapped on the $\mathsf{CFIG}$ memory address segment in \figref{csr_ad
     & When set to 1, the write-buffer holds-back writes requests that matches the target address of an on-the-fly write.\\
     \midrule
     Threshold & Number of keep-alive cycles of entries in the write-buffer & RW & \texttt{0x04}
-    & The maximum accepted value is $\mathsf{CONF\_DCACHE\_WBUF\_TIMECNT\_MAX}$.
+    & The maximum accepted value is $\mathsf{CONF\_HPDCACHE\_WBUF\_TIMECNT\_MAX}$.
     When set to 0, a write immediatly closes the corresponding entry.\\
     \bottomrule
     \end{tabular}}
@@ -2462,6 +2468,15 @@ The system can use those signals, for example, for counting those events externa
       \midrule
       $\mathsf{evt\_on\_hold\_req\_o}$
       & The cache put on-hold a request\\
+      \midrule
+      $\mathsf{evt\_rtab\_rollback\_o}$
+      & A replayed request has been pushed back into the replay table\\
+      \midrule
+      $\mathsf{evt\_stall\_refill\_o}$
+      & A new request is stalled because of an ongoing refill operation\\
+      \midrule
+      $\mathsf{evt\_stall\_o}$
+      & A new request is stalled because of a hazard in the pipeline (it includes refill stalls)\\
       \bottomrule
   \end{tabular}}
   \end{center}
@@ -2484,7 +2499,7 @@ The \ac{HPDcache} is able of performing the following \aclp{CMO}:
   \item prefetch the cacheline indicated by its physical address.
 \end{itemize}
 
-Any of the clients of the DCACHE can trigger one of this operation anytime by using specific opcodes in their request.
+Any of the clients of the HPDCACHE can trigger one of this operation anytime by using specific opcodes in their request.
 
 \begin{table}[h!]
 \begin{center}
@@ -2497,23 +2512,23 @@ Any of the clients of the DCACHE can trigger one of this operation anytime by us
   & \textbf{Encoding}
   & \textbf{Type} \\
   \midrule
-  $\mathsf{DCACHE\_CMO\_FENCE}$
+  $\mathsf{HPDCACHE\_CMO\_FENCE}$
   & 0b000
   & Memory write fence.\\
   \midrule
-  $\mathsf{DCACHE\_CMO\_INVAL\_NLINE}$
+  $\mathsf{HPDCACHE\_CMO\_INVAL\_NLINE}$
   & 0b010
   & Invalidate a given cacheline.\\
   \midrule
-  $\mathsf{DCACHE\_CMO\_INVAL\_SET\_WAY}$
+  $\mathsf{HPDCACHE\_CMO\_INVAL\_SET\_WAY}$
   & 0b011
   & Invalidate one or more ways of in a given set of the cache.\\
   \midrule
-  $\mathsf{DCACHE\_CMO\_INVAL\_ALL}$
+  $\mathsf{HPDCACHE\_CMO\_INVAL\_ALL}$
   & 0b100
   & Invalidate the entire cache.\\
   \midrule
-  $\mathsf{DCACHE\_CMO\_PREFETCH}$
+  $\mathsf{HPDCACHE\_CMO\_PREFETCH}$
   & 0b101
   & Prefetch a given cacheline.\\
   \midrule
@@ -2521,8 +2536,8 @@ Any of the clients of the DCACHE can trigger one of this operation anytime by us
 \end{center}
 \end{table}
 
-The $\mathsf{DCACHE\_REQ\_OP}$ must be set to $\mathsf{DCACHE\_REQ\_CMO}$ (see \tabref{dcache_req_op}).
-The \ac{CMO} subtype (\tabref{dcache_req_cmo}) is transferred into the $\mathsf{DCACHE\_REQ\_SIZE}$ signal of the request.
+The $\mathsf{HPDCACHE\_REQ\_OP}$ must be set to $\mathsf{HPDCACHE\_REQ\_CMO}$ (see \tabref{dcache_req_op}).
+The \ac{CMO} subtype (\tabref{dcache_req_cmo}) is transferred into the $\mathsf{HPDCACHE\_REQ\_SIZE}$ signal of the request.
 
 The following sections describe in detail each of the \ac{CMO} operations, and how the requests shall be encoded to trigger each of them.
 
@@ -2539,31 +2554,31 @@ To do this, the requester shall build the request as follows:
   \textbf{Signal}
   & \textbf{Value} \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_ADDR}$
+  $\mathsf{HPDCACHE\_REQ\_ADDR}$
   & *\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_OP}$
-  & $\mathsf{DCACHE\_REQ\_CMO}$ \\
+  $\mathsf{HPDCACHE\_REQ\_OP}$
+  & $\mathsf{HPDCACHE\_REQ\_CMO}$ \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_WDATA}$
+  $\mathsf{HPDCACHE\_REQ\_WDATA}$
   & *\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_BE}$
+  $\mathsf{HPDCACHE\_REQ\_BE}$
   & *\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_SIZE}$
-  & $\mathsf{DCACHE\_CMO\_FENCE}$ \\
+  $\mathsf{HPDCACHE\_REQ\_SIZE}$
+  & $\mathsf{HPDCACHE\_CMO\_FENCE}$ \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_UNCACHEABLE}$
+  $\mathsf{HPDCACHE\_REQ\_UNCACHEABLE}$
   & *\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_SID}$
+  $\mathsf{HPDCACHE\_REQ\_SID}$
   & Corresponding source ID of the requester\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_TID}$
+  $\mathsf{HPDCACHE\_REQ\_TID}$
   & Transaction identifier from the requester\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_NEED\_RSP}$
+  $\mathsf{HPDCACHE\_REQ\_NEED\_RSP}$
   & *\\
   \bottomrule
   & * means don't care \\
@@ -2588,31 +2603,31 @@ To invalidate a cacheline by its physical address, the requester shall build the
   \textbf{Signal}
   & \textbf{Value} \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_ADDR}$
+  $\mathsf{HPDCACHE\_REQ\_ADDR}$
   & Physical address to invalidate in the cache.\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_OP}$
-  & $\mathsf{DCACHE\_REQ\_CMO}$ \\
+  $\mathsf{HPDCACHE\_REQ\_OP}$
+  & $\mathsf{HPDCACHE\_REQ\_CMO}$ \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_WDATA}$
+  $\mathsf{HPDCACHE\_REQ\_WDATA}$
   & *\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_BE}$
+  $\mathsf{HPDCACHE\_REQ\_BE}$
   & *\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_SIZE}$
-  & $\mathsf{DCACHE\_CMO\_INVAL\_NLINE}$ \\
+  $\mathsf{HPDCACHE\_REQ\_SIZE}$
+  & $\mathsf{HPDCACHE\_CMO\_INVAL\_NLINE}$ \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_UNCACHEABLE}$
+  $\mathsf{HPDCACHE\_REQ\_UNCACHEABLE}$
   & *\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_SID}$
+  $\mathsf{HPDCACHE\_REQ\_SID}$
   & Corresponding source ID of the requester\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_TID}$
+  $\mathsf{HPDCACHE\_REQ\_TID}$
   & Transaction identifier from the requester\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_NEED\_RSP}$
+  $\mathsf{HPDCACHE\_REQ\_NEED\_RSP}$
   & *\\
   \bottomrule
   & * means don't care \\
@@ -2641,33 +2656,33 @@ To invalidate a group of cachelines, the requester shall build the request as fo
   \textbf{Signal}
   & \textbf{Value} \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_ADDR}$
+  $\mathsf{HPDCACHE\_REQ\_ADDR}$
   & Index of the set to invalidate.\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_OP}$
-  & $\mathsf{DCACHE\_REQ\_CMO}$ \\
+  $\mathsf{HPDCACHE\_REQ\_OP}$
+  & $\mathsf{HPDCACHE\_REQ\_CMO}$ \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_WDATA}$
+  $\mathsf{HPDCACHE\_REQ\_WDATA}$
   & Bit-vector with target ways to invalidate.
-  The number of bits decoded depends on the number of ways implemented ($\mathsf{CONF\_DCACHE\_WAYS}$).
+  The number of bits decoded depends on the number of ways implemented ($\mathsf{CONF\_HPDCACHE\_WAYS}$).
   The least significant bit corresponds to way 0, the second to way 1, etc.\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_BE}$
+  $\mathsf{HPDCACHE\_REQ\_BE}$
   & *\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_SIZE}$
-  & $\mathsf{DCACHE\_CMO\_INVAL\_SET\_WAY}$\\
+  $\mathsf{HPDCACHE\_REQ\_SIZE}$
+  & $\mathsf{HPDCACHE\_CMO\_INVAL\_SET\_WAY}$\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_UNCACHEABLE}$
+  $\mathsf{HPDCACHE\_REQ\_UNCACHEABLE}$
   & *\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_SID}$
+  $\mathsf{HPDCACHE\_REQ\_SID}$
   & Corresponding source ID of the requester\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_TID}$
+  $\mathsf{HPDCACHE\_REQ\_TID}$
   & Transaction identifier from the requester\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_NEED\_RSP}$
+  $\mathsf{HPDCACHE\_REQ\_NEED\_RSP}$
   & *\\
   \bottomrule
   & * means don't care \\
@@ -2698,31 +2713,31 @@ To perform a complete invalidation of the \ac{HPDcache}, the requester shall bui
   \textbf{Signal}
   & \textbf{Value} \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_ADDR}$
+  $\mathsf{HPDCACHE\_REQ\_ADDR}$
   & *\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_OP}$
-  & $\mathsf{DCACHE\_REQ\_CMO}$ \\
+  $\mathsf{HPDCACHE\_REQ\_OP}$
+  & $\mathsf{HPDCACHE\_REQ\_CMO}$ \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_WDATA}$
+  $\mathsf{HPDCACHE\_REQ\_WDATA}$
   & *\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_BE}$
+  $\mathsf{HPDCACHE\_REQ\_BE}$
   & *\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_SIZE}$
-  & $\mathsf{DCACHE\_CMO\_INVAL\_ALL}$\\
+  $\mathsf{HPDCACHE\_REQ\_SIZE}$
+  & $\mathsf{HPDCACHE\_CMO\_INVAL\_ALL}$\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_UNCACHEABLE}$
+  $\mathsf{HPDCACHE\_REQ\_UNCACHEABLE}$
   & *\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_SID}$
+  $\mathsf{HPDCACHE\_REQ\_SID}$
   & Corresponding source ID of the requester\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_TID}$
+  $\mathsf{HPDCACHE\_REQ\_TID}$
   & Transaction identifier from the requester\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_NEED\_RSP}$
+  $\mathsf{HPDCACHE\_REQ\_NEED\_RSP}$
   & *\\
   \bottomrule
   & * means don't care \\
@@ -2753,31 +2768,31 @@ To perform a prefetch, the requester shall build the request as follows:
   \textbf{Signal}
   & \textbf{Value} \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_ADDR}$
+  $\mathsf{HPDCACHE\_REQ\_ADDR}$
   & *\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_OP}$
-  & $\mathsf{DCACHE\_REQ\_CMO}$ \\
+  $\mathsf{HPDCACHE\_REQ\_OP}$
+  & $\mathsf{HPDCACHE\_REQ\_CMO}$ \\
   \midrule
-  $\mathsf{DCACHE\_REQ\_WDATA}$
+  $\mathsf{HPDCACHE\_REQ\_WDATA}$
   & *\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_BE}$
+  $\mathsf{HPDCACHE\_REQ\_BE}$
   & *\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_SIZE}$
-  & $\mathsf{DCACHE\_CMO\_PREFETCH}$\\
+  $\mathsf{HPDCACHE\_REQ\_SIZE}$
+  & $\mathsf{HPDCACHE\_CMO\_PREFETCH}$\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_UNCACHEABLE}$
+  $\mathsf{HPDCACHE\_REQ\_UNCACHEABLE}$
   & *\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_SID}$
+  $\mathsf{HPDCACHE\_REQ\_SID}$
   & Corresponding source ID of the requester\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_TID}$
+  $\mathsf{HPDCACHE\_REQ\_TID}$
   & Transaction identifier from the requester\\
   \midrule
-  $\mathsf{DCACHE\_REQ\_NEED\_RSP}$
+  $\mathsf{HPDCACHE\_REQ\_NEED\_RSP}$
   & Indicates if the requester needs an acknowledgement when the prefetch of the cacheline is completed.\\
   \bottomrule
   & * means don't care \\
@@ -2787,7 +2802,7 @@ As for any regular request, the request shall follow the \textbf{VALID}/\textbf{
 
 If the requested cacheline is already in the cache, at the moment the request is processed, this request has no effect. If the requested cacheline is not present in the cache, the cacheline is fetched from the memory and replicated into the cache.
 
-When the prefetch transaction is completed, and the $\mathsf{DCACHE\_REQ\_NEED\_RSP}$ signal was set to 1, an acknowledgement is sent to the corresponding requester.
+When the prefetch transaction is completed, and the $\mathsf{HPDCACHE\_REQ\_NEED\_RSP}$ signal was set to 1, an acknowledgement is sent to the corresponding requester.
 
 
 \chapter{Atomic Memory Operations (AMOs)}
@@ -2899,9 +2914,9 @@ In summary, in case of \ac{LR} operation, the reservation set address range is c
 \begin{equation*}
     \mathbf{reservation\_set =}
     \begin{cases}
-    \mathsf{\lfloor{}DCACHE\_REQ\_ADDR / 8\rfloor{} \times 8} &
+    \mathsf{\lfloor{}HPDCACHE\_REQ\_ADDR / 8\rfloor{} \times 8} &
       (start\_address) \\
-    \mathsf{(\lfloor{}DCACHE\_REQ\_ADDR / 8\rfloor{} \times 8) + 8} &
+    \mathsf{(\lfloor{}HPDCACHE\_REQ\_ADDR / 8\rfloor{} \times 8) + 8} &
       (end\_address) \\
     \end{cases}
 \end{equation*}
@@ -2924,8 +2939,8 @@ This is regardless whether the \ac{SC} operation succeeds or not.
 The RISC-V ISA~\cite{RISCV_spec} specifies that when a \ac{SC} operation succeeds, the core shall write zero into the destination register of the operation.
 Otherwise, in case of \ac{SC} failure, the core shall write a non-zero value into the destination register.
 
-The \ac{HPDcache} returns the status of an \ac{SC} operation into the $\mathsf{DCACHE\_RSP\_RDATA}$~(\tabref{if_rsp}) signal of the response interface to requesters.
-The following table specifies the values returned by the \ac{HPDcache} into the $\mathsf{DCACHE\_RSP\_RDATA}$ signal in case of \ac{SC} operation.
+The \ac{HPDcache} returns the status of an \ac{SC} operation into the $\mathsf{HPDCACHE\_RSP\_RDATA}$~(\tabref{if_rsp}) signal of the response interface to requesters.
+The following table specifies the values returned by the \ac{HPDcache} into the $\mathsf{HPDCACHE\_RSP\_RDATA}$ signal in case of \ac{SC} operation.
 
 \begin{center}
   {\small%
@@ -2943,10 +2958,10 @@ The following table specifies the values returned by the \ac{HPDcache} into the 
   \end{tabular}}
 \end{center}
 
-Depending on the specified size ($\mathsf{DCACHE\_REQ\_SIZE}$) in the request (\tabref{if_rsp}), the returned value is extended with zeros on the most significant bits.
+Depending on the specified size ($\mathsf{HPDCACHE\_REQ\_SIZE}$) in the request (\tabref{if_rsp}), the returned value is extended with zeros on the most significant bits.
 This is, if the SC request size is 8 bytes, and the SC is a failure, then the returned value is \texttt{0x0000\_0000\_0000\_0001}.
 
-In addition, if the width of the $\mathsf{DCACHE\_RSP\_RDATA}$ signal is wider than the size of the SC request, the return value is replicated $\mathsf{CONF\_DCACHE\_REQ\_WORDS}$~(\tabref{dcache_parameters}) times.
+In addition, if the width of the $\mathsf{HPDCACHE\_RSP\_RDATA}$ signal is wider than the size of the SC request, the return value is replicated $\mathsf{CONF\_HPDCACHE\_REQ\_WORDS}$~(\tabref{dcache_parameters}) times.
 
 
 \chapter{Hardware Memory Prefetcher}
@@ -3110,7 +3125,7 @@ Each prefetcher engine has three dedicated \acp{CSR}.
 \item [\textsf{Stride} parameter] \mbox{}\\
 It is an unsigned, one-based ($\mathsf{value + 1}$), 32-bits wide value.
 The stride is in number of cachelines.
-This means that the stride is always a multiple of $\mathsf{(DCACHE\_CL\_WIDTH/8)}$ bytes.
+This means that the stride is always a multiple of $\mathsf{(HPDCACHE\_CL\_WIDTH/8)}$ bytes.
 
 \item [\textsf{Nblocks} parameter] \mbox{}\\
 It is an unsigned, one-based ($\mathsf{value + 1}$), 16-bits wide value.
