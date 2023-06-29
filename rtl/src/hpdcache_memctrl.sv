@@ -119,6 +119,10 @@ import hpdcache_pkg::*;
     function automatic hpdcache_data_row_enable_t hpdcache_compute_data_ram_cs(
             input hpdcache_req_size_t size_i,
             input hpdcache_word_t     word_i);
+
+        localparam hpdcache_uint32 off_width =
+                HPDCACHE_ACCESS_WORDS > 1 ? $clog2(HPDCACHE_ACCESS_WORDS) : 1;
+
         hpdcache_data_row_enable_t ret;
         hpdcache_uint32 off;
 
@@ -132,7 +136,7 @@ import hpdcache_pkg::*;
             default: ret = hpdcache_data_row_enable_t'({8{1'b1}});
         endcase
 
-        off = hpdcache_uint'(word_i[0 +: $clog2(HPDCACHE_ACCESS_WORDS)]);
+        off = HPDCACHE_ACCESS_WORDS > 1 ? hpdcache_uint'(word_i[0 +: off_width]) : 0;
         return hpdcache_data_row_enable_t'(ret << off);
     endfunction
 
@@ -449,6 +453,9 @@ import hpdcache_pkg::*;
                 .sel_i            (data_amo_write_word_i[0 +: AMO_DATA_INDEX_WIDTH]),
                 .data_o           (data_amo_write_be)
             );
+        end else begin
+            assign data_amo_write_data = data_amo_write_data_i,
+                   data_amo_write_be   = data_amo_write_be_i;
         end
     endgenerate
 
@@ -637,12 +644,6 @@ import hpdcache_pkg::*;
     //  Assertions
     //  {{{
     //  pragma translate_off
-    initial
-    begin
-        req_access_width_assert: assert (HPDCACHE_REQ_WORDS <= HPDCACHE_ACCESS_WORDS) else
-                $error("hpdcache_memctrl: request data width not compatible with the DATA ram layout");
-    end
-
     concurrent_dir_access_assert: assert property (@(posedge clk_i)
             $onehot0({dir_match_i, dir_amo_match_i, dir_cmo_check_i, dir_refill_i})) else
             $error("hpdcache_memctrl: more than one process is accessing the cache directory");
