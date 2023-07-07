@@ -29,3 +29,7 @@ src/target/cva6/cva6_hpdcache_subsystem.sv
 src/target/cva6/cva6_hpdcache_subsystem_axi_arbiter.sv
 src/target/cva6/cva6_hpdcache_if_adapter.sv
 //src/target/cva6/cva6_hpdcache_cmo_if_adapter.sv
+src/utils/hpdcache_l15_req_arbiter.sv
+src/utils/hpdcache_l15_resp_demux.sv
+src/utils/hpdcache_to_l15.sv
+src/target/cva6/cva6_hpdcache_subsystem_l15_adapter.sv

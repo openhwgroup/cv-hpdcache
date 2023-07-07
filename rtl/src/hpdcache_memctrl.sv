@@ -117,9 +117,11 @@ import hpdcache_pkg::*;
     //
     //      description: This function computes the chip-select signal for data
     //                   RAMs depending on the request size and the word offset
-    function automatic hpdcache_data_row_enable_t hpdcache_compute_data_ram_cs(
+
+    function automatic hpdcache_data_row_enable_t hpdcache_compute_data_ram_cs( 
             input hpdcache_req_size_t size_i,
             input hpdcache_word_t     word_i);
+        localparam int unsigned HPDCACHE_ACCESS_WORDS_LOG2 = (HPDCACHE_ACCESS_WORDS==1) ? 1 : $clog2(HPDCACHE_ACCESS_WORDS);
         hpdcache_data_row_enable_t ret;
         hpdcache_uint32 off;
 
@@ -133,9 +135,9 @@ import hpdcache_pkg::*;
             default: ret = hpdcache_data_row_enable_t'({8{1'b1}});
         endcase
 
-        off = hpdcache_uint'(word_i[0 +: $clog2(HPDCACHE_ACCESS_WORDS)]);
-        return hpdcache_data_row_enable_t'(ret << off);
-    endfunction
+        off = (HPDCACHE_ACCESS_WORDS==1) ? hpdcache_uint'(0) : hpdcache_uint'(word_i[0 +: HPDCACHE_ACCESS_WORDS_LOG2]);
+        return hpdcache_data_row_enable_t'(ret << off);      
+    endfunction 
 
     function automatic hpdcache_data_ram_row_idx_t hpdcache_way_to_data_ram_row(
             input hpdcache_way_vector_t way);

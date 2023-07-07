@@ -23,6 +23,12 @@
  *  Description   : Write-Through (WT), High-Throughput (HTPUT) HPDcache Package
  *  History       :
  */
+
+`ifdef PITON_ARIANE
+  `include "l15.tmp.h"
+  `include "define.tmp.h"
+`endif
+
 package hpdcache_pkg;
     //  Definition of global constants for the HPDcache data and directory
     //  {{{
@@ -35,14 +41,26 @@ package hpdcache_pkg;
 `endif
 
     //  HPDcache number of sets
-`ifdef CONF_HPDCACHE_SETS
+`ifdef PITON_ARIANE
+    `ifndef CONFIG_L1D_SIZE
+        localparam int unsigned HPDCACHE_SETS = 128;
+    `else 
+        localparam int unsigned HPDCACHE_SETS = (`CONFIG_L1D_SIZE/`CONFIG_L1D_ASSOCIATIVITY)/(`CONFIG_L1D_CACHELINE_WIDTH/8);
+    `endif
+`elsif CONF_HPDCACHE_SETS
     localparam int unsigned HPDCACHE_SETS = `CONF_HPDCACHE_SETS;
 `else
     localparam int unsigned HPDCACHE_SETS = 128;
 `endif
 
     //  HPDcache number of ways
-`ifdef CONF_HPDCACHE_WAYS
+`ifdef PITON_ARIANE
+    `ifndef CONFIG_L1D_ASSOCIATIVITY
+        localparam int unsigned HPDCACHE_WAYS = 4;
+    `else
+        localparam int unsigned HPDCACHE_WAYS = `CONFIG_L1D_ASSOCIATIVITY; 
+    `endif
+`elsif CONF_HPDCACHE_WAYS
     localparam int unsigned HPDCACHE_WAYS = `CONF_HPDCACHE_WAYS;
 `else
     localparam int unsigned HPDCACHE_WAYS = 4;
@@ -56,7 +74,9 @@ package hpdcache_pkg;
 `endif
 
     //  HPDcache cache-line width (bits)
-`ifdef CONF_HPDCACHE_CL_WORDS
+`ifdef PITON_ARIANE
+    localparam int unsigned HPDCACHE_CL_WORDS = `CONFIG_L1D_CACHELINE_WIDTH/HPDCACHE_WORD_WIDTH; //16 Bytes per cache-line harcoded
+`elsif CONF_HPDCACHE_CL_WORDS
     localparam int unsigned HPDCACHE_CL_WORDS = `CONF_HPDCACHE_CL_WORDS;
 `else
     localparam int unsigned HPDCACHE_CL_WORDS = 8;
@@ -149,7 +169,9 @@ package hpdcache_pkg;
     //  simultaneously from the cache.
     //  -  This limits the maximum width for the data channel from requesters
     //  -  This impacts the refill latency
-`ifdef CONF_HPDCACHE_ACCESS_WORDS
+`ifdef PITON_ARIANE
+    localparam int unsigned HPDCACHE_ACCESS_WORDS = 1; //Must be as maximum the half of HPDCACHE_CL_WORDS.
+`elsif CONF_HPDCACHE_ACCESS_WORDS
     localparam int unsigned HPDCACHE_ACCESS_WORDS = `CONF_HPDCACHE_ACCESS_WORDS;
 `else
     localparam int unsigned HPDCACHE_ACCESS_WORDS = 4;
@@ -472,7 +494,9 @@ package hpdcache_pkg;
     //  {{{
 
     //  HPDcache MSHR number of sets
-`ifdef CONF_HPDCACHE_MSHR_SETS
+`ifdef PITON_ARIANE
+    localparam int unsigned HPDCACHE_MSHR_SETS = 2;
+`elsif CONF_HPDCACHE_MSHR_SETS
     localparam int unsigned HPDCACHE_MSHR_SETS = `CONF_HPDCACHE_MSHR_SETS;
 `else
     localparam int unsigned HPDCACHE_MSHR_SETS = 64;
@@ -510,13 +534,17 @@ package hpdcache_pkg;
 
     //  Definition of interface with memory
     //  {{{
-`ifdef CONF_HPDCACHE_MEM_ID_WIDTH
+`ifdef PITON_ARIANE
+    localparam int unsigned HPDCACHE_MEM_ID_WIDTH = 3; //Minimum for the HPDC with single channel to MM, OP can only support `L15_THREADID_WIDTH;
+`elsif CONF_HPDCACHE_MEM_ID_WIDTH
     localparam int unsigned HPDCACHE_MEM_ID_WIDTH = `CONF_HPDCACHE_MEM_ID_WIDTH;
 `else
     localparam int unsigned HPDCACHE_MEM_ID_WIDTH = 8;
 `endif
 
-`ifdef CONF_HPDCACHE_MEM_WORDS
+`ifdef PITON_ARIANE
+    localparam int unsigned HPDCACHE_MEM_WORDS = HPDCACHE_CL_WORDS;
+`elsif CONF_HPDCACHE_MEM_WORDS
     localparam int unsigned HPDCACHE_MEM_WORDS = `CONF_HPDCACHE_MEM_WORDS;
 `else
     localparam int unsigned HPDCACHE_MEM_WORDS = 8;
@@ -591,6 +619,20 @@ package hpdcache_pkg;
         hpdcache_mem_id_t       mem_resp_w_id;
     } hpdcache_mem_resp_w_t;
 
+`ifdef PITON_ARIANE
+    //Unified structure for r and w responses
+    typedef struct packed {
+
+        hpdcache_mem_error_e                    mem_resp_error; //mem_resp_r_error/mem_resp_w_error
+        hpdcache_mem_id_t                       mem_resp_id;    //mem_resp_r_id/mem_resp_w_id
+        logic [`CONFIG_L1I_CACHELINE_WIDTH-1:0] mem_resp_r_data; //Fixed to 32B (OP ICACHE line size)
+        logic                                   mem_resp_r_last;
+        logic                                   mem_resp_w_is_atomic;
+    } hpdcache_mem_resp_t;
+
+    //Adapter HPDC-L1.5 Request Ports type
+    typedef logic [$clog2(5)-1:0]               req_portid_t;
+`endif
     function automatic hpdcache_mem_size_t get_hpdcache_mem_size(int unsigned bytes);
         if      (bytes ==   0) return 0;
         else if (bytes <=   2) return 1;
@@ -608,7 +650,9 @@ package hpdcache_pkg;
 
     //  Definition of constants and types for the Write Buffer (WBUF)
     //  {{{
-`ifdef CONF_HPDCACHE_WBUF_DIR_ENTRIES
+`ifdef PITON_ARIANE
+    localparam int unsigned HPDCACHE_WBUF_DIR_ENTRIES = 8;
+`elsif CONF_HPDCACHE_WBUF_DIR_ENTRIES
     localparam int unsigned HPDCACHE_WBUF_DIR_ENTRIES = `CONF_HPDCACHE_WBUF_DIR_ENTRIES;
 `else
     localparam int unsigned HPDCACHE_WBUF_DIR_ENTRIES = 16;
@@ -619,14 +663,17 @@ package hpdcache_pkg;
 `else
     localparam int unsigned HPDCACHE_WBUF_DATA_ENTRIES = 4;
 `endif
-
-`ifdef CONF_HPDCACHE_WBUF_WORDS
+`ifdef PITON_ARIANE
+    localparam int unsigned HPDCACHE_WBUF_WORDS = 1;
+`elsif CONF_HPDCACHE_WBUF_WORDS
     localparam int unsigned HPDCACHE_WBUF_WORDS = `CONF_HPDCACHE_WBUF_WORDS;
 `else
     localparam int unsigned HPDCACHE_WBUF_WORDS = 256/HPDCACHE_REQ_DATA_WIDTH;
 `endif
 
-`ifdef CONF_HPDCACHE_WBUF_TIMECNT_WIDTH
+`ifdef PITON_ARIANE
+    localparam int unsigned HPDCACHE_WBUF_TIMECNT_WIDTH = 0;
+`elsif CONF_HPDCACHE_WBUF_TIMECNT_WIDTH
     localparam int unsigned HPDCACHE_WBUF_TIMECNT_WIDTH = `CONF_HPDCACHE_WBUF_TIMECNT_WIDTH;
 `else
     localparam int unsigned HPDCACHE_WBUF_TIMECNT_WIDTH = 4;

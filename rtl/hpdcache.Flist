@@ -23,7 +23,6 @@
 //  Description   : File list for the HPDcache
 //  History       :
 //
-src/hpdcache_pkg.sv
 src/common/hpdcache_demux.sv
 src/common/hpdcache_fifo_reg.sv
 src/common/hpdcache_fxarb.sv
@@ -35,7 +34,6 @@ src/common/hpdcache_sram.sv
 src/common/hpdcache_sram_wmask.sv
 src/common/hpdcache_data_downsize.sv
 src/common/hpdcache_data_upsize.sv
-src/hwpf_stride/hwpf_stride_pkg.sv
 src/hwpf_stride/hwpf_stride.sv
 src/hwpf_stride/hwpf_stride_arb.sv
 src/hwpf_stride/hwpf_stride_snooper.sv
