@@ -183,10 +183,13 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
 
   //Translate the request from HPDC format to ariane's format
   assign icache_miss_resp_valid_o = icache_miss_resp_meta_rok,
-         icache_miss_resp_o.rtype = wt_cache_pkg::ICACHE_IFILL_ACK,
+         icache_miss_resp_o.rtype = (icache_miss_resp_wdata.mem_inv.all) ?  wt_cache_pkg::ICACHE_INV_REQ : wt_cache_pkg::ICACHE_IFILL_ACK,
          icache_miss_resp_o.data = icache_miss_resp_data_rdata,
          icache_miss_resp_o.user = '0,
-         icache_miss_resp_o.inv = '0,
+         icache_miss_resp_o.inv.idx = icache_miss_resp_wdata.mem_inv.idx,
+         icache_miss_resp_o.inv.all = icache_miss_resp_wdata.mem_inv.all,
+         icache_miss_resp_o.inv.way = '0,
+         icache_miss_resp_o.inv.vld = '0,
          icache_miss_resp_o.tid = icache_miss_resp_meta_id;
 
   assign icache_miss_resp_meta_rok = icache_miss_resp_w,

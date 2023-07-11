@@ -620,6 +620,11 @@ package hpdcache_pkg;
     } hpdcache_mem_resp_w_t;
 
 `ifdef PITON_ARIANE
+    typedef struct packed {
+        logic                                            all;         // invalidate all ways
+        logic [ariane_pkg::ICACHE_INDEX_WIDTH-1:0]       idx;         // physical address to invalidate
+    } hpdcache_mem_inval_t;
+    
     //Unified structure for r and w responses
     typedef struct packed {
 
@@ -628,6 +633,7 @@ package hpdcache_pkg;
         logic [`CONFIG_L1I_CACHELINE_WIDTH-1:0] mem_resp_r_data; //Fixed to 32B (OP ICACHE line size)
         logic                                   mem_resp_r_last;
         logic                                   mem_resp_w_is_atomic;
+        hpdcache_mem_inval_t                    mem_inv;
     } hpdcache_mem_resp_t;
 
     //Adapter HPDC-L1.5 Request Ports type
