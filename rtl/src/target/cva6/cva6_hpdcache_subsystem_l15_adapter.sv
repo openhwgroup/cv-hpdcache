@@ -28,7 +28,17 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
 //  Parameters
 //  {{{
 #(
-  parameter ariane_pkg::ariane_cfg_t ArianeCfg = ariane_pkg::ArianeDefaultConfig  // contains cacheable regions
+  parameter ariane_pkg::ariane_cfg_t ArianeCfg = ariane_pkg::ArianeDefaultConfig,  // contains cacheable regions
+
+  parameter int  HPDcacheMemDataWidth = 128, //L1D cacheline
+
+  parameter type hpdcache_mem_req_t = logic,
+  parameter type hpdcache_mem_req_w_t = logic,
+  parameter type hpdcache_mem_resp_r_t = logic,
+  parameter type hpdcache_mem_resp_w_t = logic,
+  parameter type hpdcache_mem_id_t = logic,
+  parameter type hpdcache_mem_addr_t = logic,
+  parameter type req_portid_t = logic
 )
 //  }}}
 
@@ -43,7 +53,7 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   input  wire logic                               icache_miss_valid_i,
   output wire logic                               icache_miss_ready_o,
   input  wire wt_cache_pkg::icache_req_t          icache_miss_i,
-  input  wire hpdcache_pkg::req_portid_t          icache_miss_pid_i,
+  input  wire req_portid_t                         icache_miss_pid_i,
 
   output wire logic                               icache_miss_resp_valid_o,
   output wire wt_cache_pkg::icache_rtrn_t         icache_miss_resp_o,
@@ -53,50 +63,50 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   //  {{{
   output wire logic                               dcache_miss_ready_o,
   input  wire logic                               dcache_miss_valid_i,
-  input  wire hpdcache_pkg::hpdcache_mem_req_t    dcache_miss_i,
-  input  wire hpdcache_pkg::req_portid_t          dcache_miss_pid_i,
+  input  wire hpdcache_mem_req_t                  dcache_miss_i,
+  input  wire req_portid_t                        dcache_miss_pid_i,
 
   input  wire logic                               dcache_miss_resp_ready_i,
   output wire logic                               dcache_miss_resp_valid_o,
-  output wire hpdcache_pkg::hpdcache_mem_resp_r_t dcache_miss_resp_o,
+  output wire hpdcache_mem_resp_r_t               dcache_miss_resp_o,
 
   //      Write-buffer write interface
   output wire logic                               dcache_wbuf_ready_o,
   input  wire logic                               dcache_wbuf_valid_i,
-  input  wire hpdcache_pkg::hpdcache_mem_req_t    dcache_wbuf_i,
-  input  wire hpdcache_pkg::req_portid_t          dcache_wbuf_pid_i,
+  input  wire hpdcache_mem_req_t                  dcache_wbuf_i,
+  input  wire req_portid_t                        dcache_wbuf_pid_i,
 
   output wire logic                               dcache_wbuf_data_ready_o,
   input  wire logic                               dcache_wbuf_data_valid_i,
-  input  wire hpdcache_pkg::hpdcache_mem_req_w_t  dcache_wbuf_data_i,
+  input  wire hpdcache_mem_req_w_t                dcache_wbuf_data_i,
 
   input  wire logic                               dcache_wbuf_resp_ready_i,
   output wire logic                               dcache_wbuf_resp_valid_o,
-  output wire hpdcache_pkg::hpdcache_mem_resp_w_t dcache_wbuf_resp_o,
+  output wire hpdcache_mem_resp_w_t               dcache_wbuf_resp_o,
 
   //      Uncached read interface
   output wire logic                               dcache_uc_read_ready_o,
   input  wire logic                               dcache_uc_read_valid_i,
-  input  wire hpdcache_pkg::hpdcache_mem_req_t    dcache_uc_read_i,
-  input  wire hpdcache_pkg::req_portid_t          dcache_uc_read_pid_i,
+  input  wire hpdcache_mem_req_t                  dcache_uc_read_i,
+  input  wire req_portid_t                        dcache_uc_read_pid_i,
 
   input  wire logic                               dcache_uc_read_resp_ready_i,
   output wire logic                               dcache_uc_read_resp_valid_o,
-  output wire hpdcache_pkg::hpdcache_mem_resp_r_t dcache_uc_read_resp_o,
+  output wire hpdcache_mem_resp_r_t               dcache_uc_read_resp_o,
 
   //      Uncached write interface
   output wire logic                               dcache_uc_write_ready_o,
   input  wire logic                               dcache_uc_write_valid_i,
-  input  wire hpdcache_pkg::hpdcache_mem_req_t    dcache_uc_write_i,
-  input  wire hpdcache_pkg::req_portid_t          dcache_uc_write_pid_i,
+  input  wire hpdcache_mem_req_t                  dcache_uc_write_i,
+  input  wire req_portid_t                        dcache_uc_write_pid_i,
 
   output wire logic                               dcache_uc_write_data_ready_o,
   input  wire logic                               dcache_uc_write_data_valid_i,
-  input  wire hpdcache_pkg::hpdcache_mem_req_w_t  dcache_uc_write_data_i,
+  input  wire hpdcache_mem_req_w_t                dcache_uc_write_data_i,
 
   input  wire logic                               dcache_uc_write_resp_ready_i,
   output wire logic                               dcache_uc_write_resp_valid_o,
-  output wire hpdcache_pkg::hpdcache_mem_resp_w_t dcache_uc_write_resp_o,
+  output wire hpdcache_mem_resp_w_t               dcache_uc_write_resp_o,
   //  }}}
   
   //    Ports to/from L1.5 
@@ -107,9 +117,24 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
 );
 //  }}}
 
-  // Internal types
+  // Internal types of the adapter
   // {{{
   typedef logic [ariane_pkg::ICACHE_LINE_WIDTH-1:0]  icache_resp_data_t;
+  typedef struct packed {
+       logic                                            all;         // invalidate all ways
+       logic [ariane_pkg::ICACHE_INDEX_WIDTH-1:0]       idx;         // physical address to invalidate
+  } hpdcache_mem_inval_t;
+
+  //Unified structure for r and w responses
+  typedef struct packed {
+
+       hpdcache_mem_error_e                    mem_resp_error; //mem_resp_r_error/mem_resp_w_error
+       hpdcache_mem_id_t                       mem_resp_id;    //mem_resp_r_id/mem_resp_w_id
+       logic [ariane_pkg::ICACHE_LINE_WIDTH-1:0] mem_resp_r_data; //Fixed to 32B (OP ICACHE line size)
+       logic                                   mem_resp_r_last;
+       logic                                   mem_resp_w_is_atomic;
+       hpdcache_mem_inval_t                    mem_inv;
+  } hpdcache_mem_resp_t;
   //  }}}
 
   //  Adapt the I$ interface to the HPDcache memory interface
@@ -119,19 +144,18 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   localparam int ICACHE_CL_SIZE         = $clog2(ariane_pkg::ICACHE_LINE_WIDTH/8);
   localparam int ICACHE_WORD_SIZE       = ArianeCfg.Axi64BitCompliant ? 3 : 2;
   localparam int ICACHE_MEM_REQ_CL_LEN  =
-    (ariane_pkg::ICACHE_LINE_WIDTH + hpdcache_pkg::HPDCACHE_MEM_DATA_WIDTH - 1)/
-    hpdcache_pkg::HPDCACHE_MEM_DATA_WIDTH;
+    (ariane_pkg::ICACHE_LINE_WIDTH + HPDcacheMemDataWidth - 1)/HPDcacheMemDataWidth;
   localparam int ICACHE_MEM_REQ_CL_SIZE =
-    (hpdcache_pkg::HPDCACHE_MEM_DATA_WIDTH <= ariane_pkg::ICACHE_LINE_WIDTH) ?
-      $clog2(hpdcache_pkg::HPDCACHE_MEM_DATA_WIDTH/8) :
+    (HPDcacheMemDataWidth <= ariane_pkg::ICACHE_LINE_WIDTH) ?
+      $clog2(HPDcacheMemDataWidth/8) :
       ICACHE_CL_SIZE;
 
   //    I$ request
   //    {{{
-  hpdcache_pkg::hpdcache_mem_req_t  icache_miss_req_wdata;
+  hpdcache_mem_req_t  icache_miss_req_wdata;
   logic  icache_miss_req_w, icache_miss_req_wok;
 
-  hpdcache_pkg::hpdcache_mem_req_t  icache_miss_req_rdata;
+  hpdcache_mem_req_t  icache_miss_req_rdata;
   logic  icache_miss_req_r, icache_miss_req_rok;
 
   //  This FIFO has two functionnalities:
@@ -141,7 +165,7 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   //  -  Cut a possible long timing path.
   hpdcache_fifo_reg #(
       .FIFO_DEPTH  (1),
-      .fifo_data_t (hpdcache_pkg::hpdcache_mem_req_t)
+      .fifo_data_t (hpdcache_mem_req_t)
   ) i_icache_miss_req_fifo (
       .clk_i,
       .rst_ni,
@@ -171,7 +195,7 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   //    I$ response
   //    {{{
   logic                                icache_miss_resp_w, icache_miss_resp_wok;
-  hpdcache_pkg::hpdcache_mem_resp_t    icache_miss_resp_wdata;
+  hpdcache_mem_resp_t                  icache_miss_resp_wdata;
 
   logic                                icache_miss_resp_data_w, icache_miss_resp_data_wok;
   logic                                icache_miss_resp_data_r;
@@ -179,14 +203,17 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
 
   logic                                icache_miss_resp_meta_w, icache_miss_resp_meta_wok;
   logic                                icache_miss_resp_meta_r, icache_miss_resp_meta_rok;
-  hpdcache_pkg::hpdcache_mem_id_t      icache_miss_resp_meta_id;
+  hpdcache_mem_id_t                    icache_miss_resp_meta_id;
 
   //Translate the request from HPDC format to ariane's format
   assign icache_miss_resp_valid_o = icache_miss_resp_meta_rok,
-         icache_miss_resp_o.rtype = wt_cache_pkg::ICACHE_IFILL_ACK,
+         icache_miss_resp_o.rtype = (icache_miss_resp_wdata.mem_inv.all) ?  wt_cache_pkg::ICACHE_INV_REQ : wt_cache_pkg::ICACHE_IFILL_ACK,
          icache_miss_resp_o.data = icache_miss_resp_data_rdata,
          icache_miss_resp_o.user = '0,
-         icache_miss_resp_o.inv = '0,
+         icache_miss_resp_o.inv.idx = icache_miss_resp_wdata.mem_inv.idx,
+         icache_miss_resp_o.inv.all = icache_miss_resp_wdata.mem_inv.all,
+         icache_miss_resp_o.inv.way = '0,
+         icache_miss_resp_o.inv.vld = '0,
          icache_miss_resp_o.tid = icache_miss_resp_meta_id;
 
   assign icache_miss_resp_meta_rok = icache_miss_resp_w,
@@ -202,22 +229,22 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
     // Requests
   logic                            mem_req_ready      [4:0];
   logic                            mem_req_valid      [4:0];
-  hpdcache_pkg::hpdcache_mem_req_t mem_req            [4:0];
+  hpdcache_mem_req_t mem_req            [4:0];
   
 
   logic                            mem_req_ready_arb;
   logic                            mem_req_valid_arb;
-  hpdcache_pkg::hpdcache_mem_req_t mem_req_arb;
+  hpdcache_mem_req_t mem_req_arb;
 
     // Data
   logic                              mem_req_data_ready  [4:0];
   logic                              mem_req_data_valid  [4:0];
-  hpdcache_pkg::hpdcache_mem_req_w_t mem_req_data        [4:0];
-  hpdcache_pkg::hpdcache_mem_req_w_t mem_req_data_arb;
+  hpdcache_mem_req_w_t mem_req_data        [4:0];
+  hpdcache_mem_req_w_t mem_req_data_arb;
 
     // Port of the Request, 5 available ports
-  hpdcache_pkg::req_portid_t         mem_req_pid [4:0];
-  hpdcache_pkg::req_portid_t         mem_req_pid_arb;
+  req_portid_t         mem_req_pid [4:0];
+  req_portid_t         mem_req_pid_arb;
     
    // Request type selected
   logic                              mem_req_index_arb   [4:0];
@@ -271,7 +298,10 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
          mem_req_data[4]        = dcache_uc_write_data_i;
 
   hpdcache_l15_req_arbiter #(
-    .N(5)
+    .N(5),
+    .hpdcache_mem_req_t                              (hpdcache_mem_req_t),
+    .hpdcache_mem_req_w_t                            (hpdcache_mem_req_w_t),
+    .req_portid_t                                    (req_portid_t) //NTODO: Optimize for more threads
   ) i_l15_req_arbiter (
     .clk_i,
     .rst_ni,
@@ -295,7 +325,7 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
     //Arbiter ready is the same for the request and the valid==1 if
     //the request and the optional date are also valid
     .mem_req_data_o       (mem_req_data_arb),
-    .mem_req_index_o        (mem_req_index_arb)
+    .mem_req_index_o      (mem_req_index_arb)
     
   );
   //  }}}
@@ -304,19 +334,19 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   //  {{{
   logic                                mem_resp_ready;
   logic                                mem_resp_valid;
-  hpdcache_pkg::hpdcache_mem_resp_t    mem_resp;
+  hpdcache_mem_resp_t                  mem_resp;
 
   logic                                mem_resp_ready_arb [4:0];
   logic                                mem_resp_valid_arb [4:0];
-  hpdcache_pkg::hpdcache_mem_resp_t    mem_resp_arb       [4:0];
+  hpdcache_mem_resp_t                  mem_resp_arb       [4:0];
 
   //Port 0 -> ICACHE, Port 1 -> Read, Port 2 -> Write, Port 3 -> UC Read, Port 4 -> UC Write
-  hpdcache_pkg::req_portid_t           mem_resp_pid;
+  req_portid_t           mem_resp_pid;
 
   hpdcache_l15_resp_demux #(
     .N                  (5),
-    .resp_t             (hpdcache_pkg::hpdcache_mem_resp_t),
-    .resp_id_t          (hpdcache_pkg::hpdcache_mem_id_t)
+    .resp_t             (hpdcache_mem_resp_t),
+    .resp_id_t          (hpdcache_mem_id_t)
   ) i_l15_resp_demux (
     .clk_i,
     .rst_ni,
@@ -340,7 +370,7 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
          mem_resp_ready_arb[0]       = icache_miss_resp_wok;
   //Read
   assign dcache_miss_resp_valid_o    = mem_resp_valid_arb[1],
-         dcache_miss_resp_o.mem_resp_r_data  = mem_resp_arb[1].mem_resp_r_data[HPDCACHE_MEM_DATA_WIDTH-1:0],
+         dcache_miss_resp_o.mem_resp_r_data  = mem_resp_arb[1].mem_resp_r_data[HPDcacheMemDataWidth-1:0],
          dcache_miss_resp_o.mem_resp_r_error = mem_resp_arb[1].mem_resp_error,
          dcache_miss_resp_o.mem_resp_r_id    = mem_resp_arb[1].mem_resp_id,
          dcache_miss_resp_o.mem_resp_r_last  = mem_resp_arb[1].mem_resp_r_last,
@@ -356,7 +386,7 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   assign dcache_uc_read_resp_valid_o = mem_resp_valid_arb[3],
          dcache_uc_read_resp_o.mem_resp_r_error = mem_resp_arb[3].mem_resp_error,
          dcache_uc_read_resp_o.mem_resp_r_id    = mem_resp_arb[3].mem_resp_id,
-         dcache_uc_read_resp_o.mem_resp_r_data  = mem_resp_arb[3].mem_resp_r_data[HPDCACHE_MEM_DATA_WIDTH-1:0],
+         dcache_uc_read_resp_o.mem_resp_r_data  = mem_resp_arb[3].mem_resp_r_data[HPDcacheMemDataWidth-1:0],
          dcache_uc_read_resp_o.mem_resp_r_last  = mem_resp_arb[3].mem_resp_r_last,
          mem_resp_ready_arb[3]       = dcache_uc_read_resp_ready_i;
   //Uncachable Write
@@ -375,8 +405,14 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   wt_cache_pkg::l15_rtrn_t  l15_rtrn;
 
   hpdcache_to_l15 #(
-       .N               (5),
-       .SwapEndianess   (ArianeCfg.SwapEndianess)
+       .N                    (5),
+       .SwapEndianess        (ArianeCfg.SwapEndianess),
+       .hpdcache_mem_req_t                              (hpdcache_mem_req_t),
+       .hpdcache_mem_req_w_t                            (hpdcache_mem_req_w_t),
+       .hpdcache_mem_id_t                               (hpdcache_mem_id_t),
+       .hpdcache_mem_addr_t                             (hpdcache_mem_addr_t),
+       .hpdcache_mem_resp_t                             (hpdcache_mem_resp_t),
+       .req_portid_t                                    (req_portid_t)
   ) i_hpdcache_to_l15 ( 
 
     .clk_i,

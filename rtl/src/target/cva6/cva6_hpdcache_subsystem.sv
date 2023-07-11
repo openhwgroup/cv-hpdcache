@@ -31,7 +31,6 @@ module cva6_hpdcache_subsystem import ariane_pkg::*; import wt_cache_pkg::*; imp
 #(
   parameter ariane_pkg::ariane_cfg_t ArianeCfg = ariane_pkg::ArianeDefaultConfig,  // contains cacheable regions
   parameter int NrHwPrefetchers = 4,
-
   parameter int unsigned AxiAddrWidth = 0,
   parameter int unsigned AxiDataWidth = 0,
   parameter int unsigned AxiIdWidth = 0,
@@ -152,10 +151,18 @@ module cva6_hpdcache_subsystem import ariane_pkg::*; import wt_cache_pkg::*; imp
   `include "hpdcache_typedef.svh"
 
   localparam int HPDCACHE_NREQUESTERS = 5;
-  typedef logic [AxiAddrWidth-1:0]              hpdcache_mem_addr_t;
-  typedef logic [ariane_pkg::MEM_TID_WIDTH-1:0] hpdcache_mem_id_t;
-  typedef logic [AxiDataWidth-1:0]              hpdcache_mem_data_t;
-  typedef logic [AxiDataWidth/8-1:0]            hpdcache_mem_be_t;
+
+  `ifdef PITON_ARIANE
+    typedef logic [riscv::PLEN-1:0]                       hpdcache_mem_addr_t;
+    typedef logic [ariane_pkg::MEM_TID_WIDTH-1:0]         hpdcache_mem_id_t;
+    typedef logic [ariane_pkg::DCACHE_LINE_WIDTH-1:0]     hpdcache_mem_data_t;
+    typedef logic [ariane_pkg::DCACHE_LINE_WIDTH-1/8-1:0] hpdcache_mem_be_t;
+  `else
+    typedef logic [AxiAddrWidth-1:0]              hpdcache_mem_addr_t;
+    typedef logic [ariane_pkg::MEM_TID_WIDTH-1:0] hpdcache_mem_id_t; 
+    typedef logic [AxiDataWidth-1:0]              hpdcache_mem_data_t;
+    typedef logic [AxiDataWidth/8-1:0]            hpdcache_mem_be_t;
+  `endif
   `HPDCACHE_TYPEDEF_MEM_REQ_T(hpdcache_mem_req_t, hpdcache_mem_addr_t, hpdcache_mem_id_t);
   `HPDCACHE_TYPEDEF_MEM_RESP_R_T(hpdcache_mem_resp_r_t, hpdcache_mem_id_t, hpdcache_mem_data_t);
   `HPDCACHE_TYPEDEF_MEM_REQ_W_T(hpdcache_mem_req_w_t, hpdcache_mem_data_t, hpdcache_mem_be_t);
@@ -339,7 +346,7 @@ module cva6_hpdcache_subsystem import ariane_pkg::*; import wt_cache_pkg::*; imp
   hpdcache #(
     .NREQUESTERS                       (HPDCACHE_NREQUESTERS),
     .HPDcacheMemIdWidth                (ariane_pkg::MEM_TID_WIDTH),
-    .HPDcacheMemDataWidth              (AxiDataWidth),
+    .HPDcacheMemDataWidth              (ariane_pkg::DCACHE_LINE_WIDTH),
     .hpdcache_mem_req_t                (hpdcache_mem_req_t),
     .hpdcache_mem_req_w_t              (hpdcache_mem_req_w_t),
     .hpdcache_mem_resp_r_t             (hpdcache_mem_resp_r_t),
@@ -436,10 +443,22 @@ module cva6_hpdcache_subsystem import ariane_pkg::*; import wt_cache_pkg::*; imp
 ///////////////////////////////////////////////////////
 
 `ifdef PITON_ARIANE
+
+//Adapter HPDC-L1.5 Request Ports type
+typedef logic [$clog2(5)-1:0]               req_portid_t;  //NTODO: Optimize for more threads
+
   //L15 adapter instantiation
   //{{{
   cva6_hpdcache_subsystem_l15_adapter #(
-    .ArianeCfg                                       (ArianeCfg)
+    .ArianeCfg                                       (ArianeCfg),
+    .HPDcacheMemDataWidth                            (ariane_pkg::DCACHE_LINE_WIDTH),
+    .hpdcache_mem_req_t                              (hpdcache_mem_req_t),
+    .hpdcache_mem_req_w_t                            (hpdcache_mem_req_w_t),
+    .hpdcache_mem_resp_r_t                           (hpdcache_mem_resp_r_t),
+    .hpdcache_mem_resp_w_t                           (hpdcache_mem_resp_w_t),
+    .hpdcache_mem_id_t                               (hpdcache_mem_id_t),
+    .hpdcache_mem_addr_t                             (hpdcache_mem_addr_t),
+    .req_portid_t                                    (req_portid_t) //NTODO: Optimize for more threads
   ) i_l15_adapter (
     .clk_i,
     .rst_ni,

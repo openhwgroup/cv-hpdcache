@@ -23,12 +23,14 @@
  *  Description   : Dcache Memory Req Channels Arbiter
  *  History       :
  */
-module hpdcache_l15_req_arbiter
-import hpdcache_pkg::*;
+module hpdcache_l15_req_arbiter import hpdcache_pkg::*;
 //  Parameters
 //  {{{
 #(
-    parameter hpdcache_uint    N = 0
+    parameter hpdcache_uint    N = 0,
+    parameter type hpdcache_mem_req_t = logic,
+    parameter type hpdcache_mem_req_w_t = logic,
+    parameter type req_portid_t = logic
 )
 //  }}}
 

@@ -28,7 +28,15 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
 //  {{{
 #(
     parameter hpdcache_uint    N = 0,
-    parameter bit              SwapEndianess = 1
+    parameter bit              SwapEndianess = 1,
+    parameter int  HPDcacheMemDataWidth = 128,
+
+    parameter type hpdcache_mem_req_t = logic,
+    parameter type hpdcache_mem_req_w_t = logic,
+    parameter type hpdcache_mem_id_t = logic,
+    parameter type hpdcache_mem_addr_t = logic,
+    parameter type hpdcache_mem_resp_t = logic,
+    parameter type req_portid_t = logic
 )
 //  }}}
 
@@ -52,7 +60,9 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
 
     output wire wt_cache_pkg::l15_req_t        l15_req_o,
 
-    input  wire wt_cache_pkg::l15_rtrn_t       l15_rtrn_i
+    input  wire wt_cache_pkg::l15_rtrn_t       l15_rtrn_i,
+
+    output wire wt_cache_pkg::icache_inval_t   inval_icache_o
 );
 //  }}}
 
@@ -66,8 +76,8 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     } thread_id_fsm_t;
 
     // L15_TIDs entry table to save the HPDC threadids and portids
-    typedef hpdcache_pkg::hpdcache_mem_id_t [1:0] hpdc_thid_l15et_t;
-    typedef hpdcache_pkg::req_portid_t      [1:0] hpdc_pid_l15et_t;
+    typedef hpdcache_mem_id_t [1:0] hpdc_thid_l15et_t;
+    typedef req_portid_t      [1:0] hpdc_pid_l15et_t;
 
     // }}}
 
@@ -83,15 +93,15 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     // L1.5 Req Thread ID 
     logic [wt_cache_pkg::L15_TID_WIDTH-1:0]  req_thid;
     // HPDC Resp ID
-    hpdcache_pkg::hpdcache_mem_id_t          resp_tid;
+    hpdcache_mem_id_t                        resp_tid;
     // HPDC Port ID
     req_portid_t                             resp_pid;
     // Address and Size of the store request. Both values are recalculated since the WBUF size
     // is always 8B and the address is aligned to 8B. 
-    hpdcache_pkg::hpdcache_mem_addr_t        req_st_address;
+    hpdcache_mem_addr_t                      req_st_address;
     hpdcache_pkg::hpdcache_mem_size_t        req_st_size;
 
-    logic [$clog2(HPDCACHE_MEM_DATA_WIDTH/8)-1:0] first_one_pos, num_ones;
+    logic [$clog2(HPDcacheMemDataWidth/8)-1:0] first_one_pos, num_ones;
     
 
     // }}}
@@ -146,7 +156,9 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                                                                   {l15_rtrn_i.l15_data_3,
                                                                     l15_rtrn_i.l15_data_2,
                                                                     l15_rtrn_i.l15_data_1,
-                                                                    l15_rtrn_i.l15_data_0};
+                                                                    l15_rtrn_i.l15_data_0},
+           resp_o.mem_inv.idx                 = {l15_rtrn_i.l15_inval_address_15_4, 4'b0000},   
+           resp_o.mem_inv.all                 = l15_rtrn_i.l15_inval_icache_all_way;
     // }}}
 
 
@@ -171,7 +183,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
             // Only Th0 is free
             FREE_T0: begin
                 // Request and Response comes at the same time -> Use thid 1 again
-                if ((req_valid_i && l15_rtrn_i.l15_ack) && (resp_ready_i && l15_rtrn_i.l15_val)) begin
+                if ((req_valid_i && l15_rtrn_i.l15_ack) && (resp_ready_i && l15_rtrn_i.l15_val && l15_rtrn_i.l15_returntype!=L15_EVICT_REQ)) begin
                     req_thid = 1'b1;                     // Thid used: 1
                     //Response
                     resp_tid = hpdc_tid_q[l15_rtrn_i.l15_threadid];
@@ -184,7 +196,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                 end else begin
                     req_thid = 1'b0;                     // Thid used: 0
                     // Response valid and L1D/I can receive -> Receive Request    
-                    if (resp_ready_i && l15_rtrn_i.l15_val) begin
+                    if (resp_ready_i && l15_rtrn_i.l15_val && l15_rtrn_i.l15_returntype!=L15_EVICT_REQ) begin
                         resp_tid = hpdc_tid_q[l15_rtrn_i.l15_threadid];
                         resp_pid = hpdc_pid_q[l15_rtrn_i.l15_threadid];
                         th_state_d = FREE_T0_T1;
@@ -199,7 +211,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
             // Only Th1 is free
             FREE_T1: begin   
                 // Request and Response comes at the same time -> Use thid 0 again
-                if ((req_valid_i && l15_rtrn_i.l15_ack) && (resp_ready_i && l15_rtrn_i.l15_val)) begin
+                if ((req_valid_i && l15_rtrn_i.l15_ack) && (resp_ready_i && l15_rtrn_i.l15_val && l15_rtrn_i.l15_returntype!=L15_EVICT_REQ)) begin
                     req_thid = 1'b0;                     // Thid used: 0
                     //Response
                     resp_tid = hpdc_tid_q[l15_rtrn_i.l15_threadid];
@@ -212,7 +224,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                 end else begin
                     req_thid = 1'b1;                // Thid used: 1
                     // Response valid and L1D/I can receive -> Receive Request
-                    if (resp_ready_i && l15_rtrn_i.l15_val) begin
+                    if (resp_ready_i && l15_rtrn_i.l15_val && l15_rtrn_i.l15_returntype!=L15_EVICT_REQ) begin
                         resp_tid = hpdc_tid_q[l15_rtrn_i.l15_threadid];
                         resp_pid = hpdc_pid_q[l15_rtrn_i.l15_threadid];
                         th_state_d = FREE_T0_T1;
@@ -227,7 +239,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
             // No Threadids available
             LOCKED_T0_T1: begin
                 // Response valid and L1D/I can receive -> Receive Request
-                if (resp_ready_i && l15_rtrn_i.l15_val) begin
+                if (resp_ready_i && l15_rtrn_i.l15_val && l15_rtrn_i.l15_returntype!=L15_EVICT_REQ) begin
                     resp_tid = hpdc_tid_q[l15_rtrn_i.l15_threadid];
                     resp_pid = hpdc_pid_q[l15_rtrn_i.l15_threadid];
                     th_state_d = (l15_rtrn_i.l15_threadid) ? FREE_T1 : FREE_T0;
@@ -258,7 +270,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     always_comb
     begin: lzc_comb
         first_one_pos = '0;
-        for (int unsigned i = int'(HPDCACHE_MEM_DATA_WIDTH/8); i > 0; i--) begin
+        for (int unsigned i = int'(HPDcacheMemDataWidth/8); i > 0; i--) begin
             if (req_data_i.mem_req_w_be[i-1]) begin
                 first_one_pos = i-1;
                 break;
