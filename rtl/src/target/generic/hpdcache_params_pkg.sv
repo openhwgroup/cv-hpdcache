@@ -181,11 +181,7 @@ package hpdcache_params_pkg;
     `ifndef CONF_HPDCACHE_WBUF_DIR_ENTRIES
         `define CONF_HPDCACHE_WBUF_DIR_ENTRIES 16
     `endif
-    `ifdef PITON_ARIANE
-        localparam int unsigned PARAM_WBUF_DIR_ENTRIES = 8;
-    `else
-        localparam int unsigned PARAM_WBUF_DIR_ENTRIES = `CONF_HPDCACHE_WBUF_DIR_ENTRIES;
-    `endif
+    localparam int unsigned PARAM_WBUF_DIR_ENTRIES = `CONF_HPDCACHE_WBUF_DIR_ENTRIES;
 
     `ifndef CONF_HPDCACHE_WBUF_DATA_ENTRIES
         `define CONF_HPDCACHE_WBUF_DATA_ENTRIES 4

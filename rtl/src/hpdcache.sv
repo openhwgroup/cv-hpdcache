@@ -28,7 +28,7 @@ import hpdcache_pkg::*;
     //  Parameters
     //  {{{
 #(
-    parameter int  NREQUESTERS           = 1,
+    parameter int  NREQUESTERS  = 1,
     parameter int  HPDcacheMemIdWidth    = 8,
     parameter int  HPDcacheMemDataWidth  = 512,
     parameter type hpdcache_mem_req_t    = logic,

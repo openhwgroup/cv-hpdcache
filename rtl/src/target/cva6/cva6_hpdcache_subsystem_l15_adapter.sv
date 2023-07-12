@@ -346,7 +346,8 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   hpdcache_l15_resp_demux #(
     .N                  (5),
     .resp_t             (hpdcache_mem_resp_t),
-    .resp_id_t          (hpdcache_mem_id_t)
+    .resp_id_t          (hpdcache_mem_id_t),
+    .req_portid_t       (req_portid_t)
   ) i_l15_resp_demux (
     .clk_i,
     .rst_ni,
