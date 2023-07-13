@@ -133,7 +133,7 @@ package hpdcache_params_pkg;
     `endif
 
     `ifdef PITON_ARIANE
-        localparam int unsigned PARAM_ACCESS_WORDS = 1; //Must be as maximum the half of HPDCACHE_CL_WORDS. NTODO:UPDATE
+        localparam int unsigned PARAM_ACCESS_WORDS = 2;
     `else
         localparam int unsigned PARAM_ACCESS_WORDS = `CONF_HPDCACHE_ACCESS_WORDS;
     `endif
@@ -181,7 +181,11 @@ package hpdcache_params_pkg;
     `ifndef CONF_HPDCACHE_WBUF_DIR_ENTRIES
         `define CONF_HPDCACHE_WBUF_DIR_ENTRIES 16
     `endif
-    localparam int unsigned PARAM_WBUF_DIR_ENTRIES = `CONF_HPDCACHE_WBUF_DIR_ENTRIES;
+    `ifdef PITON_ARIANE
+        localparam int unsigned PARAM_WBUF_DIR_ENTRIES = 8;
+    `else
+        localparam int unsigned PARAM_WBUF_DIR_ENTRIES = `CONF_HPDCACHE_WBUF_DIR_ENTRIES;
+    `endif
 
     `ifndef CONF_HPDCACHE_WBUF_DATA_ENTRIES
         `define CONF_HPDCACHE_WBUF_DATA_ENTRIES 4
