@@ -45,68 +45,68 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
 //  Ports
 //  {{{
 (
-  input  wire logic                               clk_i,
-  input  wire logic                               rst_ni,
+  input   logic                               clk_i,
+  input   logic                               rst_ni,
 
   //  Interfaces from/to I$
   //  {{{
-  input  wire logic                               icache_miss_valid_i,
-  output wire logic                               icache_miss_ready_o,
-  input  wire wt_cache_pkg::icache_req_t          icache_miss_i,
-  input  wire req_portid_t                         icache_miss_pid_i,
+  input   logic                               icache_miss_valid_i,
+  output  logic                               icache_miss_ready_o,
+  input   wt_cache_pkg::icache_req_t          icache_miss_i,
+  input   req_portid_t                        icache_miss_pid_i,
 
-  output wire logic                               icache_miss_resp_valid_o,
-  output wire wt_cache_pkg::icache_rtrn_t         icache_miss_resp_o,
+  output  logic                               icache_miss_resp_valid_o,
+  output  wt_cache_pkg::icache_rtrn_t         icache_miss_resp_o,
   //  }}}
 
   //  Interfaces from/to D$
   //  {{{
-  output wire logic                               dcache_miss_ready_o,
-  input  wire logic                               dcache_miss_valid_i,
-  input  wire hpdcache_mem_req_t                  dcache_miss_i,
-  input  wire req_portid_t                        dcache_miss_pid_i,
+  output  logic                               dcache_miss_ready_o,
+  input   logic                               dcache_miss_valid_i,
+  input   hpdcache_mem_req_t                  dcache_miss_i,
+  input   req_portid_t                        dcache_miss_pid_i,
 
-  input  wire logic                               dcache_miss_resp_ready_i,
-  output wire logic                               dcache_miss_resp_valid_o,
-  output wire hpdcache_mem_resp_r_t               dcache_miss_resp_o,
+  input   logic                               dcache_miss_resp_ready_i,
+  output  logic                               dcache_miss_resp_valid_o,
+  output  hpdcache_mem_resp_r_t               dcache_miss_resp_o,
 
   //      Write-buffer write interface
-  output wire logic                               dcache_wbuf_ready_o,
-  input  wire logic                               dcache_wbuf_valid_i,
-  input  wire hpdcache_mem_req_t                  dcache_wbuf_i,
-  input  wire req_portid_t                        dcache_wbuf_pid_i,
+  output  logic                               dcache_wbuf_ready_o,
+  input   logic                               dcache_wbuf_valid_i,
+  input   hpdcache_mem_req_t                  dcache_wbuf_i,
+  input   req_portid_t                        dcache_wbuf_pid_i,
 
-  output wire logic                               dcache_wbuf_data_ready_o,
-  input  wire logic                               dcache_wbuf_data_valid_i,
-  input  wire hpdcache_mem_req_w_t                dcache_wbuf_data_i,
+  output  logic                               dcache_wbuf_data_ready_o,
+  input   logic                               dcache_wbuf_data_valid_i,
+  input   hpdcache_mem_req_w_t                dcache_wbuf_data_i,
 
-  input  wire logic                               dcache_wbuf_resp_ready_i,
-  output wire logic                               dcache_wbuf_resp_valid_o,
-  output wire hpdcache_mem_resp_w_t               dcache_wbuf_resp_o,
+  input   logic                               dcache_wbuf_resp_ready_i,
+  output  logic                               dcache_wbuf_resp_valid_o,
+  output  hpdcache_mem_resp_w_t               dcache_wbuf_resp_o,
 
   //      Uncached read interface
-  output wire logic                               dcache_uc_read_ready_o,
-  input  wire logic                               dcache_uc_read_valid_i,
-  input  wire hpdcache_mem_req_t                  dcache_uc_read_i,
-  input  wire req_portid_t                        dcache_uc_read_pid_i,
+  output  logic                               dcache_uc_read_ready_o,
+  input   logic                               dcache_uc_read_valid_i,
+  input   hpdcache_mem_req_t                  dcache_uc_read_i,
+  input   req_portid_t                        dcache_uc_read_pid_i,
 
-  input  wire logic                               dcache_uc_read_resp_ready_i,
-  output wire logic                               dcache_uc_read_resp_valid_o,
-  output wire hpdcache_mem_resp_r_t               dcache_uc_read_resp_o,
+  input   logic                               dcache_uc_read_resp_ready_i,
+  output  logic                               dcache_uc_read_resp_valid_o,
+  output  hpdcache_mem_resp_r_t               dcache_uc_read_resp_o,
 
   //      Uncached write interface
-  output wire logic                               dcache_uc_write_ready_o,
-  input  wire logic                               dcache_uc_write_valid_i,
-  input  wire hpdcache_mem_req_t                  dcache_uc_write_i,
-  input  wire req_portid_t                        dcache_uc_write_pid_i,
+  output  logic                               dcache_uc_write_ready_o,
+  input   logic                               dcache_uc_write_valid_i,
+  input   hpdcache_mem_req_t                  dcache_uc_write_i,
+  input   req_portid_t                        dcache_uc_write_pid_i,
 
-  output wire logic                               dcache_uc_write_data_ready_o,
-  input  wire logic                               dcache_uc_write_data_valid_i,
-  input  wire hpdcache_mem_req_w_t                dcache_uc_write_data_i,
+  output  logic                               dcache_uc_write_data_ready_o,
+  input   logic                               dcache_uc_write_data_valid_i,
+  input   hpdcache_mem_req_w_t                dcache_uc_write_data_i,
 
-  input  wire logic                               dcache_uc_write_resp_ready_i,
-  output wire logic                               dcache_uc_write_resp_valid_o,
-  output wire hpdcache_mem_resp_w_t               dcache_uc_write_resp_o,
+  input   logic                               dcache_uc_write_resp_ready_i,
+  output  logic                               dcache_uc_write_resp_valid_o,
+  output  hpdcache_mem_resp_w_t               dcache_uc_write_resp_o,
   //  }}}
   
   //    Ports to/from L1.5 

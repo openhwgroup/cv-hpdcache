@@ -43,26 +43,25 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
 //  Ports
 //  {{{
 (
-    input  wire logic                          clk_i,
-    input  wire logic                          rst_ni,
+    input   logic                          clk_i,
+    input   logic                          rst_ni,
 
-    output wire logic                          req_ready_o,
-    input  wire logic                          req_valid_i,
-    input  wire req_portid_t                   req_pid_i,
-    input  wire hpdcache_mem_req_t             req_i,
-    input  wire hpdcache_mem_req_w_t           req_data_i,
-    input  wire logic                          req_index_i [N-1:0],
+    output  logic                          req_ready_o,
+    input   logic                          req_valid_i,
+    input   req_portid_t                   req_pid_i,
+    input   hpdcache_mem_req_t             req_i,
+    input   hpdcache_mem_req_w_t           req_data_i,
+    input   logic                          req_index_i [N-1:0],
 
-    input  var  logic                          resp_ready_i,
-    output wire logic                          resp_valid_o,
-    output wire req_portid_t                   resp_pid_o,
-    output wire hpdcache_mem_resp_t            resp_o,
+    input   logic                          resp_ready_i,
+    output  logic                          resp_valid_o,
+    output  req_portid_t                   resp_pid_o,
+    output  hpdcache_mem_resp_t            resp_o,
 
-    output wire wt_cache_pkg::l15_req_t        l15_req_o,
+    output  wt_cache_pkg::l15_req_t        l15_req_o,
 
-    input  wire wt_cache_pkg::l15_rtrn_t       l15_rtrn_i,
-
-    output wire wt_cache_pkg::icache_inval_t   inval_icache_o
+    input   wt_cache_pkg::l15_rtrn_t       l15_rtrn_i
+    
 );
 //  }}}
 
@@ -145,7 +144,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     assign resp_valid_o                       = l15_rtrn_i.l15_val,
            resp_pid_o                         = resp_pid;
                                                 // Should be always 0, unused in openpiton
-    assign resp_o.mem_resp_error              = (l15_rtrn_i.l15_returntype==L15_ERR_RET), 
+    assign resp_o.mem_resp_error              = (l15_rtrn_i.l15_returntype==L15_ERR_RET) ? HPDCACHE_MEM_RESP_OK : HPDCACHE_MEM_RESP_NOK,
            resp_o.mem_resp_id                 = resp_tid,
            resp_o.mem_resp_r_last             = '1, // OpenPiton sends the entire data in 1 cycle
            resp_o.mem_resp_w_is_atomic        = '0, // Currenlty AMOs are not supported

@@ -37,27 +37,27 @@ module hpdcache_l15_req_arbiter import hpdcache_pkg::*;
 //  Ports
 //  {{{
 (
-    input  wire logic                  clk_i,
-    input  wire logic                  rst_ni,
+    input    logic                 clk_i,
+    input    logic                 rst_ni,
    
-    output  wire logic                 mem_req_ready_o      [N-1:0],
-    input   wire logic                 mem_req_valid_i      [N-1:0],
-    input   wire req_portid_t          mem_req_pid_i        [N-1:0],
-    input   wire hpdcache_mem_req_t    mem_req_i            [N-1:0],
+    output   logic                 mem_req_ready_o      [N-1:0],
+    input    logic                 mem_req_valid_i      [N-1:0],
+    input    req_portid_t          mem_req_pid_i        [N-1:0],
+    input    hpdcache_mem_req_t    mem_req_i            [N-1:0],
 
      //Data input
-    input   wire logic                 mem_req_data_valid_i [N-1:0],
-    input   wire hpdcache_mem_req_w_t  mem_req_data_i       [N-1:0],
+    input    logic                 mem_req_data_valid_i [N-1:0],
+    input    hpdcache_mem_req_w_t  mem_req_data_i       [N-1:0],
     
-    input   wire logic                 mem_req_ready_i,
-    output  wire logic                 mem_req_valid_o,
+    input    logic                 mem_req_ready_i,
+    output   logic                 mem_req_valid_o,
 
 
     //Data output
-    output  wire req_portid_t          mem_req_pid_o,
-    output  wire hpdcache_mem_req_t    mem_req_o,
-    output  wire hpdcache_mem_req_w_t  mem_req_data_o,
-    output  wire logic                 mem_req_index_o      [N-1:0]
+    output   req_portid_t          mem_req_pid_o,
+    output   hpdcache_mem_req_t    mem_req_o,
+    output   hpdcache_mem_req_w_t  mem_req_data_o,
+    output   logic                 mem_req_index_o      [N-1:0]
 );
 //  }}}
 

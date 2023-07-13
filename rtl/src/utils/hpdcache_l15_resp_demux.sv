@@ -40,19 +40,19 @@ module hpdcache_l15_resp_demux
 //  Ports
 //  {{{
 (
-  input  wire logic           clk_i,
-  input  wire logic           rst_ni,
+  input   logic           clk_i,
+  input   logic           rst_ni,
 
-  output wire logic           mem_resp_ready_o,
-  input  wire logic           mem_resp_valid_i,
-  input  wire resp_id_t       mem_resp_id_i,
-  input  wire resp_t          mem_resp_i,
+  output  logic           mem_resp_ready_o,
+  input   logic           mem_resp_valid_i,
+  input   resp_id_t       mem_resp_id_i,
+  input   resp_t          mem_resp_i,
 
-  input  wire logic           mem_resp_ready_i [N-1:0],
-  output wire logic           mem_resp_valid_o [N-1:0],
-  output wire resp_t          mem_resp_o       [N-1:0],
+  input   logic           mem_resp_ready_i [N-1:0],
+  output  logic           mem_resp_valid_o [N-1:0],
+  output  resp_t          mem_resp_o       [N-1:0],
 
-  input  wire req_portid_t    mem_sel_i        
+  input   req_portid_t    mem_sel_i        
 );
 //  }}}
 
