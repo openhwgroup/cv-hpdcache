@@ -225,18 +225,15 @@ module cva6_hpdcache_subsystem import ariane_pkg::*; import wt_cache_pkg::*; imp
   hwpf_stride_pkg::hwpf_stride_throttle_t [NrHwPrefetchers-1:0] hwpf_throttle_out;
 
   generate
-    ariane_pkg::amo_req_t        dcache_amo_req  [HPDCACHE_NREQUESTERS-1:0];
-    ariane_pkg::amo_resp_t       dcache_amo_resp [HPDCACHE_NREQUESTERS-1:0];
     ariane_pkg::dcache_req_i_t   dcache_req_ports[HPDCACHE_NREQUESTERS-1:0];
 
 
-    for (genvar r = 0; r < 3; r++) begin : cva6_hpdcache_if_adapter_gen
+    for (genvar r = 0; r < 2; r++) begin : cva6_hpdcache_load_if_adapter_gen
       assign dcache_req_ports[r] = dcache_req_ports_i[r];
-      assign dcache_amo_req[r]   = (r == 2) ? dcache_amo_req_i : '0;
 
-      cva6_hpdcache_if_adapter #(
+      cva6_hpdcache_load_if_adapter #(
         .ArianeCfg                                   (ArianeCfg)
-      ) i_cva6_hpdcache_if_adapter (
+      ) i_cva6_hpdcache_load_if_adapter (
         .clk_i,
         .rst_ni,
 
@@ -244,8 +241,6 @@ module cva6_hpdcache_subsystem import ariane_pkg::*; import wt_cache_pkg::*; imp
 
         .cva6_req_i                                  (dcache_req_ports[r]),
         .cva6_req_o                                  (dcache_req_ports_o[r]),
-        .cva6_amo_req_i                              (dcache_amo_req[r]),
-        .cva6_amo_resp_o                             (dcache_amo_resp[r]),
 
         .dcache_req_valid_o                          (dcache_req_valid[r]),
         .dcache_req_ready_i                          (dcache_req_ready[r]),
@@ -256,7 +251,26 @@ module cva6_hpdcache_subsystem import ariane_pkg::*; import wt_cache_pkg::*; imp
       );
     end
 
-    assign dcache_amo_resp_o = dcache_amo_resp[2];
+     cva6_hpdcache_if_adapter #(
+      .ArianeCfg                                   (ArianeCfg)
+    ) i_cva6_hpdcache_store_if_adapter (
+      .clk_i,
+      .rst_ni,
+
+      .dcache_req_sid_i                            (hpdcache_pkg::hpdcache_req_sid_t'(2)),
+
+      .cva6_req_i                                  (dcache_req_ports_i[2]),
+      .cva6_req_o                                  (dcache_req_ports_o[2]),
+      .cva6_amo_req_i                              (dcache_amo_req_i),
+      .cva6_amo_resp_o                             (dcache_amo_resp_o),
+
+      .dcache_req_valid_o                          (dcache_req_valid[2]),
+      .dcache_req_ready_i                          (dcache_req_ready[2]),
+      .dcache_req_o                                (dcache_req[2]),
+
+      .dcache_rsp_valid_i                          (dcache_rsp_valid[2]),
+      .dcache_rsp_i                                (dcache_rsp[2])
+    );
 
 `ifdef HPDCACHE_ENABLE_CMO
   
