@@ -205,12 +205,7 @@ package hpdcache_params_pkg;
     `ifndef CONF_HPDCACHE_WBUF_TIMECNT_WIDTH
         `define CONF_HPDCACHE_WBUF_TIMECNT_WIDTH 4
     `endif
-
-    `ifdef PITON_ARIANE
-        localparam int unsigned PARAM_WBUF_TIMECNT_WIDTH = 0;
-    `else
-        localparam int unsigned PARAM_WBUF_TIMECNT_WIDTH = `CONF_HPDCACHE_WBUF_TIMECNT_WIDTH;
-    `endif
+    localparam int unsigned PARAM_WBUF_TIMECNT_WIDTH = `CONF_HPDCACHE_WBUF_TIMECNT_WIDTH;
     //  }}}
 
     //  Definition of constants and types for the Replay Table (RTAB)
