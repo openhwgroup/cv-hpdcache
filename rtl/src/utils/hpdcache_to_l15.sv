@@ -58,6 +58,10 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     output  req_portid_t                   resp_pid_o,
     output  hpdcache_mem_resp_t            resp_o,
 
+    input   logic                          hpdc_inval_ready_i,
+    output  logic                          hpdc_inval_valid_o,
+    output  hpdcache_pkg::hpdcache_req_t   hpdc_inval_o,
+
     output  wt_cache_pkg::l15_req_t        l15_req_o,
 
     input   wt_cache_pkg::l15_rtrn_t       l15_rtrn_i
@@ -101,6 +105,9 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     hpdcache_pkg::hpdcache_mem_size_t        req_st_size;
 
     logic [$clog2(HPDcacheMemDataWidth/8)-1:0] first_one_pos, num_ones;
+
+    //Invalidation
+    logic                                    hpdc_inval_wok;
     
 
     // }}}
@@ -113,7 +120,8 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                                                     // Determines that a request is valid if there is a thid free
     assign l15_req_o.l15_val                  = req_valid_i & (th_state_q!=LOCKED_T0_T1), 
                                                     // Determines if we can hold a response (valid response and caches ready)
-           l15_req_o.l15_req_ack              = l15_rtrn_i.l15_val & resp_ready_i,
+           l15_req_o.l15_req_ack              = (l15_rtrn_i.l15_returntype==L15_EVICT_REQ & (l15_rtrn_i.l15_inval_dcache_inval || l15_rtrn_i.l15_inval_dcache_all_way)) ? l15_rtrn_i.l15_val & hpdc_inval_wok 
+                                                                                                                                                                        : l15_rtrn_i.l15_val & resp_ready_i,
                                                     // 0->IMISS, 1->Read 2-> Write 3-> Un.Read 4-> Un. Write
            l15_req_o.l15_rqtype               = (req_index_i[0]) ? L15_IMISS_RQ :
                                                 (req_index_i[1] || req_index_i[3]) ? L15_LOAD_RQ : L15_STORE_RQ,
@@ -127,7 +135,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
            l15_req_o.l15_invalidate_cacheline = '0, // unused by Ariane as L1 has no ECC at the moment
            l15_req_o.l15_blockstore           = '0, // unused in openpiton
            l15_req_o.l15_blockinitstore       = '0, // unused in openpiton
-           l15_req_o.l15_l1rplway             = '0, // NTODO
+           l15_req_o.l15_l1rplway             = '0, // Not used for this adapter
            l15_req_o.l15_address              = (req_index_i[2]) ? req_st_address: req_i.mem_req_addr,
            l15_req_o.l15_data                 = (SwapEndianess) ? swendian64(req_data_i.mem_req_w_data[63:0]) : 
                                                                   req_data_i.mem_req_w_data[63:0],
@@ -141,7 +149,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     // Response
     // {{{
 
-    assign resp_valid_o                       = l15_rtrn_i.l15_val,
+    assign resp_valid_o                       = l15_rtrn_i.l15_val & !(l15_rtrn_i.l15_returntype==L15_EVICT_REQ & (l15_rtrn_i.l15_inval_dcache_inval || l15_rtrn_i.l15_inval_dcache_all_way)),
            resp_pid_o                         = resp_pid;
                                                 // Should be always 0, unused in openpiton
     assign resp_o.mem_resp_error              = (l15_rtrn_i.l15_returntype==L15_ERR_RET) ? HPDCACHE_MEM_RESP_OK : HPDCACHE_MEM_RESP_NOK,
@@ -155,13 +163,24 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                                                                   {l15_rtrn_i.l15_data_3,
                                                                     l15_rtrn_i.l15_data_2,
                                                                     l15_rtrn_i.l15_data_1,
-                                                                    l15_rtrn_i.l15_data_0},
-           resp_o.mem_inv.idx                 = {l15_rtrn_i.l15_inval_address_15_4, 4'b0000},   
-           resp_o.mem_inv.all                 = l15_rtrn_i.l15_inval_icache_all_way;
+                                                                    l15_rtrn_i.l15_data_0};
+    // Invalidation requests
+    assign resp_o.mem_inval_icache_valid      = (l15_rtrn_i.l15_inval_icache_inval || l15_rtrn_i.l15_inval_icache_all_way),
+           resp_o.mem_inval_dcache_valid      = (l15_rtrn_i.l15_inval_dcache_inval || l15_rtrn_i.l15_inval_dcache_all_way),
+           resp_o.mem_inval.addr              = (l15_rtrn_i.l15_inval_icache_inval || l15_rtrn_i.l15_inval_icache_all_way) ? { l15_rtrn_i.l15_transducer_address[ariane_pkg::ICACHE_INDEX_WIDTH-1:4], 4'b0000} : 
+                                                                                                                             { hpdcache_req_addr_t'(l15_rtrn_i.l15_transducer_address)},
+           resp_o.mem_inval.need_rsp          = 1'b0,
+           resp_o.mem_inval.uncacheable       = 1'b0,
+           resp_o.mem_inval.sid               = '0, //NTODO ?¿ 
+           resp_o.mem_inval.tid               = '0, //NTODO ?¿
+           resp_o.mem_inval.wdata             = '0,      
+           resp_o.mem_inval.be                = '0,
+           resp_o.mem_inval.op                = HPDCACHE_REQ_CMO,
+           resp_o.mem_inval.size              = HPDCACHE_REQ_CMO_INVAL_NLINE;
     // }}}
 
 
-    // FSM to control the access to L1.5. OpenPiton doesn't support more than 2 requests -> 2 threads
+    // FSM to control the access to L1.5. OpenPiton doesn't support more than 2 requests -> 2 threads //NTODO: Optimize the last state
     // {{{
     always_comb
     begin: thread_id_fsm_comb
@@ -172,28 +191,27 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
             // Both available threads are free
             FREE_T0_T1: begin
                 // Request valid and L1.5 can receive -> Send Request 
-                req_thid = 1'b0;                // Thid used: 0
+                req_thid = 1'b0;                        // Thid used: 0
                 if (req_valid_i && l15_rtrn_i.l15_ack) begin
                     hpdc_tid_d[0] = req_i.mem_req_id;   // Save the real Thid
-                    hpdc_pid_d[0]  = req_pid_i; // Save the port id
+                    hpdc_pid_d[0]  = req_pid_i;         // Save the port id
                     th_state_d     = FREE_T1;
                 end
             end
             // Only Th0 is free
             FREE_T0: begin
-                // Request and Response comes at the same time -> Use thid 1 again
+                req_thid = 1'b0;                        // Thid used: 0
+                // Request and Response comes at the same time
                 if ((req_valid_i && l15_rtrn_i.l15_ack) && (resp_ready_i && l15_rtrn_i.l15_val && l15_rtrn_i.l15_returntype!=L15_EVICT_REQ)) begin
-                    req_thid = 1'b1;                     // Thid used: 1
                     //Response
                     resp_tid = hpdc_tid_q[l15_rtrn_i.l15_threadid];
                     resp_pid = hpdc_pid_q[l15_rtrn_i.l15_threadid];
                     //Request
-                    hpdc_tid_d[1] = req_i.mem_req_id;   // Save the real Thid
-                    hpdc_pid_d[1] = req_pid_i;
+                    hpdc_tid_d[0] = req_i.mem_req_id;   // Save the real Thid
+                    hpdc_pid_d[0] = req_pid_i;
                     //Th1 used, Th0 free
-                    th_state_d = FREE_T0;
-                end else begin
-                    req_thid = 1'b0;                     // Thid used: 0
+                    th_state_d = FREE_T1;
+                end else begin 
                     // Response valid and L1D/I can receive -> Receive Request    
                     if (resp_ready_i && l15_rtrn_i.l15_val && l15_rtrn_i.l15_returntype!=L15_EVICT_REQ) begin
                         resp_tid = hpdc_tid_q[l15_rtrn_i.l15_threadid];
@@ -209,19 +227,18 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
             end
             // Only Th1 is free
             FREE_T1: begin   
-                // Request and Response comes at the same time -> Use thid 0 again
+                req_thid = 1'b1;                        // Thid used: 1
+                // Request and Response comes at the same time 
                 if ((req_valid_i && l15_rtrn_i.l15_ack) && (resp_ready_i && l15_rtrn_i.l15_val && l15_rtrn_i.l15_returntype!=L15_EVICT_REQ)) begin
-                    req_thid = 1'b0;                     // Thid used: 0
                     //Response
                     resp_tid = hpdc_tid_q[l15_rtrn_i.l15_threadid];
                     resp_pid = hpdc_pid_q[l15_rtrn_i.l15_threadid];
                     //Request
-                    hpdc_tid_d[0] = req_i.mem_req_id;   // Save the real Thid
-                    hpdc_pid_d[0] = req_pid_i;
+                    hpdc_tid_d[1] = req_i.mem_req_id;   // Save the real Thid
+                    hpdc_pid_d[1] = req_pid_i;
                     //Th0 used, Th1 free
-                    th_state_d = FREE_T1;
-                end else begin
-                    req_thid = 1'b1;                // Thid used: 1
+                    th_state_d = FREE_T0;
+                end else begin 
                     // Response valid and L1D/I can receive -> Receive Request
                     if (resp_ready_i && l15_rtrn_i.l15_val && l15_rtrn_i.l15_returntype!=L15_EVICT_REQ) begin
                         resp_tid = hpdc_tid_q[l15_rtrn_i.l15_threadid];
@@ -304,5 +321,22 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
             end
         endcase
     end
+
+ // FIFO to keep invalidation requests
+    hpdcache_fifo_reg #(
+            .FIFO_DEPTH  (ADAPTER_RTRN_FIFO_DEPTH),
+            .fifo_data_t (hpdcache_pkg::hpdcache_req_t)
+    ) i_dcache_inval_fifo (
+            .clk_i,
+            .rst_ni,
+
+            .w_i    (resp_o.mem_inval_dcache_valid & l15_rtrn_i.l15_val),
+            .wok_o  (hpdc_inval_wok), //Space available
+            .wdata_i(resp_o.mem_inval),
+
+            .r_i    (hpdc_inval_ready_i), 
+            .rok_o  (hpdc_inval_valid_o),
+            .rdata_o(hpdc_inval_o)
+    );
 
 endmodule

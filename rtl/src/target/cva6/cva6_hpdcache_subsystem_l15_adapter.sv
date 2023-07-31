@@ -107,6 +107,10 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   input   logic                               dcache_uc_write_resp_ready_i,
   output  logic                               dcache_uc_write_resp_valid_o,
   output  hpdcache_mem_resp_w_t               dcache_uc_write_resp_o,
+
+  input   logic                               dcache_inval_ready_i,
+  output  logic                               dcache_inval_valid_o,
+  output  hpdcache_pkg::hpdcache_req_t        dcache_inval_o,
   //  }}}
   
   //    Ports to/from L1.5 
@@ -120,20 +124,18 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   // Internal types of the adapter
   // {{{
   typedef logic [ariane_pkg::ICACHE_LINE_WIDTH-1:0]  icache_resp_data_t;
-  typedef struct packed {
-       logic                                            all;         // invalidate all ways
-       logic [ariane_pkg::ICACHE_INDEX_WIDTH-1:0]       idx;         // physical address to invalidate
-  } hpdcache_mem_inval_t;
 
   //Unified structure for r and w responses
   typedef struct packed {
 
-       hpdcache_mem_error_e                    mem_resp_error; //mem_resp_r_error/mem_resp_w_error
-       hpdcache_mem_id_t                       mem_resp_id;    //mem_resp_r_id/mem_resp_w_id
+       hpdcache_mem_error_e                      mem_resp_error; //mem_resp_r_error/mem_resp_w_error
+       hpdcache_mem_id_t                         mem_resp_id;    //mem_resp_r_id/mem_resp_w_id
        logic [ariane_pkg::ICACHE_LINE_WIDTH-1:0] mem_resp_r_data; //Fixed to 32B (OP ICACHE line size)
-       logic                                   mem_resp_r_last;
-       logic                                   mem_resp_w_is_atomic;
-       hpdcache_mem_inval_t                    mem_inv;
+       logic                                     mem_resp_r_last;
+       logic                                     mem_resp_w_is_atomic;
+       logic                                     mem_inval_icache_valid;
+       logic                                     mem_inval_dcache_valid;
+       hpdcache_pkg::hpdcache_req_t              mem_inval;
   } hpdcache_mem_resp_t;
   //  }}}
 
@@ -207,11 +209,11 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
 
   //Translate the request from HPDC format to ariane's format
   assign icache_miss_resp_valid_o = icache_miss_resp_meta_rok,
-         icache_miss_resp_o.rtype = (icache_miss_resp_wdata.mem_inv.all) ?  wt_cache_pkg::ICACHE_INV_REQ : wt_cache_pkg::ICACHE_IFILL_ACK,
+         icache_miss_resp_o.rtype = (icache_miss_resp_wdata.mem_inval_icache_valid) ?  wt_cache_pkg::ICACHE_INV_REQ : wt_cache_pkg::ICACHE_IFILL_ACK,
          icache_miss_resp_o.data = icache_miss_resp_data_rdata,
          icache_miss_resp_o.user = '0,
-         icache_miss_resp_o.inv.idx = icache_miss_resp_wdata.mem_inv.idx,
-         icache_miss_resp_o.inv.all = icache_miss_resp_wdata.mem_inv.all,
+         icache_miss_resp_o.inv.idx = icache_miss_resp_wdata.mem_inval.addr,
+         icache_miss_resp_o.inv.all = icache_miss_resp_wdata.mem_inval_icache_valid,
          icache_miss_resp_o.inv.way = '0,
          icache_miss_resp_o.inv.vld = '0,
          icache_miss_resp_o.tid = icache_miss_resp_meta_id;
@@ -402,8 +404,11 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   //  L15 Adapter
   //  {{{
 
-  wt_cache_pkg::l15_req_t   l15_req;
-  wt_cache_pkg::l15_rtrn_t  l15_rtrn;
+  wt_cache_pkg::l15_req_t          l15_req;
+  wt_cache_pkg::l15_rtrn_t         l15_rtrn;
+  logic                            dcache_inval_ready;
+  logic                            dcache_inval_valid;
+  hpdcache_pkg::hpdcache_req_t     dcache_inval;
 
   hpdcache_to_l15 #(
        .N                    (5),
@@ -431,6 +436,11 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
     .resp_valid_o         (mem_resp_valid),
     .resp_pid_o           (mem_resp_pid),
     .resp_o               (mem_resp),
+
+    .hpdc_inval_ready_i   (dcache_inval_ready),
+    .hpdc_inval_valid_o   (dcache_inval_valid),
+    .hpdc_inval_o         (dcache_inval),
+
     //Adapter to L1.5, sending request
     .l15_req_o            (l15_req),           // Request
     //L1.5 to Adapter
@@ -439,6 +449,8 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
 
   assign l15_req_o = l15_req;
   assign l15_rtrn = l15_rtrn_i;
-
+  assign dcache_inval_o = dcache_inval,
+         dcache_inval_valid_o = dcache_inval_valid,
+         dcache_inval_ready = dcache_inval_ready_i;
   //  }}}
 endmodule : cva6_hpdcache_subsystem_l15_adapter

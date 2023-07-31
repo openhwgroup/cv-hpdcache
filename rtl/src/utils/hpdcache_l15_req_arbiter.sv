@@ -64,7 +64,8 @@ module hpdcache_l15_req_arbiter import hpdcache_pkg::*;
     typedef enum {
         REQ_IDLE,
         REQ_META_SENT,
-        REQ_DATA_SENT
+        REQ_DATA_SENT,
+        REQ_WAIT_READY
     } req_send_fsm_t;
 
     req_send_fsm_t               req_send_fsm_q, req_send_fsm_d;
@@ -121,25 +122,39 @@ module hpdcache_l15_req_arbiter import hpdcache_pkg::*;
         mem_arb_req_ready = 1'b0;
         case (req_send_fsm_q)
             REQ_IDLE: begin
-                if (req_valid && mem_req_ready_i) begin //Request valid and arbiter ready
-                    if (req_data_valid) begin //Data is also valid
-                            mem_arb_req_ready = 1'b1;
-                            req_send_fsm_d = REQ_IDLE;
-                    end else begin //Data is not valid
-                            req_send_fsm_d = REQ_META_SENT;
+                if (req_valid && req_data_valid) begin //Request valid and arbiter ready
+                    if (mem_req_ready_i) begin //Data is also valid
+                        mem_arb_req_ready = 1'b1;
+                        req_send_fsm_d = REQ_IDLE;
                     end 
-                end else if (req_data_valid && mem_req_ready_i) begin //Data valid and arbiter ready
+                end else if (req_valid) begin //Data is not valid
+                    req_send_fsm_d = REQ_META_SENT; 
+                end else if (req_data_valid) begin //Data valid and arbiter ready
                     req_send_fsm_d = REQ_DATA_SENT;
                 end
             end
             REQ_META_SENT: begin//Wait for valid data 
-                if (req_data_valid && mem_req_ready_i) begin 
-                    mem_arb_req_ready = 1'b1;
-                    req_send_fsm_d = REQ_IDLE;
+                if (req_data_valid) begin 
+                    if (mem_req_ready_i) begin
+                        mem_arb_req_ready = 1'b1;
+                        req_send_fsm_d = REQ_IDLE;
+                    end else begin
+                        req_send_fsm_d = REQ_WAIT_READY;
+                    end
                 end
             end
             REQ_DATA_SENT: begin //Wait for valid request
-                if (req_valid && mem_req_ready_i) begin 
+                if (req_valid) begin 
+                    if (mem_req_ready_i) begin
+                        mem_arb_req_ready = 1'b1;
+                        req_send_fsm_d = REQ_IDLE;
+                    end else begin
+                        req_send_fsm_d = REQ_WAIT_READY;
+                    end
+                end
+            end
+            REQ_WAIT_READY: begin
+                if (mem_req_ready_i) begin
                     mem_arb_req_ready = 1'b1;
                     req_send_fsm_d = REQ_IDLE;
                 end

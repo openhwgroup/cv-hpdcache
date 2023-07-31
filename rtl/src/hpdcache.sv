@@ -101,6 +101,10 @@ import hpdcache_pkg::*;
     input  logic                          mem_resp_uc_write_valid_i,
     input  hpdcache_mem_resp_w_t          mem_resp_uc_write_i,
 
+    output logic                          mem_inval_ready_o,
+    input  logic                          mem_inval_valid_i,
+    input  hpdcache_pkg::hpdcache_req_t   mem_inval_i,
+
     //      Performance events
     output logic                         evt_cache_write_miss_o,
     output logic                         evt_cache_read_miss_o,
@@ -402,6 +406,10 @@ import hpdcache_pkg::*;
 
         .rtab_empty_o                       (rtab_empty),
         .ctrl_empty_o                       (ctrl_empty),
+
+        .inval_req_ready_o                  (mem_inval_ready_o),
+        .inval_req_valid_i                  (mem_inval_valid_i),
+        .inval_req_i                        (mem_inval_i),
 
         .cfg_enable_i,
         .cfg_rtab_single_entry_i,
