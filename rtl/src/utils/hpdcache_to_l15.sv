@@ -102,6 +102,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     // Address and Size of the store request. Both values are recalculated since the WBUF size
     // is always 8B and the address is aligned to 8B. 
     hpdcache_mem_addr_t                      req_st_address;
+    logic [2:0]                              req_st_offset;
     hpdcache_pkg::hpdcache_mem_size_t        req_st_size;
 
     logic [$clog2(HPDcacheMemDataWidth/8)-1:0] first_one_pos, num_ones;
@@ -128,17 +129,20 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
            l15_req_o.l15_nc                   = ~req_i.mem_req_cacheable,
                                                     // IMISS Unch: 4B Cach: 32B cacheline; LOAD/STORE Max 16B cacheline (other possible sizes: 1,2,4,8B)
            l15_req_o.l15_size                 = (req_index_i[0]) ? ((req_i.mem_req_cacheable) ? 3'b111 : 3'b010) : //IMISS
-                                                                   (req_index_i[2]) ? req_st_size : //STORE
-                                                                   (req_i.mem_req_size == 3'b100) ? 3'b111 : req_i.mem_req_size, //LOAD and Uncachables
+                                                                   (req_index_i[2] || req_index_i[4]) ? req_st_size : //STORE & Unc. Store
+                                                                   (req_i.mem_req_size == 3'b100) ? 3'b111 : req_i.mem_req_size, //LOAD & Unc. Load 
            l15_req_o.l15_threadid             = req_thid, 
            l15_req_o.l15_prefetch             = '0, // unused in openpiton
            l15_req_o.l15_invalidate_cacheline = '0, // unused by Ariane as L1 has no ECC at the moment
            l15_req_o.l15_blockstore           = '0, // unused in openpiton
            l15_req_o.l15_blockinitstore       = '0, // unused in openpiton
            l15_req_o.l15_l1rplway             = '0, // Not used for this adapter
-           l15_req_o.l15_address              = (req_index_i[2]) ? req_st_address: req_i.mem_req_addr,
-           l15_req_o.l15_data                 = (SwapEndianess) ? swendian64(req_data_i.mem_req_w_data[63:0]) : 
-                                                                  req_data_i.mem_req_w_data[63:0],
+           l15_req_o.l15_address              = (req_index_i[2]) ? req_st_address : req_i.mem_req_addr,
+                                                    // Swap Endiannes and replicate transfers shorter than a dword for store req
+           l15_req_o.l15_data                 = (SwapEndianess) ? (req_index_i[2] || req_index_i[4]) ? swendian64(repData64(req_data_i.mem_req_w_data[63:0],req_st_offset,req_st_size[1:0])) 
+                                                                                                     : swendian64(req_data_i.mem_req_w_data[63:0]) :
+                                                                  (req_index_i[2] || req_index_i[4]) ? repData64(req_data_i.mem_req_w_data[63:0],req_st_offset,req_st_size[1:0]) 
+                                                                                                     : req_data_i.mem_req_w_data[63:0],
            l15_req_o.l15_data_next_entry      = '0, // unused in Ariane (only used for CAS atomic requests)
            l15_req_o.l15_csm_data             = '0, // unused in Ariane (only used for coherence domain restriction features)
            l15_req_o.l15_amo_op               = '0; // Currenlty AMOs are not supported
@@ -301,22 +305,27 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
         unique case (num_ones)
             4'b0001: begin
                 req_st_size  = '0; //1B
-                req_st_address = {req_i.mem_req_addr[HPDCACHE_PA_WIDTH-1:3],first_one_pos[2:0]};
+                req_st_offset = first_one_pos[2:0];
+                req_st_address = {req_i.mem_req_addr[HPDCACHE_PA_WIDTH-1:3],req_st_offset};
             end
             4'b0010: begin
                 req_st_size  = 3'b001; //2B
-                req_st_address = {req_i.mem_req_addr[HPDCACHE_PA_WIDTH-1:3],(first_one_pos[2:0]-1'b1)};
+                req_st_offset = (first_one_pos[2:0]-1'b1);
+                req_st_address = {req_i.mem_req_addr[HPDCACHE_PA_WIDTH-1:3],req_st_offset};
             end
             4'b0100: begin 
                 req_st_size  = 3'b010; //4B
-                req_st_address = {req_i.mem_req_addr[HPDCACHE_PA_WIDTH-1:3],(first_one_pos[2:0]-2'b11)};
+                req_st_offset = (first_one_pos[2:0]-2'b11);
+                req_st_address = {req_i.mem_req_addr[HPDCACHE_PA_WIDTH-1:3],req_st_offset};
             end 
             4'b1000: begin
                  req_st_size  = 3'b011; //8B
+                 req_st_offset = '0;
                  req_st_address = req_i.mem_req_addr; //Already aligned
             end
             default: begin 
                 req_st_size  = 3'b111; //16B
+                req_st_offset = '0;
                 req_st_address = req_i.mem_req_addr;
             end
         endcase
