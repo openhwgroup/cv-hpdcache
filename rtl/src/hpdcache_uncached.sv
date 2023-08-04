@@ -918,15 +918,15 @@ import hpdcache_pkg::*;
 //  Assertions
 //  {{{
 //  pragma translate_off
-    assert property (@(posedge clk_i)
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
             (req_valid_i && req_op_i.is_ld) -> req_uc_i) else
                     $error("uc_handler: unexpected load request on cacheable region");
 
-    assert property (@(posedge clk_i)
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
             (req_valid_i && req_op_i.is_st) -> req_uc_i) else
                     $error("uc_handler: unexpected store request on cacheable region");
 
-    assert property (@(posedge clk_i)
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
             (req_valid_i && (req_op_i.is_amo_lr   ||
                              req_op_i.is_amo_sc   ||
                              req_op_i.is_amo_swap ||
@@ -940,7 +940,7 @@ import hpdcache_pkg::*;
                              req_op_i.is_amo_minu )) -> req_need_rsp_i) else
                     $error("uc_handler: amo requests shall need a response");
 
-    assert property (@(posedge clk_i)
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
             (req_valid_i && (req_op_i.is_amo_lr   ||
                              req_op_i.is_amo_sc   ||
                              req_op_i.is_amo_swap ||
@@ -954,7 +954,7 @@ import hpdcache_pkg::*;
                              req_op_i.is_amo_minu )) -> (req_size_i inside {2,3})) else
                     $error("uc_handler: amo requests shall be 4 or 8 bytes wide");
 
-    assert property (@(posedge clk_i)
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
             (mem_resp_write_valid_i || mem_resp_read_valid_i) -> (uc_fsm_q == UC_MEM_WAIT_RSP)) else
                     $error("uc_handler: unexpected response from memory");
 //  pragma translate_on
