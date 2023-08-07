@@ -164,7 +164,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                                                     // ICACHE Invalidations demux port 0 otherwise saved port id
            resp_pid_o                         = (mem_only_inval & mem_inval_icache_valid) ? '0 : resp_pid;
                                                     // Should be always 0, unused in openpiton
-    assign resp_o.mem_resp_error              = (l15_rtrn_i.l15_returntype==L15_ERR_RET) ? HPDCACHE_MEM_RESP_OK : HPDCACHE_MEM_RESP_NOK,
+    assign resp_o.mem_resp_error              = (l15_rtrn_i.l15_returntype==L15_ERR_RET) ? HPDCACHE_MEM_RESP_NOK : HPDCACHE_MEM_RESP_OK,
            resp_o.mem_resp_id                 = resp_tid,
            resp_o.mem_resp_r_last             = '1, // OpenPiton sends the entire data in 1 cycle
            resp_o.mem_resp_w_is_atomic        = '0, // Currenlty AMOs are not supported
