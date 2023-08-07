@@ -147,6 +147,8 @@ import hpdcache_pkg::*;
     input  logic                  cmo_dir_inval_i,
     input  hpdcache_set_t         cmo_dir_inval_set_i,
     input  hpdcache_way_vector_t  cmo_dir_inval_way_i,
+    output logic                  cmo_req_mem_inval_valid_o,
+    input  logic                  cmo_req_mem_inval_ready_i,
 
     output logic                  rtab_empty_o,
     output logic                  ctrl_empty_o,
@@ -179,6 +181,7 @@ import hpdcache_pkg::*;
     logic                    st1_req_valid_q, st1_req_valid_d;
     logic                    st1_req_rtab_q;
     rtab_ptr_t               st1_req_rtab_ptr_q;
+    logic                    st1_req_is_mem_inval_q;
     hpdcache_req_t           st1_req_q;
     logic                    st1_req_is_load;
     logic                    st1_req_is_store;
@@ -264,27 +267,45 @@ import hpdcache_pkg::*;
     logic                    rtab_check;
     logic                    rtab_check_hit;
 
+    logic                    rtab_core_req_valid;
+    logic                    refill_req_valid;
+
     logic                    hpdcache_init_ready;
+
+    logic                    inval_pending;
+    logic                    inval_busy;
+    logic                    inval_valid;
+    //  }}}
+
+    //  Memory invalidations
+    //  {{{
+            // Memory Inval request available
+    assign inval_pending = inval_req_valid_i,     
+            // Determines that a memory inval is already being processed     
+           inval_busy    = ~cmo_req_mem_inval_ready_i, 
+            // Determines that a memory inval is valid when there is a inval. pending
+            // and the CMO handler is not attending another memory inval or a CMO
+           inval_valid   = inval_pending & ~inval_busy & ~cmo_busy_i; 
     //  }}}
 
     //  Decoding of the request
     //  {{{
     //     Select between request in the replay table or a new core requests
-    assign st0_req_valid = rtab_sel ? rtab_req_valid : core_req_valid_i;
+    assign rtab_core_req_valid = rtab_sel ? rtab_req_valid : core_req_valid_i;
 
-    assign st0_req  = '{
-        addr        : inval_req_valid_i ? inval_req_i.addr      : rtab_sel ? rtab_req.addr     : core_req_i.addr,
-        wdata       : inval_req_valid_i ? inval_req_i.wdata     : rtab_sel ? rtab_req.wdata    : core_req_i.wdata,
-        op          : inval_req_valid_i ? inval_req_i.op        : rtab_sel ? rtab_req.op       : core_req_i.op,
-        be          : inval_req_valid_i ? inval_req_i.be        : rtab_sel ? rtab_req.be       : core_req_i.be,
-        size        : inval_req_valid_i ? inval_req_i.size      : rtab_sel ? rtab_req.size     : core_req_i.size,
-        sid         : inval_req_valid_i ? inval_req_i.sid       : rtab_sel ? rtab_req.sid      : core_req_i.sid,
-        tid         : inval_req_valid_i ? inval_req_i.tid       : rtab_sel ? rtab_req.tid      : core_req_i.tid,
-        need_rsp    : inval_req_valid_i ? inval_req_i.need_rsp  : rtab_sel ? rtab_req.need_rsp : core_req_i.need_rsp,
+    assign st0_req  = '{ // The invalidation has the maximum priority
+        addr        : inval_pending ? inval_req_i.addr      : rtab_sel ? rtab_req.addr     : core_req_i.addr,
+        wdata       : inval_pending ? inval_req_i.wdata     : rtab_sel ? rtab_req.wdata    : core_req_i.wdata,
+        op          : inval_pending ? inval_req_i.op        : rtab_sel ? rtab_req.op       : core_req_i.op,
+        be          : inval_pending ? inval_req_i.be        : rtab_sel ? rtab_req.be       : core_req_i.be,
+        size        : inval_pending ? inval_req_i.size      : rtab_sel ? rtab_req.size     : core_req_i.size,
+        sid         : inval_pending ? inval_req_i.sid       : rtab_sel ? rtab_req.sid      : core_req_i.sid,
+        tid         : inval_pending ? inval_req_i.tid       : rtab_sel ? rtab_req.tid      : core_req_i.tid,
+        need_rsp    : inval_pending ? inval_req_i.need_rsp  : rtab_sel ? rtab_req.need_rsp : core_req_i.need_rsp,
 
         //  Set the uncacheable bit when the cache is disabled.
         //  Otherwise, follow the hint in the request
-        uncacheable : ~cfg_enable_i | (inval_req_valid_i ? inval_req_i.uncacheable : rtab_sel ? rtab_req.uncacheable : core_req_i.uncacheable)
+        uncacheable : ~cfg_enable_i | (inval_pending ? inval_req_i.uncacheable : rtab_sel ? rtab_req.uncacheable : core_req_i.uncacheable)
     };
 
     //     Decode operation in stage 0
@@ -334,19 +355,21 @@ import hpdcache_pkg::*;
     //  The arbiter can cycle the priority token when:
     //  - The granted request is consumed (req_grant &  req_valid & req_ready)
     //  - The granted request is aborted  (req_grant & ~req_valid)
-    //  And there is not an invalidation request valid 
-    assign st0_arb_ready   = !inval_req_valid_i &
-                             ((st0_arb_req_grant[0] &     st0_req_valid   &    st0_req_ready  ) | 
+    //  And there is not an invalidation request pending or being processed 
+    assign st0_arb_ready   = ~inval_pending & ~inval_busy & 
+                             ((st0_arb_req_grant[0] &     rtab_core_req_valid   &    st0_req_ready  ) | 
                               (st0_arb_req_grant[1] &  refill_req_valid_i & refill_req_ready_o) |
-                              (st0_arb_req_grant[0] &    ~st0_req_valid  ) | 
+                              (st0_arb_req_grant[0] &    ~rtab_core_req_valid  ) | 
                               (st0_arb_req_grant[1] & ~refill_req_valid_i));
 
-    assign st0_arb_req[0]     = st0_req_valid,
+    assign st0_arb_req[0]     = rtab_core_req_valid,
            st0_arb_req[1]     = refill_req_valid_i;
 
-    assign core_req_ready_o   = st0_req_ready    & ~rtab_sel & !inval_req_valid_i,
-           rtab_req_ready     = st0_req_ready    &  rtab_sel & !inval_req_valid_i,
-           inval_req_ready_o  = st0_req_ready    &  inval_req_valid_i; 
+    assign core_req_ready_o   = st0_req_ready    & ~rtab_sel & ~inval_pending & ~inval_busy,
+           rtab_req_ready     = st0_req_ready    &  rtab_sel & ~inval_pending & ~inval_busy,
+            // Ready to process a memory invalidation when there is a pending invalidation 
+            // and the CMO handler is not attending another memory inval or a CMO
+           inval_req_ready_o  = st0_req_ready    &  inval_pending & ~inval_busy & ~cmo_busy_i;
 
     //  Trigger an event signal when the pipeline is stalled (new request is not consumed)
     assign evt_stall_o        = core_req_valid_i & ~core_req_ready_o;
@@ -355,9 +378,9 @@ import hpdcache_pkg::*;
     //  Cache controller protocol engine
     //  {{{
     hpdcache_ctrl_pe hpdcache_ctrl_pe_i(
-        .arb_st0_req_valid_i                ((st0_req_valid & st0_arb_req_grant[0]) || inval_req_valid_i),//rtab/core || inval
+        .arb_st0_req_valid_i                (st0_req_valid),
         .arb_st0_req_ready_o                (st0_req_ready),
-        .arb_refill_valid_i                 (refill_req_valid_i & st0_arb_req_grant[1] & !inval_req_valid_i),
+        .arb_refill_valid_i                 (refill_req_valid),
         .arb_refill_ready_o                 (refill_req_ready_o),
 
         .st0_req_is_uncacheable_i           (st0_req.uncacheable),
@@ -450,8 +473,15 @@ import hpdcache_pkg::*;
         .evt_rtab_rollback_o,
         .evt_stall_refill_o
     );
-
+        // st0_req -> (rtab/core) or inval request. Its valid when:
+        // - There is a valid memory invalidation request
+        // - There is a valid rtab/core request and there is not a pending memory invalidation active or already being processed 
+    assign st0_req_valid = (rtab_core_req_valid & st0_arb_req_grant[0] & ~inval_pending & ~inval_busy) || inval_valid;
+        // refill request is valid if there is a valid refill 
+        // and there is not a pending memory invalidation active or already being processed 
+    assign refill_req_valid = refill_req_valid_i & st0_arb_req_grant[1] & ~inval_pending & ~inval_busy;
     assign ctrl_empty_o = ~(st1_req_valid_q | st2_req_valid_q);
+    
     //  }}}
 
     //  Replay table
@@ -530,10 +560,13 @@ import hpdcache_pkg::*;
             st1_req_valid_q    <= 1'b0;
             st1_req_rtab_q     <= 1'b0;
             st1_req_rtab_ptr_q <= '0;
+            st1_req_is_mem_inval_q <= '0;
+            
         end else begin
             st1_req_valid_q <= st1_req_valid_d;
             if (st0_req_ready) begin
                 st1_req_rtab_q <= rtab_sel;
+                st1_req_is_mem_inval_q <= inval_req_valid_i;
                 if (rtab_sel) begin
                     st1_req_rtab_ptr_q <= rtab_req_ptr;
                 end
@@ -695,7 +728,8 @@ import hpdcache_pkg::*;
            cmo_req_op_o.is_fence          = st1_req_is_cmo_fence,
            cmo_req_op_o.is_inval_by_nline = st1_req_is_cmo_inval & is_cmo_inval_by_nline(st1_req_q.size),
            cmo_req_op_o.is_inval_by_set   = st1_req_is_cmo_inval & is_cmo_inval_by_set(st1_req_q.size),
-           cmo_req_op_o.is_inval_all      = st1_req_is_cmo_inval & is_cmo_inval_all(st1_req_q.size);
+           cmo_req_op_o.is_inval_all      = st1_req_is_cmo_inval & is_cmo_inval_all(st1_req_q.size),
+           cmo_req_mem_inval_valid_o      = st1_req_is_mem_inval_q;
     //  }}}
 
     //  Control of the response to the core

@@ -411,14 +411,14 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   hpdcache_pkg::hpdcache_req_t     dcache_inval;
 
   hpdcache_to_l15 #(
-       .N                    (5),
-       .SwapEndianess        (ArianeCfg.SwapEndianess),
-       .hpdcache_mem_req_t                              (hpdcache_mem_req_t),
-       .hpdcache_mem_req_w_t                            (hpdcache_mem_req_w_t),
-       .hpdcache_mem_id_t                               (hpdcache_mem_id_t),
-       .hpdcache_mem_addr_t                             (hpdcache_mem_addr_t),
-       .hpdcache_mem_resp_t                             (hpdcache_mem_resp_t),
-       .req_portid_t                                    (req_portid_t)
+       .N                        (5), // Number of request types
+       .SwapEndianess            (ArianeCfg.SwapEndianess),
+       .hpdcache_mem_req_t       (hpdcache_mem_req_t),
+       .hpdcache_mem_req_w_t     (hpdcache_mem_req_w_t),
+       .hpdcache_mem_id_t        (hpdcache_mem_id_t),
+       .hpdcache_mem_addr_t      (hpdcache_mem_addr_t),
+       .hpdcache_mem_resp_t      (hpdcache_mem_resp_t),
+       .req_portid_t             (req_portid_t)
   ) i_hpdcache_to_l15 ( 
 
     .clk_i,
@@ -437,14 +437,14 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
     .resp_pid_o           (mem_resp_pid),
     .resp_o               (mem_resp),
 
-    .hpdc_inval_ready_i   (dcache_inval_ready),
-    .hpdc_inval_valid_o   (dcache_inval_valid),
-    .hpdc_inval_o         (dcache_inval),
+    .hpdc_fifo_inval_ready_i   (dcache_inval_ready),
+    .hpdc_fifo_inval_valid_o   (dcache_inval_valid),
+    .hpdc_fifo_inval_o         (dcache_inval),
 
     //Adapter to L1.5, sending request
-    .l15_req_o            (l15_req),           // Request
+    .l15_req_o                 (l15_req),      // L1.5 Request
     //L1.5 to Adapter
-    .l15_rtrn_i           (l15_rtrn)           // Response
+    .l15_rtrn_i                (l15_rtrn)      // L1.5 Response
   );
 
   assign l15_req_o = l15_req;
