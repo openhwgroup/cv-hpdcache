@@ -88,6 +88,14 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     // Declaration of internal registers/signals
     // {{{
 
+    // Request type
+    logic                                    req_is_ifill;
+    logic                                    req_is_read;
+    logic                                    req_is_write;
+    logic                                    req_is_atomic;
+    ariane_pkg::amo_t                        req_amo_op_type; 
+    // Data sended by the request
+    hpdcache_mem_req_w_t                     req_data;
     // FSM State 
     thread_id_fsm_t                          th_state_q, th_state_d;
     // HPDC Req ID
@@ -105,69 +113,78 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     hpdcache_mem_addr_t                      req_st_address;
     logic [2:0]                              req_st_offset;
     hpdcache_pkg::hpdcache_mem_size_t        req_st_size;
-
     logic [$clog2(HPDcacheMemDataWidth/8)-1:0] first_one_pos, num_ones;
-
-    //Invalidation
+    // Invalidations
     logic                                    mem_inval_icache_valid;
     logic                                    mem_inval_dcache_valid;
     logic                                    mem_only_inval;
     logic                                    hpdc_fifo_inval_wok;
-    
 
     // }}}
 
 
     // Request
     // {{{
-                                                    // Determines that the L1.5 can receive a request if L1.5 is ready and there is a thid free
+                                                // Determines that the L1.5 can receive a request if L1.5 is ready and there is a thid free
     assign req_ready_o                        = l15_rtrn_i.l15_ack & (th_state_q!=LOCKED_T0_T1);
-                                                    // Determines that a request is valid if there is a thid free
+                                                // Determines that a request is valid if there is a thid free
     assign l15_req_o.l15_val                  = req_valid_i & (th_state_q!=LOCKED_T0_T1), 
-                                                    // Determines if we can hold a response
-           l15_req_o.l15_req_ack              = (mem_inval_dcache_valid) ? (mem_only_inval) ? l15_rtrn_i.l15_val & hpdc_fifo_inval_wok : // DCACHE Invalidation
+                                                // Determines if we can hold the coming response
+           l15_req_o.l15_req_ack              = (mem_inval_dcache_valid) ? (mem_only_inval) ? l15_rtrn_i.l15_val & hpdc_fifo_inval_wok :                // DCACHE Invalidation
                                                                                               l15_rtrn_i.l15_val & hpdc_fifo_inval_wok & resp_ready_i : // Response + DCACHE Invalidation
-                                                                            l15_rtrn_i.l15_val & resp_ready_i, // Response/ICACHE Invalidation
-                                                    // 0->IMISS, 1->Read 2-> Write 3-> Un.Read 4-> Un. Write
-           l15_req_o.l15_rqtype               = (req_index_i[0]) ? L15_IMISS_RQ :
-                                                (req_index_i[1] || req_index_i[3]) ? L15_LOAD_RQ : L15_STORE_RQ,
+                                                                            l15_rtrn_i.l15_val & resp_ready_i,                                          // Response/ICACHE Invalidation
+                                                // Request type
+           l15_req_o.l15_rqtype               = (req_is_ifill) ? L15_IMISS_RQ :
+                                                (req_is_read)  ? L15_LOAD_RQ : 
+                                                (req_is_write) ? L15_STORE_RQ : L15_ATOMIC_RQ,
            l15_req_o.l15_nc                   = ~req_i.mem_req_cacheable,
-                                                    // IMISS Unch: 4B Cach: 32B cacheline; LOAD/STORE Max 16B cacheline (other possible sizes: 1,2,4,8B)
-           l15_req_o.l15_size                 = (req_index_i[0]) ? ((req_i.mem_req_cacheable) ? 3'b111 : 3'b010) : //IMISS
-                                                                   (req_index_i[2] || req_index_i[4]) ? req_st_size : //STORE & Unc. Store
-                                                                   (req_i.mem_req_size == 3'b100) ? 3'b111 : req_i.mem_req_size, //LOAD & Unc. Load 
+                                                // IMiss Unch: 4B Cach: 32B cacheline; Load/Store/AMO Max 16B cacheline (other possible sizes: 1,2,4,8B)
+           l15_req_o.l15_size                 = (req_is_ifill) ? ((req_i.mem_req_cacheable) ? 3'b111 : 3'b010) : // IMiss
+                                                (req_is_write || req_is_atomic) ? req_st_size :                  // Store & Unc. Store & AMO
+                                                (req_i.mem_req_size == 3'b100) ? 3'b111 : req_i.mem_req_size,    // Load & Unc. Load 
            l15_req_o.l15_threadid             = req_thid, 
+           l15_req_o.l15_address              = (req_is_write || req_is_atomic) ? req_st_address : req_i.mem_req_addr,
+                                                // Swap Endiannes and replicate transfers shorter than a dword for Store/AMO requests
+           l15_req_o.l15_data                 = (SwapEndianess) ? (req_is_write || req_is_atomic) ? swendian64(repData64(req_data.mem_req_w_data[63:0],req_st_offset,req_st_size[1:0])) 
+                                                                                                              : swendian64(req_data.mem_req_w_data[63:0]) :
+                                                                  (req_is_write || req_is_atomic) ? repData64(req_data.mem_req_w_data[63:0],req_st_offset,req_st_size[1:0]) 
+                                                                                                              : req_data.mem_req_w_data[63:0],
+           l15_req_o.l15_data_next_entry      = '0, // unused in Ariane (only used for CAS atomic requests)
+           l15_req_o.l15_csm_data             = '0, // unused in Ariane (only used for coherence domain restriction features)
+           l15_req_o.l15_amo_op               = req_amo_op_type,
            l15_req_o.l15_prefetch             = '0, // unused in openpiton
            l15_req_o.l15_invalidate_cacheline = '0, // unused by Ariane as L1 has no ECC at the moment
            l15_req_o.l15_blockstore           = '0, // unused in openpiton
            l15_req_o.l15_blockinitstore       = '0, // unused in openpiton
-           l15_req_o.l15_l1rplway             = '0, // Not used for this adapter
-           l15_req_o.l15_address              = (req_index_i[2]) ? req_st_address : req_i.mem_req_addr,
-                                                    // Swap Endiannes and replicate transfers shorter than a dword for store req
-           l15_req_o.l15_data                 = (SwapEndianess) ? (req_index_i[2] || req_index_i[4]) ? swendian64(repData64(req_data_i.mem_req_w_data[63:0],req_st_offset,req_st_size[1:0])) 
-                                                                                                     : swendian64(req_data_i.mem_req_w_data[63:0]) :
-                                                                  (req_index_i[2] || req_index_i[4]) ? repData64(req_data_i.mem_req_w_data[63:0],req_st_offset,req_st_size[1:0]) 
-                                                                                                     : req_data_i.mem_req_w_data[63:0],
-           l15_req_o.l15_data_next_entry      = '0, // unused in Ariane (only used for CAS atomic requests)
-           l15_req_o.l15_csm_data             = '0, // unused in Ariane (only used for coherence domain restriction features)
-           l15_req_o.l15_amo_op               = '0; // Currenlty AMOs are not supported
+           l15_req_o.l15_l1rplway             = '0; // Not used for this adapter
 
+    // Type of request based on the request mux index port (req_index_i: 0->IMISS, 1->Read 2-> Write 3-> Un.Read 4-> Un. Write)
+    assign req_is_ifill                       = req_index_i[0],
+           req_is_read                        = (req_index_i[1] || req_index_i[3]) & (req_i.mem_req_command==hpdcache_pkg::HPDCACHE_MEM_READ),  // Load & Unc. Load 
+           req_is_write                       = (req_index_i[2] || req_index_i[4]) & (req_i.mem_req_command==hpdcache_pkg::HPDCACHE_MEM_WRITE), // Store & Unc. Store 
+           req_is_atomic                      = req_index_i[4] & (req_i.mem_req_command==hpdcache_pkg::HPDCACHE_MEM_ATOMIC);                    // AMO
+
+    // Data sended by the request
+    // If the request is a AMO_CLR, its translated as a AMO_AND. Therefore, the data sended has to be 
+    assign req_data                           = (req_is_atomic & req_i.mem_req_atomic==HPDCACHE_MEM_ATOMIC_CLR) ? ~req_data_i : req_data_i;
+    
     // }}}
 
 
     // Response
     // {{{
-                                                    // Determines if the response received is valid for the response demux
-    assign resp_valid_o                       = (mem_inval_dcache_valid) ? (mem_only_inval) ? '0 : // DCACHE Invalidation
+                                                // Determines if the response received is valid for the response demux
+    assign resp_valid_o                       = (mem_inval_dcache_valid) ? (mem_only_inval) ? '0 :                                       // DCACHE Invalidation
                                                                                               l15_rtrn_i.l15_val & hpdc_fifo_inval_wok : // Response + DCACHE Invalidation
-                                                                           l15_rtrn_i.l15_val, // Response/ICACHE Invalidation
-                                                    // ICACHE Invalidations demux port 0 otherwise saved port id
-           resp_pid_o                         = (mem_only_inval & mem_inval_icache_valid) ? '0 : resp_pid;
-                                                    // Should be always 0, unused in openpiton
-    assign resp_o.mem_resp_error              = (l15_rtrn_i.l15_returntype==L15_ERR_RET) ? HPDCACHE_MEM_RESP_NOK : HPDCACHE_MEM_RESP_OK,
+                                                                                              l15_rtrn_i.l15_val,                        // Response/ICACHE Invalidation
+                                                // ICACHE Invalidations demux port 0 otherwise saved port id
+           resp_pid_o                         = (mem_only_inval & mem_inval_icache_valid) ? '0 : 
+                                                (l15_rtrn_i.l15_returntype==L15_CPX_RESTYPE_ATOMIC_RES) ? 3'b101 : resp_pid;
+                                                
+    assign resp_o.mem_resp_error              = (l15_rtrn_i.l15_returntype==L15_ERR_RET) ? HPDCACHE_MEM_RESP_NOK : HPDCACHE_MEM_RESP_OK, // Should be always HPDCACHE_MEM_RESP_OK, unused in openpiton
            resp_o.mem_resp_id                 = resp_tid,
-           resp_o.mem_resp_r_last             = '1, // OpenPiton sends the entire data in 1 cycle
-           resp_o.mem_resp_w_is_atomic        = '0, // Currenlty AMOs are not supported
+           resp_o.mem_resp_r_last             = '1,                                                   // OpenPiton sends the entire data in 1 cycle
+           resp_o.mem_resp_w_is_atomic        = (|l15_rtrn_i.l15_data_0) ? 1'b0 : 1'b1,               // AMO_SC success if 1 else AMO_SC failure
            resp_o.mem_resp_r_data             = (SwapEndianess) ? {swendian64(l15_rtrn_i.l15_data_3),
                                                                     swendian64(l15_rtrn_i.l15_data_2),
                                                                     swendian64(l15_rtrn_i.l15_data_1),
@@ -176,12 +193,8 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                                                                     l15_rtrn_i.l15_data_2,
                                                                     l15_rtrn_i.l15_data_1,
                                                                     l15_rtrn_i.l15_data_0};
-    // Invalidation request translated as a CMO
-    assign mem_inval_icache_valid             = (l15_rtrn_i.l15_inval_icache_inval || l15_rtrn_i.l15_inval_icache_all_way),
-           mem_inval_dcache_valid             = (l15_rtrn_i.l15_inval_dcache_inval || l15_rtrn_i.l15_inval_dcache_all_way),
-           mem_only_inval                     = l15_rtrn_i.l15_returntype==L15_EVICT_REQ;
 
-
+    // Invalidation request translated as a CMO 
     assign resp_o.mem_inval_icache_valid      = mem_inval_icache_valid,
            resp_o.mem_inval_dcache_valid      = mem_inval_dcache_valid,
            resp_o.mem_inval.addr              = mem_inval_icache_valid ? { l15_rtrn_i.l15_transducer_address[ariane_pkg::ICACHE_INDEX_WIDTH-1:4], 4'b0000} : 
@@ -194,6 +207,10 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
            resp_o.mem_inval.be                = '0,
            resp_o.mem_inval.op                = HPDCACHE_REQ_CMO,
            resp_o.mem_inval.size              = HPDCACHE_REQ_CMO_INVAL_NLINE;
+
+    assign mem_inval_icache_valid             = (l15_rtrn_i.l15_inval_icache_inval || l15_rtrn_i.l15_inval_icache_all_way), 
+           mem_inval_dcache_valid             = (l15_rtrn_i.l15_inval_dcache_inval || l15_rtrn_i.l15_inval_dcache_all_way),
+           mem_only_inval                     = l15_rtrn_i.l15_returntype==L15_EVICT_REQ;
     // }}}
 
 
@@ -308,14 +325,14 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     begin: lzc_comb
         first_one_pos = '0;
         for (int unsigned i = int'(HPDcacheMemDataWidth/8); i > 0; i--) begin
-            if (req_data_i.mem_req_w_be[i-1]) begin
+            if (req_data.mem_req_w_be[i-1]) begin
                 first_one_pos = i-1;
                 break;
             end
         end
     end
 
-    assign num_ones = $countones(req_data_i.mem_req_w_be);
+    assign num_ones = $countones(req_data.mem_req_w_be);
 
     always_comb 
     begin:rst_size_address_comb
@@ -348,6 +365,28 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
         endcase
     end
     // }}}
+
+    // Translator of the atomic operation request type (HPDC->OpenPiton)
+    // {{{
+    always_comb 
+    begin:atomic_req_op_type_comb
+        unique case (req_i.mem_req_atomic)
+            HPDCACHE_MEM_ATOMIC_ADD:  req_amo_op_type = ariane_pkg::AMO_ADD;
+            HPDCACHE_MEM_ATOMIC_CLR:  req_amo_op_type = ariane_pkg::AMO_AND;
+            HPDCACHE_MEM_ATOMIC_SET:  req_amo_op_type = ariane_pkg::AMO_OR;
+            HPDCACHE_MEM_ATOMIC_EOR:  req_amo_op_type = ariane_pkg::AMO_XOR;
+            HPDCACHE_MEM_ATOMIC_SMAX: req_amo_op_type = ariane_pkg::AMO_MAX;
+            HPDCACHE_MEM_ATOMIC_SMIN: req_amo_op_type = ariane_pkg::AMO_MIN;
+            HPDCACHE_MEM_ATOMIC_UMAX: req_amo_op_type = ariane_pkg::AMO_MAXU;
+            HPDCACHE_MEM_ATOMIC_UMIN: req_amo_op_type = ariane_pkg::AMO_MINU;
+            HPDCACHE_MEM_ATOMIC_SWAP: req_amo_op_type = ariane_pkg::AMO_SWAP;
+            HPDCACHE_MEM_ATOMIC_LDEX: req_amo_op_type = ariane_pkg::AMO_LR;
+            HPDCACHE_MEM_ATOMIC_STEX: req_amo_op_type = ariane_pkg::AMO_SC;
+            default:                  req_amo_op_type = ariane_pkg::AMO_NONE;
+        endcase
+    end
+    // }}}
+
 
     // FIFO to keep invalidation requests until they are attended by the HPDC
     // {{{

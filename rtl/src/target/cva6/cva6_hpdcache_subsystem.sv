@@ -445,7 +445,7 @@ module cva6_hpdcache_subsystem import ariane_pkg::*; import wt_cache_pkg::*; imp
     .cfg_wbuf_reset_timecnt_on_write_i (1'b1),
     .cfg_wbuf_sequential_waw_i         (1'b0),
     .cfg_prefetch_updt_plru_i          (1'b1),
-    .cfg_error_on_cacheable_amo_i      (1'b0),
+    .cfg_error_on_cacheable_amo_i      (1'b0), //Replicated amo mode
     .cfg_rtab_single_entry_i           (1'b0)
   );
 

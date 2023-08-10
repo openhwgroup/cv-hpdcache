@@ -338,15 +338,15 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   logic                                mem_resp_valid;
   hpdcache_mem_resp_t                  mem_resp;
 
-  logic                                mem_resp_ready_arb [4:0];
-  logic                                mem_resp_valid_arb [4:0];
-  hpdcache_mem_resp_t                  mem_resp_arb       [4:0];
+  logic                                mem_resp_ready_arb [5:0];
+  logic                                mem_resp_valid_arb [5:0];
+  hpdcache_mem_resp_t                  mem_resp_arb       [5:0];
 
-  //Port 0 -> ICACHE, Port 1 -> Read, Port 2 -> Write, Port 3 -> UC Read, Port 4 -> UC Write
+  //Port 0 -> ICACHE, Port 1 -> Read, Port 2 -> Write, Port 3 -> UC Read, Port 4 -> UC Write 5-> Atomic operations
   req_portid_t           mem_resp_pid;
 
   hpdcache_l15_resp_demux #(
-    .N                  (5),
+    .N                  (6),
     .resp_t             (hpdcache_mem_resp_t),
     .resp_id_t          (hpdcache_mem_id_t),
     .req_portid_t       (req_portid_t)
@@ -366,38 +366,52 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
     .mem_sel_i          (mem_resp_pid)
   );
 
-  //Responses 
-  //IFILL
+  // Responses 
+  // IFILL
   assign icache_miss_resp_w          = mem_resp_valid_arb[0],
          icache_miss_resp_wdata      = mem_resp_arb[0],
          mem_resp_ready_arb[0]       = icache_miss_resp_wok;
-  //Read
-  assign dcache_miss_resp_valid_o    = mem_resp_valid_arb[1],
+  // Read
+  assign dcache_miss_resp_valid_o            = mem_resp_valid_arb[1],
          dcache_miss_resp_o.mem_resp_r_data  = mem_resp_arb[1].mem_resp_r_data[HPDcacheMemDataWidth-1:0],
          dcache_miss_resp_o.mem_resp_r_error = mem_resp_arb[1].mem_resp_error,
          dcache_miss_resp_o.mem_resp_r_id    = mem_resp_arb[1].mem_resp_id,
          dcache_miss_resp_o.mem_resp_r_last  = mem_resp_arb[1].mem_resp_r_last,
-         mem_resp_ready_arb[1]       = dcache_miss_resp_ready_i;
-  //Write
-  assign dcache_wbuf_resp_valid_o     = mem_resp_valid_arb[2],
+         mem_resp_ready_arb[1]               = dcache_miss_resp_ready_i;
+  // Write
+  assign dcache_wbuf_resp_valid_o                = mem_resp_valid_arb[2],
          dcache_wbuf_resp_o.mem_resp_w_is_atomic = mem_resp_arb[2].mem_resp_w_is_atomic,
          dcache_wbuf_resp_o.mem_resp_w_error     = mem_resp_arb[2].mem_resp_error,
          dcache_wbuf_resp_o.mem_resp_w_id        = mem_resp_arb[2].mem_resp_id,
-         mem_resp_ready_arb[2]        = dcache_wbuf_resp_ready_i;
+         mem_resp_ready_arb[2]                   = dcache_wbuf_resp_ready_i;
 
-  //Uncachable Read
-  assign dcache_uc_read_resp_valid_o = mem_resp_valid_arb[3],
-         dcache_uc_read_resp_o.mem_resp_r_error = mem_resp_arb[3].mem_resp_error,
-         dcache_uc_read_resp_o.mem_resp_r_id    = mem_resp_arb[3].mem_resp_id,
-         dcache_uc_read_resp_o.mem_resp_r_data  = mem_resp_arb[3].mem_resp_r_data[HPDcacheMemDataWidth-1:0],
-         dcache_uc_read_resp_o.mem_resp_r_last  = mem_resp_arb[3].mem_resp_r_last,
-         mem_resp_ready_arb[3]       = dcache_uc_read_resp_ready_i;
-  //Uncachable Write
-  assign dcache_uc_write_resp_valid_o = mem_resp_valid_arb[4],
-         dcache_uc_write_resp_o.mem_resp_w_is_atomic = mem_resp_arb[4].mem_resp_w_is_atomic,
-         dcache_uc_write_resp_o.mem_resp_w_error     = mem_resp_arb[4].mem_resp_error,
-         dcache_uc_write_resp_o.mem_resp_w_id        = mem_resp_arb[4].mem_resp_id,
+  // Uncachable Read
+  // If the response comes from the port 3, its a Unc. Read.
+  // If the response comes from the port 5, its an AMO since this operations must response to both Unc. Read and Write ports
+  assign dcache_uc_read_resp_valid_o            = mem_resp_valid_arb[3] || mem_resp_valid_arb[5],
+         dcache_uc_read_resp_o.mem_resp_r_error = (mem_resp_valid_arb[5]) ?  mem_resp_arb[5].mem_resp_error : 
+                                                                             mem_resp_arb[3].mem_resp_error,
+         dcache_uc_read_resp_o.mem_resp_r_id    = (mem_resp_valid_arb[5]) ?  mem_resp_arb[5].mem_resp_id : 
+                                                                             mem_resp_arb[3].mem_resp_id,
+         dcache_uc_read_resp_o.mem_resp_r_data  = (mem_resp_valid_arb[5]) ?  mem_resp_arb[5].mem_resp_r_data[HPDcacheMemDataWidth-1:0] : 
+                                                                             mem_resp_arb[3].mem_resp_r_data[HPDcacheMemDataWidth-1:0],
+         dcache_uc_read_resp_o.mem_resp_r_last  = (mem_resp_valid_arb[5]) ?  mem_resp_arb[5].mem_resp_r_last :
+                                                                             mem_resp_arb[3].mem_resp_r_last,
+         mem_resp_ready_arb[3]                  = dcache_uc_read_resp_ready_i;
+  // Uncachable Write
+  // If the response comes from the port 4, its a Unc. Write.
+  // If the response comes from the port 5, its an AMO since this operations must response to both Unc. Read and Write ports
+  assign dcache_uc_write_resp_valid_o = mem_resp_valid_arb[4] || mem_resp_valid_arb[5],
+         dcache_uc_write_resp_o.mem_resp_w_is_atomic = (mem_resp_valid_arb[5]) ? mem_resp_arb[5].mem_resp_w_is_atomic : 
+                                                                                 mem_resp_arb[4].mem_resp_w_is_atomic,
+         dcache_uc_write_resp_o.mem_resp_w_error     = (mem_resp_valid_arb[5]) ? mem_resp_arb[5].mem_resp_error : 
+                                                                                 mem_resp_arb[4].mem_resp_error,
+         dcache_uc_write_resp_o.mem_resp_w_id        = (mem_resp_valid_arb[5]) ? mem_resp_arb[5].mem_resp_id :
+                                                                                 mem_resp_arb[4].mem_resp_id,
          mem_resp_ready_arb[4]        = dcache_uc_write_resp_ready_i;
+
+  // Atomic operations send the response to both Unc. Read and Write ports
+  assign mem_resp_ready_arb[5]        = dcache_uc_write_resp_ready_i & dcache_uc_read_resp_ready_i;
 
   //  }}}
 
