@@ -250,6 +250,8 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
     
    // Request type selected
   logic                              mem_req_index_arb   [4:0];
+  // LR/SC back-off
+  logic                              sc_backoff_over;
 
 
   //Request types
@@ -282,7 +284,9 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
 
   //Uncachable Read
   assign dcache_uc_read_ready_o   = mem_req_ready[3],
-         mem_req_valid[3]         = dcache_uc_read_valid_i,
+                                                      // If this is an LR, we need to consult the backoff counter
+         mem_req_valid[3]         = (dcache_uc_read_i.mem_req_atomic == hpdcache_pkg::HPDCACHE_MEM_ATOMIC_LDEX) ? dcache_uc_read_valid_i & sc_backoff_over : 
+                                                                                                                  dcache_uc_read_valid_i,
          mem_req_pid[3]           = dcache_uc_read_pid_i,
          mem_req[3]               = dcache_uc_read_i,
          mem_req_data_valid[3]    = 1'b1, //There is no data for this request -> always valid
@@ -450,10 +454,12 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
     .resp_valid_o         (mem_resp_valid),
     .resp_pid_o           (mem_resp_pid),
     .resp_o               (mem_resp),
-
+    //L1.5 Inval request
     .hpdc_fifo_inval_ready_i   (dcache_inval_ready),
     .hpdc_fifo_inval_valid_o   (dcache_inval_valid),
     .hpdc_fifo_inval_o         (dcache_inval),
+    //Back-off parameter to guarantee the LR/SC completion
+    .sc_backoff_over_o         (sc_backoff_over),
 
     //Adapter to L1.5, sending request
     .l15_req_o                 (l15_req),      // L1.5 Request

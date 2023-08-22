@@ -63,6 +63,8 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     output  logic                          hpdc_fifo_inval_valid_o,
     output  hpdcache_pkg::hpdcache_req_t   hpdc_fifo_inval_o,
 
+    output  logic                          sc_backoff_over_o,
+
     output  wt_cache_pkg::l15_req_t        l15_req_o,
 
     input   wt_cache_pkg::l15_rtrn_t       l15_rtrn_i
@@ -119,7 +121,9 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     logic                                    mem_inval_dcache_valid;
     logic                                    mem_only_inval;
     logic                                    hpdc_fifo_inval_wok;
-
+    // LR/SC Back-off mechanism
+    logic                                    sc_pass;
+    logic                                    sc_fail;
     // }}}
 
 
@@ -183,8 +187,8 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                                                 
     assign resp_o.mem_resp_error              = (l15_rtrn_i.l15_returntype==L15_ERR_RET) ? HPDCACHE_MEM_RESP_NOK : HPDCACHE_MEM_RESP_OK, // Should be always HPDCACHE_MEM_RESP_OK, unused in openpiton
            resp_o.mem_resp_id                 = resp_tid,
-           resp_o.mem_resp_r_last             = '1,                                                   // OpenPiton sends the entire data in 1 cycle
-           resp_o.mem_resp_w_is_atomic        = (|l15_rtrn_i.l15_data_0) ? 1'b0 : 1'b1,               // AMO_SC success if 1 else AMO_SC failure
+           resp_o.mem_resp_r_last             = '1,                                                                                      // OpenPiton sends the entire data in 1 cycle
+           resp_o.mem_resp_w_is_atomic        = sc_pass,               
            resp_o.mem_resp_r_data             = (SwapEndianess) ? {swendian64(l15_rtrn_i.l15_data_3),
                                                                     swendian64(l15_rtrn_i.l15_data_2),
                                                                     swendian64(l15_rtrn_i.l15_data_1),
@@ -246,7 +250,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                     //Th1 used, Th0 free
                     th_state_d = FREE_T1;
                 end else begin 
-                    // Response valid and L1D/I can receive -> Receive Request    
+                    // Response valid and L1D/I can receive -> Receive Response   
                     if (resp_ready_i && l15_rtrn_i.l15_val && ~mem_only_inval) begin
                         resp_tid = hpdc_tid_q[l15_rtrn_i.l15_threadid];
                         resp_pid = hpdc_pid_q[l15_rtrn_i.l15_threadid];
@@ -273,7 +277,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                     //Th0 used, Th1 free
                     th_state_d = FREE_T0;
                 end else begin 
-                    // Response valid and L1D/I can receive -> Receive Request
+                    // Response valid and L1D/I can receive -> Receive Response
                     if (resp_ready_i && l15_rtrn_i.l15_val && ~mem_only_inval) begin
                         resp_tid = hpdc_tid_q[l15_rtrn_i.l15_threadid];
                         resp_pid = hpdc_pid_q[l15_rtrn_i.l15_threadid];
@@ -366,8 +370,10 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     end
     // }}}
 
-    // Translator of the atomic operation request type (HPDC->OpenPiton)
+    // AMO support
     // {{{
+        // Translator of the atomic operation request type (HPDC->OpenPiton)
+        // {{{
     always_comb 
     begin:atomic_req_op_type_comb
         unique case (req_i.mem_req_atomic)
@@ -385,8 +391,28 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
             default:                  req_amo_op_type = ariane_pkg::AMO_NONE;
         endcase
     end
-    // }}}
+        // }}}
 
+        // Back-off mechanism for LR/SC completion guarantee
+        // {{{
+    exp_backoff #(
+        .Seed(3),
+        .MaxExp(16)
+    ) i_exp_backoff (
+        .clk_i,
+        .rst_ni,
+        .set_i     ( sc_fail         ),
+        .clr_i     ( sc_pass         ),
+        .is_zero_o ( sc_backoff_over_o )
+    );
+
+    assign sc_pass = (l15_rtrn_i.l15_returntype!=L15_CPX_RESTYPE_ATOMIC_RES) ? 1'b0 : 
+                     (|l15_rtrn_i.l15_data_0) ? 1'b0 : 1'b1;       // AMO_SC pass if data=0
+
+    assign sc_fail = (l15_rtrn_i.l15_returntype!=L15_CPX_RESTYPE_ATOMIC_RES) ? 1'b0 : 
+                     (|l15_rtrn_i.l15_data_0) ? 1'b1 : 1'b0;       // AMO_SC fail if data!=0
+        // }}}
+    // }}}
 
     // FIFO to keep invalidation requests until they are attended by the HPDC
     // {{{
