@@ -64,7 +64,8 @@ import hpdcache_pkg::*;
 
     output logic                  dir_inval_o,
     output hpdcache_set_t         dir_inval_set_o,
-    output hpdcache_way_vector_t  dir_inval_way_o
+    output hpdcache_way_vector_t  dir_inval_way_o,
+    input logic                   dir_busy_i
     // }}}
 );
 //  }}}
@@ -192,9 +193,15 @@ import hpdcache_pkg::*;
             CMOH_INVAL_CHECK_NLINE: begin
                 if (req_mem_inval_valid_i) begin // Memory invalidation request
                     req_mem_inval_ready_o = 1'b0;
-                end
-                dir_check_o = 1'b1;
-                cmoh_fsm_d  = CMOH_INVAL_SET;
+                    cmoh_fsm_d  = CMOH_INVAL_CHECK_NLINE;
+                    if (!dir_busy_i) begin
+                       dir_check_o = 1'b1;
+                       cmoh_fsm_d  = CMOH_INVAL_SET;
+                    end
+                end else begin
+                    dir_check_o = 1'b1;
+                    cmoh_fsm_d  = CMOH_INVAL_SET;
+                end 
             end
             CMOH_INVAL_SET: begin
                 cmoh_fsm_d = CMOH_INVAL_SET;

@@ -147,6 +147,7 @@ import hpdcache_pkg::*;
     input  logic                  cmo_dir_inval_i,
     input  hpdcache_set_t         cmo_dir_inval_set_i,
     input  hpdcache_way_vector_t  cmo_dir_inval_way_i,
+    output logic                  cmo_dir_busy_o,
     output logic                  cmo_req_mem_inval_valid_o,
     input  logic                  cmo_req_mem_inval_ready_i,
 
@@ -729,6 +730,7 @@ import hpdcache_pkg::*;
            cmo_req_op_o.is_inval_by_nline = st1_req_is_cmo_inval & is_cmo_inval_by_nline(st1_req_q.size),
            cmo_req_op_o.is_inval_by_set   = st1_req_is_cmo_inval & is_cmo_inval_by_set(st1_req_q.size),
            cmo_req_op_o.is_inval_all      = st1_req_is_cmo_inval & is_cmo_inval_all(st1_req_q.size),
+           cmo_dir_busy_o                 = (st0_req_cachedir_read | uc_dir_amo_match_i | refill_write_dir_i),
            cmo_req_mem_inval_valid_o      = st1_req_is_mem_inval_q;
     //  }}}
 

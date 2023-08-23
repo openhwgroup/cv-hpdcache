@@ -227,6 +227,7 @@ import hpdcache_pkg::*;
     logic                  cmo_dir_inval;
     hpdcache_set_t         cmo_dir_inval_set;
     hpdcache_way_vector_t  cmo_dir_inval_way;
+    logic                  cmo_dir_busy;
     logic                  cmo_req_mem_inval_valid;
 
     logic                  rtab_empty;
@@ -404,6 +405,7 @@ import hpdcache_pkg::*;
         .cmo_dir_inval_i                    (cmo_dir_inval),
         .cmo_dir_inval_set_i                (cmo_dir_inval_set),
         .cmo_dir_inval_way_i                (cmo_dir_inval_way),
+        .cmo_dir_busy_o                     (cmo_dir_busy),
         .cmo_req_mem_inval_valid_o          (cmo_req_mem_inval_valid),
         .cmo_req_mem_inval_ready_i          (cmo_req_mem_inval_ready),
 
@@ -650,7 +652,8 @@ import hpdcache_pkg::*;
 
         .dir_inval_o            (cmo_dir_inval),
         .dir_inval_set_o        (cmo_dir_inval_set),
-        .dir_inval_way_o        (cmo_dir_inval_way)
+        .dir_inval_way_o        (cmo_dir_inval_way),
+        .dir_busy_i             (cmo_dir_busy)
     );
     //  }}}
 
