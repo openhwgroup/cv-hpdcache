@@ -107,7 +107,7 @@ package hpdcache_params_pkg;
     //  Definition of constants and types for the Miss Status Holding Register (MSHR)
     //  {{{
     `ifndef CONF_HPDCACHE_MSHR_SETS
-        `define CONF_HPDCACHE_MSHR_SETS 4
+        `define CONF_HPDCACHE_MSHR_SETS 2
     `endif
     localparam int unsigned PARAM_MSHR_SETS = `CONF_HPDCACHE_MSHR_SETS;
 

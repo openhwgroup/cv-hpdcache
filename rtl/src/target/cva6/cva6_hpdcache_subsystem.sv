@@ -29,18 +29,11 @@ module cva6_hpdcache_subsystem
 //  Parameters
 //  {{{
 #(
+  parameter config_pkg::cva6_cfg_t CVA6Cfg = config_pkg::cva6_cfg_empty,
   parameter ariane_pkg::ariane_cfg_t ArianeCfg = ariane_pkg::ArianeDefaultConfig,  // contains cacheable regions
   parameter int NrHwPrefetchers = 4,
-
-  parameter int unsigned AxiAddrWidth = 0,
-  parameter int unsigned AxiDataWidth = 0,
-  parameter int unsigned AxiIdWidth = 0,
-  parameter int unsigned AxiUserWidth = 0,
-  parameter type axi_ar_chan_t = logic,
-  parameter type axi_aw_chan_t = logic,
-  parameter type axi_w_chan_t = logic,
-  parameter type axi_req_t = logic,
-  parameter type axi_rsp_t = logic,
+  parameter type noc_req_t = logic,
+  parameter type noc_resp_t = logic,
   parameter type cmo_req_t = logic,
   parameter type cmo_rsp_t = logic
 )
@@ -58,11 +51,11 @@ module cva6_hpdcache_subsystem
   input  logic                       icache_flush_i,         // flush the icache, flush and kill have to be asserted together
   output logic                       icache_miss_o,          // to performance counter
   // address translation requests
-  input  ariane_pkg::icache_areq_i_t icache_areq_i,          // to/from frontend
-  output ariane_pkg::icache_areq_o_t icache_areq_o,
+  input  ariane_pkg::icache_areq_t   icache_areq_i,          // to/from frontend
+  output ariane_pkg::icache_arsp_t   icache_areq_o,
   // data requests
-  input  ariane_pkg::icache_dreq_i_t icache_dreq_i,          // to/from frontend
-  output ariane_pkg::icache_dreq_o_t icache_dreq_o,
+  input  ariane_pkg::icache_dreq_t   icache_dreq_i,          // to/from frontend
+  output ariane_pkg::icache_drsp_t   icache_dreq_o,
   //   }}}
 
   //  D$
@@ -101,11 +94,13 @@ module cva6_hpdcache_subsystem
 
   //  AXI port to upstream memory/peripherals
   //  {{{
-  output axi_req_t                           axi_req_o,
-  input  axi_rsp_t                           axi_resp_i
+  output noc_req_t                           noc_req_o,
+  input  noc_resp_t                          noc_resp_i
   //  }}}
 );
 //  }}}
+
+  `include "axi/typedef.svh"
 
   //  I$ instantiation
   //  {{{
@@ -118,7 +113,6 @@ module cva6_hpdcache_subsystem
   localparam int ICACHE_RDTXID = 1 << (ariane_pkg::MEM_TID_WIDTH - 1);
 
   cva6_icache #(
-    // use ID 0 for icache reads
     .RdTxId             (ICACHE_RDTXID),
     .ArianeCfg          (ArianeCfg)
   ) i_cva6_icache (
@@ -144,10 +138,10 @@ module cva6_hpdcache_subsystem
   `include "hpdcache_typedef.svh"
 
   localparam int HPDCACHE_NREQUESTERS = 5;
-  typedef logic [AxiAddrWidth-1:0]              hpdcache_mem_addr_t;
+  typedef logic [CVA6Cfg.AxiAddrWidth-1:0]      hpdcache_mem_addr_t;
   typedef logic [ariane_pkg::MEM_TID_WIDTH-1:0] hpdcache_mem_id_t;
-  typedef logic [AxiDataWidth-1:0]              hpdcache_mem_data_t;
-  typedef logic [AxiDataWidth/8-1:0]            hpdcache_mem_be_t;
+  typedef logic [CVA6Cfg.AxiDataWidth-1:0]      hpdcache_mem_data_t;
+  typedef logic [CVA6Cfg.AxiDataWidth/8-1:0]    hpdcache_mem_be_t;
   `HPDCACHE_TYPEDEF_MEM_REQ_T(hpdcache_mem_req_t, hpdcache_mem_addr_t, hpdcache_mem_id_t);
   `HPDCACHE_TYPEDEF_MEM_RESP_R_T(hpdcache_mem_resp_r_t, hpdcache_mem_id_t, hpdcache_mem_data_t);
   `HPDCACHE_TYPEDEF_MEM_REQ_W_T(hpdcache_mem_req_w_t, hpdcache_mem_data_t, hpdcache_mem_be_t);
@@ -342,7 +336,7 @@ module cva6_hpdcache_subsystem
   hpdcache #(
     .NREQUESTERS                       (HPDCACHE_NREQUESTERS),
     .HPDcacheMemIdWidth                (ariane_pkg::MEM_TID_WIDTH),
-    .HPDcacheMemDataWidth              (AxiDataWidth),
+    .HPDcacheMemDataWidth              (CVA6Cfg.AxiDataWidth),
     .hpdcache_mem_req_t                (hpdcache_mem_req_t),
     .hpdcache_mem_req_w_t              (hpdcache_mem_req_w_t),
     .hpdcache_mem_resp_r_t             (hpdcache_mem_resp_r_t),
@@ -436,24 +430,35 @@ module cva6_hpdcache_subsystem
 
   //  AXI arbiter instantiation
   //  {{{
+  typedef logic [CVA6Cfg.AxiAddrWidth-1:0] axi_addr_t;
+  typedef logic [CVA6Cfg.AxiDataWidth-1:0] axi_data_t;
+  typedef logic [CVA6Cfg.AxiDataWidth/8-1:0] axi_strb_t;
+  typedef logic [CVA6Cfg.AxiIdWidth-1:0] axi_id_t;
+  typedef logic [CVA6Cfg.AxiUserWidth-1:0] axi_user_t;
+  `AXI_TYPEDEF_AW_CHAN_T(axi_aw_chan_t, axi_addr_t, axi_id_t, axi_user_t)
+  `AXI_TYPEDEF_W_CHAN_T(axi_w_chan_t, axi_data_t, axi_strb_t, axi_user_t)
+  `AXI_TYPEDEF_B_CHAN_T(axi_b_chan_t, axi_id_t, axi_user_t)
+  `AXI_TYPEDEF_AR_CHAN_T(axi_ar_chan_t, axi_addr_t, axi_id_t, axi_user_t)
+  `AXI_TYPEDEF_R_CHAN_T(axi_r_chan_t, axi_data_t, axi_id_t, axi_user_t)
+
   cva6_hpdcache_subsystem_axi_arbiter #(
     .ArianeCfg                                       (ArianeCfg),
     .HPDcacheMemIdWidth                              (ariane_pkg::MEM_TID_WIDTH),
-    .HPDcacheMemDataWidth                            (AxiDataWidth),
+    .HPDcacheMemDataWidth                            (CVA6Cfg.AxiDataWidth),
     .hpdcache_mem_req_t                              (hpdcache_mem_req_t),
     .hpdcache_mem_req_w_t                            (hpdcache_mem_req_w_t),
     .hpdcache_mem_resp_r_t                           (hpdcache_mem_resp_r_t),
     .hpdcache_mem_resp_w_t                           (hpdcache_mem_resp_w_t),
 
-    .AxiAddrWidth                                    (AxiAddrWidth),
-    .AxiDataWidth                                    (AxiDataWidth),
-    .AxiIdWidth                                      (AxiIdWidth),
-    .AxiUserWidth                                    (AxiUserWidth),
+    .AxiAddrWidth                                    (CVA6Cfg.AxiAddrWidth),
+    .AxiDataWidth                                    (CVA6Cfg.AxiDataWidth),
+    .AxiIdWidth                                      (CVA6Cfg.AxiIdWidth),
+    .AxiUserWidth                                    (CVA6Cfg.AxiUserWidth),
     .axi_ar_chan_t                                   (axi_ar_chan_t),
     .axi_aw_chan_t                                   (axi_aw_chan_t),
     .axi_w_chan_t                                    (axi_w_chan_t),
-    .axi_req_t                                       (axi_req_t),
-    .axi_rsp_t                                       (axi_rsp_t)
+    .axi_req_t                                       (noc_req_t),
+    .axi_rsp_t                                       (noc_resp_t)
   ) i_axi_arbiter (
     .clk_i,
     .rst_ni,
@@ -508,8 +513,8 @@ module cva6_hpdcache_subsystem
     .dcache_uc_write_resp_valid_o                    (dcache_uc_write_resp_valid),
     .dcache_uc_write_resp_o                          (dcache_uc_write_resp),
 
-    .axi_req_o,
-    .axi_resp_i
+    .axi_req_o                                       (noc_req_o),
+    .axi_resp_i                                      (noc_resp_i)
   );
   //  }}}
 
