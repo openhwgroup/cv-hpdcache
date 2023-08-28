@@ -539,4 +539,16 @@ module cva6_hpdcache_subsystem_axi_arbiter
   assign axi_resp  = axi_resp_i;
   //  }}}
 
+  //  Assertions
+  //  {{{
+  //  pragma translate_off
+  initial assert (HPDcacheMemIdWidth <= AxiIdWidth) else
+    $fatal("HPDcacheMemIdWidth shall be less or equal to AxiIdWidth");
+  initial assert (HPDcacheMemIdWidth >= (hpdcache_pkg::HPDCACHE_MSHR_SET_WIDTH + hpdcache_pkg::HPDCACHE_MSHR_WAY_WIDTH + 1)) else
+    $fatal("HPDcacheMemIdWidth shall be wide enough to identify all pending HPDcache misses and Icache misses");
+  initial assert (HPDcacheMemIdWidth >= (hpdcache_pkg::HPDCACHE_WBUF_DIR_PTR_WIDTH + 1)) else
+    $fatal("HPDcacheMemIdWidth shall be wide enough to identify all pending HPDcache cacheable writes and uncacheable writes");
+  //  pragma translate_on
+  //  }}}
+
 endmodule : cva6_hpdcache_subsystem_axi_arbiter
