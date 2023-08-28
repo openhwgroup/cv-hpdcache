@@ -213,4 +213,12 @@ import hpdcache_pkg::*;
             ack_error              = (mem_resp_write_i.mem_resp_w_error != HPDCACHE_MEM_RESP_OK);
     //  }}}
 
+    //  Assertions
+    //  {{{
+    //  pragma translate_off
+    initial assert (HPDCACHE_WBUF_DIR_PTR_WIDTH <= HPDcacheMemIdWidth) else
+      $fatal("HPDcacheMemIdWidth is not wide enough to fit all possible write buffer transactions");
+    //  pragma translate_on
+    //  }}}
+
 endmodule
