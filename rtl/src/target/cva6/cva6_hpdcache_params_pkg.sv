@@ -27,8 +27,6 @@ package hpdcache_params_pkg;
     //  Imports from the CVA6 configuration package
     //  {{{
     import cva6_config_pkg::CVA6ConfigXlen;
-    import cva6_config_pkg::CVA6ConfigFPGAEn;
-    import cva6_config_pkg::CVA6ConfigMemTidWidth;
     import cva6_config_pkg::CVA6ConfigDcacheByteSize;
     import cva6_config_pkg::CVA6ConfigDcacheSetAssoc;
     import cva6_config_pkg::CVA6ConfigDcacheLineWidth;
@@ -92,7 +90,10 @@ package hpdcache_params_pkg;
     localparam int unsigned PARAM_DATA_SETS_PER_RAM = `CONF_HPDCACHE_DATA_SETS_PER_RAM;
 
     //  HPDcache DATA RAM implements write byte enable
-    localparam bit PARAM_DATA_RAM_WBYTEENABLE = CVA6ConfigFPGAEn;
+    `ifndef CONF_HPDCACHE_DATA_RAM_WBYTEENABLE
+        `define CONF_HPDCACHE_DATA_RAM_WBYTEENABLE 1'b0
+    `endif
+    localparam bit PARAM_DATA_RAM_WBYTEENABLE = `CONF_HPDCACHE_DATA_RAM_WBYTEENABLE;
 
     //  Define the number of memory contiguous words that can be accessed
     //  simultaneously from the cache.
@@ -130,7 +131,10 @@ package hpdcache_params_pkg;
     localparam int unsigned PARAM_MSHR_SETS_PER_RAM = `CONF_HPDCACHE_MSHR_SETS_PER_RAM;
 
     //  HPDcache MSHR implements write byte enable
-    localparam bit PARAM_MSHR_RAM_WBYTEENABLE = CVA6ConfigFPGAEn;
+    `ifndef CONF_HPDCACHE_MSHR_RAM_WBYTEENABLE
+        `define CONF_HPDCACHE_MSHR_RAM_WBYTEENABLE 1'b0
+    `endif
+    localparam bit PARAM_MSHR_RAM_WBYTEENABLE = `CONF_HPDCACHE_MSHR_RAM_WBYTEENABLE;
     //  }}}
 
     //  Definition of constants and types for the Write Buffer (WBUF)
