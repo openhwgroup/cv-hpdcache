@@ -164,7 +164,7 @@ import hpdcache_pkg::*;
     logic                  miss_mshr_alloc_need_rsp;
     logic                  miss_mshr_alloc_is_prefetch;
 
-    logic                  wbuf_close_all;
+    logic                  wbuf_flush_all;
     logic                  wbuf_write;
     logic                  wbuf_write_ready;
     wbuf_addr_t            wbuf_write_addr;
@@ -172,11 +172,11 @@ import hpdcache_pkg::*;
     wbuf_be_t              wbuf_write_be;
     logic                  wbuf_write_uncacheable;
     logic                  wbuf_read_hit;
-    logic                  wbuf_read_close_hit;
+    logic                  wbuf_read_flush_hit;
     hpdcache_req_addr_t    wbuf_rtab_addr;
     logic                  wbuf_rtab_is_read;
     logic                  wbuf_rtab_hit_open;
-    logic                  wbuf_rtab_hit_closed;
+    logic                  wbuf_rtab_hit_pend;
     logic                  wbuf_rtab_hit_sent;
     logic                  wbuf_rtab_not_ready;
 
@@ -191,7 +191,7 @@ import hpdcache_pkg::*;
     hpdcache_req_sid_t     uc_req_sid;
     hpdcache_req_tid_t     uc_req_tid;
     logic                  uc_req_need_rsp;
-    logic                  uc_wbuf_close_all;
+    logic                  uc_wbuf_flush_all;
     logic                  uc_dir_amo_match;
     hpdcache_set_t         uc_dir_amo_match_set;
     hpdcache_tag_t         uc_dir_amo_match_tag;
@@ -216,7 +216,7 @@ import hpdcache_pkg::*;
     hpdcache_cmoh_op_t     cmo_req_op;
     hpdcache_req_addr_t    cmo_req_addr;
     hpdcache_req_data_t    cmo_req_wdata;
-    logic                  cmo_wbuf_close_all;
+    logic                  cmo_wbuf_flush_all;
     logic                  cmo_dir_check;
     hpdcache_set_t         cmo_dir_check_set;
     hpdcache_tag_t         cmo_dir_check_tag;
@@ -340,7 +340,7 @@ import hpdcache_pkg::*;
         .refill_updt_rtab_i                 (refill_updt_rtab),
 
         .wbuf_empty_i                       (wbuf_empty_o),
-        .wbuf_close_all_o                   (wbuf_close_all),
+        .wbuf_flush_all_o                   (wbuf_flush_all),
         .wbuf_write_o                       (wbuf_write),
         .wbuf_write_ready_i                 (wbuf_write_ready),
         .wbuf_write_addr_o                  (wbuf_write_addr),
@@ -348,11 +348,11 @@ import hpdcache_pkg::*;
         .wbuf_write_be_o                    (wbuf_write_be),
         .wbuf_write_uncacheable_o           (wbuf_write_uncacheable),
         .wbuf_read_hit_i                    (wbuf_read_hit),
-        .wbuf_read_close_hit_o              (wbuf_read_close_hit),
+        .wbuf_read_flush_hit_o              (wbuf_read_flush_hit),
         .wbuf_rtab_addr_o                   (wbuf_rtab_addr),
         .wbuf_rtab_is_read_o                (wbuf_rtab_is_read),
         .wbuf_rtab_hit_open_i               (wbuf_rtab_hit_open),
-        .wbuf_rtab_hit_closed_i             (wbuf_rtab_hit_closed),
+        .wbuf_rtab_hit_pend_i               (wbuf_rtab_hit_pend),
         .wbuf_rtab_hit_sent_i               (wbuf_rtab_hit_sent),
         .wbuf_rtab_not_ready_i              (wbuf_rtab_not_ready),
 
@@ -370,7 +370,7 @@ import hpdcache_pkg::*;
         .uc_req_sid_o                       (uc_req_sid),
         .uc_req_tid_o                       (uc_req_tid),
         .uc_req_need_rsp_o                  (uc_req_need_rsp),
-        .uc_wbuf_close_all_i                (uc_wbuf_close_all),
+        .uc_wbuf_flush_all_i                (uc_wbuf_flush_all),
         .uc_dir_amo_match_i                 (uc_dir_amo_match),
         .uc_dir_amo_match_set_i             (uc_dir_amo_match_set),
         .uc_dir_amo_match_tag_i             (uc_dir_amo_match_tag),
@@ -392,7 +392,7 @@ import hpdcache_pkg::*;
         .cmo_req_op_o                       (cmo_req_op),
         .cmo_req_addr_o                     (cmo_req_addr),
         .cmo_req_wdata_o                    (cmo_req_wdata),
-        .cmo_wbuf_close_all_i               (cmo_wbuf_close_all),
+        .cmo_wbuf_flush_all_i               (cmo_wbuf_flush_all),
         .cmo_dir_check_i                    (cmo_dir_check),
         .cmo_dir_check_set_i                (cmo_dir_check_set),
         .cmo_dir_check_tag_i                (cmo_dir_check_tag),
@@ -435,7 +435,7 @@ import hpdcache_pkg::*;
 
         .empty_o                            (wbuf_empty_o),
         .full_o                             (/* unused */),
-        .close_all_i                        (wbuf_close_all),
+        .flush_all_i                        (wbuf_flush_all),
 
         .cfg_threshold_i                    (cfg_wbuf_threshold_i),
         .cfg_reset_timecnt_on_write_i       (cfg_wbuf_reset_timecnt_on_write_i),
@@ -451,12 +451,12 @@ import hpdcache_pkg::*;
 
         .read_addr_i                        (wbuf_write_addr),
         .read_hit_o                         (wbuf_read_hit),
-        .read_close_hit_i                   (wbuf_read_close_hit),
+        .read_flush_hit_i                   (wbuf_read_flush_hit),
 
         .replay_addr_i                      (wbuf_rtab_addr),
         .replay_is_read_i                   (wbuf_rtab_is_read),
         .replay_open_hit_o                  (wbuf_rtab_hit_open),
-        .replay_closed_hit_o                (wbuf_rtab_hit_closed),
+        .replay_pend_hit_o                  (wbuf_rtab_hit_pend),
         .replay_sent_hit_o                  (wbuf_rtab_hit_sent),
         .replay_not_ready_o                 (wbuf_rtab_not_ready),
 
@@ -563,7 +563,7 @@ import hpdcache_pkg::*;
         .req_tid_i                     (uc_req_tid),
         .req_need_rsp_i                (uc_req_need_rsp),
 
-        .wbuf_close_all_o              (uc_wbuf_close_all),
+        .wbuf_flush_all_o              (uc_wbuf_flush_all),
 
         .dir_amo_match_o               (uc_dir_amo_match),
         .dir_amo_match_set_o           (uc_dir_amo_match_set),
@@ -630,7 +630,7 @@ import hpdcache_pkg::*;
         .req_addr_i             (cmo_req_addr),
         .req_wdata_i            (cmo_req_wdata),
 
-        .wbuf_close_all_o       (cmo_wbuf_close_all),
+        .wbuf_flush_all_o       (cmo_wbuf_flush_all),
 
         .dir_check_o            (cmo_dir_check),
         .dir_check_set_o        (cmo_dir_check_set),

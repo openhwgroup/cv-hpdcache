@@ -50,7 +50,7 @@ import hpdcache_pkg::*;
 
     //  Write Buffer Interface
     //  {{{
-    output logic                  wbuf_close_all_o,
+    output logic                  wbuf_flush_all_o,
     //  }}}
 
     //  Cache Directory Interface
@@ -119,7 +119,7 @@ import hpdcache_pkg::*;
         dir_inval_set_o       = cmoh_set_q;
         dir_inval_way_o       = '0;
 
-        wbuf_close_all_o      = 1'b0;
+        wbuf_flush_all_o      = 1'b0;
 
         cmoh_fsm_d            = cmoh_fsm_q;
 
@@ -130,8 +130,8 @@ import hpdcache_pkg::*;
                 if (req_valid_i) begin
                     unique case (1'b1)
                         req_op_i.is_fence: begin
-                            //  request to the write buffer to close all open entries
-                            wbuf_close_all_o = rtab_empty_i;
+                            //  request to the write buffer to send all open entries
+                            wbuf_flush_all_o = rtab_empty_i;
 
                             //  then wait for the write buffer to be empty
                             if (!rtab_empty_i || !wbuf_empty_i) begin
@@ -164,7 +164,7 @@ import hpdcache_pkg::*;
                 end
             end
             CMOH_FENCE_WAIT_WBUF_RTAB_EMPTY: begin
-                wbuf_close_all_o = rtab_empty_i;
+                wbuf_flush_all_o = rtab_empty_i;
 
                 if (wbuf_empty_i && rtab_empty_i) begin
                     cmoh_fsm_d = CMOH_IDLE;

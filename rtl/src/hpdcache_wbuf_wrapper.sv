@@ -50,7 +50,7 @@ import hpdcache_pkg::*;
     //      Global control signals
     output logic                  empty_o,
     output logic                  full_o,
-    input  logic                  close_all_i,
+    input  logic                  flush_all_i,
 
     //      Configuration signals
     //          Timer threshold
@@ -73,13 +73,13 @@ import hpdcache_pkg::*;
     //      Read hit interface
     input  wbuf_addr_t            read_addr_i,
     output logic                  read_hit_o,
-    input  logic                  read_close_hit_i,
+    input  logic                  read_flush_hit_i,
 
     //      Replay hit interface
     input  wbuf_addr_t            replay_addr_i,
     input  logic                  replay_is_read_i,
     output logic                  replay_open_hit_o,
-    output logic                  replay_closed_hit_o,
+    output logic                  replay_pend_hit_o,
     output logic                  replay_sent_hit_o,
     output logic                  replay_not_ready_o,
 
@@ -125,7 +125,7 @@ import hpdcache_pkg::*;
         .rst_ni,
         .empty_o,
         .full_o,
-        .close_all_i,
+        .flush_all_i,
         .cfg_threshold_i,
         .cfg_reset_timecnt_on_write_i,
         .cfg_sequential_waw_i,
@@ -138,11 +138,11 @@ import hpdcache_pkg::*;
         .write_uc_i,
         .read_addr_i,
         .read_hit_o,
-        .read_close_hit_i,
+        .read_flush_hit_i,
         .replay_addr_i,
         .replay_is_read_i,
         .replay_open_hit_o,
-        .replay_closed_hit_o,
+        .replay_pend_hit_o,
         .replay_sent_hit_o,
         .replay_not_ready_o,
         .send_meta_ready_i             (mem_req_write_ready_i),

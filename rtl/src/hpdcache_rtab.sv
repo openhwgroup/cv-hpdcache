@@ -90,7 +90,7 @@ import hpdcache_pkg::*;
     output hpdcache_req_addr_t    wbuf_addr_o,      // address to check against ongoing writes
     output logic                  wbuf_is_read_o,   // monitored request is read
     input  logic                  wbuf_hit_open_i,  // Hit on open entry in the write buf
-    input  logic                  wbuf_hit_closed_i,// Hit on closed entry in the write buf
+    input  logic                  wbuf_hit_pend_i,  // Hit on pend entry in the write buf
     input  logic                  wbuf_hit_sent_i,  // Hit on sent entry in the write buf
     input  logic                  wbuf_not_ready_i, // Write buffer cannot accept the write
 
@@ -195,7 +195,7 @@ import hpdcache_pkg::*;
     logic               [N-1:0]  alloc_deps_wbuf_hit_set;
     logic               [N-1:0]  pop_rback_deps_wbuf_hit_set;
 
-    //  Hit on a closed  entry of the write buffer
+    //  Hit on a pend entry of the write buffer
     logic               [N-1:0]  deps_wbuf_not_ready_q;
     logic               [N-1:0]  deps_wbuf_not_ready_set, deps_wbuf_not_ready_rst;
     logic               [N-1:0]  alloc_deps_wbuf_not_ready_set;
@@ -382,7 +382,7 @@ import hpdcache_pkg::*;
 
     //  reset write buffer dependency bits with the output from the write buffer
     assign deps_wbuf_hit_rst =
-            wbuf_sel & ~{N{wbuf_hit_open_i | wbuf_hit_closed_i | wbuf_hit_sent_i}};
+            wbuf_sel & ~{N{wbuf_hit_open_i | wbuf_hit_pend_i | wbuf_hit_sent_i}};
     assign deps_wbuf_not_ready_rst =
             wbuf_sel & ~{N{wbuf_not_ready_i}};
     //  }}}

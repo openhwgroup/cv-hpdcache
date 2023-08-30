@@ -24,20 +24,6 @@
  *  History       :
  */
 /*
- *  Detailed description
- *  ====================
- *  Acceptance conditions of a new write:
- *  - If there is an open slot in the wbuf directory matching the tag, the new
- *    write IS ACCEPTED and reuses the same slot, and the new data is merged
- *    with the previous one (using the BE signals).
- *  - If there is a closed slot in the wbuf directory matching the tag, the new
- *    write IS PAUSED (write ready signal is de-asserted). This is to ensure
- *    that writes are sent in order to memory.
- *  - If there is no entry matching the tag or the matching entry is in the
- *    SENT state, the new write IS ACCEPTED if there is an free slot in
- *    the write buffer. If the cfg_sequential_waw_i is asserted, the new write
- *    IS PAUSED if there is a match with a slot in the SENT state.
- *
  *  Improvements
  *  =================
  *  TODO Use a feedthrough FIFO for the data pointers in the send data interface.
@@ -91,7 +77,7 @@ module hpdcache_wbuf
     //  Global control signals
     output logic                  empty_o,
     output logic                  full_o,
-    input  logic                  close_all_i,
+    input  logic                  flush_all_i,
 
     //  Configuration signals
     //    Timer threshold
@@ -114,13 +100,13 @@ module hpdcache_wbuf
     //  Read hit interface
     input  wbuf_addr_t            read_addr_i,
     output logic                  read_hit_o,
-    input  logic                  read_close_hit_i,
+    input  logic                  read_flush_hit_i,
 
     //  Replay hit interface
     input  wbuf_addr_t            replay_addr_i,
     input  logic                  replay_is_read_i,
     output logic                  replay_open_hit_o,
-    output logic                  replay_closed_hit_o,
+    output logic                  replay_pend_hit_o,
     output logic                  replay_sent_hit_o,
     output logic                  replay_not_ready_o,
 
@@ -151,10 +137,10 @@ module hpdcache_wbuf
     typedef logic unsigned [31:0]          wbuf_uint;
 
     typedef enum logic [1:0] {
-        WBUF_FREE   = 2'b00,
-        WBUF_OPEN   = 2'b01,
-        WBUF_CLOSED = 2'b10,
-        WBUF_SENT   = 2'b11
+        WBUF_FREE = 2'b00, // unused/free slot
+        WBUF_OPEN = 2'b01, // there are pending writes in this slot
+        WBUF_PEND = 2'b10, // the slot is waiting to be sent
+        WBUF_SENT = 2'b11  // the slot is sent and waits for the memory acknowledge
     } wbuf_state_e;
 
     typedef struct packed {
@@ -245,10 +231,10 @@ module hpdcache_wbuf
 
     logic                                       wbuf_write_free;
     logic                                       wbuf_write_hit_open;
-    logic                                       wbuf_write_hit_closed;
+    logic                                       wbuf_write_hit_pend;
     logic                                       wbuf_write_hit_sent;
     wbuf_dir_ptr_t                              wbuf_write_hit_open_dir_ptr;
-    wbuf_dir_ptr_t                              wbuf_write_hit_closed_dir_ptr;
+    wbuf_dir_ptr_t                              wbuf_write_hit_pend_dir_ptr;
 
     logic                                       send_meta_valid;
     logic                                       send_meta_ready;
@@ -267,7 +253,7 @@ module hpdcache_wbuf
 
     logic [WBUF_DIR_ENTRIES-1:0]                replay_match;
     logic [WBUF_DIR_ENTRIES-1:0]                replay_open_hit;
-    logic [WBUF_DIR_ENTRIES-1:0]                replay_closed_hit;
+    logic [WBUF_DIR_ENTRIES-1:0]                replay_pend_hit;
     logic [WBUF_DIR_ENTRIES-1:0]                replay_sent_hit;
 
     genvar                                      gen_i;
@@ -348,11 +334,11 @@ module hpdcache_wbuf
     always_comb
     begin : wbuf_write_hit_comb
         wbuf_write_hit_open = 1'b0;
-        wbuf_write_hit_closed = 1'b0;
+        wbuf_write_hit_pend = 1'b0;
         wbuf_write_hit_sent = 1'b0;
 
         wbuf_write_hit_open_dir_ptr = 0;
-        wbuf_write_hit_closed_dir_ptr = 0;
+        wbuf_write_hit_pend_dir_ptr = 0;
         for (int unsigned i = 0; i < WBUF_DIR_ENTRIES; i++) begin
             if (wbuf_dir_q[i].tag == write_tag) begin
                 unique case (wbuf_dir_state_q[i])
@@ -360,9 +346,9 @@ module hpdcache_wbuf
                         wbuf_write_hit_open = 1'b1;
                         wbuf_write_hit_open_dir_ptr = wbuf_dir_ptr_t'(i);
                     end
-                    WBUF_CLOSED: begin
-                        wbuf_write_hit_closed = 1'b1;
-                        wbuf_write_hit_closed_dir_ptr = wbuf_dir_ptr_t'(i);
+                    WBUF_PEND: begin
+                        wbuf_write_hit_pend = 1'b1;
+                        wbuf_write_hit_pend_dir_ptr = wbuf_dir_ptr_t'(i);
                     end
                     WBUF_SENT: begin
                         wbuf_write_hit_sent = 1'b1;
@@ -384,7 +370,7 @@ module hpdcache_wbuf
         for (int unsigned i = 0; i < WBUF_DIR_ENTRIES; i++) begin
             read_hit[i] = 1'b0;
             unique case (wbuf_dir_state_q[i])
-                WBUF_OPEN, WBUF_CLOSED, WBUF_SENT: begin
+                WBUF_OPEN, WBUF_PEND, WBUF_SENT: begin
                     automatic wbuf_addr_t  wbuf_addr;
                     automatic wbuf_match_t wbuf_tag;
                     automatic wbuf_match_t read_tag;
@@ -417,21 +403,21 @@ module hpdcache_wbuf
 
             assign replay_open_hit[gen_i] =
                     replay_match[gen_i] && (wbuf_dir_state_q[gen_i] == WBUF_OPEN);
-            assign replay_closed_hit[gen_i] =
-                    replay_match[gen_i] && (wbuf_dir_state_q[gen_i] == WBUF_CLOSED);
+            assign replay_pend_hit[gen_i] =
+                    replay_match[gen_i] && (wbuf_dir_state_q[gen_i] == WBUF_PEND);
             assign replay_sent_hit[gen_i] =
                     replay_match[gen_i] && (wbuf_dir_state_q[gen_i] == WBUF_SENT);
         end
     endgenerate
 
-    assign replay_open_hit_o   = |replay_open_hit,
-           replay_closed_hit_o = |replay_closed_hit,
-           replay_sent_hit_o   = |replay_sent_hit;
+    assign replay_open_hit_o = |replay_open_hit,
+           replay_pend_hit_o = |replay_pend_hit,
+           replay_sent_hit_o = |replay_sent_hit;
 
     always_comb
     begin : replay_wbuf_not_ready_comb
         replay_not_ready_o = 1'b0;
-        if (replay_closed_hit_o) begin
+        if (replay_pend_hit_o) begin
             replay_not_ready_o = 1'b1;
         end else if (replay_sent_hit_o && cfg_sequential_waw_i) begin
             replay_not_ready_o = 1'b1;
@@ -444,11 +430,11 @@ module hpdcache_wbuf
                 wbuf_dir_free
             &   wbuf_data_free
             &  ~wbuf_write_hit_open
-            &  ~wbuf_write_hit_closed
+            &  ~wbuf_write_hit_pend
             & ~(wbuf_write_hit_sent & cfg_sequential_waw_i);
 
     assign write_ready_o = wbuf_write_free
-                           | ((wbuf_write_hit_open | wbuf_write_hit_closed)
+                           | ((wbuf_write_hit_open | wbuf_write_hit_pend)
                              & ~cfg_inhibit_write_coalescing_i);
     //  }}}
 
@@ -458,19 +444,19 @@ module hpdcache_wbuf
     begin : wbuf_update_comb
         automatic bit timeout;
         automatic bit write_hit;
-        automatic bit read_close_hit;
+        automatic bit read_hit;
         automatic bit match_open_ptr;
-        automatic bit match_closed_ptr;
+        automatic bit match_pend_ptr;
         automatic bit match_free;
-        automatic bit close;
+        automatic bit send;
 
         timeout = 1'b0;
         write_hit = 1'b0;
-        read_close_hit = 1'b0;
+        read_hit = 1'b0;
         match_open_ptr = 1'b0;
-        match_closed_ptr = 1'b0;
+        match_pend_ptr = 1'b0;
         match_free = 1'b0;
-        close = 1'b0;
+        send = 1'b0;
 
         wbuf_dir_state_d = wbuf_dir_state_q;
         wbuf_dir_d = wbuf_dir_q;
@@ -485,12 +471,12 @@ module hpdcache_wbuf
                     match_free = wbuf_write_free && (i == int'(wbuf_dir_free_ptr_q));
 
                     if (write_i && match_free) begin
-                        close = (cfg_threshold_i == 0)
-                                | write_uc_i
-                                | close_all_i
-                                | cfg_inhibit_write_coalescing_i;
+                        send = (cfg_threshold_i == 0)
+                               | write_uc_i
+                               | flush_all_i
+                               | cfg_inhibit_write_coalescing_i;
 
-                        wbuf_dir_state_d[i] = close ? WBUF_CLOSED : WBUF_OPEN;
+                        wbuf_dir_state_d[i] = send ? WBUF_PEND : WBUF_OPEN;
                         wbuf_dir_d[i].tag = write_tag;
                         wbuf_dir_d[i].cnt = 0;
                         wbuf_dir_d[i].ptr = wbuf_data_free_ptr_q;
@@ -510,13 +496,13 @@ module hpdcache_wbuf
                 WBUF_OPEN: begin
                     match_open_ptr  = (i == int'(wbuf_write_hit_open_dir_ptr));
                     timeout         = (wbuf_dir_q[i].cnt == (cfg_threshold_i - 1));
-                    read_close_hit  = read_close_hit_i & wbuf_write_hit_open & match_open_ptr;
+                    read_hit        = read_flush_hit_i & wbuf_write_hit_open & match_open_ptr;
                     write_hit       = write_i
                                       & wbuf_write_hit_open
                                       & match_open_ptr
                                       & ~cfg_inhibit_write_coalescing_i;
 
-                    if (!close_all_i) begin
+                    if (!flush_all_i) begin
                         if (write_hit && cfg_reset_timecnt_on_write_i) begin
                             timeout = 1'b0;
                             wbuf_dir_d[i].cnt = 0;
@@ -524,11 +510,11 @@ module hpdcache_wbuf
                             wbuf_dir_d[i].cnt = wbuf_dir_q[i].cnt + 1;
                         end
 
-                        if (read_close_hit | timeout | cfg_inhibit_write_coalescing_i) begin
-                            wbuf_dir_state_d[i] = WBUF_CLOSED;
+                        if (read_hit | timeout | cfg_inhibit_write_coalescing_i) begin
+                            wbuf_dir_state_d[i] = WBUF_PEND;
                         end
                     end else begin
-                        wbuf_dir_state_d[i] = WBUF_CLOSED;
+                        wbuf_dir_state_d[i] = WBUF_PEND;
                     end
 
                     if (write_hit) begin
@@ -543,11 +529,11 @@ module hpdcache_wbuf
                     end
                 end
 
-                WBUF_CLOSED: begin
-                    match_closed_ptr = (i == int'(wbuf_write_hit_closed_dir_ptr));
+                WBUF_PEND: begin
+                    match_pend_ptr = (i == int'(wbuf_write_hit_pend_dir_ptr));
                     write_hit = write_i
-                                & wbuf_write_hit_closed
-                                & match_closed_ptr
+                                & wbuf_write_hit_pend
+                                & match_pend_ptr
                                 & ~cfg_inhibit_write_coalescing_i;
 
                     if (write_hit) begin
@@ -647,8 +633,8 @@ module hpdcache_wbuf
     //    Send pointer
     always_comb
     begin : wbuf_send_comb
-        wbuf_dir_send_ptr_d = wbuf_dir_find_next(wbuf_dir_send_ptr_q, wbuf_dir_state_q, WBUF_CLOSED);
-        if (wbuf_dir_state_q[wbuf_dir_send_ptr_q] == WBUF_CLOSED) begin
+        wbuf_dir_send_ptr_d = wbuf_dir_find_next(wbuf_dir_send_ptr_q, wbuf_dir_state_q, WBUF_PEND);
+        if (wbuf_dir_state_q[wbuf_dir_send_ptr_q] == WBUF_PEND) begin
             if (!send_meta_valid || !send_meta_ready) begin
                 wbuf_dir_send_ptr_d = wbuf_dir_send_ptr_q;
             end
@@ -688,9 +674,9 @@ module hpdcache_wbuf
     ack_sent_assert: assert property (@(posedge clk_i)
             (ack_i -> (wbuf_dir_state_q[ack_id_i] == WBUF_SENT))) else
             $error("WBUF: acknowledging a not SENT slot");
-    send_closed_assert: assert property (@(posedge clk_i)
-            (send_meta_valid -> (wbuf_dir_state_q[wbuf_dir_send_ptr_q] == WBUF_CLOSED))) else
-            $error("WBUF: sending a not CLOSED slot");
+    send_pend_assert: assert property (@(posedge clk_i)
+            (send_meta_valid -> (wbuf_dir_state_q[wbuf_dir_send_ptr_q] == WBUF_PEND))) else
+            $error("WBUF: sending a not PEND slot");
     send_valid_data_assert: assert property (@(posedge clk_i)
             (send_data_valid_o -> (wbuf_data_valid_q[fifo_send_data_q.send_data_ptr] == 1'b1))) else
             $error("WBUF: sending a not valid data");

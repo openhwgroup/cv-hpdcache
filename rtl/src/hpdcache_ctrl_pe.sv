@@ -128,7 +128,7 @@ module hpdcache_ctrl_pe
     input  logic                   wbuf_read_hit_i,
     output logic                   wbuf_write_valid_o,
     output logic                   wbuf_write_uncacheable_o,
-    output logic                   wbuf_read_close_hit_o,
+    output logic                   wbuf_read_flush_hit_o,
     //   }}}
 
     //   Uncacheable request handler
@@ -232,7 +232,7 @@ module hpdcache_ctrl_pe
         cmo_req_valid_o                     = 1'b0;
 
         wbuf_write_valid_o                  = 1'b0;
-        wbuf_read_close_hit_o               = 1'b0;
+        wbuf_read_flush_hit_o               = 1'b0;
         wbuf_write_uncacheable_o            = 1'b0; // unused
 
         arb_st0_req_ready_o                 = 1'b0;
@@ -366,8 +366,8 @@ module hpdcache_ctrl_pe
                         //  Cache miss
                         //  {{{
                         if (!cachedir_hit_i) begin
-                            //  If there is a match in the write buffer, lets close the entry right away
-                            wbuf_read_close_hit_o = 1'b1;
+                            //  If there is a match in the write buffer, lets send the entry right away
+                            wbuf_read_flush_hit_o = 1'b1;
 
                             //  Do not consume a request in this cycle in stage 0
                             st1_nop = 1'b1;
@@ -496,7 +496,7 @@ module hpdcache_ctrl_pe
                                 st1_nop = 1'b1;
                             end
 
-                            //  No available entry in the write buffer (or conflict on close entry)
+                            //  No available entry in the write buffer (or conflict on pending entry)
                             else if (!wbuf_write_ready_i) begin
                                 //  Put the request in the replay table
                                 st1_rtab_alloc = 1'b1;
@@ -523,7 +523,7 @@ module hpdcache_ctrl_pe
 
                         //  Cache hit
                         else begin
-                            //  No available entry in the write buffer (or conflict on close entry)
+                            //  No available entry in the write buffer (or conflict on pending entry)
                             if (!wbuf_write_ready_i) begin
                                 //  Put the request in the replay table
                                 st1_rtab_alloc = 1'b1;

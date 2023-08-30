@@ -85,7 +85,7 @@ import hpdcache_pkg::*;
 
     //      Write buffer interface
     input  logic                  wbuf_empty_i,
-    output logic                  wbuf_close_all_o,
+    output logic                  wbuf_flush_all_o,
     output logic                  wbuf_write_o,
     input  logic                  wbuf_write_ready_i,
     output wbuf_addr_t            wbuf_write_addr_o,
@@ -93,11 +93,11 @@ import hpdcache_pkg::*;
     output wbuf_be_t              wbuf_write_be_o,
     output logic                  wbuf_write_uncacheable_o,
     input  logic                  wbuf_read_hit_i,
-    output logic                  wbuf_read_close_hit_o,
+    output logic                  wbuf_read_flush_hit_o,
     output hpdcache_req_addr_t    wbuf_rtab_addr_o,
     output logic                  wbuf_rtab_is_read_o,
     input  logic                  wbuf_rtab_hit_open_i,
-    input  logic                  wbuf_rtab_hit_closed_i,
+    input  logic                  wbuf_rtab_hit_pend_i,
     input  logic                  wbuf_rtab_hit_sent_i,
     input  logic                  wbuf_rtab_not_ready_i,
 
@@ -116,7 +116,7 @@ import hpdcache_pkg::*;
     output hpdcache_req_sid_t     uc_req_sid_o,
     output hpdcache_req_tid_t     uc_req_tid_o,
     output logic                  uc_req_need_rsp_o,
-    input  logic                  uc_wbuf_close_all_i,
+    input  logic                  uc_wbuf_flush_all_i,
     input  logic                  uc_dir_amo_match_i,
     input  hpdcache_set_t         uc_dir_amo_match_set_i,
     input  hpdcache_tag_t         uc_dir_amo_match_tag_i,
@@ -139,7 +139,7 @@ import hpdcache_pkg::*;
     output hpdcache_cmoh_op_t     cmo_req_op_o,
     output hpdcache_req_addr_t    cmo_req_addr_o,
     output hpdcache_req_data_t    cmo_req_wdata_o,
-    input  logic                  cmo_wbuf_close_all_i,
+    input  logic                  cmo_wbuf_flush_all_i,
     input  logic                  cmo_dir_check_i,
     input  hpdcache_set_t         cmo_dir_check_set_i,
     input  hpdcache_tag_t         cmo_dir_check_tag_i,
@@ -423,7 +423,7 @@ import hpdcache_pkg::*;
         .wbuf_write_ready_i,
         .wbuf_read_hit_i,
         .wbuf_write_uncacheable_o,
-        .wbuf_read_close_hit_o,
+        .wbuf_read_flush_hit_o,
 
         .uc_busy_i,
         .uc_req_valid_o,
@@ -495,7 +495,7 @@ import hpdcache_pkg::*;
         .wbuf_addr_o                        (wbuf_rtab_addr_o),
         .wbuf_is_read_o                     (wbuf_rtab_is_read_o),
         .wbuf_hit_open_i                    (wbuf_rtab_hit_open_i),
-        .wbuf_hit_closed_i                  (wbuf_rtab_hit_closed_i),
+        .wbuf_hit_pend_i                    (wbuf_rtab_hit_pend_i),
         .wbuf_hit_sent_i                    (wbuf_rtab_hit_sent_i),
         .wbuf_not_ready_i                   (wbuf_rtab_not_ready_i),
 
@@ -639,7 +639,7 @@ import hpdcache_pkg::*;
     assign wbuf_write_addr_o = st1_req_q.addr,
            wbuf_write_data_o = st1_req_q.wdata,
            wbuf_write_be_o   = st1_req_q.be,
-           wbuf_close_all_o  = cmo_wbuf_close_all_i | uc_wbuf_close_all_i | wbuf_flush_i;
+           wbuf_flush_all_o  = cmo_wbuf_flush_all_i | uc_wbuf_flush_all_i | wbuf_flush_i;
     //  }}}
 
     //  Miss handler outputs
