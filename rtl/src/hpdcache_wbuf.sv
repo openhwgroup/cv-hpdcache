@@ -100,6 +100,8 @@ module hpdcache_wbuf
     input  logic                  cfg_reset_timecnt_on_write_i,
     //    Sequentialize write-after-write hazards
     input  logic                  cfg_sequential_waw_i,
+    //    Inhibit write coalescing
+    input  logic                  cfg_inhibit_write_coalescing_i,
 
     //  Write interface
     input  logic                  write_i,
@@ -445,7 +447,9 @@ module hpdcache_wbuf
             &  ~wbuf_write_hit_closed
             & ~(wbuf_write_hit_sent & cfg_sequential_waw_i);
 
-    assign write_ready_o = wbuf_write_free | wbuf_write_hit_open | wbuf_write_hit_closed;
+    assign write_ready_o = wbuf_write_free
+                           | ((wbuf_write_hit_open | wbuf_write_hit_closed)
+                             & ~cfg_inhibit_write_coalescing_i);
     //  }}}
 
     //  Update control
@@ -481,10 +485,12 @@ module hpdcache_wbuf
                     match_free = wbuf_write_free && (i == int'(wbuf_dir_free_ptr_q));
 
                     if (write_i && match_free) begin
+                        close = (cfg_threshold_i == 0)
+                                | write_uc_i
+                                | close_all_i
+                                | cfg_inhibit_write_coalescing_i;
 
-                        close = (cfg_threshold_i == 0) || write_uc_i || close_all_i;
-
-                        wbuf_dir_state_d[i] = close ?  WBUF_CLOSED : WBUF_OPEN;
+                        wbuf_dir_state_d[i] = close ? WBUF_CLOSED : WBUF_OPEN;
                         wbuf_dir_d[i].tag = write_tag;
                         wbuf_dir_d[i].cnt = 0;
                         wbuf_dir_d[i].ptr = wbuf_data_free_ptr_q;
@@ -504,8 +510,11 @@ module hpdcache_wbuf
                 WBUF_OPEN: begin
                     match_open_ptr  = (i == int'(wbuf_write_hit_open_dir_ptr));
                     timeout         = (wbuf_dir_q[i].cnt == (cfg_threshold_i - 1));
-                    write_hit       = write_i          & wbuf_write_hit_open & match_open_ptr;
                     read_close_hit  = read_close_hit_i & wbuf_write_hit_open & match_open_ptr;
+                    write_hit       = write_i
+                                      & wbuf_write_hit_open
+                                      & match_open_ptr
+                                      & ~cfg_inhibit_write_coalescing_i;
 
                     if (!close_all_i) begin
                         if (write_hit && cfg_reset_timecnt_on_write_i) begin
@@ -515,7 +524,7 @@ module hpdcache_wbuf
                             wbuf_dir_d[i].cnt = wbuf_dir_q[i].cnt + 1;
                         end
 
-                        if (read_close_hit | timeout) begin
+                        if (read_close_hit | timeout | cfg_inhibit_write_coalescing_i) begin
                             wbuf_dir_state_d[i] = WBUF_CLOSED;
                         end
                     end else begin
@@ -536,7 +545,10 @@ module hpdcache_wbuf
 
                 WBUF_CLOSED: begin
                     match_closed_ptr = (i == int'(wbuf_write_hit_closed_dir_ptr));
-                    write_hit = write_i & wbuf_write_hit_closed & match_closed_ptr;
+                    write_hit = write_i
+                                & wbuf_write_hit_closed
+                                & match_closed_ptr
+                                & ~cfg_inhibit_write_coalescing_i;
 
                     if (write_hit) begin
                         wbuf_data_write(
