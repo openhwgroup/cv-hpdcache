@@ -59,6 +59,8 @@ import hpdcache_pkg::*;
     input  logic                  cfg_reset_timecnt_on_write_i,
     //          Sequentialize write-after-write hazards
     input  logic                  cfg_sequential_waw_i,
+    //    Inhibit write coalescing
+    input  logic                  cfg_inhibit_write_coalescing_i,
 
     //      Write interface
     input  logic                  write_i,
@@ -127,6 +129,7 @@ import hpdcache_pkg::*;
         .cfg_threshold_i,
         .cfg_reset_timecnt_on_write_i,
         .cfg_sequential_waw_i,
+        .cfg_inhibit_write_coalescing_i,
         .write_i,
         .write_ready_o,
         .write_addr_i,

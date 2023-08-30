@@ -126,6 +126,7 @@ import hpdcache_pkg::*;
     input  wbuf_timecnt_t                 cfg_wbuf_threshold_i,
     input  logic                          cfg_wbuf_reset_timecnt_on_write_i,
     input  logic                          cfg_wbuf_sequential_waw_i,
+    input  logic                          cfg_wbuf_inhibit_write_coalescing_i,
     input  logic                          cfg_prefetch_updt_plru_i,
     input  logic                          cfg_error_on_cacheable_amo_i,
     input  logic                          cfg_rtab_single_entry_i
@@ -452,6 +453,7 @@ import hpdcache_pkg::*;
         .cfg_threshold_i                    (cfg_wbuf_threshold_i),
         .cfg_reset_timecnt_on_write_i       (cfg_wbuf_reset_timecnt_on_write_i),
         .cfg_sequential_waw_i               (cfg_wbuf_sequential_waw_i),
+        .cfg_inhibit_write_coalescing_i     (cfg_wbuf_inhibit_write_coalescing_i),
 
         .write_i                            (wbuf_write),
         .write_ready_o                      (wbuf_write_ready),
