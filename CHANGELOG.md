@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Add parameters in the package to choose between RAM macros implementing
   byte-enable or bitmask for the different RAMs instances
 - Add additional assertions to verify parameters
+- Add additional configuration signal to inhibit write coalescing in the write
+  buffer
 
 ### Removed
 
@@ -30,6 +32,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   parameters; (2) a new hpdcache_params_pkg that defines user parameters
 - New selection policy of ready requests in the replay table. It gives priority
   to requests in the same linked list.
+- The write buffer now accepts writes from requesters in a pending slot when it
+  is waiting for the internal arbiter to forward the data to the NoC.
 
 ### Fixed
 

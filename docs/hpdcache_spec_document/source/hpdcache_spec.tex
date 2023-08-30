@@ -1998,11 +1998,10 @@ A given entry in the directory of the write-buffer may be in four different stat
 
 \begin{center}
 \begin{tabular}{lp{.8\linewidth}}
-\textbf{FREE}   & The entry is available. \\
-\textbf{OPEN}   & The entry is currently used by a previous write access.
-The entry accepts new write accesses (in the same address range) for coalescing. \\
-\textbf{CLOSED} & The entry does not accept any new writes, and is waiting to be sent to the memory. \\
-\textbf{SENT}   & The entry was forwarded to the memory, and is waiting for the acknowledgement. \\
+\textbf{FREE} & The entry is available.\\
+\textbf{OPEN} & The entry is currently used by a previous write access. The entry accepts new writes (coalescing).\\
+\textbf{PEND} & The entry is waiting to be sent to the memory. In this state, the entry continues to accept new writes (coalescing).\\
+\textbf{SENT} & The entry was forwarded to the memory, and is waiting for the acknowledgement.\\
 \end{tabular}
 \end{center}
 
@@ -2026,26 +2025,24 @@ The write-buffer exploits the first property.
 Multiple "in-flight" writes are supported due to the multiple directory and data entries.
 These writes can be forwarded to the memory in an order different than the program order.
 
-To comply with the second property, the write-buffer does not accept a write when there is an address conflict with a \textbf{CLOSED}, or \textbf{SENT} entry.
+To comply with the second property, the write-buffer does not accept a write when there is an address conflict with a \textbf{SENT} entry.
 In that case, the write is put on-hold following the policy described in \secref{onhold}.
 The system may choose to relax the constraint of putting a write on-hold in case of an address conflict with a \textbf{SENT} entry.
 This can be relaxed when the \ac{NoC} guaranties in-order delivery.
-The runtime configuration bit~$\mathsf{cfig\_wbuf.S}$~(see \tabref{cfig_wbuf}) shall be deasserted to relax this dependency.
-
-\Todo{We could slightly modify the behavior in the CLOSED state. The write-buffer coalesces writes in CLOSED states as these are not yet sent, and the data is still present the data buffer.}
+The runtime configuration bit~$\mathsf{cfig\_wbuf.S}$~(see \tabref{cfig_wbuf}) shall be set to 0 to relax this dependency.
 
 \subsection{Functional Description}
 \seclabel{wbuf_funcdesc}
 
-When an entry of the write-buffer directory is in the \textbf{OPEN} or \textbf{CLOSED} states, there is an allocated data buffer, and it contains data that has not yet been sent to the memory.
-When an entry of the write-buffer directory is in the \textbf{SENT} state, the corresponding data was transferred to the memory, thus the corresponding data buffer was freed.
-A given entry in the write-buffer directory goes from \textbf{FREE} to \textbf{OPEN} state when a new write is accepted, and cannot be coalesced with another \textbf{OPEN} entry (e.g. not in the same address range).
+When an entry of the write-buffer directory is in the \textbf{OPEN} or \textbf{PEND} states, there is an allocated data buffer, and it contains data that has not yet been sent to the memory.
+When an entry of the write-buffer directory is in the \textbf{SENT} state, the corresponding data was transferred to the memory, and the corresponding data buffer was freed (and can be reused for another write).
+A given entry in the write-buffer directory goes from \textbf{FREE} to \textbf{OPEN} state when a new write is accepted, and cannot be coalesced with another \textbf{OPEN} or \textbf{PEND} entry (e.g. not in the same address range).
 
-A directory entry passes from \textbf{OPEN} to \textbf{CLOSED} after a given number of clock cycles.
+A directory entry passes from \textbf{OPEN} to \textbf{PEND} after a given number of clock cycles.
 This number of clock cycles depends on different runtime configurable values.
 Each directory entry contains a life-time counter.
 This counter starts at 0 when a new write is accepted (\textbf{FREE}->\textbf{OPEN}), and incremented each cycle while in \textbf{OPEN}.
-When the counter reaches~$\mathsf{cfig\_wbuf.threshold}$~(see \tabref{cfig_wbuf}), the write-buffer directory entry goes to \textbf{CLOSED}.
+When the counter reaches~$\mathsf{cfig\_wbuf.threshold}$~(see \tabref{cfig_wbuf}), the write-buffer directory entry goes to \textbf{PEND}.
 Another runtime configurable bit, $\mathsf{cfig\_wbuf.R}$~(see \tabref{cfig_wbuf}), defines the behavior of an entry when a new write is coalesced into an \textbf{OPEN} entry.
 If this last configuration bit is set, the life-time counter is reset to 0 when a new write is coalesced.
 Otherwise, the counter keeps its value.
@@ -2056,6 +2053,8 @@ The number of cycles to get an acknowledgement from the memory may be significan
 Thus, to improve utilization of data buffers, the number of entries in the directory is generally greater than the number of data buffers.
 However, there is a trade-off between area and performance because the area cost of data buffers is the most critical cost in the write-buffer.
 The synthesis-time parameters $\mathsf{CONF\_HPDCACHE\_WBUF\_DIR\_ENTRIES}$ and $\mathsf{CONF\_HPDCACHE\_WBUF\_DATA\_ENTRIES}$ define the number of entries in the write-buffer directory and write-buffer data, respectively.
+
+When the $\mathsf{cfig\_wbuf.I}$~(see \tabref{cfig_wbuf}) is set, the write buffer does not perform any write coalescing. This means that the entry passes from \textbf{FREE} to \textbf{PEND} (bypassing the \textbf{OPEN} state). The $\mathsf{cfig\_wbuf.threshold}$ is ignored by the write buffer. While an entry is in the \textbf{PEND} state, and $\mathsf{cfig\_wbuf.I}$ is set, that entry does not accept any new writes, and only waits for the data to be sent.
 
 \Todo{Investigate an implementation of the data buffers in RAM.
 At most, only one entry is written and read per cycle in the write buffer.
@@ -2345,6 +2344,9 @@ These are mapped on the $\mathsf{CFIG}$ memory address segment in \figref{csr_ad
     Threshold & Number of keep-alive cycles of entries in the write-buffer & RW & \texttt{0x04}
     & The maximum accepted value is $\mathsf{CONF\_HPDCACHE\_WBUF\_TIMECNT\_MAX}$.
     When set to 0, a write immediatly closes the corresponding entry.\\
+    \midrule
+    I & Inhibit write coalescing & RW & \texttt{0b0}
+    & When set to 1, the write-buffer does not perform write coalescing. It accepts one write per entry.\\
     \bottomrule
     \end{tabular}}
   \end{center}
