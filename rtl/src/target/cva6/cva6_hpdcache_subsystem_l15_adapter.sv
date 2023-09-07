@@ -185,7 +185,7 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
          icache_miss_ready_o = icache_miss_req_wok;
 
   assign icache_miss_req_wdata.mem_req_addr      = icache_miss_i.paddr,
-         icache_miss_req_wdata.mem_req_len       = icache_miss_i.nc ? 0 : ICACHE_MEM_REQ_CL_LEN - 1,
+         icache_miss_req_wdata.mem_req_len       = '0,
          icache_miss_req_wdata.mem_req_size      = icache_miss_i.nc ? ICACHE_WORD_SIZE : ICACHE_MEM_REQ_CL_SIZE,
          icache_miss_req_wdata.mem_req_id        = icache_miss_i.tid,
          icache_miss_req_wdata.mem_req_command   = hpdcache_pkg::HPDCACHE_MEM_READ,
@@ -231,18 +231,18 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
     // Requests
   logic                            mem_req_ready      [4:0];
   logic                            mem_req_valid      [4:0];
-  hpdcache_mem_req_t mem_req            [4:0];
+  hpdcache_mem_req_t               mem_req            [4:0];
   
 
   logic                            mem_req_ready_arb;
   logic                            mem_req_valid_arb;
-  hpdcache_mem_req_t mem_req_arb;
+  hpdcache_mem_req_t               mem_req_arb;
 
     // Data
   logic                              mem_req_data_ready  [4:0];
   logic                              mem_req_data_valid  [4:0];
-  hpdcache_mem_req_w_t mem_req_data        [4:0];
-  hpdcache_mem_req_w_t mem_req_data_arb;
+  hpdcache_mem_req_w_t               mem_req_data        [4:0];
+  hpdcache_mem_req_w_t               mem_req_data_arb;
 
     // Port of the Request, 5 available ports
   req_portid_t         mem_req_pid [4:0];
