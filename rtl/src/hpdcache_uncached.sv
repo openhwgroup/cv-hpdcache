@@ -263,13 +263,13 @@ import hpdcache_pkg::*;
 
     //  NOTE: Reservation set for LR instruction is always 8-bytes in this
     //  implementation.
-    assign lrsc_rsrv_nline  = hpdcache_get_req_nline(lrsc_rsrv_addr_q),
-           lrsc_rsrv_word   = hpdcache_get_req_offset(lrsc_rsrv_addr_q) >> 3;
+    assign lrsc_rsrv_nline  = hpdcache_get_req_addr_nline(lrsc_rsrv_addr_q),
+           lrsc_rsrv_word   = hpdcache_get_req_addr_offset(lrsc_rsrv_addr_q) >> 3;
 
     //  Check hit on LR/SC reservation for snoop port (normal write accesses)
     assign lrsc_snoop_words = (lrsc_snoop_size_i < 3) ? 1 : hpdcache_offset_t'((8'h1 << lrsc_snoop_size_i) >> 3),
-           lrsc_snoop_nline = hpdcache_get_req_nline(lrsc_snoop_addr_i),
-           lrsc_snoop_base  = hpdcache_get_req_offset(lrsc_snoop_addr_i) >> 3,
+           lrsc_snoop_nline = hpdcache_get_req_addr_nline(lrsc_snoop_addr_i),
+           lrsc_snoop_base  = hpdcache_get_req_addr_offset(lrsc_snoop_addr_i) >> 3,
            lrsc_snoop_end   = lrsc_snoop_base + lrsc_snoop_words;
 
     assign lrsc_snoop_hit   = lrsc_rsrv_valid_q & (lrsc_rsrv_nline == lrsc_snoop_nline) &
@@ -279,8 +279,8 @@ import hpdcache_pkg::*;
     assign lrsc_snoop_reset = lrsc_snoop_i & lrsc_snoop_hit;
 
     //  Check hit on LR/SC reservation for AMOs and SC
-    assign lrsc_uc_nline    = hpdcache_get_req_nline(req_addr_i),
-           lrsc_uc_word     = hpdcache_get_req_offset(req_addr_i) >> 3;
+    assign lrsc_uc_nline    = hpdcache_get_req_addr_nline(req_addr_i),
+           lrsc_uc_word     = hpdcache_get_req_addr_offset(req_addr_i) >> 3;
 
     assign lrsc_uc_hit      = lrsc_rsrv_valid_q & (lrsc_rsrv_nline == lrsc_uc_nline) &
                                                   (lrsc_rsrv_word  == lrsc_uc_word);
@@ -638,15 +638,15 @@ import hpdcache_pkg::*;
     );
 
     assign dir_amo_match_o       = (uc_fsm_q == UC_AMO_READ_DIR),
-           dir_amo_match_set_o   = hpdcache_get_req_set(req_addr_q),
-           dir_amo_match_tag_o   = hpdcache_get_req_tag(req_addr_q),
+           dir_amo_match_set_o   = hpdcache_get_req_addr_set(req_addr_q),
+           dir_amo_match_tag_o   = hpdcache_get_req_addr_tag(req_addr_q),
            dir_amo_update_plru_o = dir_amo_match_o;
 
     assign data_amo_write_o        = (uc_fsm_q == UC_AMO_WRITE_DATA),
            data_amo_write_enable_o = |dir_amo_hit_way_i,
-           data_amo_write_set_o    = hpdcache_get_req_set(req_addr_q),
+           data_amo_write_set_o    = hpdcache_get_req_addr_set(req_addr_q),
            data_amo_write_size_o   = req_size_q,
-           data_amo_write_word_o   = hpdcache_get_req_word(req_addr_q),
+           data_amo_write_word_o   = hpdcache_get_req_addr_word(req_addr_q),
            data_amo_write_data_o   = prepare_amo_data_result(amo_result, req_size_q),
            data_amo_write_be_o     = amo_st_be;
 //  }}}
@@ -817,12 +817,14 @@ import hpdcache_pkg::*;
     logic [63:0] sc_retcode;
     logic [63:0] sc_rdata;
 
-    assign sc_retcode       = {{63{1'b0}}, uc_sc_retcode_q};
-    assign sc_rdata         = prepare_amo_data_result(sc_retcode, req_size_q);
-    assign core_rsp_o.rdata = req_op_q.is_amo_sc ? {HPDCACHE_REQ_WORDS{sc_rdata}} : rsp_rdata_q;
-    assign core_rsp_o.sid   = req_sid_q;
-    assign core_rsp_o.tid   = req_tid_q;
-    assign core_rsp_o.error = rsp_error_q;
+    assign sc_retcode = {{63{1'b0}}, uc_sc_retcode_q},
+           sc_rdata   = prepare_amo_data_result(sc_retcode, req_size_q);
+
+    assign core_rsp_o.rdata   = req_op_q.is_amo_sc ? {HPDCACHE_REQ_WORDS{sc_rdata}} : rsp_rdata_q,
+           core_rsp_o.sid     = req_sid_q,
+           core_rsp_o.tid     = req_tid_q,
+           core_rsp_o.error   = rsp_error_q,
+           core_rsp_o.aborted = 1'b0;
 
     //  Resize the memory response data to the core response width
     generate

@@ -162,7 +162,7 @@ package hpdcache_pkg;
 
     //  Definition of interface with miss handler
     //  {{{
-    localparam int unsigned HPDCACHE_REFILL_DATA_WIDTH       = HPDCACHE_DATA_RAM_ACCESS_WIDTH;
+    localparam int unsigned HPDCACHE_REFILL_DATA_WIDTH = HPDCACHE_DATA_RAM_ACCESS_WIDTH;
 
     typedef hpdcache_data_word_t[HPDCACHE_ACCESS_WORDS-1:0] hpdcache_refill_data_t;
     typedef hpdcache_data_be_t  [HPDCACHE_ACCESS_WORDS-1:0] hpdcache_refill_be_t;
@@ -174,11 +174,13 @@ package hpdcache_pkg;
     localparam int unsigned HPDCACHE_REQ_DATA_BYTES = HPDCACHE_REQ_DATA_WIDTH/8;
     localparam int unsigned HPDCACHE_REQ_WORD_INDEX_WIDTH = $clog2(HPDCACHE_REQ_WORDS);
     localparam int unsigned HPDCACHE_REQ_BYTE_OFFSET_WIDTH = $clog2(HPDCACHE_REQ_DATA_BYTES);
+    localparam int unsigned HPDCACHE_REQ_OFFSET_WIDTH = HPDCACHE_PA_WIDTH - HPDCACHE_TAG_WIDTH;
 
-    typedef logic                [       HPDCACHE_PA_WIDTH-1:0] hpdcache_req_addr_t;
-    typedef hpdcache_data_word_t [      HPDCACHE_REQ_WORDS-1:0] hpdcache_req_data_t;
-    typedef hpdcache_data_be_t   [      HPDCACHE_REQ_WORDS-1:0] hpdcache_req_be_t;
-    typedef logic                [                         2:0] hpdcache_req_size_t;
+    typedef logic                       [HPDCACHE_PA_WIDTH-1:0] hpdcache_req_addr_t;
+    typedef logic               [HPDCACHE_REQ_OFFSET_WIDTH-1:0] hpdcache_req_offset_t;
+    typedef hpdcache_data_word_t       [HPDCACHE_REQ_WORDS-1:0] hpdcache_req_data_t;
+    typedef hpdcache_data_be_t         [HPDCACHE_REQ_WORDS-1:0] hpdcache_req_be_t;
+    typedef logic                                         [2:0] hpdcache_req_size_t;
     typedef logic               [HPDCACHE_REQ_SRC_ID_WIDTH-1:0] hpdcache_req_sid_t;
     typedef logic             [HPDCACHE_REQ_TRANS_ID_WIDTH-1:0] hpdcache_req_tid_t;
 
@@ -216,29 +218,43 @@ package hpdcache_pkg;
     } hpdcache_req_cmo_t;
     //      }}}
 
+    //      Definition of PMA flags
+    //      {{{
+    typedef struct packed
+    {
+        logic uncacheable;
+        logic io; //  FIXME: for future use
+    } hpdcache_pma_t;
+    //      }}}
+
     //      Definition of interfaces
     //      {{{
     //          Request Interface
     typedef struct packed
     {
-        hpdcache_req_addr_t  addr;
-        hpdcache_req_data_t  wdata;
-        hpdcache_req_op_t    op;
-        hpdcache_req_be_t    be;
-        hpdcache_req_size_t  size;
-        logic                uncacheable;
-        hpdcache_req_sid_t   sid;
-        hpdcache_req_tid_t   tid;
-        logic                need_rsp;
+        hpdcache_req_offset_t addr_offset;
+        hpdcache_req_data_t   wdata;
+        hpdcache_req_op_t     op;
+        hpdcache_req_be_t     be;
+        hpdcache_req_size_t   size;
+        hpdcache_req_sid_t    sid;
+        hpdcache_req_tid_t    tid;
+        logic                 need_rsp;
+
+        //  only valid in case of physically indexed requests
+        logic                 phys_indexed;
+        hpdcache_tag_t        addr_tag;
+        hpdcache_pma_t        pma;
     } hpdcache_req_t;
 
     //          Response Interface
     typedef struct packed
     {
-        hpdcache_req_data_t  rdata;
-        hpdcache_req_sid_t   sid;
-        hpdcache_req_tid_t   tid;
-        logic                error;
+        hpdcache_req_data_t   rdata;
+        hpdcache_req_sid_t    sid;
+        hpdcache_req_tid_t    tid;
+        logic                 error;
+        logic                 aborted;
     } hpdcache_rsp_t;
     //      }}}
 
@@ -413,25 +429,34 @@ package hpdcache_pkg;
         endcase
     endfunction
 
-    function automatic hpdcache_set_t hpdcache_get_req_set(input hpdcache_req_addr_t addr);
-        return addr[HPDCACHE_OFFSET_WIDTH +: HPDCACHE_SET_WIDTH];
-    endfunction
-
-    function automatic hpdcache_tag_t hpdcache_get_req_tag(input hpdcache_req_addr_t addr);
+    function automatic hpdcache_tag_t hpdcache_get_req_addr_tag(input hpdcache_req_addr_t addr);
         return addr[(HPDCACHE_OFFSET_WIDTH + HPDCACHE_SET_WIDTH) +: HPDCACHE_TAG_WIDTH];
     endfunction
 
-    function automatic hpdcache_offset_t hpdcache_get_req_offset(input hpdcache_req_addr_t addr);
-        return addr[0 +: HPDCACHE_OFFSET_WIDTH];
+    function automatic hpdcache_set_t hpdcache_get_req_addr_set(input hpdcache_req_addr_t addr);
+        return addr[HPDCACHE_OFFSET_WIDTH +: HPDCACHE_SET_WIDTH];
     endfunction
 
-    function automatic hpdcache_word_t hpdcache_get_req_word(input hpdcache_req_addr_t addr);
+    function automatic hpdcache_word_t hpdcache_get_req_addr_word(input hpdcache_req_addr_t addr);
         return addr[$clog2(HPDCACHE_WORD_WIDTH/8) +: HPDCACHE_WORD_IDX_WIDTH];
     endfunction
 
-    function automatic hpdcache_nline_t hpdcache_get_req_nline(input hpdcache_req_addr_t addr);
+    function automatic hpdcache_offset_t hpdcache_get_req_addr_offset(input hpdcache_req_addr_t addr);
+        return addr[0 +: HPDCACHE_OFFSET_WIDTH];
+    endfunction
+
+    function automatic hpdcache_nline_t hpdcache_get_req_addr_nline(input hpdcache_req_addr_t addr);
         return addr[HPDCACHE_OFFSET_WIDTH +: HPDCACHE_NLINE_WIDTH];
     endfunction
+
+    function automatic hpdcache_set_t hpdcache_get_req_offset_set(input hpdcache_req_offset_t offset);
+        return offset[HPDCACHE_OFFSET_WIDTH +: HPDCACHE_SET_WIDTH];
+    endfunction
+
+    function automatic hpdcache_word_t hpdcache_get_req_offset_word(input hpdcache_req_offset_t offset);
+        return offset[$clog2(HPDCACHE_WORD_WIDTH/8) +: HPDCACHE_WORD_IDX_WIDTH];
+    endfunction
+
     //      }}}
     //  }}}
 

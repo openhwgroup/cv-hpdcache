@@ -69,7 +69,8 @@ import hpdcache_pkg::*;
     //      CHECK interface
     //      {{{
     input  logic                  mshr_check_i,
-    input  hpdcache_nline_t       mshr_check_nline_i,
+    input  mshr_set_t             mshr_check_set_i,
+    input  mshr_tag_t             mshr_check_tag_i,
     output logic                  mshr_check_hit_o,
     //      }}}
 
@@ -445,6 +446,7 @@ import hpdcache_pkg::*;
 
                 refill_fsm_d = REFILL_IDLE;
             end
+            //  }}}
 
             default: begin
                 // pragma translate_off
@@ -467,11 +469,12 @@ import hpdcache_pkg::*;
 
     assign  refill_core_rsp_valid_d = ~refill_core_rsp_valid_q & refill_core_rsp_valid;
 
-    assign  refill_core_rsp_valid_o = refill_core_rsp_valid_q,
-            refill_core_rsp_o.rdata = refill_core_rsp_data_q,
-            refill_core_rsp_o.sid   = refill_core_rsp_sid_q,
-            refill_core_rsp_o.tid   = refill_core_rsp_tid_q,
-            refill_core_rsp_o.error = refill_core_rsp_error_q;
+    assign  refill_core_rsp_valid_o   = refill_core_rsp_valid_q,
+            refill_core_rsp_o.rdata   = refill_core_rsp_data_q,
+            refill_core_rsp_o.sid     = refill_core_rsp_sid_q,
+            refill_core_rsp_o.tid     = refill_core_rsp_tid_q,
+            refill_core_rsp_o.error   = refill_core_rsp_error_q,
+            refill_core_rsp_o.aborted = 1'b0;
 
     generate
         //  refill's width is bigger than the width of the core's interface
@@ -624,7 +627,8 @@ import hpdcache_pkg::*;
         .full_o                   (mshr_full_o),
 
         .check_i                  (mshr_check_i),
-        .check_nline_i            (mshr_check_nline_i),
+        .check_set_i              (mshr_check_set_i),
+        .check_tag_i              (mshr_check_tag_i),
         .hit_o                    (mshr_check_hit_o),
         .alloc_i                  (mshr_alloc),
         .alloc_cs_i               (mshr_alloc_cs),

@@ -53,6 +53,7 @@ module hpdcache_ctrl_pe
     //   Pipeline stage 1
     //   {{{
     input  logic                   st1_req_valid_i,
+    input  logic                   st1_req_abort_i,
     input  logic                   st1_req_rtab_i,
     input  logic                   st1_req_is_uncacheable_i,
     input  logic                   st1_req_need_rsp_i,
@@ -64,6 +65,7 @@ module hpdcache_ctrl_pe
     input  logic                   st1_req_is_cmo_prefetch_i,
     output logic                   st1_req_valid_o,
     output logic                   st1_rsp_valid_o,
+    output logic                   st1_rsp_aborted_o,
     output logic                   st1_req_cachedir_updt_lru_o,
     output logic                   st1_req_cachedata_write_o,
     output logic                   st1_req_cachedata_write_enable_o,
@@ -87,13 +89,8 @@ module hpdcache_ctrl_pe
     output logic                   rtab_sel_o,
     output logic                   rtab_check_o,
     input  logic                   rtab_check_hit_i,
-    output logic                   st0_rtab_alloc_o,
-    output logic                   st0_rtab_mshr_hit_o,
-    output logic                   st0_rtab_mshr_full_o,
-    output logic                   st0_rtab_mshr_ready_o,
-    output logic                   st0_rtab_wbuf_hit_o,
-    output logic                   st0_rtab_wbuf_not_ready_o,
     output logic                   st1_rtab_alloc_o,
+    output logic                   st1_rtab_alloc_and_link_o,
     output logic                   st1_rtab_commit_o,
     output logic                   st1_rtab_rback_o,
     output logic                   st1_rtab_mshr_hit_o,
@@ -162,8 +159,8 @@ module hpdcache_ctrl_pe
 
     //  Definition of internal signals
     //  {{{
-    logic  st0_fence, st1_fence;
-    logic  st1_rtab_alloc;
+    logic  st1_fence;
+    logic  st1_rtab_alloc, st1_rtab_alloc_and_link;
     //  }}}
 
     //  Global control signals
@@ -176,10 +173,6 @@ module hpdcache_ctrl_pe
     //  then the "fence" instruction is executed. In the same manner, all
     //  instructions following the "fence" need to wait the completion of this
     //  last before being executed.
-    assign st0_fence = st0_req_is_uncacheable_i |
-                       st0_req_is_cmo_fence_i   |
-                       st0_req_is_cmo_inval_i   |
-                       st0_req_is_amo_i;
     assign st1_fence = st1_req_is_uncacheable_i |
                        st1_req_is_cmo_fence_i   |
                        st1_req_is_cmo_inval_i   |
@@ -201,7 +194,7 @@ module hpdcache_ctrl_pe
     //      IMPORTANT: When the replay table is full, the cache cannot accept new core
     //      requests because this can introduce a dead-lock : If the core request needs to
     //      be put on hold, as there is no place the replay table, the pipeline needs to
-    //      stalled. If the pipeline is stalled, dependencies of on-hold requests cannot be
+    //      stall. If the pipeline is stalled, dependencies of on-hold requests cannot be
     //      solved, and the system is locked.
     assign rtab_sel_o = rtab_full_i                   |
                         rtab_req_valid_i              |
@@ -213,11 +206,12 @@ module hpdcache_ctrl_pe
     //  Replay logic
     //  {{{
     //      Replay table allocation
-    assign st1_rtab_alloc_o = st1_rtab_alloc & ~st1_req_rtab_i,
-           st1_rtab_rback_o = st1_rtab_alloc &  st1_req_rtab_i;
+    assign st1_rtab_alloc_o          = st1_rtab_alloc          & ~st1_req_rtab_i,
+           st1_rtab_alloc_and_link_o = st1_rtab_alloc_and_link,
+           st1_rtab_rback_o          = st1_rtab_alloc          &  st1_req_rtab_i;
 
     //      Performance event
-    assign evt_req_on_hold_o   = st0_rtab_alloc_o | st1_rtab_alloc,
+    assign evt_req_on_hold_o   = st1_rtab_alloc | st1_rtab_alloc_and_link,
            evt_rtab_rollback_o = st1_rtab_rback_o;
     //  }}}
 
@@ -248,6 +242,7 @@ module hpdcache_ctrl_pe
         st1_req_cachedata_write_enable_o    = 1'b0;
         st1_req_cachedir_updt_lru_o         = 1'b0;
         st1_rsp_valid_o                     = 1'b0;
+        st1_rsp_aborted_o                   = 1'b0;
 
         st2_req_valid_o                     = st2_req_valid_i;
         st2_req_we_o                        = 1'b0;
@@ -259,13 +254,8 @@ module hpdcache_ctrl_pe
         nop                                 = 1'b0;
 
         rtab_check_o                        = 1'b0;
-        st0_rtab_alloc_o                    = 1'b0;
-        st0_rtab_mshr_hit_o                 = 1'b0;
-        st0_rtab_mshr_full_o                = 1'b0;
-        st0_rtab_mshr_ready_o               = 1'b0;
-        st0_rtab_wbuf_hit_o                 = 1'b0;
-        st0_rtab_wbuf_not_ready_o           = 1'b0;
         st1_rtab_alloc                      = 1'b0;
+        st1_rtab_alloc_and_link             = 1'b0;
         st1_rtab_commit_o                   = 1'b0;
         st1_rtab_mshr_hit_o                 = 1'b0;
         st1_rtab_mshr_full_o                = 1'b0;
@@ -322,9 +312,29 @@ module hpdcache_ctrl_pe
             //  Stage 1 request pending
             //  {{{
             if (st1_req_valid_i) begin
+                //  Check if the request in stage 1 has a conflict with one of the
+                //  request in the replay table.
+                rtab_check_o = ~st1_req_rtab_i & ~st1_fence;
+
+                //  Check if the current request is aborted. If so, respond to the
+                //  core (when need_rsp is set) and set the aborted flag
+                if (st1_req_abort_i && !st1_req_rtab_i) begin
+                    st1_rsp_valid_o = st1_req_need_rsp_i;
+                    st1_rsp_aborted_o = 1'b1;
+                end
+
+                //  Allocate a new entry in the replay table in case of conflict with
+                //  an on-hold request
+                else if (rtab_check_o && rtab_check_hit_i) begin
+                    st1_rtab_alloc_and_link = 1'b1;
+
+                    //  Do not consume a request in this cycle in stage 0
+                    st1_nop = 1'b1;
+                end
+
                 //  CMO fence or invalidate
                 //  {{{
-                if (st1_req_is_cmo_fence_i || st1_req_is_cmo_inval_i) begin
+                else if (st1_req_is_cmo_fence_i || st1_req_is_cmo_inval_i) begin
                     cmo_req_valid_o = 1'b1;
                     st1_nop         = 1'b1;
 
@@ -366,7 +376,8 @@ module hpdcache_ctrl_pe
                         //  Cache miss
                         //  {{{
                         if (!cachedir_hit_i) begin
-                            //  If there is a match in the write buffer, lets send the entry right away
+                            //  If there is a match in the write buffer, lets send the
+                            //  entry right away
                             wbuf_read_flush_hit_o = 1'b1;
 
                             //  Do not consume a request in this cycle in stage 0
@@ -399,21 +410,23 @@ module hpdcache_ctrl_pe
 
                             //  Miss Handler is not ready to send
                             else if (!mshr_alloc_ready_i) begin
-                                //  Put the request on hold if the MISS HANDLER is not ready to send
-                                //  a new miss request. This is to prevent a deadlock between the read
-                                //  request channel and the read response channel.
+                                //  Put the request on hold if the MISS HANDLER is not
+                                //  ready to send a new miss request. This is to prevent
+                                //  a deadlock between the read request channel and the
+                                //  read response channel.
                                 //
-                                //  The request channel may be stalled by targets if they are not
-                                //  able to send a response (response is prioritary). Therefore, we
-                                //  need to put the request on hold to allow a possible refill read
-                                //  response to be accomplished.
+                                //  The request channel may be stalled by targets if they
+                                //  are not able to send a response (response is
+                                //  prioritary). Therefore, we need to put the request on
+                                //  hold to allow a possible refill read response to be
+                                //  accomplished.
                                 st1_rtab_alloc = 1'b1;
 
                                 st1_rtab_mshr_ready_o = 1'b1;
                             end
 
-                            //  Forward the request to the next stage to allocate the entry in the MSHR
-                            //  and send the refill request
+                            //  Forward the request to the next stage to allocate the
+                            //  entry in the MSHR and send the refill request
                             else begin
                                 //  If the request comes from the replay table, free the
                                 //  corresponding RTAB entry
@@ -472,7 +485,7 @@ module hpdcache_ctrl_pe
                         //  IMPORTANT: we could remove the NOP in the first scenario if the
                         //  controller checks for the hit of this write. However, this adds
                         //  a DIR_RAM -> DATA_RAM timing path.
-                        st1_nop = (arb_st0_req_valid_i & (st0_req_is_load_i & ~st0_req_is_uncacheable_i)) |
+                        st1_nop = (arb_st0_req_valid_i &  st0_req_is_load_i) |
                                   (st1_req_rtab_i      & ~rtab_sel_o);
 
                         //  Enable the data RAM in case of write. However, the actual write
@@ -574,17 +587,9 @@ module hpdcache_ctrl_pe
             //      -  The pipeline is empty
             arb_refill_ready_o = arb_refill_valid_i & ~(st1_req_valid_i | st2_req_valid_i);
 
-            //      Check if the request in stage 0 has a conflict with one of the request in the
-            //      replay table. If it is the case, put it in that table.
-            rtab_check_o     = ~rtab_sel_o   & arb_st0_req_ready_o & ~st0_fence;
-            st0_rtab_alloc_o =  rtab_check_o & rtab_check_hit_i;
-
             //      Forward the request to stage 1
-            //      - There is a valid request in stage 0 from the replay table
-            //      - There is a valid "fence" request in stage 0.
-            //      - There is a valid "non-fence" request in stage 0 and it does not hits another
-            //        request in the replay table
-            st1_req_valid_o  = arb_st0_req_ready_o & (rtab_sel_o | st0_fence | ~rtab_check_hit_i);
+            //      - There is a valid request in stage 0
+            st1_req_valid_o = arb_st0_req_ready_o;
 
             //      New cacheable stage 0 request granted
             //      {{{

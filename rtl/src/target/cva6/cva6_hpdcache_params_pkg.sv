@@ -75,6 +75,11 @@ package hpdcache_params_pkg;
     `endif
     localparam int unsigned PARAM_REQ_SRC_ID_WIDTH = `CONF_HPDCACHE_REQ_SRC_ID_WIDTH;
 
+    //  HPDcache physically indexed
+    `ifndef CONF_HPDCACHE_PHYSICALLY_INDEXED
+        `define CONF_HPDCACHE_PHYSICALLY_INDEXED 1'b0
+    `endif
+    localparam bit PARAM_PHYSICALLY_INDEXED = `CONF_HPDCACHE_PHYSICALLY_INDEXED;
     //  }}}
 
     //  Definition of constants and types for HPDcache data memory

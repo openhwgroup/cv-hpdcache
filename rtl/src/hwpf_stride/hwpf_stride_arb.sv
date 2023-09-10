@@ -25,30 +25,41 @@
  */
 module hwpf_stride_arb
 import hpdcache_pkg::*;
+//  Parameters
+//  {{{
 #(
     parameter NUM_HW_PREFETCH = 4
-)(
+)
+//  }}}
+
+//  Ports
+//  {{{
+(
     input  logic                                clk_i,
     input  logic                                rst_ni,
 
-    // D-Cache input interface
+    // Dcache input interface
     input  logic          [NUM_HW_PREFETCH-1:0] hwpf_stride_req_valid_i,
     output logic          [NUM_HW_PREFETCH-1:0] hwpf_stride_req_ready_o,
     input  hpdcache_req_t [NUM_HW_PREFETCH-1:0] hwpf_stride_req_i,
     output logic          [NUM_HW_PREFETCH-1:0] hwpf_stride_rsp_valid_o,
     output hpdcache_rsp_t [NUM_HW_PREFETCH-1:0] hwpf_stride_rsp_o,       // Not used
 
-    // D-Cache output interface
-    output logic                                dcache_req_valid_o,
-    input  logic                                dcache_req_ready_i,
-    output hpdcache_req_t                       dcache_req_o,
-    input  logic                                dcache_rsp_valid_i,
-    input  hpdcache_rsp_t                       dcache_rsp_i             // Not used
+    // Dcache output interface
+    output logic                                hpdcache_req_valid_o,
+    input  logic                                hpdcache_req_ready_i,
+    output hpdcache_req_t                       hpdcache_req_o,
+    input  logic                                hpdcache_rsp_valid_i,
+    input  hpdcache_rsp_t                       hpdcache_rsp_i           // Not used
 );
+//  }}}
 
+    //  Internal signals
+    //  {{{
     logic          [NUM_HW_PREFETCH-1:0] hwpf_stride_req_valid;
     hpdcache_req_t [NUM_HW_PREFETCH-1:0] hwpf_stride_req;
     logic          [NUM_HW_PREFETCH-1:0] arb_req_gnt;
+    //  }}}
 
     //  Requesters arbiter
     //  {{{
@@ -56,24 +67,24 @@ import hpdcache_pkg::*;
     genvar gen_i;
     generate
         for (gen_i = 0; gen_i < NUM_HW_PREFETCH; gen_i++) begin : gen_hwpf_stride_req
-            assign hwpf_stride_req_ready_o[gen_i] = arb_req_gnt[gen_i] & dcache_req_ready_i;
-            assign hwpf_stride_req_valid[gen_i]   = hwpf_stride_req_valid_i[gen_i];
-            assign hwpf_stride_req[gen_i]         = hwpf_stride_req_i[gen_i];
+            assign hwpf_stride_req_ready_o[gen_i] = arb_req_gnt[gen_i] & hpdcache_req_ready_i,
+                   hwpf_stride_req_valid[gen_i]   = hwpf_stride_req_valid_i[gen_i],
+                   hwpf_stride_req[gen_i]         = hwpf_stride_req_i[gen_i];
         end
     endgenerate
 
     //      Arbiter
     hpdcache_rrarb #(
-        .N(NUM_HW_PREFETCH)
+        .N              (NUM_HW_PREFETCH)
     ) hwpf_stride_req_arbiter_i (
         .clk_i,
         .rst_ni,
         .req_i          (hwpf_stride_req_valid),
         .gnt_o          (arb_req_gnt),
-        .ready_i        (dcache_req_ready_i)
+        .ready_i        (hpdcache_req_ready_i)
     );
 
-    //      Multiplexor
+    //      Request Multiplexor
     hpdcache_mux #(
         .NINPUT         (NUM_HW_PREFETCH),
         .DATA_WIDTH     ($bits(hpdcache_req_t)),
@@ -81,27 +92,26 @@ import hpdcache_pkg::*;
     ) hwpf_stride_req_mux_i (
         .data_i         (hwpf_stride_req),
         .sel_i          (arb_req_gnt),
-        .data_o         (dcache_req_o)
+        .data_o         (hpdcache_req_o)
     );
 
-    assign dcache_req_valid_o = |arb_req_gnt;
+    assign hpdcache_req_valid_o = |arb_req_gnt;
     //  }}}
 
     //  Response demultiplexor
-    //
-    //  As the HW prefetcher does not need the TID field in the request, we use
-    //  it to transport the identifier of the specific hardware prefetcher.
-    //  This way we share the same SID for all HW prefetchers. Using different
-    //  SIDs means that we need different ports to the cache and we actually
-    //  want to reduce those.
     //  {{{
+    //      As the HW prefetcher does not need the TID field in the request, we
+    //      use it to transport the identifier of the specific hardware
+    //      prefetcher.
+    //      This way we share the same SID for all HW prefetchers. Using
+    //      different SIDs means that we need different ports to the cache and
+    //      we actually want to reduce those.
     always_comb
     begin : resp_demux
         for (int unsigned i = 0; i < NUM_HW_PREFETCH; i++) begin
-            hwpf_stride_rsp_valid_o[i]  = dcache_rsp_valid_i && (i == int'(dcache_rsp_i.tid));
-            hwpf_stride_rsp_o[i]        = dcache_rsp_i;
+            hwpf_stride_rsp_valid_o[i]  = hpdcache_rsp_valid_i && (i == int'(hpdcache_rsp_i.tid));
+            hwpf_stride_rsp_o[i]        = hpdcache_rsp_i;
         end
     end
     //  }}}
-
 endmodule

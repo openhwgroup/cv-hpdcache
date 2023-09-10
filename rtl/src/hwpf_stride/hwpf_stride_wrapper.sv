@@ -37,8 +37,8 @@ import hpdcache_pkg::*;
 //  Ports
 //  {{{
 (
-    input  logic                                       clk_i,
-    input  logic                                       rst_ni,
+    input  logic                                        clk_i,
+    input  logic                                        rst_ni,
 
     //  CSR
     //  {{{
@@ -59,21 +59,33 @@ import hpdcache_pkg::*;
 
     // Snooping
     //  {{{
-    input  logic               [NUM_SNOOP_PORTS-1:0]   snoop_valid_i,
-    input  hpdcache_req_addr_t [NUM_SNOOP_PORTS-1:0]   snoop_addr_i,
+    input  logic                 [NUM_SNOOP_PORTS-1:0]  snoop_valid_i,
+    input  logic                 [NUM_SNOOP_PORTS-1:0]  snoop_abort_i,
+    input  hpdcache_req_offset_t [NUM_SNOOP_PORTS-1:0]  snoop_addr_offset_i,
+    input  hpdcache_tag_t        [NUM_SNOOP_PORTS-1:0]  snoop_addr_tag_i,
+    input  logic                 [NUM_SNOOP_PORTS-1:0]  snoop_phys_indexed_i,
     //  }}}
 
-    //  DCache interface
+    //  Dcache interface
     //  {{{
-    input  hpdcache_req_sid_t                          dcache_req_sid_i,
-    output logic                                       dcache_req_valid_o,
-    input  logic                                       dcache_req_ready_i,
-    output hpdcache_req_t                              dcache_req_o,
-    input  logic                                       dcache_rsp_valid_i,
-    input  hpdcache_rsp_t                              dcache_rsp_i
+    input  hpdcache_req_sid_t                           hpdcache_req_sid_i,
+    output logic                                        hpdcache_req_valid_o,
+    input  logic                                        hpdcache_req_ready_i,
+    output hpdcache_req_t                               hpdcache_req_o,
+    output logic                                        hpdcache_req_abort_o,
+    output hpdcache_tag_t                               hpdcache_req_tag_o,
+    output hpdcache_pma_t                               hpdcache_req_pma_o,
+    input  logic                                        hpdcache_rsp_valid_i,
+    input  hpdcache_rsp_t                               hpdcache_rsp_i
     //  }}}
 );
 //  }}}
+
+    //  Internal registers
+    //  {{{
+    logic                 [NUM_SNOOP_PORTS-1:0] snoop_valid_q;
+    hpdcache_req_offset_t [NUM_SNOOP_PORTS-1:0] snoop_addr_offset_q;
+    //  }}}
 
     //  Internal signals
     //  {{{
@@ -82,12 +94,13 @@ import hpdcache_pkg::*;
     logic            [NUM_HW_PREFETCH-1:0] hwpf_stride_status_busy;
     logic            [3:0]                 hwpf_stride_status_free_idx;
 
-    hpdcache_nline_t [NUM_HW_PREFETCH-1:0] snoop_addr;
-    logic            [NUM_HW_PREFETCH-1:0] snoop_match;
+    hpdcache_nline_t [NUM_HW_PREFETCH-1:0] hwpf_snoop_nline;
+    logic            [NUM_HW_PREFETCH-1:0] hwpf_snoop_match;
 
     logic            [NUM_HW_PREFETCH-1:0] hwpf_stride_req_valid;
     logic            [NUM_HW_PREFETCH-1:0] hwpf_stride_req_ready;
     hpdcache_req_t   [NUM_HW_PREFETCH-1:0] hwpf_stride_req;
+
     logic            [NUM_HW_PREFETCH-1:0] hwpf_stride_arb_in_req_valid;
     logic            [NUM_HW_PREFETCH-1:0] hwpf_stride_arb_in_req_ready;
     hpdcache_req_t   [NUM_HW_PREFETCH-1:0] hwpf_stride_arb_in_req;
@@ -118,17 +131,36 @@ import hpdcache_pkg::*;
         end
     end
 
-    assign  hwpf_stride_free = ~(hwpf_stride_enable | hwpf_stride_status_busy);
-
-    assign  hwpf_stride_status_o[63:32] = {{32-NUM_HW_PREFETCH{1'b0}}, hwpf_stride_status_busy}, // Busy flags
-            hwpf_stride_status_o[31]    = |hwpf_stride_free,                                     // Global free flag
-            hwpf_stride_status_o[30:16] = {11'b0, hwpf_stride_status_free_idx},                  // Free Index
-            hwpf_stride_status_o[15:0]  = {{16-NUM_HW_PREFETCH{1'b0}}, hwpf_stride_enable};      // Enable flags
+    //     Free flag of engines
+    assign hwpf_stride_free            = ~(hwpf_stride_enable | hwpf_stride_status_busy);
+    //     Busy flags
+    assign hwpf_stride_status_o[63:32] = {{32-NUM_HW_PREFETCH{1'b0}}, hwpf_stride_status_busy};
+    //     Global free flag
+    assign hwpf_stride_status_o[31]    = |hwpf_stride_free;
+    //     Free Index
+    assign hwpf_stride_status_o[30:16] = {11'b0, hwpf_stride_status_free_idx};
+    //     Enable flags
+    assign hwpf_stride_status_o[15:0]  = {{16-NUM_HW_PREFETCH{1'b0}}, hwpf_stride_enable};
     //  }}}
 
     //  Hardware prefetcher engines
     //  {{{
     generate
+        for (genvar j = 0; j < NUM_SNOOP_PORTS; j++) begin
+            always_ff @(posedge clk_i or negedge rst_ni)
+            begin : snoop_ff
+                if (!rst_ni) begin
+                    snoop_valid_q[j]       <= 1'b0;
+                    snoop_addr_offset_q[j] <= '0;
+                end else begin
+                    if (snoop_phys_indexed_i[j]) begin
+                        snoop_valid_q[j]       <= snoop_valid_i[j];
+                        snoop_addr_offset_q[j] <= snoop_addr_offset_i[j];
+                    end
+                end
+            end
+        end
+
         for (genvar i = 0; i < NUM_HW_PREFETCH; i++) begin
             assign hwpf_stride_enable[i] = hwpf_stride_base_o[i].enable;
 
@@ -136,55 +168,68 @@ import hpdcache_pkg::*;
             //  {{{
             always_comb
             begin : snoop_comb
-                snoop_match[i] = 1'b0;
+                hwpf_snoop_match[i] = 1'b0;
                 for (int j = 0; j < NUM_SNOOP_PORTS; j++) begin
-                    automatic hpdcache_nline_t [NUM_SNOOP_PORTS-1:0] snoop_nline;
-                    snoop_nline = snoop_addr_i[j][HPDCACHE_OFFSET_WIDTH +: HPDCACHE_NLINE_WIDTH];
-                    snoop_match[i] |= (snoop_valid_i[j] && (snoop_nline == snoop_addr[i]));
+                    automatic logic                 snoop_valid;
+                    automatic hpdcache_req_offset_t snoop_offset;
+                    automatic hpdcache_nline_t      snoop_nline;
+
+                    if (snoop_phys_indexed_i[j]) begin
+                        snoop_valid  = snoop_valid_i[j];
+                        snoop_offset = snoop_addr_offset_i[j];
+                    end else begin
+                        snoop_valid  = snoop_valid_q[j];
+                        snoop_offset = snoop_addr_offset_q[j];
+                    end
+                    snoop_nline = {snoop_addr_tag_i[j], snoop_offset};
+                    hwpf_snoop_match[i] |= (snoop_valid         && !snoop_abort_i[j] &&
+                                           (hwpf_snoop_nline[i] ==  snoop_nline));
                 end
             end
             //  }}}
 
             hwpf_stride #(
-                .CACHE_LINE_BYTES   ( HPDCACHE_CL_WIDTH/8 )
-            ) hwpf_stride_i (
+                .CACHE_LINE_BYTES     ( HPDCACHE_CL_WIDTH/8 )
+            ) hwpf_stride_i(
                 .clk_i,
                 .rst_ni,
 
-                .csr_base_set_i     ( hwpf_stride_base_set_i[i] ),
-                .csr_base_i         ( hwpf_stride_base_i[i] ),
-                .csr_param_set_i    ( hwpf_stride_param_set_i[i] ),
-                .csr_param_i        ( hwpf_stride_param_i[i] ),
-                .csr_throttle_set_i ( hwpf_stride_throttle_set_i[i] ),
-                .csr_throttle_i     ( hwpf_stride_throttle_i[i] ),
+                .csr_base_set_i       ( hwpf_stride_base_set_i[i] ),
+                .csr_base_i           ( hwpf_stride_base_i[i] ),
+                .csr_param_set_i      ( hwpf_stride_param_set_i[i] ),
+                .csr_param_i          ( hwpf_stride_param_i[i] ),
+                .csr_throttle_set_i   ( hwpf_stride_throttle_set_i[i] ),
+                .csr_throttle_i       ( hwpf_stride_throttle_i[i] ),
 
-                .csr_base_o         ( hwpf_stride_base_o[i] ),
-                .csr_param_o        ( hwpf_stride_param_o[i] ),
-                .csr_throttle_o     ( hwpf_stride_throttle_o[i] ),
+                .csr_base_o           ( hwpf_stride_base_o[i] ),
+                .csr_param_o          ( hwpf_stride_param_o[i] ),
+                .csr_throttle_o       ( hwpf_stride_throttle_o[i] ),
 
-                .busy_o             ( hwpf_stride_status_busy[i] ),
+                .busy_o               ( hwpf_stride_status_busy[i] ),
 
-                .snoop_addr_o       ( snoop_addr[i] ),
-                .snoop_match_i      ( snoop_match[i] ),
+                .snoop_nline_o        ( hwpf_snoop_nline[i] ),
+                .snoop_match_i        ( hwpf_snoop_match[i] ),
 
-                .dcache_req_valid_o ( hwpf_stride_req_valid[i] ),
-                .dcache_req_ready_i ( hwpf_stride_req_ready[i] ),
-                .dcache_req_o       ( hwpf_stride_req[i] ),
-                .dcache_rsp_valid_i ( hwpf_stride_arb_in_rsp_valid[i]  ),
-                .dcache_rsp_i       ( hwpf_stride_arb_in_rsp[i] )
+                .hpdcache_req_valid_o ( hwpf_stride_req_valid[i] ),
+                .hpdcache_req_ready_i ( hwpf_stride_req_ready[i] ),
+                .hpdcache_req_o       ( hwpf_stride_req[i] ),
+                .hpdcache_rsp_valid_i ( hwpf_stride_arb_in_rsp_valid[i] ),
+                .hpdcache_rsp_i       ( hwpf_stride_arb_in_rsp[i] )
             );
 
-            assign hwpf_stride_req_ready[i]              = hwpf_stride_arb_in_req_ready[i],
-                   hwpf_stride_arb_in_req_valid[i]       = hwpf_stride_req_valid[i],
-                   hwpf_stride_arb_in_req[i].addr        = hwpf_stride_req[i].addr,
-                   hwpf_stride_arb_in_req[i].wdata       = hwpf_stride_req[i].wdata,
-                   hwpf_stride_arb_in_req[i].op          = hwpf_stride_req[i].op,
-                   hwpf_stride_arb_in_req[i].be          = hwpf_stride_req[i].be,
-                   hwpf_stride_arb_in_req[i].size        = hwpf_stride_req[i].size,
-                   hwpf_stride_arb_in_req[i].uncacheable = hwpf_stride_req[i].uncacheable,
-                   hwpf_stride_arb_in_req[i].sid         = dcache_req_sid_i,
-                   hwpf_stride_arb_in_req[i].tid         = hpdcache_req_tid_t'(i),
-                   hwpf_stride_arb_in_req[i].need_rsp    = hwpf_stride_req[i].need_rsp;
+            assign hwpf_stride_req_ready[i]               = hwpf_stride_arb_in_req_ready[i],
+                   hwpf_stride_arb_in_req_valid[i]        = hwpf_stride_req_valid[i],
+                   hwpf_stride_arb_in_req[i].addr_offset  = hwpf_stride_req[i].addr_offset,
+                   hwpf_stride_arb_in_req[i].wdata        = hwpf_stride_req[i].wdata,
+                   hwpf_stride_arb_in_req[i].op           = hwpf_stride_req[i].op,
+                   hwpf_stride_arb_in_req[i].be           = hwpf_stride_req[i].be,
+                   hwpf_stride_arb_in_req[i].size         = hwpf_stride_req[i].size,
+                   hwpf_stride_arb_in_req[i].sid          = hpdcache_req_sid_i,
+                   hwpf_stride_arb_in_req[i].tid          = hpdcache_req_tid_t'(i),
+                   hwpf_stride_arb_in_req[i].need_rsp     = hwpf_stride_req[i].need_rsp,
+                   hwpf_stride_arb_in_req[i].phys_indexed = hwpf_stride_req[i].phys_indexed,
+                   hwpf_stride_arb_in_req[i].addr_tag     = '0,
+                   hwpf_stride_arb_in_req[i].pma          = '0;
         end
     endgenerate
     //  }}}
@@ -205,12 +250,16 @@ import hpdcache_pkg::*;
         .hwpf_stride_rsp_o        ( hwpf_stride_arb_in_rsp ),
 
         // DCache output interface
-        .dcache_req_valid_o,
-        .dcache_req_ready_i,
-        .dcache_req_o,
-        .dcache_rsp_valid_i,
-        .dcache_rsp_i
+        .hpdcache_req_valid_o,
+        .hpdcache_req_ready_i,
+        .hpdcache_req_o,
+        .hpdcache_rsp_valid_i,
+        .hpdcache_rsp_i
     );
+
+    assign hpdcache_req_abort_o = 1'b0,  // unused on physically indexed requests
+           hpdcache_req_tag_o   = '0,    // unused on physically indexed requests
+           hpdcache_req_pma_o   = '0;    // unused on physically indexed requests
     //  }}}
 
 endmodule

@@ -38,7 +38,8 @@ import hpdcache_pkg::*;
 
     //  Check and allocation interface
     input  logic              check_i,
-    input  hpdcache_nline_t   check_nline_i,
+    input  mshr_set_t         check_set_i,
+    input  mshr_tag_t         check_tag_i,
     output logic              hit_o,
     input  logic              alloc_i,
     input  logic              alloc_cs_i,
@@ -94,8 +95,7 @@ import hpdcache_pkg::*;
     //  Definition of internal wires and registers
     //  {{{
     logic [HPDCACHE_MSHR_SETS*HPDCACHE_MSHR_WAYS-1:0] mshr_valid_q, mshr_valid_d;
-    mshr_set_t     check_set_q, check_set_d;
-    mshr_tag_t     check_tag_q, check_tag_d;
+    mshr_set_t     check_set_q;
     mshr_set_t     alloc_set;
     mshr_tag_t     alloc_tag;
     hpdcache_set_t alloc_dcache_set;
@@ -121,9 +121,6 @@ import hpdcache_pkg::*;
 
     //    The allocation operation is prioritary with respect to the check operation
     assign check            = check_i & ~alloc_i;
-
-    assign check_set_d      = check_nline_i[0                       +: HPDCACHE_MSHR_SET_WIDTH],
-           check_tag_d      = check_nline_i[HPDCACHE_MSHR_SET_WIDTH +: HPDCACHE_MSHR_TAG_WIDTH];
 
     assign alloc_set        = alloc_nline_i[0                       +: HPDCACHE_MSHR_SET_WIDTH],
            alloc_tag        = alloc_nline_i[HPDCACHE_MSHR_SET_WIDTH +: HPDCACHE_MSHR_TAG_WIDTH],
@@ -195,7 +192,7 @@ import hpdcache_pkg::*;
     //  {{{
     assign mshr_cs   = check_i | alloc_cs_i | ack_cs_i;
     assign mshr_addr =  ack_i   ? ack_set_i :
-                       (alloc_i ? alloc_set : check_set_d);
+                       (alloc_i ? alloc_set : check_set_i);
 
     always_comb
     begin : mshr_valid_comb
@@ -252,7 +249,7 @@ import hpdcache_pkg::*;
             automatic bit __valid;
             automatic bit __match;
             __valid = mshr_valid_q[w*HPDCACHE_MSHR_SETS + int'(check_set_q)];
-            __match = (mshr_rentry[w].tag == check_tag_q);
+            __match = (mshr_rentry[w].tag == check_tag_i);
             __hit_way[w] = (__valid && __match);
         end
 
@@ -265,20 +262,18 @@ import hpdcache_pkg::*;
     always_ff @(posedge clk_i or negedge rst_ni)
     begin : mshr_ff_set
         if (!rst_ni) begin
-            mshr_valid_q       <= '0;
-            ack_way_q          <= '0;
-            ack_set_q          <= '0;
-            check_set_q        <= '0;
-            check_tag_q        <= '0;
+            mshr_valid_q <= '0;
+            ack_way_q    <= '0;
+            ack_set_q    <= '0;
+            check_set_q  <= '0;
         end else begin
             mshr_valid_q <= mshr_valid_d;
             if (ack_i) begin
-                ack_way_q    <= ack_way_i;
-                ack_set_q    <= ack_set_i;
+                ack_way_q   <= ack_way_i;
+                ack_set_q   <= ack_set_i;
             end
             if (check) begin
-                check_set_q  <= check_set_d;
-                check_tag_q  <= check_tag_d;
+                check_set_q <= check_set_i;
             end
         end
     end

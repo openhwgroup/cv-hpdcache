@@ -49,9 +49,14 @@ import hpdcache_pkg::*;
     input  logic                          wbuf_flush_i,
 
     //      Core request interface
+    //         1st cycle
     input  logic                          core_req_valid_i [NREQUESTERS-1:0],
     output logic                          core_req_ready_o [NREQUESTERS-1:0],
     input  hpdcache_req_t                 core_req_i       [NREQUESTERS-1:0],
+    //         2nd cycle
+    input  logic                          core_req_abort_i [NREQUESTERS-1:0],
+    input  hpdcache_tag_t                 core_req_tag_i   [NREQUESTERS-1:0],
+    input  hpdcache_pma_t                 core_req_pma_i   [NREQUESTERS-1:0],
 
     //      Core response interface
     output logic                          core_rsp_valid_o [NREQUESTERS-1:0],
@@ -102,20 +107,20 @@ import hpdcache_pkg::*;
     input  hpdcache_mem_resp_w_t          mem_resp_uc_write_i,
 
     //      Performance events
-    output logic                         evt_cache_write_miss_o,
-    output logic                         evt_cache_read_miss_o,
-    output logic                         evt_uncached_req_o,
-    output logic                         evt_cmo_req_o,
-    output logic                         evt_write_req_o,
-    output logic                         evt_read_req_o,
-    output logic                         evt_prefetch_req_o,
-    output logic                         evt_req_on_hold_o,
-    output logic                         evt_rtab_rollback_o,
-    output logic                         evt_stall_refill_o,
-    output logic                         evt_stall_o,
+    output logic                          evt_cache_write_miss_o,
+    output logic                          evt_cache_read_miss_o,
+    output logic                          evt_uncached_req_o,
+    output logic                          evt_cmo_req_o,
+    output logic                          evt_write_req_o,
+    output logic                          evt_read_req_o,
+    output logic                          evt_prefetch_req_o,
+    output logic                          evt_req_on_hold_o,
+    output logic                          evt_rtab_rollback_o,
+    output logic                          evt_stall_refill_o,
+    output logic                          evt_stall_o,
 
     //      Status interface
-    output logic                         wbuf_empty_o,
+    output logic                          wbuf_empty_o,
 
     //      Configuration interface
     input  logic                          cfg_enable_i,
@@ -151,7 +156,8 @@ import hpdcache_pkg::*;
 
     logic                  miss_mshr_empty;
     logic                  miss_mshr_check;
-    hpdcache_nline_t       miss_mshr_check_nline;
+    mshr_set_t             miss_mshr_check_set;
+    mshr_tag_t             miss_mshr_check_tag;
     logic                  miss_mshr_hit;
     logic                  miss_mshr_alloc_cs;
     logic                  miss_mshr_alloc;
@@ -228,18 +234,15 @@ import hpdcache_pkg::*;
     logic                  rtab_empty;
     logic                  ctrl_empty;
 
-    logic          [NREQUESTERS-1:0] core_req_valid;
-    hpdcache_req_t [NREQUESTERS-1:0] core_req;
+    logic                  core_rsp_valid;
+    hpdcache_rsp_t         core_rsp;
 
-    logic                   core_rsp_valid;
-    hpdcache_rsp_t          core_rsp;
-
-    logic [NREQUESTERS-1:0] arb_req_gnt;
-    logic                   arb_req_valid;
-    logic                   arb_req_ready;
-    hpdcache_req_t          arb_req;
-
-    genvar                  gen_i;
+    logic                  arb_req_valid;
+    logic                  arb_req_ready;
+    hpdcache_req_t         arb_req;
+    logic                  arb_abort;
+    hpdcache_tag_t         arb_tag;
+    hpdcache_pma_t         arb_pma;
 
     localparam logic [HPDcacheMemIdWidth-1:0] HPDCACHE_UC_READ_ID  = {HPDcacheMemIdWidth{1'b1}};
     localparam logic [HPDcacheMemIdWidth-1:0] HPDCACHE_UC_WRITE_ID = {HPDcacheMemIdWidth{1'b1}};
@@ -247,48 +250,31 @@ import hpdcache_pkg::*;
 
     //  Requesters arbiter
     //  {{{
-    //      Pack request ports
-    generate
-        for (gen_i = 0; gen_i < int'(NREQUESTERS); gen_i++) begin : gen_core_req
-            assign core_req_ready_o[gen_i] = arb_req_gnt[gen_i] & arb_req_ready;
-            assign core_req_valid[gen_i]   = core_req_valid_i[gen_i];
-            assign core_req[gen_i]         = core_req_i[gen_i];
-        end
-    endgenerate
-
-    //      Arbiter
-    hpdcache_fxarb #(.N(NREQUESTERS)) req_arbiter_i
-    (
+    hpdcache_core_arbiter #(
+        .NREQUESTERS                        (NREQUESTERS)
+    ) core_req_arbiter_i (
         .clk_i,
         .rst_ni,
-        .req_i          (core_req_valid),
-        .gnt_o          (arb_req_gnt),
-        .ready_i        (arb_req_ready)
+
+        .core_req_valid_i,
+        .core_req_ready_o,
+        .core_req_i,
+        .core_req_abort_i,
+        .core_req_tag_i,
+        .core_req_pma_i,
+
+        .core_rsp_valid_i                   (core_rsp_valid),
+        .core_rsp_i                         (core_rsp),
+        .core_rsp_valid_o,
+        .core_rsp_o,
+
+        .arb_req_valid_o                    (arb_req_valid),
+        .arb_req_ready_i                    (arb_req_ready),
+        .arb_req_o                          (arb_req),
+        .arb_abort_o                        (arb_abort),
+        .arb_tag_o                          (arb_tag),
+        .arb_pma_o                          (arb_pma)
     );
-
-    //      Multiplexor
-    hpdcache_mux #(
-        .NINPUT         (NREQUESTERS),
-        .DATA_WIDTH     ($bits(hpdcache_req_t)),
-        .ONE_HOT_SEL    (1'b1)
-    ) core_req_mux_i (
-        .data_i         (core_req),
-        .sel_i          (arb_req_gnt),
-        .data_o         (arb_req)
-    );
-
-    assign arb_req_valid = |arb_req_gnt;
-    //  }}}
-
-    //  Response demultiplexor
-    //  {{{
-    always_comb
-    begin : resp_demux
-        for (int unsigned i = 0; i < NREQUESTERS; i++) begin
-            core_rsp_valid_o[i]  = core_rsp_valid      && (i == int'(core_rsp.sid));
-            core_rsp_o[i]        = core_rsp;
-        end
-    end
     //  }}}
 
     //  HPDcache controller
@@ -300,6 +286,9 @@ import hpdcache_pkg::*;
         .core_req_valid_i                   (arb_req_valid),
         .core_req_ready_o                   (arb_req_ready),
         .core_req_i                         (arb_req),
+        .core_req_abort_i                   (arb_abort),
+        .core_req_tag_i                     (arb_tag),
+        .core_req_pma_i                     (arb_pma),
 
         .core_rsp_valid_o                   (core_rsp_valid),
         .core_rsp_o                         (core_rsp),
@@ -309,7 +298,8 @@ import hpdcache_pkg::*;
         .cachedir_hit_o                     (/* unused */),
 
         .miss_mshr_check_o                  (miss_mshr_check),
-        .miss_mshr_check_nline_o            (miss_mshr_check_nline),
+        .miss_mshr_check_set_o              (miss_mshr_check_set),
+        .miss_mshr_check_tag_o              (miss_mshr_check_tag),
         .miss_mshr_alloc_o                  (miss_mshr_alloc),
         .miss_mshr_alloc_cs_o               (miss_mshr_alloc_cs),
         .miss_mshr_alloc_ready_i            (miss_mshr_alloc_ready),
@@ -491,7 +481,8 @@ import hpdcache_pkg::*;
         .cfg_prefetch_updt_plru_i,
 
         .mshr_check_i                       (miss_mshr_check),
-        .mshr_check_nline_i                 (miss_mshr_check_nline),
+        .mshr_check_set_i                   (miss_mshr_check_set),
+        .mshr_check_tag_i                   (miss_mshr_check_tag),
         .mshr_check_hit_o                   (miss_mshr_hit),
 
         .mshr_alloc_ready_o                 (miss_mshr_alloc_ready),

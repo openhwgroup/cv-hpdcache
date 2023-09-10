@@ -163,12 +163,19 @@ module cva6_hpdcache_subsystem
   logic                                     dcache_req_valid [HPDCACHE_NREQUESTERS-1:0];
   logic                                     dcache_req_ready [HPDCACHE_NREQUESTERS-1:0];
   hpdcache_pkg::hpdcache_req_t              dcache_req       [HPDCACHE_NREQUESTERS-1:0];
+  logic                                     dcache_req_abort [HPDCACHE_NREQUESTERS-1:0];
+  hpdcache_pkg::hpdcache_tag_t              dcache_req_tag   [HPDCACHE_NREQUESTERS-1:0];
+  hpdcache_pkg::hpdcache_pma_t              dcache_req_pma   [HPDCACHE_NREQUESTERS-1:0];
   logic                                     dcache_rsp_valid [HPDCACHE_NREQUESTERS-1:0];
   hpdcache_pkg::hpdcache_rsp_t              dcache_rsp       [HPDCACHE_NREQUESTERS-1:0];
   logic                                     dcache_read_miss, dcache_write_miss;
 
   logic [2:0]                               snoop_valid;
-  hpdcache_pkg::hpdcache_req_addr_t [2:0]   snoop_addr;
+  logic [2:0]                               snoop_abort;
+  hpdcache_pkg::hpdcache_req_offset_t [2:0] snoop_addr_offset;
+  hpdcache_pkg::hpdcache_tag_t [2:0]        snoop_addr_tag;
+  logic [2:0]                               snoop_phys_indexed;
+
   logic                                     dcache_cmo_req_is_prefetch;
 
   logic                                     dcache_miss_ready;
@@ -220,45 +227,55 @@ module cva6_hpdcache_subsystem
     for (genvar r = 0; r < (NumPorts-1); r++) begin : cva6_hpdcache_load_if_adapter_gen
       assign dcache_req_ports[r] = dcache_req_ports_i[r];
 
-      cva6_hpdcache_load_if_adapter #(
-        .ArianeCfg                                   (ArianeCfg)
+      cva6_hpdcache_if_adapter #(
+        .ArianeCfg                                   (ArianeCfg),
+        .is_load_port                                (1'b1)
       ) i_cva6_hpdcache_load_if_adapter (
         .clk_i,
         .rst_ni,
 
-        .dcache_req_sid_i                            (hpdcache_pkg::hpdcache_req_sid_t'(r)),
+        .hpdcache_req_sid_i                          (hpdcache_pkg::hpdcache_req_sid_t'(r)),
 
         .cva6_req_i                                  (dcache_req_ports[r]),
         .cva6_req_o                                  (dcache_req_ports_o[r]),
+        .cva6_amo_req_i                              ('0),
+        .cva6_amo_resp_o                             (/* unused */),
 
-        .dcache_req_valid_o                          (dcache_req_valid[r]),
-        .dcache_req_ready_i                          (dcache_req_ready[r]),
-        .dcache_req_o                                (dcache_req[r]),
+        .hpdcache_req_valid_o                        (dcache_req_valid[r]),
+        .hpdcache_req_ready_i                        (dcache_req_ready[r]),
+        .hpdcache_req_o                              (dcache_req[r]),
+        .hpdcache_req_abort_o                        (dcache_req_abort[r]),
+        .hpdcache_req_tag_o                          (dcache_req_tag[r]),
+        .hpdcache_req_pma_o                          (dcache_req_pma[r]),
 
-        .dcache_rsp_valid_i                          (dcache_rsp_valid[r]),
-        .dcache_rsp_i                                (dcache_rsp[r])
+        .hpdcache_rsp_valid_i                        (dcache_rsp_valid[r]),
+        .hpdcache_rsp_i                              (dcache_rsp[r])
       );
     end
 
     cva6_hpdcache_if_adapter #(
-      .ArianeCfg                                   (ArianeCfg)
+      .ArianeCfg                                   (ArianeCfg),
+      .is_load_port                                (1'b0)
     ) i_cva6_hpdcache_store_if_adapter (
       .clk_i,
       .rst_ni,
 
-      .dcache_req_sid_i                            (hpdcache_pkg::hpdcache_req_sid_t'(NumPorts-1)),
+      .hpdcache_req_sid_i                          (hpdcache_pkg::hpdcache_req_sid_t'(NumPorts-1)),
 
       .cva6_req_i                                  (dcache_req_ports_i[NumPorts-1]),
       .cva6_req_o                                  (dcache_req_ports_o[NumPorts-1]),
       .cva6_amo_req_i                              (dcache_amo_req_i),
       .cva6_amo_resp_o                             (dcache_amo_resp_o),
 
-      .dcache_req_valid_o                          (dcache_req_valid[NumPorts-1]),
-      .dcache_req_ready_i                          (dcache_req_ready[NumPorts-1]),
-      .dcache_req_o                                (dcache_req[NumPorts-1]),
+      .hpdcache_req_valid_o                        (dcache_req_valid[NumPorts-1]),
+      .hpdcache_req_ready_i                        (dcache_req_ready[NumPorts-1]),
+      .hpdcache_req_o                              (dcache_req[NumPorts-1]),
+      .hpdcache_req_abort_o                        (dcache_req_abort[NumPorts-1]),
+      .hpdcache_req_tag_o                          (dcache_req_tag[NumPorts-1]),
+      .hpdcache_req_pma_o                          (dcache_req_pma[NumPorts-1]),
 
-      .dcache_rsp_valid_i                          (dcache_rsp_valid[NumPorts-1]),
-      .dcache_rsp_i                                (dcache_rsp[NumPorts-1])
+      .hpdcache_rsp_valid_i                        (dcache_rsp_valid[NumPorts-1]),
+      .hpdcache_rsp_i                              (dcache_rsp[NumPorts-1])
     );
 
 `ifdef HPDCACHE_ENABLE_CMO
@@ -278,33 +295,53 @@ module cva6_hpdcache_subsystem
       .dcache_req_valid_o                          (dcache_req_valid[NumPorts]),
       .dcache_req_ready_i                          (dcache_req_ready[NumPorts]),
       .dcache_req_o                                (dcache_req[NumPorts]),
+      .dcache_req_abort_o                          (dcache_req_abort[NumPorts]),
+      .dcache_req_tag_o                            (dcache_req_tag[NumPorts]),
+      .dcache_req_pma_o                            (dcache_req_pma[NumPorts]),
 
       .dcache_rsp_valid_i                          (dcache_rsp_valid[NumPorts]),
       .dcache_rsp_i                                (dcache_rsp[NumPorts])
     );
 `else
     assign dcache_req_valid[NumPorts] = 1'b0,
-           dcache_req[NumPorts]       = '0;
+           dcache_req      [NumPorts] = '0,
+           dcache_req_abort[NumPorts] = 1'b0,
+           dcache_req_tag  [NumPorts] = '0,
+           dcache_req_pma  [NumPorts] = '0;
 `endif
   endgenerate
 
   //  Snoop load port
-  assign snoop_valid[0] = dcache_req_valid[1] & dcache_req_ready[1],
-          snoop_addr[0] = dcache_req[1].addr;
+  assign snoop_valid[0]        = dcache_req_valid[1] & dcache_req_ready[1],
+         snoop_abort[0]        = dcache_req_abort[1],
+         snoop_addr_offset[0]  = dcache_req[1].addr_offset,
+         snoop_addr_tag[0]     = dcache_req_tag[1],
+         snoop_phys_indexed[0] = dcache_req[1].phys_indexed;
 
   //  Snoop Store/AMO port
-  assign snoop_valid[1] = dcache_req_valid[NumPorts-1] & dcache_req_ready[NumPorts-1],
-          snoop_addr[1] = dcache_req[NumPorts-1].addr;
+  assign snoop_valid[1]        = dcache_req_valid[NumPorts-1] & dcache_req_ready[NumPorts-1],
+         snoop_abort[1]        = dcache_req_abort[NumPorts-1],
+         snoop_addr_offset[1]  = dcache_req[NumPorts-1].addr_offset,
+         snoop_addr_tag[1]     = dcache_req_tag[NumPorts-1],
+         snoop_phys_indexed[1] = dcache_req[NumPorts-1].phys_indexed;
 
 `ifdef HPDCACHE_ENABLE_CMO
   //  Snoop CMO port (in case of read prefetch accesses)
   assign dcache_cmo_req_is_prefetch =
           hpdcache_pkg::is_cmo_prefetch(dcache_req[NumPorts].op, dcache_req[NumPorts].size);
-  assign snoop_valid[2] = dcache_req_valid[NumPorts] & dcache_req_ready[NumPorts] & dcache_cmo_req_is_prefetch,
-          snoop_addr[2] = dcache_req[NumPorts].addr;
+  assign snoop_valid[2]        = dcache_req_valid[NumPorts]
+                               & dcache_req_ready[NumPorts]
+                               & dcache_cmo_req_is_prefetch,
+         snoop_abort[2]        = dcache_req_abort[NumPorts],
+         snoop_addr_offset[2]  = dcache_req[NumPorts].addr_offset,
+         snoop_addr_tag[2]     = dcache_req_tag[NumPorts],
+         snoop_phys_indexed[2] = dcache_req[NumPorts].phys_indexed;
 `else
-  assign snoop_valid[2] = 1'b0,
-          snoop_addr[2] = '0;
+  assign snoop_valid[2]        = 1'b0,
+         snoop_abort[2]        = 1'b0,
+         snoop_addr_offset[2]  = '0,
+         snoop_addr_tag[2]     = '0,
+         snoop_phys_indexed[2] = 1'b0;
 `endif
 
   generate
@@ -333,15 +370,21 @@ module cva6_hpdcache_subsystem
     .hwpf_stride_status_o       (hwpf_status_o),
 
     .snoop_valid_i              (snoop_valid),
-    .snoop_addr_i               (snoop_addr),
+    .snoop_abort_i              (snoop_abort),
+    .snoop_addr_offset_i        (snoop_addr_offset),
+    .snoop_addr_tag_i           (snoop_addr_tag),
+    .snoop_phys_indexed_i       (snoop_phys_indexed),
 
-    .dcache_req_sid_i           (hpdcache_pkg::hpdcache_req_sid_t'(NumPorts+1)),
+    .hpdcache_req_sid_i         (hpdcache_pkg::hpdcache_req_sid_t'(NumPorts+1)),
 
-    .dcache_req_valid_o         (dcache_req_valid[NumPorts+1]),
-    .dcache_req_ready_i         (dcache_req_ready[NumPorts+1]),
-    .dcache_req_o               (dcache_req[NumPorts+1]),
-    .dcache_rsp_valid_i         (dcache_rsp_valid[NumPorts+1]),
-    .dcache_rsp_i               (dcache_rsp[NumPorts+1])
+    .hpdcache_req_valid_o       (dcache_req_valid[NumPorts+1]),
+    .hpdcache_req_ready_i       (dcache_req_ready[NumPorts+1]),
+    .hpdcache_req_o             (dcache_req[NumPorts+1]),
+    .hpdcache_req_abort_o       (dcache_req_abort[NumPorts+1]),
+    .hpdcache_req_tag_o         (dcache_req_tag[NumPorts+1]),
+    .hpdcache_req_pma_o         (dcache_req_pma[NumPorts+1]),
+    .hpdcache_rsp_valid_i       (dcache_rsp_valid[NumPorts+1]),
+    .hpdcache_rsp_i             (dcache_rsp[NumPorts+1])
   );
 
   hpdcache #(
@@ -361,6 +404,9 @@ module cva6_hpdcache_subsystem
     .core_req_valid_i                  (dcache_req_valid),
     .core_req_ready_o                  (dcache_req_ready),
     .core_req_i                        (dcache_req),
+    .core_req_abort_i                  (dcache_req_abort),
+    .core_req_tag_i                    (dcache_req_tag),
+    .core_req_pma_i                    (dcache_req_pma),
 
     .core_rsp_valid_o                  (dcache_rsp_valid),
     .core_rsp_o                        (dcache_rsp),

@@ -20,11 +20,17 @@
 /*
  *  Authors       : Cesar Fuguet
  *  Creation Date : September, 2021
- *  Description   : Dcache Replay Table
+ *  Description   : HPDcache Replay Table
  *  History       :
  */
 module hpdcache_rtab
 import hpdcache_pkg::*;
+//  Parameters
+//  {{{
+#(
+    parameter type rtab_entry_t = logic
+)
+//  }}}
 //  Ports
 //  {{{
 (
@@ -35,7 +41,6 @@ import hpdcache_pkg::*;
     //  Global control signals
     output logic                  empty_o,          // RTAB is empty
     output logic                  full_o,           // RTAB is full
-    output logic                  req_valid_o,      // Request ready to be replayed
 
     //  Check RTAB signals
     //     This interface allows to check if there is an address-overlapping
@@ -47,27 +52,19 @@ import hpdcache_pkg::*;
     //  Allocate signals
     //     This interface allows to allocate a new request in a new linked list
     input  logic                  alloc_i,
-    input  hpdcache_req_t         alloc_req_i,
+    input  logic                  alloc_and_link_i,
+    input  rtab_entry_t           alloc_req_i,
     input  logic                  alloc_mshr_hit_i,
     input  logic                  alloc_mshr_full_i,
     input  logic                  alloc_mshr_ready_i,
     input  logic                  alloc_wbuf_hit_i,
     input  logic                  alloc_wbuf_not_ready_i,
 
-    //  Allocate and link signals
-    //     This interface allows to allocate and link a new request into an existing linked list
-    input  logic                  alloc_and_link_i,
-    input  hpdcache_req_t         alloc_and_link_req_i,
-    input  logic                  alloc_and_link_mshr_hit_i,
-    input  logic                  alloc_and_link_mshr_full_i,
-    input  logic                  alloc_and_link_mshr_ready_i,
-    input  logic                  alloc_and_link_wbuf_hit_i,
-    input  logic                  alloc_and_link_wbuf_not_ready_i,
-
     //  Pop signals
     //     This interface allows to read (and remove) a request from the RTAB
+    output logic                  pop_try_valid_o,  // Request ready to be replayed
     input  logic                  pop_try_i,
-    output hpdcache_req_t         pop_try_req_o,
+    output rtab_entry_t           pop_try_req_o,
     output rtab_ptr_t             pop_try_ptr_o,
 
     //  Pop Commit signals
@@ -147,7 +144,7 @@ import hpdcache_pkg::*;
 
 //  Internal signals and registers
 //  {{{
-    hpdcache_req_t      [N-1:0]  req_q;
+    rtab_entry_t        [N-1:0]  req_q;
     rtab_ptr_t          [N-1:0]  next_q;
 
     rtab_pop_try_state_e         pop_try_state_q, pop_try_state_d;
@@ -214,12 +211,6 @@ import hpdcache_pkg::*;
     logic               [N-1:0]  free;
     logic               [N-1:0]  free_alloc;
     logic                        alloc;
-    hpdcache_req_t               alloc_req;
-    logic                        alloc_mshr_hit;
-    logic                        alloc_mshr_full;
-    logic                        alloc_mshr_ready;
-    logic                        alloc_wbuf_hit;
-    logic                        alloc_wbuf_not_ready;
 
     logic               [N-1:0]  pop_match_next;
     logic               [N-1:0]  pop_rback_ptr_bv;
@@ -259,8 +250,8 @@ import hpdcache_pkg::*;
 //  {{{
     generate
         for (gen_i = 0; gen_i < N; gen_i++) begin : check_gen
-            assign              addr[gen_i] = req_q[gen_i].addr,
-                               nline[gen_i] = hpdcache_get_req_nline(req_q[gen_i].addr),
+            assign              addr[gen_i] = {req_q[gen_i].addr_tag, req_q[gen_i].addr_offset},
+                               nline[gen_i] = hpdcache_get_req_addr_nline(addr[gen_i]),
                    match_check_nline[gen_i] = (check_nline_i == nline[gen_i]);
 
             assign is_read[gen_i] =         is_load(req_q[gen_i].op) |
@@ -275,37 +266,29 @@ import hpdcache_pkg::*;
 
 //  Allocation process
 //  {{{
-    //  Multiplex between both allocation interfaces (only one allocation is allowed per cycle)
-    assign alloc                = alloc_i | alloc_and_link_i,
-           alloc_req            = alloc_i ? alloc_req_i            : alloc_and_link_req_i,
-           alloc_mshr_hit       = alloc_i ? alloc_mshr_hit_i       : alloc_and_link_mshr_hit_i,
-           alloc_mshr_full      = alloc_i ? alloc_mshr_full_i      : alloc_and_link_mshr_full_i,
-           alloc_mshr_ready     = alloc_i ? alloc_mshr_ready_i     : alloc_and_link_mshr_ready_i,
-           alloc_wbuf_hit       = alloc_i ? alloc_wbuf_hit_i       : alloc_and_link_wbuf_hit_i,
-           alloc_wbuf_not_ready = alloc_i ? alloc_wbuf_not_ready_i :
-                                            alloc_and_link_wbuf_not_ready_i;
+    assign alloc = alloc_i | alloc_and_link_i;
 
     //  Set the valid bit-vector of the replay table
-    assign alloc_valid_set          = free_alloc       & {N{               alloc}};
+    assign alloc_valid_set = free_alloc       & {N{alloc}};
 
     //  Set of head and tail bit-vectors during an allocation
     //    - The head bit is only set when creating a new linked-list
     //    - The tail bit is always set because new requests are added on the tail.
-    assign alloc_head_set           = free_alloc       & {N{             alloc_i}},
-           alloc_tail_set           = alloc_valid_set;
+    assign alloc_head_set  = free_alloc       & {N{alloc_i}},
+           alloc_tail_set  = alloc_valid_set;
 
     //  Reset of head and tail bit-vectors during an allocation
     //    - When doing an allocation and link, head bit shall be reset
     //    - when doing an allocation and link, the "prev" tail shall be reset
-    assign alloc_head_rst           = free_alloc       & {N{    alloc_and_link_i}},
-           alloc_tail_rst           = match_check_tail & {N{    alloc_and_link_i}};
+    assign alloc_head_rst  = free_alloc       & {N{alloc_and_link_i}},
+           alloc_tail_rst  = match_check_tail & {N{alloc_and_link_i}};
 
     //  Set the dependency bits for the allocated entry
-    assign alloc_deps_mshr_hit_set       = alloc_valid_set & {N{      alloc_mshr_hit}},
-           alloc_deps_mshr_full_set      = alloc_valid_set & {N{     alloc_mshr_full}},
-           alloc_deps_mshr_ready_set     = alloc_valid_set & {N{    alloc_mshr_ready}},
-           alloc_deps_wbuf_hit_set       = alloc_valid_set & {N{      alloc_wbuf_hit}},
-           alloc_deps_wbuf_not_ready_set = alloc_valid_set & {N{alloc_wbuf_not_ready}};
+    assign alloc_deps_mshr_hit_set       = alloc_valid_set & {N{      alloc_mshr_hit_i}},
+           alloc_deps_mshr_full_set      = alloc_valid_set & {N{     alloc_mshr_full_i}},
+           alloc_deps_mshr_ready_set     = alloc_valid_set & {N{    alloc_mshr_ready_i}},
+           alloc_deps_wbuf_hit_set       = alloc_valid_set & {N{      alloc_wbuf_hit_i}},
+           alloc_deps_wbuf_not_ready_set = alloc_valid_set & {N{alloc_wbuf_not_ready_i}};
 //  }}}
 
 //  Update replay table dependencies
@@ -433,10 +416,10 @@ import hpdcache_pkg::*;
     always_comb
     begin : req_valid_comb
         case(pop_try_state_q)
-            POP_TRY_HEAD     : req_valid_o = |ready;
-            POP_TRY_NEXT     : req_valid_o = 1'b1;
-            POP_TRY_NEXT_WAIT: req_valid_o = 1'b1;
-            default          : req_valid_o = 1'b0;
+            POP_TRY_HEAD     : pop_try_valid_o = |ready;
+            POP_TRY_NEXT     : pop_try_valid_o = 1'b1;
+            POP_TRY_NEXT_WAIT: pop_try_valid_o = 1'b1;
+            default          : pop_try_valid_o = 1'b0;
         endcase
     end
 
@@ -452,7 +435,7 @@ import hpdcache_pkg::*;
                 // This FSM may be in this state after forwarding the tail of
                 // a list. In that case, a rollback may arrive in this cycle.
                 pop_sel = pop_gnt;
-                if (!pop_rback_i && req_valid_o) begin
+                if (!pop_rback_i && pop_try_valid_o) begin
                     if (pop_try_i) begin
                         //  If the request interface accepts the request, go to the next request
                         //  in the list (if the current request is not the tail). Otherwise, stay in
@@ -509,7 +492,7 @@ import hpdcache_pkg::*;
 
     hpdcache_mux #(
         .NINPUT         (N),
-        .DATA_WIDTH     ($bits(hpdcache_req_t)),
+        .DATA_WIDTH     ($bits(rtab_entry_t)),
         .ONE_HOT_SEL    (1'b1)
     ) pop_mux_i (
         .data_i         (req_q),
@@ -626,7 +609,7 @@ import hpdcache_pkg::*;
         for (int i = 0; i < N; i++) begin
             //  update the request array
             if (valid_set[i]) begin
-                req_q[i] <= alloc_req;
+                req_q[i] <= alloc_req_i;
             end
         end
     end
@@ -645,7 +628,8 @@ import hpdcache_pkg::*;
 
     assert property (@(posedge clk_i)
             alloc_and_link_i |->
-                    (hpdcache_get_req_nline(alloc_and_link_req_i.addr) == check_nline_i)) else
+                    ({alloc_req_i.addr_tag, hpdcache_get_req_offset_set(alloc_req_i.addr_offset)} ==
+                        check_nline_i)) else
                     $error("rtab: nline for alloc and link shall match the one being checked");
 
     assert property (@(posedge clk_i)
@@ -671,7 +655,7 @@ import hpdcache_pkg::*;
                     $error("rtab: cache shall not accept a new request while rolling back");
 
     assert property (@(posedge clk_i)
-            (alloc_i | alloc_and_link_i) |-> ~full_o) else
+            alloc |-> ~full_o) else
                     $error("rtab: trying to allocate while the table is full");
 
     assert property (@(posedge clk_i)

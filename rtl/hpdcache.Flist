@@ -46,6 +46,7 @@ ${HPDCACHE_DIR}/rtl/src/hwpf_stride/hwpf_stride_wrapper.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_amo.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_cmo.sv
+${HPDCACHE_DIR}/rtl/src/hpdcache_core_arbiter.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_ctrl.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_ctrl_pe.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_memarray.sv

@@ -39,6 +39,9 @@ import hpdcache_pkg::*;
     input  logic                  core_req_valid_i,
     output logic                  core_req_ready_o,
     input  hpdcache_req_t         core_req_i,
+    input  logic                  core_req_abort_i,
+    input  hpdcache_tag_t         core_req_tag_i,
+    input  hpdcache_pma_t         core_req_pma_i,
 
     //      Core response interface
     output logic                  core_rsp_valid_o,
@@ -52,7 +55,8 @@ import hpdcache_pkg::*;
 
     //      Miss handler interface
     output logic                  miss_mshr_check_o,
-    output hpdcache_nline_t       miss_mshr_check_nline_o,
+    output mshr_set_t             miss_mshr_check_set_o,
+    output mshr_tag_t             miss_mshr_check_tag_o,
     output logic                  miss_mshr_alloc_o,
     output logic                  miss_mshr_alloc_cs_o,
     input  logic                  miss_mshr_alloc_ready_i,
@@ -173,26 +177,9 @@ import hpdcache_pkg::*;
     //  Definition of internal registers
     //  {{{
     logic                    st1_req_valid_q, st1_req_valid_d;
-    logic                    st1_req_rtab_q;
-    rtab_ptr_t               st1_req_rtab_ptr_q;
     hpdcache_req_t           st1_req_q;
-    logic                    st1_req_is_load;
-    logic                    st1_req_is_store;
-    logic                    st1_req_is_amo;
-    logic                    st1_req_is_amo_lr;
-    logic                    st1_req_is_amo_sc;
-    logic                    st1_req_is_amo_swap;
-    logic                    st1_req_is_amo_add;
-    logic                    st1_req_is_amo_and;
-    logic                    st1_req_is_amo_or;
-    logic                    st1_req_is_amo_xor;
-    logic                    st1_req_is_amo_max;
-    logic                    st1_req_is_amo_maxu;
-    logic                    st1_req_is_amo_min;
-    logic                    st1_req_is_amo_minu;
-    logic                    st1_req_is_cmo_inval;
-    logic                    st1_req_is_cmo_fence;
-    logic                    st1_req_is_cmo_prefetch;
+    logic                    st1_req_rtab_q;
+    rtab_ptr_t               st1_rtab_pop_try_ptr_q;
 
     logic                    st2_req_valid_q, st2_req_valid_d;
     logic                    st2_req_is_prefetch_q, st2_req_is_prefetch_d;
@@ -212,6 +199,7 @@ import hpdcache_pkg::*;
 
     logic                    st0_req_valid;
     hpdcache_req_t           st0_req;
+    logic                    st0_req_is_uncacheable;
     logic                    st0_req_is_load;
     logic                    st0_req_is_store;
     logic                    st0_req_is_amo;
@@ -222,43 +210,61 @@ import hpdcache_pkg::*;
     logic                    st0_req_cachedata_read;
     hpdcache_set_t           st0_req_set;
     hpdcache_word_t          st0_req_word;
-    hpdcache_nline_t         st0_req_nline;
-    logic                    st0_rtab_alloc;
-    logic                    st0_rtab_mshr_hit;
-    logic                    st0_rtab_mshr_full;
-    logic                    st0_rtab_mshr_ready;
-    logic                    st0_rtab_wbuf_hit;
-    logic                    st0_rtab_wbuf_not_ready;
+    logic                    st0_rtab_pop_try_valid;
+    logic                    st0_rtab_pop_try_ready;
+    hpdcache_req_t           st0_rtab_pop_try_req;
+    logic                    st0_rtab_pop_try_sel;
+    rtab_ptr_t               st0_rtab_pop_try_ptr;
 
     logic                    st1_rsp_valid;
+    logic                    st1_rsp_aborted;
+    hpdcache_req_t           st1_req;
+    logic                    st1_req_abort;
     logic                    st1_req_cachedata_write;
     logic                    st1_req_cachedata_write_enable;
-    hpdcache_set_t           st1_req_set;
+    hpdcache_pma_t           st1_req_pma;
     hpdcache_tag_t           st1_req_tag;
+    hpdcache_set_t           st1_req_set;
     hpdcache_word_t          st1_req_word;
+    hpdcache_nline_t         st1_req_nline;
+    hpdcache_req_addr_t      st1_req_addr;
     logic                    st1_req_updt_lru;
+    logic                    st1_req_is_uncacheable;
+    logic                    st1_req_is_load;
+    logic                    st1_req_is_store;
+    logic                    st1_req_is_amo;
+    logic                    st1_req_is_amo_lr;
+    logic                    st1_req_is_amo_sc;
+    logic                    st1_req_is_amo_swap;
+    logic                    st1_req_is_amo_add;
+    logic                    st1_req_is_amo_and;
+    logic                    st1_req_is_amo_or;
+    logic                    st1_req_is_amo_xor;
+    logic                    st1_req_is_amo_max;
+    logic                    st1_req_is_amo_maxu;
+    logic                    st1_req_is_amo_min;
+    logic                    st1_req_is_amo_minu;
+    logic                    st1_req_is_cmo_inval;
+    logic                    st1_req_is_cmo_fence;
+    logic                    st1_req_is_cmo_prefetch;
     hpdcache_way_vector_t    st1_dir_hit;
     hpdcache_req_data_t      st1_read_data;
     logic                    st1_rtab_alloc;
-    logic                    st1_rtab_commit;
-    logic                    st1_rtab_rback;
+    logic                    st1_rtab_alloc_and_link;
+    logic                    st1_rtab_pop_try_commit;
+    logic                    st1_rtab_pop_try_rback;
     logic                    st1_rtab_mshr_hit;
     logic                    st1_rtab_mshr_full;
     logic                    st1_rtab_mshr_ready;
     logic                    st1_rtab_wbuf_hit;
     logic                    st1_rtab_wbuf_not_ready;
+    logic                    st1_rtab_check;
+    logic                    st1_rtab_check_hit;
 
     logic                    st2_req_we;
     hpdcache_word_t          st2_req_word;
 
-    logic                    rtab_req_valid;
-    logic                    rtab_req_ready;
     logic                    rtab_full;
-    logic                    rtab_sel;
-    hpdcache_req_t           rtab_req;
-    rtab_ptr_t               rtab_req_ptr;
-    logic                    rtab_check;
-    logic                    rtab_check_hit;
 
     logic                    hpdcache_init_ready;
     //  }}}
@@ -266,57 +272,91 @@ import hpdcache_pkg::*;
     //  Decoding of the request
     //  {{{
     //     Select between request in the replay table or a new core requests
-    assign st0_req_valid = rtab_sel ? rtab_req_valid : core_req_valid_i;
-
-    assign st0_req  = '{
-        addr        : rtab_sel ? rtab_req.addr     : core_req_i.addr,
-        wdata       : rtab_sel ? rtab_req.wdata    : core_req_i.wdata,
-        op          : rtab_sel ? rtab_req.op       : core_req_i.op,
-        be          : rtab_sel ? rtab_req.be       : core_req_i.be,
-        size        : rtab_sel ? rtab_req.size     : core_req_i.size,
-        sid         : rtab_sel ? rtab_req.sid      : core_req_i.sid,
-        tid         : rtab_sel ? rtab_req.tid      : core_req_i.tid,
-        need_rsp    : rtab_sel ? rtab_req.need_rsp : core_req_i.need_rsp,
-
-        //  Set the uncacheable bit when the cache is disabled.
-        //  Otherwise, follow the hint in the request
-        uncacheable : ~cfg_enable_i | (rtab_sel ? rtab_req.uncacheable : core_req_i.uncacheable)
-    };
+    assign st0_req_valid           = st0_rtab_pop_try_sel ? st0_rtab_pop_try_valid
+                                                          : core_req_valid_i,
+           st0_req.addr_offset     = st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.addr_offset
+                                                          : core_req_i.addr_offset,
+           st0_req.addr_tag        = st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.addr_tag
+                                                          : core_req_i.addr_tag,
+           st0_req.wdata           = st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.wdata
+                                                          : core_req_i.wdata,
+           st0_req.op              = st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.op
+                                                          : core_req_i.op,
+           st0_req.be              = st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.be
+                                                          : core_req_i.be,
+           st0_req.size            = st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.size
+                                                          : core_req_i.size,
+           st0_req.sid             = st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.sid
+                                                          : core_req_i.sid,
+           st0_req.tid             = st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.tid
+                                                          : core_req_i.tid,
+           st0_req.need_rsp        = st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.need_rsp
+                                                          : core_req_i.need_rsp,
+           st0_req.phys_indexed    = st0_rtab_pop_try_sel ? 1'b1
+                                                          : core_req_i.phys_indexed,
+           st0_req.pma             = st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.pma
+                                                          : core_req_i.pma;
 
     //     Decode operation in stage 0
-    assign st0_req_is_load                =                is_load(st0_req.op),
-           st0_req_is_store               =               is_store(st0_req.op),
-           st0_req_is_amo                 =                 is_amo(st0_req.op),
-           st0_req_is_cmo_fence           =           is_cmo_fence(st0_req.op, st0_req.size),
-           st0_req_is_cmo_inval           =           is_cmo_inval(st0_req.op, st0_req.size),
-           st0_req_is_cmo_prefetch        =        is_cmo_prefetch(st0_req.op, st0_req.size);
+    assign st0_req_is_uncacheable  = ~cfg_enable_i | ( st0_req.phys_indexed
+                                                     & st0_req.pma.uncacheable),
+           st0_req_is_load         =         is_load(st0_req.op),
+           st0_req_is_store        =        is_store(st0_req.op),
+           st0_req_is_amo          =          is_amo(st0_req.op),
+           st0_req_is_cmo_fence    =    is_cmo_fence(st0_req.op, st0_req.size),
+           st0_req_is_cmo_inval    =    is_cmo_inval(st0_req.op, st0_req.size),
+           st0_req_is_cmo_prefetch = is_cmo_prefetch(st0_req.op, st0_req.size);
 
     //     Decode operation in stage 1
-    assign st1_req_is_load                =                is_load(st1_req_q.op),
-           st1_req_is_store               =               is_store(st1_req_q.op),
-           st1_req_is_amo                 =                 is_amo(st1_req_q.op),
-           st1_req_is_amo_lr              =              is_amo_lr(st1_req_q.op),
-           st1_req_is_amo_sc              =              is_amo_sc(st1_req_q.op),
-           st1_req_is_amo_swap            =            is_amo_swap(st1_req_q.op),
-           st1_req_is_amo_add             =             is_amo_add(st1_req_q.op),
-           st1_req_is_amo_and             =             is_amo_and(st1_req_q.op),
-           st1_req_is_amo_or              =              is_amo_or(st1_req_q.op),
-           st1_req_is_amo_xor             =             is_amo_xor(st1_req_q.op),
-           st1_req_is_amo_max             =             is_amo_max(st1_req_q.op),
-           st1_req_is_amo_maxu            =            is_amo_maxu(st1_req_q.op),
-           st1_req_is_amo_min             =             is_amo_min(st1_req_q.op),
-           st1_req_is_amo_minu            =            is_amo_minu(st1_req_q.op),
-           st1_req_is_cmo_inval           =           is_cmo_inval(st1_req_q.op, st1_req_q.size),
-           st1_req_is_cmo_fence           =           is_cmo_fence(st1_req_q.op, st1_req_q.size),
-           st1_req_is_cmo_prefetch        =        is_cmo_prefetch(st1_req_q.op, st1_req_q.size);
+
+    //         In case of replay or physically-indexed cache, the tag and PMA come
+    //         from stage 0. Otherwise, this information come directly from the
+    //         requester in stage 1
+    assign st1_req_tag             = st1_req_q.phys_indexed ? st1_req_q.addr_tag : core_req_tag_i,
+           st1_req_pma             = st1_req_q.phys_indexed ? st1_req_q.pma      : core_req_pma_i;
+
+    assign st1_req.addr_offset     = st1_req_q.addr_offset,
+           st1_req.addr_tag        = st1_req_rtab_q ? st1_req_q.addr_tag : st1_req_tag,
+           st1_req.wdata           = st1_req_q.wdata,
+           st1_req.op              = st1_req_q.op,
+           st1_req.be              = st1_req_q.be,
+           st1_req.size            = st1_req_q.size,
+           st1_req.sid             = st1_req_q.sid,
+           st1_req.tid             = st1_req_q.tid,
+           st1_req.need_rsp        = st1_req_q.need_rsp,
+           st1_req.phys_indexed    = st1_req_q.phys_indexed,
+           st1_req.pma             = st1_req_rtab_q ? st1_req_q.pma : st1_req_pma;
+
+    //         A requester can ask to abort a request it initiated on the
+    //         previous cycle (stage 0). Useful in case of TLB miss for example
+    assign st1_req_abort           = core_req_abort_i & ~st1_req.phys_indexed;
+
+    assign st1_req_is_uncacheable  = ~cfg_enable_i | st1_req.pma.uncacheable,
+           st1_req_is_load         =         is_load(st1_req.op),
+           st1_req_is_store        =        is_store(st1_req.op),
+           st1_req_is_amo          =          is_amo(st1_req.op),
+           st1_req_is_amo_lr       =       is_amo_lr(st1_req.op),
+           st1_req_is_amo_sc       =       is_amo_sc(st1_req.op),
+           st1_req_is_amo_swap     =     is_amo_swap(st1_req.op),
+           st1_req_is_amo_add      =      is_amo_add(st1_req.op),
+           st1_req_is_amo_and      =      is_amo_and(st1_req.op),
+           st1_req_is_amo_or       =       is_amo_or(st1_req.op),
+           st1_req_is_amo_xor      =      is_amo_xor(st1_req.op),
+           st1_req_is_amo_max      =      is_amo_max(st1_req.op),
+           st1_req_is_amo_maxu     =     is_amo_maxu(st1_req.op),
+           st1_req_is_amo_min      =      is_amo_min(st1_req.op),
+           st1_req_is_amo_minu     =     is_amo_minu(st1_req.op),
+           st1_req_is_cmo_inval    =    is_cmo_inval(st1_req.op, st1_req.size),
+           st1_req_is_cmo_fence    =    is_cmo_fence(st1_req.op, st1_req.size),
+           st1_req_is_cmo_prefetch = is_cmo_prefetch(st1_req.op, st1_req.size);
     //  }}}
 
-    //  Refill arbiter: it arbitrates between normal requests (from the core, coprocessor, prefetch)
-    //  and refill requests (from the miss handler).
+    //  Refill arbiter: it arbitrates between normal requests (from the core,
+    //  coprocessor, prefetch) and refill requests (from the miss handler).
     //
-    //  TODO This arbiter could be replaced by a weighted-round-robin arbiter. This way we could
-    //  distribute asymetrically the bandwidth to the core and the refill interfaces.
-    //
+    //  TODO This arbiter could be replaced by a weighted-round-robin arbiter.
+    //  This way we could distribute asymetrically the bandwidth to the core
+    //  and the refill interfaces.
     //  {{{
     hpdcache_rrarb #(.N(2)) st0_arb_i
     (
@@ -327,33 +367,32 @@ import hpdcache_pkg::*;
         .ready_i                            (st0_arb_ready)
     );
 
-    //  The arbiter can cycle the priority token when:
-    //  - The granted request is consumed (req_grant &  req_valid & req_ready)
-    //  - The granted request is aborted  (req_grant & ~req_valid)
-    assign st0_arb_ready   = ((st0_arb_req_grant[0] &     st0_req_valid   &    st0_req_ready  ) |
-                              (st0_arb_req_grant[1] &  refill_req_valid_i & refill_req_ready_o) |
-                              (st0_arb_req_grant[0] &    ~st0_req_valid  ) |
-                              (st0_arb_req_grant[1] & ~refill_req_valid_i));
+    //      The arbiter can cycle the priority token when:
+    //      - The granted request is consumed (req_grant &  req_valid & req_ready)
+    //      - The granted request is aborted  (req_grant & ~req_valid)
+    assign st0_arb_ready  = ((st0_arb_req_grant[0] &     st0_req_valid   &    st0_req_ready  ) |
+                             (st0_arb_req_grant[1] &  refill_req_valid_i & refill_req_ready_o) |
+                             (st0_arb_req_grant[0] &    ~st0_req_valid  ) |
+                             (st0_arb_req_grant[1] & ~refill_req_valid_i));
 
-    assign st0_arb_req[0]     = st0_req_valid,
-           st0_arb_req[1]     = refill_req_valid_i;
+    assign st0_arb_req[0] = st0_req_valid,
+           st0_arb_req[1] = refill_req_valid_i;
 
-    assign core_req_ready_o   = st0_req_ready    & ~rtab_sel,
-           rtab_req_ready     = st0_req_ready    &  rtab_sel;
+    assign core_req_ready_o       = st0_req_ready & ~st0_rtab_pop_try_sel,
+           st0_rtab_pop_try_ready = st0_req_ready &  st0_rtab_pop_try_sel;
 
-    //  Trigger an event signal when the pipeline is stalled (new request is not consumed)
+    //      Trigger an event signal when the pipeline is stalled (new request is not consumed)
     assign evt_stall_o        = core_req_valid_i & ~core_req_ready_o;
     //  }}}
 
     //  Cache controller protocol engine
     //  {{{
     hpdcache_ctrl_pe hpdcache_ctrl_pe_i(
-        .arb_st0_req_valid_i                (st0_req_valid      & st0_arb_req_grant[0]),
+        .arb_st0_req_valid_i                (st0_req_valid & st0_arb_req_grant[0]),
         .arb_st0_req_ready_o                (st0_req_ready),
         .arb_refill_valid_i                 (refill_req_valid_i & st0_arb_req_grant[1]),
         .arb_refill_ready_o                 (refill_req_ready_o),
-
-        .st0_req_is_uncacheable_i           (st0_req.uncacheable),
+        .st0_req_is_uncacheable_i           (st0_req_is_uncacheable),
         .st0_req_need_rsp_i                 (st0_req.need_rsp),
         .st0_req_is_load_i                  (st0_req_is_load),
         .st0_req_is_store_i                 (st0_req_is_store),
@@ -366,9 +405,10 @@ import hpdcache_pkg::*;
         .st0_req_cachedata_read_o           (st0_req_cachedata_read),
 
         .st1_req_valid_i                    (st1_req_valid_q),
+        .st1_req_abort_i                    (st1_req_abort),
         .st1_req_rtab_i                     (st1_req_rtab_q),
-        .st1_req_is_uncacheable_i           (st1_req_q.uncacheable),
-        .st1_req_need_rsp_i                 (st1_req_q.need_rsp),
+        .st1_req_is_uncacheable_i           (st1_req_is_uncacheable),
+        .st1_req_need_rsp_i                 (st1_req.need_rsp),
         .st1_req_is_load_i                  (st1_req_is_load),
         .st1_req_is_store_i                 (st1_req_is_store),
         .st1_req_is_amo_i                   (st1_req_is_amo),
@@ -377,6 +417,7 @@ import hpdcache_pkg::*;
         .st1_req_is_cmo_prefetch_i          (st1_req_is_cmo_prefetch),
         .st1_req_valid_o                    (st1_req_valid_d),
         .st1_rsp_valid_o                    (st1_rsp_valid),
+        .st1_rsp_aborted_o                  (st1_rsp_aborted),
         .st1_req_cachedir_updt_lru_o        (st1_req_updt_lru),
         .st1_req_cachedata_write_o          (st1_req_cachedata_write),
         .st1_req_cachedata_write_enable_o   (st1_req_cachedata_write_enable),
@@ -390,19 +431,14 @@ import hpdcache_pkg::*;
         .st2_req_mshr_alloc_cs_o            (miss_mshr_alloc_cs_o),
 
         .rtab_full_i                        (rtab_full),
-        .rtab_req_valid_i                   (rtab_req_valid),
-        .rtab_sel_o                         (rtab_sel),
-        .rtab_check_o                       (rtab_check),
-        .rtab_check_hit_i                   (rtab_check_hit),
-        .st0_rtab_alloc_o                   (st0_rtab_alloc),
-        .st0_rtab_mshr_hit_o                (st0_rtab_mshr_hit),
-        .st0_rtab_mshr_full_o               (st0_rtab_mshr_full),
-        .st0_rtab_mshr_ready_o              (st0_rtab_mshr_ready),
-        .st0_rtab_wbuf_hit_o                (st0_rtab_wbuf_hit),
-        .st0_rtab_wbuf_not_ready_o          (st0_rtab_wbuf_not_ready),
+        .rtab_req_valid_i                   (st0_rtab_pop_try_valid),
+        .rtab_sel_o                         (st0_rtab_pop_try_sel),
+        .rtab_check_o                       (st1_rtab_check),
+        .rtab_check_hit_i                   (st1_rtab_check_hit),
         .st1_rtab_alloc_o                   (st1_rtab_alloc),
-        .st1_rtab_commit_o                  (st1_rtab_commit),
-        .st1_rtab_rback_o                   (st1_rtab_rback),
+        .st1_rtab_alloc_and_link_o          (st1_rtab_alloc_and_link),
+        .st1_rtab_commit_o                  (st1_rtab_pop_try_commit),
+        .st1_rtab_rback_o                   (st1_rtab_pop_try_rback),
         .st1_rtab_mshr_hit_o                (st1_rtab_mshr_hit),
         .st1_rtab_mshr_full_o               (st1_rtab_mshr_full),
         .st1_rtab_mshr_ready_o              (st1_rtab_mshr_ready),
@@ -449,43 +485,38 @@ import hpdcache_pkg::*;
 
     //  Replay table
     //  {{{
-    hpdcache_rtab hpdcache_rtab_i(
+    hpdcache_rtab #(
+        .rtab_entry_t                       (hpdcache_req_t)
+    ) hpdcache_rtab_i(
         .clk_i,
         .rst_ni,
 
         .empty_o                            (rtab_empty_o),
         .full_o                             (rtab_full),
-        .req_valid_o                        (rtab_req_valid),
 
-        .check_i                            (rtab_check),
-        .check_nline_i                      (st0_req_nline),
-        .check_hit_o                        (rtab_check_hit),
+        .check_i                            (st1_rtab_check),
+        .check_nline_i                      (st1_req_nline),
+        .check_hit_o                        (st1_rtab_check_hit),
 
         .alloc_i                            (st1_rtab_alloc),
-        .alloc_req_i                        (st1_req_q),
+        .alloc_and_link_i                   (st1_rtab_alloc_and_link),
+        .alloc_req_i                        (st1_req),
         .alloc_mshr_hit_i                   (st1_rtab_mshr_hit),
         .alloc_mshr_full_i                  (st1_rtab_mshr_full),
         .alloc_mshr_ready_i                 (st1_rtab_mshr_ready),
         .alloc_wbuf_hit_i                   (st1_rtab_wbuf_hit),
         .alloc_wbuf_not_ready_i             (st1_rtab_wbuf_not_ready),
 
-        .alloc_and_link_i                   (st0_rtab_alloc),
-        .alloc_and_link_req_i               (core_req_i),
-        .alloc_and_link_mshr_hit_i          (st0_rtab_mshr_hit),
-        .alloc_and_link_mshr_full_i         (st0_rtab_mshr_full),
-        .alloc_and_link_mshr_ready_i        (st0_rtab_mshr_ready),
-        .alloc_and_link_wbuf_hit_i          (st0_rtab_wbuf_hit),
-        .alloc_and_link_wbuf_not_ready_i    (st0_rtab_wbuf_not_ready),
+        .pop_try_valid_o                    (st0_rtab_pop_try_valid),
+        .pop_try_i                          (st0_rtab_pop_try_ready),
+        .pop_try_req_o                      (st0_rtab_pop_try_req),
+        .pop_try_ptr_o                      (st0_rtab_pop_try_ptr),
 
-        .pop_try_i                          (rtab_req_ready),
-        .pop_try_req_o                      (rtab_req),
-        .pop_try_ptr_o                      (rtab_req_ptr),
+        .pop_commit_i                       (st1_rtab_pop_try_commit),
+        .pop_commit_ptr_i                   (st1_rtab_pop_try_ptr_q),
 
-        .pop_commit_i                       (st1_rtab_commit),
-        .pop_commit_ptr_i                   (st1_req_rtab_ptr_q),
-
-        .pop_rback_i                        (st1_rtab_rback),
-        .pop_rback_ptr_i                    (st1_req_rtab_ptr_q),
+        .pop_rback_i                        (st1_rtab_pop_try_rback),
+        .pop_rback_ptr_i                    (st1_rtab_pop_try_ptr_q),
         .pop_rback_mshr_hit_i               (st1_rtab_mshr_hit),
         .pop_rback_mshr_full_i              (st1_rtab_mshr_full),
         .pop_rback_mshr_ready_i             (st1_rtab_mshr_ready),
@@ -513,22 +544,22 @@ import hpdcache_pkg::*;
     always_ff @(posedge clk_i)
     begin : st1_req_payload_ff
         if (st0_req_ready) begin
-            st1_req_q      <= st0_req;
+            st1_req_q <= st0_req;
         end
     end
 
     always_ff @(posedge clk_i or negedge rst_ni)
     begin : st1_req_valid_ff
         if (!rst_ni) begin
-            st1_req_valid_q    <= 1'b0;
-            st1_req_rtab_q     <= 1'b0;
-            st1_req_rtab_ptr_q <= '0;
+            st1_req_valid_q        <= 1'b0;
+            st1_req_rtab_q         <= 1'b0;
+            st1_rtab_pop_try_ptr_q <= '0;
         end else begin
             st1_req_valid_q <= st1_req_valid_d;
             if (st0_req_ready) begin
-                st1_req_rtab_q <= rtab_sel;
-                if (rtab_sel) begin
-                    st1_req_rtab_ptr_q <= rtab_req_ptr;
+                st1_req_rtab_q <= st0_rtab_pop_try_sel;
+                if (st0_rtab_pop_try_sel) begin
+                    st1_rtab_pop_try_ptr_q <= st0_rtab_pop_try_ptr;
                 end
             end
         end
@@ -540,10 +571,10 @@ import hpdcache_pkg::*;
     always_ff @(posedge clk_i)
     begin : st2_req_payload_ff
         if (st2_req_we) begin
-            st2_req_need_rsp_q <= st1_req_q.need_rsp;
-            st2_req_addr_q     <= st1_req_q.addr;
-            st2_req_sid_q      <= st1_req_q.sid;
-            st2_req_tid_q      <= st1_req_q.tid;
+            st2_req_need_rsp_q <= st1_req.need_rsp;
+            st2_req_addr_q     <= st1_req_addr;
+            st2_req_sid_q      <= st1_req.sid;
+            st2_req_tid_q      <= st1_req.tid;
         end
     end
 
@@ -561,13 +592,13 @@ import hpdcache_pkg::*;
 
     //  Controller for the HPDcache directory and data memory arrays
     //  {{{
-    assign st0_req_set   =   hpdcache_get_req_set(st0_req.addr),
-           st0_req_word  =  hpdcache_get_req_word(st0_req.addr),
-           st0_req_nline = hpdcache_get_req_nline(st0_req.addr),
-           st1_req_set   =   hpdcache_get_req_set(st1_req_q.addr),
-           st1_req_tag   =   hpdcache_get_req_tag(st1_req_q.addr),
-           st1_req_word  =  hpdcache_get_req_word(st1_req_q.addr),
-           st2_req_word  =  hpdcache_get_req_word(st2_req_addr_q);
+    assign st0_req_set   = hpdcache_get_req_offset_set(st0_req.addr_offset),
+           st0_req_word  = hpdcache_get_req_offset_word(st0_req.addr_offset),
+           st1_req_set   = hpdcache_get_req_offset_set(st1_req.addr_offset),
+           st1_req_word  = hpdcache_get_req_offset_word(st1_req.addr_offset),
+           st1_req_addr  = {st1_req.addr_tag, st1_req.addr_offset},
+           st1_req_nline = hpdcache_get_req_addr_nline(st1_req_addr),
+           st2_req_word  = hpdcache_get_req_addr_word(st2_req_addr_q);
 
     hpdcache_memctrl hpdcache_memctrl_i (
         .clk_i,
@@ -577,7 +608,7 @@ import hpdcache_pkg::*;
 
         .dir_match_i                   (st0_req_cachedir_read),
         .dir_match_set_i               (st0_req_set),
-        .dir_match_tag_i               (st1_req_tag),
+        .dir_match_tag_i               (st1_req.addr_tag),
         .dir_update_lru_i              (st1_req_updt_lru),
         .dir_hit_way_o                 (st1_dir_hit),
 
@@ -611,10 +642,10 @@ import hpdcache_pkg::*;
         .data_req_write_i              (st1_req_cachedata_write),
         .data_req_write_enable_i       (st1_req_cachedata_write_enable),
         .data_req_write_set_i          (st1_req_set),
-        .data_req_write_size_i         (st1_req_q.size),
+        .data_req_write_size_i         (st1_req.size),
         .data_req_write_word_i         (st1_req_word),
-        .data_req_write_data_i         (st1_req_q.wdata),
-        .data_req_write_be_i           (st1_req_q.be),
+        .data_req_write_data_i         (st1_req.wdata),
+        .data_req_write_be_i           (st1_req.be),
 
         .data_amo_write_i              (uc_data_amo_write_i),
         .data_amo_write_enable_i       (uc_data_amo_write_enable_i),
@@ -636,16 +667,20 @@ import hpdcache_pkg::*;
 
     //  Write buffer outputs
     //  {{{
-    assign wbuf_write_addr_o = st1_req_q.addr,
-           wbuf_write_data_o = st1_req_q.wdata,
-           wbuf_write_be_o   = st1_req_q.be,
+    assign wbuf_write_addr_o = st1_req_addr,
+           wbuf_write_data_o = st1_req.wdata,
+           wbuf_write_be_o   = st1_req.be,
            wbuf_flush_all_o  = cmo_wbuf_flush_all_i | uc_wbuf_flush_all_i | wbuf_flush_i;
     //  }}}
 
     //  Miss handler outputs
     //  {{{
-    assign miss_mshr_check_nline_o       = hpdcache_get_req_nline(st0_req.addr),
-           miss_mshr_alloc_nline_o       = hpdcache_get_req_nline(st2_req_addr_q),
+    assign miss_mshr_check_set_o =
+            st0_req.addr_offset[HPDCACHE_OFFSET_WIDTH +: HPDCACHE_MSHR_SET_WIDTH];
+    assign miss_mshr_check_tag_o =
+            st1_req_nline[HPDCACHE_MSHR_SET_WIDTH +: HPDCACHE_MSHR_TAG_WIDTH];
+
+    assign miss_mshr_alloc_nline_o       = hpdcache_get_req_addr_nline(st2_req_addr_q),
            miss_mshr_alloc_tid_o         = st2_req_tid_q,
            miss_mshr_alloc_sid_o         = st2_req_sid_q,
            miss_mshr_alloc_word_o        = st2_req_word,
@@ -655,17 +690,17 @@ import hpdcache_pkg::*;
 
     //  Uncacheable request handler outputs
     //  {{{
-    assign uc_lrsc_snoop_o           = st0_req_ready & is_store(st0_req.op),
-           uc_lrsc_snoop_addr_o      = st0_req.addr,
-           uc_lrsc_snoop_size_o      = st0_req.size,
-           uc_req_addr_o             = st1_req_q.addr,
-           uc_req_size_o             = st1_req_q.size,
-           uc_req_data_o             = st1_req_q.wdata,
-           uc_req_be_o               = st1_req_q.be,
-           uc_req_uc_o               = st1_req_q.uncacheable,
-           uc_req_sid_o              = st1_req_q.sid,
-           uc_req_tid_o              = st1_req_q.tid,
-           uc_req_need_rsp_o         = st1_req_q.need_rsp,
+    assign uc_lrsc_snoop_o           = st1_req_valid_q & st1_req_is_store,
+           uc_lrsc_snoop_addr_o      = st1_req_addr,
+           uc_lrsc_snoop_size_o      = st1_req.size,
+           uc_req_addr_o             = st1_req_addr,
+           uc_req_size_o             = st1_req.size,
+           uc_req_data_o             = st1_req.wdata,
+           uc_req_be_o               = st1_req.be,
+           uc_req_uc_o               = st1_req_is_uncacheable,
+           uc_req_sid_o              = st1_req.sid,
+           uc_req_tid_o              = st1_req.tid,
+           uc_req_need_rsp_o         = st1_req.need_rsp,
            uc_req_op_o.is_ld         = st1_req_is_load,
            uc_req_op_o.is_st         = st1_req_is_store,
            uc_req_op_o.is_amo_lr     = st1_req_is_amo_lr,
@@ -683,38 +718,42 @@ import hpdcache_pkg::*;
 
     //  CMO request handler outputs
     //  {{{
-    assign cmo_req_addr_o                 = st1_req_q.addr,
-           cmo_req_wdata_o                = st1_req_q.wdata,
+    assign cmo_req_addr_o                 = st1_req_addr,
+           cmo_req_wdata_o                = st1_req.wdata,
            cmo_req_op_o.is_fence          = st1_req_is_cmo_fence,
-           cmo_req_op_o.is_inval_by_nline = st1_req_is_cmo_inval & is_cmo_inval_by_nline(st1_req_q.size),
-           cmo_req_op_o.is_inval_by_set   = st1_req_is_cmo_inval & is_cmo_inval_by_set(st1_req_q.size),
-           cmo_req_op_o.is_inval_all      = st1_req_is_cmo_inval & is_cmo_inval_all(st1_req_q.size);
+           cmo_req_op_o.is_inval_by_nline = st1_req_is_cmo_inval &
+                                            is_cmo_inval_by_nline(st1_req.size),
+           cmo_req_op_o.is_inval_by_set   = st1_req_is_cmo_inval &
+                                            is_cmo_inval_by_set(st1_req.size),
+           cmo_req_op_o.is_inval_all      = st1_req_is_cmo_inval &
+                                            is_cmo_inval_all(st1_req.size);
     //  }}}
 
     //  Control of the response to the core
     //  {{{
-    assign core_rsp_valid_o = refill_core_rsp_valid_i                     |
-                              (uc_core_rsp_valid_i & uc_core_rsp_ready_o) |
-                              st1_rsp_valid,
-           core_rsp_o.rdata = (refill_core_rsp_valid_i ? refill_core_rsp_i.rdata :
-                              (uc_core_rsp_valid_i     ? uc_core_rsp_i.rdata     :
-                               st1_read_data)),
-           core_rsp_o.sid   = (refill_core_rsp_valid_i ? refill_core_rsp_i.sid   :
-                              (uc_core_rsp_valid_i     ? uc_core_rsp_i.sid       :
-                               st1_req_q.sid)),
-           core_rsp_o.tid   = (refill_core_rsp_valid_i ? refill_core_rsp_i.tid   :
-                              (uc_core_rsp_valid_i     ? uc_core_rsp_i.tid       :
-                               st1_req_q.tid)),
-           core_rsp_o.error = (refill_core_rsp_valid_i ? refill_core_rsp_i.error :
-                              (uc_core_rsp_valid_i     ? uc_core_rsp_i.error     :
-                               /* FIXME */1'b0));
+    assign core_rsp_valid_o   = refill_core_rsp_valid_i                     |
+                                (uc_core_rsp_valid_i & uc_core_rsp_ready_o) |
+                                st1_rsp_valid,
+           core_rsp_o.rdata   = (refill_core_rsp_valid_i ? refill_core_rsp_i.rdata :
+                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.rdata     :
+                                st1_read_data)),
+           core_rsp_o.sid     = (refill_core_rsp_valid_i ? refill_core_rsp_i.sid   :
+                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.sid       :
+                                st1_req.sid)),
+           core_rsp_o.tid     = (refill_core_rsp_valid_i ? refill_core_rsp_i.tid   :
+                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.tid       :
+                                st1_req.tid)),
+           core_rsp_o.error   = (refill_core_rsp_valid_i ? refill_core_rsp_i.error :
+                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.error     :
+                                /* FIXME */1'b0)),
+           core_rsp_o.aborted = st1_rsp_aborted;
     //  }}}
 
     //  Assertions
     //  pragma translate_off
     //  {{{
     assert property (@(posedge clk_i)
-            $onehot0({core_req_ready_o, rtab_req_ready, refill_req_ready_o})) else
+            $onehot0({core_req_ready_o, st0_rtab_pop_try_ready, refill_req_ready_o})) else
                     $error("ctrl: only one request can be served per cycle");
     //  }}}
     //  pragma translate_on

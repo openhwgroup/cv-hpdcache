@@ -29,7 +29,6 @@ ${HPDCACHE_DIR}/rtl/src/utils/hpdcache_mem_to_axi_read.sv
 ${HPDCACHE_DIR}/rtl/src/utils/hpdcache_mem_to_axi_write.sv
 ${HPDCACHE_DIR}/rtl/src/target/cva6/cva6_hpdcache_subsystem.sv
 ${HPDCACHE_DIR}/rtl/src/target/cva6/cva6_hpdcache_subsystem_axi_arbiter.sv
-${HPDCACHE_DIR}/rtl/src/target/cva6/cva6_hpdcache_load_if_adapter.sv
 ${HPDCACHE_DIR}/rtl/src/target/cva6/cva6_hpdcache_if_adapter.sv
 
 //+define+HPDCACHE_ENABLE_CMO
