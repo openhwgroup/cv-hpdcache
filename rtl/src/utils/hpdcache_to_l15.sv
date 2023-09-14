@@ -87,10 +87,9 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
      // Internal types
      // {{{ 
     typedef enum {
-        FREE_T0_T1,
-        FREE_T0,
-        FREE_T1,
-        LOCKED_T0_T1
+        IDLE,
+        WAITING_HEADER_ACK,
+        WAITING_ACK
     } thread_id_fsm_t;
 
     // L15_TIDs entry table to save the HPDC threadids and portids
@@ -119,12 +118,14 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     hpdc_thid_l15et_t                           hpdc_tid_q, hpdc_tid_d;
     // HPDC Req Port ID
     hpdc_pid_l15et_t                            hpdc_pid_q, hpdc_pid_d;
+    // Thread id available to send a request to L1.5
+    logic                                       free_thid;
     // L1.5 Req Thread ID 
     logic [wt_cache_pkg::L15_TID_WIDTH-1:0]     req_thid;
-    // HPDC Resp ID
-    hpdcache_mem_id_t                           resp_tid;
-    // HPDC Port ID
-    req_portid_t                                resp_pid;
+    // L1.5 Req Valid
+    logic                                       req_valid;
+    // L1.5 Req Ready
+    logic                                       req_ready;
     // Size of the unc. store request. Its compulsory to replicate the data of the request according to its size. 
     hpdcache_pkg::hpdcache_mem_size_t           req_unc_st_size;
     logic [HPDcacheMemDataWidth/8-1:0]          req_unc_st_offset;
@@ -142,10 +143,10 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
 
     // Request
     // {{{
-                                                // Determines that the L1.5 can receive a request if L1.5 is ready and there is a thid free
-    assign req_ready_o                        = l15_rtrn_i.l15_ack & (th_state_q!=LOCKED_T0_T1);
-                                                // Determines that a request is valid if there is a thid free
-    assign l15_req_o.l15_val                  = req_valid_i & (th_state_q!=LOCKED_T0_T1), 
+                                                // Determines that the request has been processed by the L1.5
+    assign req_ready_o                        = req_ready;
+                                                // Determines that a request is valid
+    assign l15_req_o.l15_val                  = req_valid,  
                                                 // Determines if we can hold the coming response
            l15_req_o.l15_req_ack              = (mem_inval_dcache_valid) ? (mem_only_inval) ? l15_rtrn_i.l15_val & hpdc_fifo_inval_wok :                // DCACHE Invalidation
                                                                                               l15_rtrn_i.l15_val & hpdc_fifo_inval_wok & resp_ready_i : // Response + DCACHE Invalidation
@@ -200,10 +201,10 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                                                                                               l15_rtrn_i.l15_val,                        // Response/ICACHE Invalidation
                                                 // ICACHE Invalidations demux port 0 otherwise saved port id
            resp_pid_o                         = (mem_only_inval & mem_inval_icache_valid) ? '0 : 
-                                                (l15_rtrn_i.l15_returntype==L15_CPX_RESTYPE_ATOMIC_RES) ? 3'b101 : resp_pid;
+                                                (l15_rtrn_i.l15_returntype==L15_CPX_RESTYPE_ATOMIC_RES) ? 3'b101 : hpdc_pid_q[l15_rtrn_i.l15_threadid];
                                                 
     assign resp_o.mem_resp_error              = (l15_rtrn_i.l15_returntype==L15_ERR_RET) ? HPDCACHE_MEM_RESP_NOK : HPDCACHE_MEM_RESP_OK, // Should be always HPDCACHE_MEM_RESP_OK, unused in openpiton
-           resp_o.mem_resp_id                 = resp_tid,
+           resp_o.mem_resp_id                 = hpdc_tid_q[l15_rtrn_i.l15_threadid],
            resp_o.mem_resp_r_last             = '1,                                                                                      // OpenPiton sends the entire data in 1 cycle
            resp_o.mem_resp_w_is_atomic        = sc_pass,               
            resp_o.mem_resp_r_data             = (SwapEndianess) ? {swendian64(l15_rtrn_i.l15_data_3),
@@ -235,81 +236,59 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     // }}}
 
 
-    // FSM to control the access to L1.5. OpenPiton doesn't support more than 2 requests -> 2 threads
+    // FSM to control the access to L1.5. OpenPiton (Requests)
     // {{{
     always_comb
-    begin: thread_id_fsm_comb
+    begin: request_fsm_comb
         th_state_d = th_state_q;
         hpdc_tid_d = hpdc_tid_q;
         hpdc_pid_d = hpdc_pid_q;
+        req_valid  = '0;
+        req_ready  = '0;
         unique case (th_state_q)
-            // Both available threads are free
-            FREE_T0_T1: begin
-                // Request valid and L1.5 can receive -> Send Request 
-                req_thid = 1'b0;                        // Thid used: 0
-                if (req_valid_i && l15_rtrn_i.l15_ack) begin
-                    hpdc_tid_d[0] = req_i.mem_req_id;   // Save the real Thid
-                    hpdc_pid_d[0]  = req_pid_i;         // Save the port id
-                    th_state_d     = FREE_T1;
-                end
-            end
-            // Only Th0 is free
-            FREE_T0: begin
-                req_thid = 1'b0;                        // Thid used: 0
-                resp_tid = hpdc_tid_q[l15_rtrn_i.l15_threadid];
-                resp_pid = hpdc_pid_q[l15_rtrn_i.l15_threadid];
-                // Request and Response comes at the same time
-                if ((req_valid_i && l15_rtrn_i.l15_ack) && (resp_ready_i && l15_rtrn_i.l15_val && ~mem_only_inval)) begin
-                    // Request
-                    hpdc_tid_d[0] = req_i.mem_req_id;   // Save the real Thid
-                    hpdc_pid_d[0] = req_pid_i;
-                    //Th1 used, Th0 free
-                    th_state_d = FREE_T1;
-                end else begin 
-                    // Response valid and L1D/I can receive -> Receive Response   
-                    if (resp_ready_i && l15_rtrn_i.l15_val && ~mem_only_inval) begin
-                        th_state_d = FREE_T0_T1;
-                    // Request valid and L1.5 can receive -> Send Request
-                    end else if (req_valid_i && l15_rtrn_i.l15_ack) begin           
-                        hpdc_tid_d[0] = req_i.mem_req_id;   // Save the real Thid
-                        hpdc_pid_d[0]  = req_pid_i;
-                        th_state_d = LOCKED_T0_T1;
+            IDLE: begin
+                // Valid request and there is a thid free
+                if (req_valid_i && free_thid) begin
+                    req_valid = '1;
+                    if (l15_rtrn_i.l15_header_ack) begin 
+                        if (l15_rtrn_i.l15_ack) begin
+                            hpdc_tid_d[req_thid]  = req_i.mem_req_id;   // Save the request id
+                            hpdc_pid_d[req_thid]  = req_pid_i;          // Save the port id
+                            req_ready             = '1;
+                            th_state_d            = IDLE;
+                        end else begin
+                            th_state_d = WAITING_ACK;
+                        end     
+                    end else begin
+                        th_state_d = WAITING_HEADER_ACK;
                     end
+                end else begin
+                    th_state_d = IDLE;
                 end 
             end
-            // Only Th1 is free
-            FREE_T1: begin   
-                req_thid = 1'b1;                        // Thid used: 1
-                resp_tid = hpdc_tid_q[l15_rtrn_i.l15_threadid];
-                resp_pid = hpdc_pid_q[l15_rtrn_i.l15_threadid];
-                // Request and Response comes at the same time 
-                if ((req_valid_i && l15_rtrn_i.l15_ack) && (resp_ready_i && l15_rtrn_i.l15_val && ~mem_only_inval)) begin
-                    //Request
-                    hpdc_tid_d[1] = req_i.mem_req_id;   // Save the real Thid
-                    hpdc_pid_d[1] = req_pid_i;
-                    //Th0 used, Th1 free
-                    th_state_d = FREE_T0;
-                end else begin 
-                    // Response valid and L1D/I can receive -> Receive Response
-                    if (resp_ready_i && l15_rtrn_i.l15_val && ~mem_only_inval) begin
-                        resp_tid = hpdc_tid_q[l15_rtrn_i.l15_threadid];
-                        resp_pid = hpdc_pid_q[l15_rtrn_i.l15_threadid];
-                        th_state_d = FREE_T0_T1;
-                    // Request valid and L1.5 can receive -> Send Request
-                    end else if (req_valid_i && l15_rtrn_i.l15_ack) begin
-                        hpdc_tid_d[1] = req_i.mem_req_id;   // Save the real Thid
-                        hpdc_pid_d[1]  = req_pid_i;
-                        th_state_d = LOCKED_T0_T1;
+            WAITING_HEADER_ACK: begin
+                req_valid = '1;
+                if (req_valid_i && l15_rtrn_i.l15_header_ack) begin
+                    if (l15_rtrn_i.l15_ack) begin 
+                        hpdc_tid_d[req_thid]  = req_i.mem_req_id;   // Save the request id
+                        hpdc_pid_d[req_thid]  = req_pid_i;          // Save the port id
+                        req_ready         = '1;
+                        th_state_d        = IDLE;
+                    end else begin 
+                        th_state_d        = WAITING_ACK;
                     end
+                end else begin 
+                        th_state_d        = WAITING_HEADER_ACK;
                 end
             end
-            // No Threadids available
-            LOCKED_T0_T1: begin
-                // Response valid and L1D/I can receive -> Receive Request
-                resp_tid = hpdc_tid_q[l15_rtrn_i.l15_threadid];
-                resp_pid = hpdc_pid_q[l15_rtrn_i.l15_threadid];
-                if (resp_ready_i && l15_rtrn_i.l15_val && ~mem_only_inval) begin
-                    th_state_d = (l15_rtrn_i.l15_threadid) ? FREE_T1 : FREE_T0;
+            WAITING_ACK: begin 
+                if (req_valid_i && l15_rtrn_i.l15_ack) begin
+                    hpdc_tid_d[req_thid]    = req_i.mem_req_id;   // Save the request id
+                    hpdc_pid_d[req_thid]    = req_pid_i;          // Save the port id
+                    req_ready               = '1;
+                    th_state_d              = IDLE;
+                end else begin
+                    th_state_d              = WAITING_ACK;
                 end
             end
         endcase
@@ -320,7 +299,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     always_ff @(posedge clk_i or negedge rst_ni)
     begin: thread_id_fsm_ff
      if (!rst_ni) begin
-            th_state_q     <= FREE_T0_T1;
+            th_state_q     <= IDLE;
             hpdc_tid_q[0]  <= '0;
             hpdc_tid_q[1]  <= '0; 
             hpdc_pid_q[0]  <= '0;
@@ -333,6 +312,27 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
             hpdc_pid_q[1]  <= hpdc_pid_d[1];
         end
     end
+
+
+    hpdcache_fifo_reg_initialized #(
+            .FIFO_DEPTH  (2),
+            .fifo_data_t (logic)
+    ) i_threadid_fifo (
+            .clk_i,
+            .rst_ni,
+            // Valid input if its a valid response
+            .w_i                (resp_ready_i && l15_rtrn_i.l15_val && ~mem_only_inval),
+            .wok_o              (/*unused*/), // Should always be ready to write
+            // Return thid used 
+            .wdata_i            (l15_rtrn_i.l15_threadid),
+            // Request sended
+            .r_i                (req_valid_i && l15_rtrn_i.l15_ack),
+            // Thread id available
+            .rok_o              (free_thid),
+            // Thread id used
+            .rdata_o            (req_thid),
+            .initial_value_i    (2'b01)
+    );
 
      // }}}
 

@@ -26,6 +26,7 @@
 +incdir+include
 src/common/hpdcache_demux.sv
 src/common/hpdcache_fifo_reg.sv
+src/common/hpdcache_fifo_reg_initialized.sv
 src/common/hpdcache_fxarb.sv
 src/common/hpdcache_rrarb.sv
 src/common/hpdcache_mux.sv
