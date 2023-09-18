@@ -46,10 +46,18 @@ TEX_SOURCES   = $(SOURCE_DIR)/$(TARGET).bib \
                 $(AUX_DIR)/hpdcache_request_arbiter.pdf \
                 $(AUX_DIR)/hpdcache_core.pdf \
                 $(AUX_DIR)/hpdcache_request_address_data_alignment.pdf \
+                $(AUX_DIR)/hpdcache_data_ram_organization.emf \
+                $(AUX_DIR)/hpdcache_request_arbiter.emf \
+                $(AUX_DIR)/hpdcache_core.emf \
+                $(AUX_DIR)/hpdcache_request_address_data_alignment.emf \
                 $(AUX_DIR)/wave_ready_before_valid.pdf \
                 $(AUX_DIR)/wave_valid_before_ready.pdf \
                 $(AUX_DIR)/wave_ready_when_valid.pdf \
-                $(AUX_DIR)/wave_back_to_back.pdf
+                $(AUX_DIR)/wave_back_to_back.pdf \
+                $(AUX_DIR)/wave_ready_before_valid.emf \
+                $(AUX_DIR)/wave_valid_before_ready.emf \
+                $(AUX_DIR)/wave_ready_when_valid.emf \
+                $(AUX_DIR)/wave_back_to_back.emf
 
 LATEXMK_ARGS  = -bibtex \
                 $(if $(VERBOSE),,-silent) \
@@ -91,6 +99,10 @@ $(AUX_DIR)/$(TARGET).pdf: $(SOURCE_DIR)/$(TARGET).tex \
 $(AUX_DIR)/%.pdf: %.svg
 	@$(MKDIR) $(dir $@)
 	$(INKSCAPE) --export-pdf=$@ --export-area-drawing $<
+
+$(AUX_DIR)/%.emf: %.svg
+	@$(MKDIR) $(dir $@)
+	$(INKSCAPE) --export-emf=$@ --export-area-drawing $<
 
 .PHONY: view
 view: $(PDF_DIR)/$(TARGET).pdf
