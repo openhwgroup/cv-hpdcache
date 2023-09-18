@@ -31,6 +31,7 @@ module cva6_hpdcache_subsystem
 #(
   parameter config_pkg::cva6_cfg_t CVA6Cfg = config_pkg::cva6_cfg_empty,
   parameter ariane_pkg::ariane_cfg_t ArianeCfg = ariane_pkg::ArianeDefaultConfig,  // contains cacheable regions
+  parameter int NumPorts = 4,
   parameter int NrHwPrefetchers = 4,
   parameter type noc_req_t = logic,
   parameter type noc_resp_t = logic,
@@ -73,8 +74,8 @@ module cva6_hpdcache_subsystem
   input  cmo_req_t                   dcache_cmo_req_i,       // from CMO FU
   output cmo_rsp_t                   dcache_cmo_resp_o,      // to CMO FU
   //  Request ports
-  input  ariane_pkg::dcache_req_i_t [2:0] dcache_req_ports_i,     // from LSU
-  output ariane_pkg::dcache_req_o_t [2:0] dcache_req_ports_o,     // to LSU
+  input  ariane_pkg::dcache_req_i_t [NumPorts-1:0] dcache_req_ports_i, // from LSU
+  output ariane_pkg::dcache_req_o_t [NumPorts-1:0] dcache_req_ports_o, // to LSU
   //  Write Buffer status
   output logic                       wbuffer_empty_o,
   output logic                       wbuffer_not_ni_o,
@@ -137,7 +138,17 @@ module cva6_hpdcache_subsystem
   //  {{{
   `include "hpdcache_typedef.svh"
 
-  localparam int HPDCACHE_NREQUESTERS = 5;
+  //    0: Page-Table Walk (PTW)
+  //    1: Load unit
+  //    2: Accelerator load
+  //    3: Store/AMO
+  //    .
+  //    .
+  //    .
+  //    NumPorts: CMO
+  //    NumPorts + 1: Hardware Memory Prefetcher (hwpf)
+  localparam int HPDCACHE_NREQUESTERS = NumPorts + 2;
+
   typedef logic [CVA6Cfg.AxiAddrWidth-1:0]      hpdcache_mem_addr_t;
   typedef logic [ariane_pkg::MEM_TID_WIDTH-1:0] hpdcache_mem_id_t;
   typedef logic [CVA6Cfg.AxiDataWidth-1:0]      hpdcache_mem_data_t;
@@ -204,9 +215,9 @@ module cva6_hpdcache_subsystem
   hwpf_stride_pkg::hwpf_stride_throttle_t [NrHwPrefetchers-1:0] hwpf_throttle_out;
 
   generate
-    ariane_pkg::dcache_req_i_t   dcache_req_ports[HPDCACHE_NREQUESTERS-1:0];
+    ariane_pkg::dcache_req_i_t dcache_req_ports[HPDCACHE_NREQUESTERS-1:0];
 
-    for (genvar r = 0; r < 2; r++) begin : cva6_hpdcache_load_if_adapter_gen
+    for (genvar r = 0; r < (NumPorts-1); r++) begin : cva6_hpdcache_load_if_adapter_gen
       assign dcache_req_ports[r] = dcache_req_ports_i[r];
 
       cva6_hpdcache_load_if_adapter #(
@@ -235,19 +246,19 @@ module cva6_hpdcache_subsystem
       .clk_i,
       .rst_ni,
 
-      .dcache_req_sid_i                            (hpdcache_pkg::hpdcache_req_sid_t'(2)),
+      .dcache_req_sid_i                            (hpdcache_pkg::hpdcache_req_sid_t'(NumPorts-1)),
 
-      .cva6_req_i                                  (dcache_req_ports_i[2]),
-      .cva6_req_o                                  (dcache_req_ports_o[2]),
+      .cva6_req_i                                  (dcache_req_ports_i[NumPorts-1]),
+      .cva6_req_o                                  (dcache_req_ports_o[NumPorts-1]),
       .cva6_amo_req_i                              (dcache_amo_req_i),
       .cva6_amo_resp_o                             (dcache_amo_resp_o),
 
-      .dcache_req_valid_o                          (dcache_req_valid[2]),
-      .dcache_req_ready_i                          (dcache_req_ready[2]),
-      .dcache_req_o                                (dcache_req[2]),
+      .dcache_req_valid_o                          (dcache_req_valid[NumPorts-1]),
+      .dcache_req_ready_i                          (dcache_req_ready[NumPorts-1]),
+      .dcache_req_o                                (dcache_req[NumPorts-1]),
 
-      .dcache_rsp_valid_i                          (dcache_rsp_valid[2]),
-      .dcache_rsp_i                                (dcache_rsp[2])
+      .dcache_rsp_valid_i                          (dcache_rsp_valid[NumPorts-1]),
+      .dcache_rsp_i                                (dcache_rsp[NumPorts-1])
     );
 
 `ifdef HPDCACHE_ENABLE_CMO
@@ -259,21 +270,21 @@ module cva6_hpdcache_subsystem
       .clk_i,
       .rst_ni,
 
-      .dcache_req_sid_i                            (hpdcache_pkg::hpdcache_req_sid_t'(3)),
+      .dcache_req_sid_i                            (hpdcache_pkg::hpdcache_req_sid_t'(NumPorts)),
 
       .cva6_cmo_req_i                              (dcache_cmo_req_i),
       .cva6_cmo_resp_o                             (dcache_cmo_resp_o),
 
-      .dcache_req_valid_o                          (dcache_req_valid[3]),
-      .dcache_req_ready_i                          (dcache_req_ready[3]),
-      .dcache_req_o                                (dcache_req[3]),
+      .dcache_req_valid_o                          (dcache_req_valid[NumPorts]),
+      .dcache_req_ready_i                          (dcache_req_ready[NumPorts]),
+      .dcache_req_o                                (dcache_req[NumPorts]),
 
-      .dcache_rsp_valid_i                          (dcache_rsp_valid[3]),
-      .dcache_rsp_i                                (dcache_rsp[3])
+      .dcache_rsp_valid_i                          (dcache_rsp_valid[NumPorts]),
+      .dcache_rsp_i                                (dcache_rsp[NumPorts])
     );
 `else
-    assign dcache_req_valid[3] = 1'b0,
-           dcache_req[3]       = '0;
+    assign dcache_req_valid[NumPorts] = 1'b0,
+           dcache_req[NumPorts]       = '0;
 `endif
   endgenerate
 
@@ -282,15 +293,15 @@ module cva6_hpdcache_subsystem
           snoop_addr[0] = dcache_req[1].addr;
 
   //  Snoop Store/AMO port
-  assign snoop_valid[1] = dcache_req_valid[2] & dcache_req_ready[2],
-          snoop_addr[1] = dcache_req[2].addr;
+  assign snoop_valid[1] = dcache_req_valid[NumPorts-1] & dcache_req_ready[NumPorts-1],
+          snoop_addr[1] = dcache_req[NumPorts-1].addr;
 
 `ifdef HPDCACHE_ENABLE_CMO
   //  Snoop CMO port (in case of read prefetch accesses)
   assign dcache_cmo_req_is_prefetch =
-          hpdcache_pkg::is_cmo_prefetch(dcache_req[3].op, dcache_req[3].size);
-  assign snoop_valid[2] = dcache_req_valid[3] & dcache_req_ready[3] & dcache_cmo_req_is_prefetch,
-          snoop_addr[2] = dcache_req[3].addr;
+          hpdcache_pkg::is_cmo_prefetch(dcache_req[NumPorts].op, dcache_req[NumPorts].size);
+  assign snoop_valid[2] = dcache_req_valid[NumPorts] & dcache_req_ready[NumPorts] & dcache_cmo_req_is_prefetch,
+          snoop_addr[2] = dcache_req[NumPorts].addr;
 `else
   assign snoop_valid[2] = 1'b0,
           snoop_addr[2] = '0;
@@ -324,13 +335,13 @@ module cva6_hpdcache_subsystem
     .snoop_valid_i              (snoop_valid),
     .snoop_addr_i               (snoop_addr),
 
-    .dcache_req_sid_i           (hpdcache_pkg::hpdcache_req_sid_t'(4)),
+    .dcache_req_sid_i           (hpdcache_pkg::hpdcache_req_sid_t'(NumPorts+1)),
 
-    .dcache_req_valid_o         (dcache_req_valid[4]),
-    .dcache_req_ready_i         (dcache_req_ready[4]),
-    .dcache_req_o               (dcache_req[4]),
-    .dcache_rsp_valid_i         (dcache_rsp_valid[4]),
-    .dcache_rsp_i               (dcache_rsp[4])
+    .dcache_req_valid_o         (dcache_req_valid[NumPorts+1]),
+    .dcache_req_ready_i         (dcache_req_ready[NumPorts+1]),
+    .dcache_req_o               (dcache_req[NumPorts+1]),
+    .dcache_rsp_valid_i         (dcache_rsp_valid[NumPorts+1]),
+    .dcache_rsp_i               (dcache_rsp[NumPorts+1])
   );
 
   hpdcache #(
@@ -522,6 +533,9 @@ module cva6_hpdcache_subsystem
   //  Assertions
   //  {{{
   //  pragma translate_off
+  initial assert (hpdcache_pkg::HPDCACHE_REQ_SRC_ID_WIDTH >= $clog2(HPDCACHE_NREQUESTERS))
+    else $fatal(1, "HPDCACHE_REQ_SRC_ID_WIDTH is not wide enough");
+
   a_invalid_instruction_fetch: assert property (
     @(posedge clk_i) disable iff (!rst_ni) icache_dreq_o.valid |-> (|icache_dreq_o.data) !== 1'hX)
   else $warning(1,"[l1 dcache] reading invalid instructions: vaddr=%08X, data=%08X",
