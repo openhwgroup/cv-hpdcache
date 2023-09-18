@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 
+### Removed
+
+### Changed
+
+### Fixed
+
+## [2.0.0] - 2023-09-18
+
+### Added
+
 - Add parameters in the HPDcache module to define the types of interfaces to
   the memory
 - Add helper verilog header file with macros to ease the type definition of
