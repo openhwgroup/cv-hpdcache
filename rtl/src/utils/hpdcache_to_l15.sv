@@ -31,6 +31,11 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     parameter hpdcache_uint    AdapterInvalFifoDepth = 5,
     parameter bit              SwapEndianess = 1,
     parameter hpdcache_uint    HPDcacheMemDataWidth = 128,
+`ifdef WRITE_BYTE_MASK
+    parameter bit              WriteByteMaskEnabled = 1,
+`else 
+    parameter bit              WriteByteMaskEnabled = 0,
+`endif
 
     parameter type hpdcache_mem_req_t = logic,
     parameter type hpdcache_mem_req_w_t = logic,
@@ -126,9 +131,10 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     logic                                       req_valid;
     // L1.5 Req Ready
     logic                                       req_ready;
-    // Size of the unc. store request. Its compulsory to replicate the data of the request according to its size. 
-    hpdcache_pkg::hpdcache_mem_size_t           req_unc_st_size;
-    logic [HPDcacheMemDataWidth/8-1:0]          req_unc_st_offset;
+    // Size of the unc. store request. Its compulsory to replicate the data of the request according to its size.
+    hpdcache_mem_addr_t                         req_wt_address; 
+    hpdcache_pkg::hpdcache_mem_size_t           req_wt_size;
+    logic [2:0]                                 req_wt_offset;
     logic [$clog2(HPDcacheMemDataWidth/8)-1:0]  first_one_pos,num_ones;
     // Invalidations
     logic                                       mem_inval_icache_valid;
@@ -157,16 +163,17 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                                                 (req_is_write || req_is_unc_write) ? L15_STORE_RQ : L15_ATOMIC_RQ,
            l15_req_o.l15_nc                   = ~req_i.mem_req_cacheable,
                                                 // IMiss Unch: 4B Cach: 32B cacheline; Load/Store/AMO Max 16B cacheline (other possible sizes: 1,2,4,8B)
-           l15_req_o.l15_size                 = (req_is_ifill)                  ? ((req_i.mem_req_cacheable) ? 3'b111 : 3'b010) : // IMiss     
-                                                (req_is_unc_write)              ? req_unc_st_size :                               // Unc. Store
-                                                (req_i.mem_req_size == 3'b100)  ? 3'b111 : req_i.mem_req_size,                    // Load & Unc. Load / Store / AMO
+           l15_req_o.l15_size                 = (req_is_ifill)                              ? ((req_i.mem_req_cacheable) ? 3'b111 : 3'b010) : // IMiss     
+                                                (req_is_write  && ~WriteByteMaskEnabled)    ? req_wt_size :                                   // Store (1/2/4/8) 
+                                                (req_i.mem_req_size == 3'b100)              ? 3'b111 : req_i.mem_req_size,                    // Load & Unc. Load &  Unc. Store (1/2/4/8) & AMO (4/8) & Store (8)
            l15_req_o.l15_threadid             = req_thid, 
-           l15_req_o.l15_address              = req_i.mem_req_addr,
+                                                // Store req. address aligned to WBUF entry size. 
+           l15_req_o.l15_address              = (req_is_write  && ~WriteByteMaskEnabled)    ? req_wt_address : req_i.mem_req_addr,
                                                 // Swap Endiannes and replicate transfers shorter than a dword for Store/AMO requests
-           l15_req_o.l15_data                 = (SwapEndianess) ? (req_is_unc_write) ?  swendian64(repData64(req_wdata[63:0],req_unc_st_offset,req_unc_st_size[1:0]))  :
-                                                                                        swendian64(req_wdata[63:0]) : 
-                                                                  (req_is_unc_write) ?  repData64(req_wdata[63:0],req_unc_st_offset,req_unc_st_size[1:0]) :
-                                                                                        req_wdata[63:0],
+           l15_req_o.l15_data                 = (SwapEndianess) ? (req_is_unc_write) ?  swendian64(repData64(req_wdata[63:0],req_wt_offset[2:0],req_wt_size[1:0]))  :
+                                                                                                                                    swendian64(req_wdata[63:0]) : 
+                                                                  (req_is_unc_write) ?  repData64(req_wdata[63:0],req_wt_offset[2:0],req_wt_size[1:0]) :
+                                                                                                                                    req_wdata[63:0],
            l15_req_o.l15_data_next_entry      = '0, // unused in Ariane (only used for CAS atomic requests)
            l15_req_o.l15_csm_data             = '0, // unused in Ariane (only used for coherence domain restriction features)
            l15_req_o.l15_amo_op               = req_amo_op_type,
@@ -174,8 +181,11 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
            l15_req_o.l15_invalidate_cacheline = '0, // unused by Ariane as L1 has no ECC at the moment
            l15_req_o.l15_blockstore           = '0, // unused in openpiton
            l15_req_o.l15_blockinitstore       = '0, // unused in openpiton
-           l15_req_o.l15_l1rplway             = '0, // Not used for this adapter
-           l15_req_o.l15_be                   = swendian8B(req_wbe[0 +: 8] | req_wbe[HPDcacheMemDataWidth/8-1 -: 8]); 
+           l15_req_o.l15_l1rplway             = '0; // Not used for this adapter
+`ifdef WRITE_BYTE_MASK
+    assign l15_req_o.l15_be                   = swendian8B(req_wbe[0 +: 8] | req_wbe[HPDcacheMemDataWidth/8-1 -: 8]);
+`endif
+
 
     // Type of request based on the request mux index port (req_index_i: 0->IMISS, 1->Read 2-> Write 3-> Un.Read 4-> Un. Write)
     assign req_is_ifill                       = req_index_i[0],
@@ -336,7 +346,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
 
      // }}}
 
-    // Combinational logic to obtain the store size for data replication
+    // Combinational logic to obtain the store size for data replication and aligned addreses
     // {{{
 
     always_comb
@@ -356,24 +366,29 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     begin:rst_size_comb
         unique case (num_ones)
             4'b0001: begin
-                req_unc_st_size   = '0;      //1B
-                req_unc_st_offset = first_one_pos[2:0];
+                req_wt_size     = '0;      //1B
+                req_wt_offset   = first_one_pos[2:0];
+                req_wt_address  = {req_i.mem_req_addr[HPDCACHE_PA_WIDTH-1:3],req_wt_offset[2:0]};
             end
             4'b0010: begin
-                req_unc_st_size   = 3'b001;  //2B
-                req_unc_st_offset = (first_one_pos[2:0]-1'b1);
+                req_wt_size     = 3'b001;  //2B
+                req_wt_offset   = (first_one_pos[2:0]-1'b1);
+                req_wt_address  = {req_i.mem_req_addr[HPDCACHE_PA_WIDTH-1:3],req_wt_offset[2:0]};
             end
             4'b0100: begin 
-                req_unc_st_size   = 3'b010;  //4B
-                req_unc_st_offset = (first_one_pos[2:0]-2'b11);          
+                req_wt_size     = 3'b010;  //4B
+                req_wt_offset   = (first_one_pos[2:0]-2'b11);          
+                req_wt_address  = {req_i.mem_req_addr[HPDCACHE_PA_WIDTH-1:3],req_wt_offset[2:0]};
             end 
             4'b1000: begin
-                 req_unc_st_size   = 3'b011; //8B
-                 req_unc_st_offset = '0;
+                 req_wt_size    = 3'b011; //8B
+                 req_wt_offset  = '0;
+                 req_wt_address = req_i.mem_req_addr; //Already aligned
             end
             default: begin 
-                req_unc_st_size   = 3'b111;  //16B
-                req_unc_st_offset = '0;
+                req_wt_size     = 3'b111;  //16B
+                req_wt_offset   = '0;
+                req_wt_address  = req_i.mem_req_addr; //Already aligned
             end
         endcase
     end

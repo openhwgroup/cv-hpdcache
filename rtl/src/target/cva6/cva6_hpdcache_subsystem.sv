@@ -441,10 +441,15 @@ module cva6_hpdcache_subsystem import ariane_pkg::*; import wt_cache_pkg::*; imp
     .wbuf_empty_o                      (wbuffer_empty_o),
 
     .cfg_enable_i                        (dcache_enable_i),
-    .cfg_wbuf_threshold_i                (4'd5),
     .cfg_wbuf_reset_timecnt_on_write_i   (1'b1),
     .cfg_wbuf_sequential_waw_i           (1'b0),
+  `ifdef WRITE_BYTE_MASK
     .cfg_wbuf_inhibit_write_coalescing_i (1'b0),
+    .cfg_wbuf_threshold_i                (4'd5),
+  `else
+    .cfg_wbuf_inhibit_write_coalescing_i (1'b1),
+    .cfg_wbuf_threshold_i                (4'd0),
+  `endif
     .cfg_prefetch_updt_plru_i            (1'b1),
     .cfg_error_on_cacheable_amo_i        (1'b0),
     .cfg_rtab_single_entry_i             (1'b0)
