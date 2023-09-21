@@ -91,6 +91,9 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     
      // Internal types
      // {{{ 
+    // Maximum number of thread ids ( or Maximum number of on-fly requests)
+    localparam hpdcache_uint NUM_THREAD_IDS = $pow(2,wt_cache_pkg::L15_TID_WIDTH);
+
     typedef enum {
         IDLE,
         WAITING_HEADER_ACK,
@@ -98,14 +101,15 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     } thread_id_fsm_t;
 
     // L15_TIDs entry table to save the HPDC threadids and portids
-    typedef hpdcache_mem_id_t [1:0] hpdc_thid_l15et_t;
-    typedef req_portid_t      [1:0] hpdc_pid_l15et_t;
+    typedef hpdcache_mem_id_t [NUM_THREAD_IDS-1:0] hpdc_thid_l15et_t;
+    typedef req_portid_t      [NUM_THREAD_IDS-1:0] hpdc_pid_l15et_t;
+    typedef logic             [wt_cache_pkg::L15_TID_WIDTH-1:0] free_thid_t;
+    
 
     // }}}
 
     // Declaration of internal registers/signals
     // {{{
-
     // Request type
     logic                                       req_is_ifill;
     logic                                       req_is_read;
@@ -123,10 +127,12 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     hpdc_thid_l15et_t                           hpdc_tid_q, hpdc_tid_d;
     // HPDC Req Port ID
     hpdc_pid_l15et_t                            hpdc_pid_q, hpdc_pid_d;
+    // Initial value of the free list
+    free_thid_t [NUM_THREAD_IDS-1:0]            free_thid_list;
     // Thread id available to send a request to L1.5
     logic                                       free_thid;
     // L1.5 Req Thread ID 
-    logic [wt_cache_pkg::L15_TID_WIDTH-1:0]     req_thid;
+    free_thid_t                                 req_thid;
     // L1.5 Req Valid
     logic                                       req_valid;
     // L1.5 Req Ready
@@ -167,9 +173,9 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                                                 (req_is_write  && ~WriteByteMaskEnabled)    ? req_wt_size :                                   // Store (1/2/4/8) 
                                                 (req_i.mem_req_size == 3'b100)              ? 3'b111 : req_i.mem_req_size,                    // Load & Unc. Load &  Unc. Store (1/2/4/8) & AMO (4/8) & Store (8)
            l15_req_o.l15_threadid             = req_thid, 
-                                                // Store req. address aligned to WBUF entry size. 
+                                                // If WBME=0, the store req. hast to be aligned to its size (by default its aligned to WBUF entry size). 
            l15_req_o.l15_address              = (req_is_write  && ~WriteByteMaskEnabled)    ? req_wt_address : req_i.mem_req_addr,
-                                                // Swap Endiannes and replicate transfers shorter than a dword for Store/AMO requests
+                                                // Swap Endiannes and replicate transfers shorter than a dword for Unc. Store requests
            l15_req_o.l15_data                 = (SwapEndianess) ? (req_is_unc_write) ?  swendian64(repData64(req_wdata[63:0],req_wt_offset[2:0],req_wt_size[1:0]))  :
                                                                                                                                     swendian64(req_wdata[63:0]) : 
                                                                   (req_is_unc_write) ?  repData64(req_wdata[63:0],req_wt_offset[2:0],req_wt_size[1:0]) :
@@ -246,8 +252,10 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     // }}}
 
 
-    // FSM to control the access to L1.5. OpenPiton (Requests)
+    // Control of the threaids used to access to L1.5. 
     // {{{
+        // FSM to control the L1.5 access protocol (Requests)
+        // {{{
     always_comb
     begin: request_fsm_comb
         th_state_d = th_state_q;
@@ -257,7 +265,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
         req_ready  = '0;
         unique case (th_state_q)
             IDLE: begin
-                // Valid request and there is a thid free
+                // Valid request and available thread id
                 if (req_valid_i && free_thid) begin
                     req_valid = '1;
                     if (l15_rtrn_i.l15_header_ack) begin 
@@ -276,6 +284,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                     th_state_d = IDLE;
                 end 
             end
+            // Waiting for valid header_ack 
             WAITING_HEADER_ACK: begin
                 req_valid = '1;
                 if (req_valid_i && l15_rtrn_i.l15_header_ack) begin
@@ -291,6 +300,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                         th_state_d        = WAITING_HEADER_ACK;
                 end
             end
+            // Waiting for valid ack (Request valid = 0, but the rest of values have to be maintained)
             WAITING_ACK: begin 
                 if (req_valid_i && l15_rtrn_i.l15_ack) begin
                     hpdc_tid_d[req_thid]    = req_i.mem_req_id;   // Save the request id
@@ -322,31 +332,43 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
             hpdc_pid_q[1]  <= hpdc_pid_d[1];
         end
     end
+        // }}}
 
+        // Free list of thread ids
+        // {{{
+
+        // Generates the initial value of the free thread id list
+    always_comb
+    begin: free_thid_list_init_comb
+        for (int i = 0; i < NUM_THREAD_IDS; i++) begin
+            free_thid_list[i] = i;
+        end
+    end
 
     hpdcache_fifo_reg_initialized #(
-            .FIFO_DEPTH  (2),
-            .fifo_data_t (logic)
-    ) i_threadid_fifo (
+            .FIFO_DEPTH  (NUM_THREAD_IDS),
+            .fifo_data_t (free_thid_t)
+    ) i_free_threadid_fifo (
             .clk_i,
             .rst_ni,
             // Valid input if its a valid response
             .w_i                (resp_ready_i && l15_rtrn_i.l15_val && ~mem_only_inval),
             .wok_o              (/*unused*/), // Should always be ready to write
-            // Return thid used 
+            // Return thid used for the response
             .wdata_i            (l15_rtrn_i.l15_threadid),
             // Request sended
             .r_i                (req_valid_i && l15_rtrn_i.l15_ack),
             // Thread id available
             .rok_o              (free_thid),
-            // Thread id used
+            // Thread id used for the request
             .rdata_o            (req_thid),
-            .initial_value_i    (2'b01)
+            // Initial value/state of the list
+            .initial_value_i    (free_thid_list)
     );
+        // }}}
+    // }}}
 
-     // }}}
-
-    // Combinational logic to obtain the store size for data replication and aligned addreses
+    // Combinational logic to obtain the store size for data replication and aligned addresses
     // {{{
 
     always_comb
