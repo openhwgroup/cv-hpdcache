@@ -298,19 +298,35 @@ import hpdcache_pkg::*;
                 end
             end
 
-            hpdcache_sram_wbyteenable #(
-                .DATA_SIZE     (HPDCACHE_MSHR_WAYS*HPDCACHE_MSHR_RAM_ENTRY_BITS),
-                .ADDR_SIZE     (HPDCACHE_MSHR_SET_WIDTH)
-            ) mshr_sram (
-                .clk           (clk_i),
-                .rst_n         (rst_ni),
-                .cs            (mshr_cs),
-                .we            (mshr_we),
-                .addr          (mshr_addr),
-                .wbyteenable   (mshr_wbyteenable),
-                .wdata         (mshr_wdata),
-                .rdata         (mshr_rdata)
-            );
+            if (HPDCACHE_MSHR_USE_REGBANK) begin : mshr_regbank_gen
+                hpdcache_regbank_wbyteenable_1rw #(
+                    .DATA_SIZE     (HPDCACHE_MSHR_WAYS*HPDCACHE_MSHR_RAM_ENTRY_BITS),
+                    .ADDR_SIZE     (HPDCACHE_MSHR_SET_WIDTH)
+                ) mshr_mem(
+                    .clk           (clk_i),
+                    .rst_n         (rst_ni),
+                    .cs            (mshr_cs),
+                    .we            (mshr_we),
+                    .addr          (mshr_addr),
+                    .wmask         (mshr_wmask),
+                    .wdata         (mshr_wdata),
+                    .rdata         (mshr_rdata)
+                );
+            end else begin : mshr_sram_gen
+                hpdcache_sram_wbyteenable #(
+                    .DATA_SIZE     (HPDCACHE_MSHR_WAYS*HPDCACHE_MSHR_RAM_ENTRY_BITS),
+                    .ADDR_SIZE     (HPDCACHE_MSHR_SET_WIDTH)
+                ) mshr_mem(
+                    .clk           (clk_i),
+                    .rst_n         (rst_ni),
+                    .cs            (mshr_cs),
+                    .we            (mshr_we),
+                    .addr          (mshr_addr),
+                    .wbyteenable   (mshr_wbyteenable),
+                    .wdata         (mshr_wdata),
+                    .rdata         (mshr_rdata)
+                );
+            end
         end else begin : mshr_wmask_gen
             typedef logic [HPDCACHE_MSHR_RAM_ENTRY_BITS-1:0] mshr_sram_wmask_t;
             mshr_sram_wmask_t [HPDCACHE_MSHR_WAYS-1:0] mshr_wmask;
@@ -322,19 +338,35 @@ import hpdcache_pkg::*;
                 end
             end
 
-            hpdcache_sram_wmask #(
-                .DATA_SIZE     (HPDCACHE_MSHR_WAYS*HPDCACHE_MSHR_RAM_ENTRY_BITS),
-                .ADDR_SIZE     (HPDCACHE_MSHR_SET_WIDTH)
-            ) mshr_sram (
-                .clk           (clk_i),
-                .rst_n         (rst_ni),
-                .cs            (mshr_cs),
-                .we            (mshr_we),
-                .addr          (mshr_addr),
-                .wmask         (mshr_wmask),
-                .wdata         (mshr_wdata),
-                .rdata         (mshr_rdata)
-            );
+            if (HPDCACHE_MSHR_USE_REGBANK) begin : mshr_regbank_gen
+                hpdcache_regbank_wmask_1rw #(
+                    .DATA_SIZE     (HPDCACHE_MSHR_WAYS*HPDCACHE_MSHR_RAM_ENTRY_BITS),
+                    .ADDR_SIZE     (HPDCACHE_MSHR_SET_WIDTH)
+                ) mshr_mem(
+                    .clk           (clk_i),
+                    .rst_n         (rst_ni),
+                    .cs            (mshr_cs),
+                    .we            (mshr_we),
+                    .addr          (mshr_addr),
+                    .wmask         (mshr_wmask),
+                    .wdata         (mshr_wdata),
+                    .rdata         (mshr_rdata)
+                );
+            end else begin : mshr_sram_gen
+                hpdcache_sram_wmask #(
+                    .DATA_SIZE     (HPDCACHE_MSHR_WAYS*HPDCACHE_MSHR_RAM_ENTRY_BITS),
+                    .ADDR_SIZE     (HPDCACHE_MSHR_SET_WIDTH)
+                ) mshr_mem(
+                    .clk           (clk_i),
+                    .rst_n         (rst_ni),
+                    .cs            (mshr_cs),
+                    .we            (mshr_we),
+                    .addr          (mshr_addr),
+                    .wmask         (mshr_wmask),
+                    .wdata         (mshr_wdata),
+                    .rdata         (mshr_rdata)
+                );
+            end
         end
     endgenerate
 

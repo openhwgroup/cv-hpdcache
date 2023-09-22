@@ -457,6 +457,8 @@ package hpdcache_pkg;
     //  HPDcache MSHR implements write byte enable
     localparam bit HPDCACHE_MSHR_RAM_WBYTEENABLE =
         hpdcache_params_pkg::PARAM_MSHR_RAM_WBYTEENABLE;
+    localparam bit HPDCACHE_MSHR_USE_REGBANK =
+        hpdcache_params_pkg::PARAM_MSHR_USE_REGBANK;
 
     localparam int unsigned HPDCACHE_MSHR_SET_WIDTH = $clog2(HPDCACHE_MSHR_SETS);
     localparam int unsigned HPDCACHE_MSHR_WAY_WIDTH = $clog2(HPDCACHE_MSHR_WAYS);

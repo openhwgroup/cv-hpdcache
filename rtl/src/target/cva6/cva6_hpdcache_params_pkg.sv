@@ -135,6 +135,11 @@ package hpdcache_params_pkg;
         `define CONF_HPDCACHE_MSHR_RAM_WBYTEENABLE 1'b0
     `endif
     localparam bit PARAM_MSHR_RAM_WBYTEENABLE = `CONF_HPDCACHE_MSHR_RAM_WBYTEENABLE;
+
+    `ifndef CONF_HPDCACHE_MSHR_USE_REGBANK
+        `define CONF_HPDCACHE_MSHR_USE_REGBANK 0
+    `endif
+    localparam bit PARAM_MSHR_USE_REGBANK = `CONF_HPDCACHE_MSHR_USE_REGBANK;
     //  }}}
 
     //  Definition of constants and types for the Write Buffer (WBUF)
