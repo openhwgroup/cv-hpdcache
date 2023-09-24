@@ -130,10 +130,10 @@ import hpdcache_pkg::*;
             3'h0,
             3'h1,
             3'h2,
-            3'h3:    ret = hpdcache_data_row_enable_t'({1{1'b1}});
-            3'h4:    ret = hpdcache_data_row_enable_t'({2{1'b1}});
-            3'h5:    ret = hpdcache_data_row_enable_t'({4{1'b1}});
-            default: ret = hpdcache_data_row_enable_t'({8{1'b1}});
+            3'h3:    ret = hpdcache_data_row_enable_t'({ 64/HPDCACHE_WORD_WIDTH{1'b1}});
+            3'h4:    ret = hpdcache_data_row_enable_t'({128/HPDCACHE_WORD_WIDTH{1'b1}});
+            3'h5:    ret = hpdcache_data_row_enable_t'({256/HPDCACHE_WORD_WIDTH{1'b1}});
+            default: ret = hpdcache_data_row_enable_t'({512/HPDCACHE_WORD_WIDTH{1'b1}});
         endcase
 
         off = HPDCACHE_ACCESS_WORDS > 1 ? hpdcache_uint'(word_i[0 +: off_width]) : 0;
