@@ -14,6 +14,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
+## [2.1.0] - 2023-09-25
+
+### Added
+
+- Add additional configuration to implement MSHR in registers (when the number
+  of entries is low)
+
+### Fixed
+
+- Fix cache data SRAM chip-select generation when word width is different than
+  64 bits (e.g. 32 bits)
+
 ## [2.0.0] - 2023-09-18
 
 ### Added
