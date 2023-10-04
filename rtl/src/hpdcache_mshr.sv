@@ -303,7 +303,7 @@ import hpdcache_pkg::*;
                     .cs            (mshr_cs),
                     .we            (mshr_we),
                     .addr          (mshr_addr),
-                    .wmask         (mshr_wmask),
+                    .wbyteenable   (mshr_wbyteenable),
                     .wdata         (mshr_wdata),
                     .rdata         (mshr_rdata)
                 );
