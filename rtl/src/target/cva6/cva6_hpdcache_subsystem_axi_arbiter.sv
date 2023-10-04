@@ -151,7 +151,7 @@ module cva6_hpdcache_subsystem_axi_arbiter
   localparam int ICACHE_CL_WORDS = ariane_pkg::ICACHE_LINE_WIDTH/64;
   localparam int ICACHE_CL_WORD_INDEX = $clog2(ICACHE_CL_WORDS);
   localparam int ICACHE_CL_SIZE = $clog2(ariane_pkg::ICACHE_LINE_WIDTH/8);
-  localparam int ICACHE_WORD_SIZE = ArianeCfg.AxiCompliant ? 3 : 2;
+  localparam int ICACHE_WORD_SIZE = 3;
   localparam int ICACHE_MEM_REQ_CL_LEN =
     (ariane_pkg::ICACHE_LINE_WIDTH + HPDcacheMemDataWidth - 1)/HPDcacheMemDataWidth;
   localparam int ICACHE_MEM_REQ_CL_SIZE =
@@ -165,6 +165,8 @@ module cva6_hpdcache_subsystem_axi_arbiter
   hpdcache_mem_req_t icache_miss_req_rdata;
   logic  icache_miss_req_r, icache_miss_req_rok;
 
+  logic  icache_miss_pending_q;
+
   //  This FIFO has two functionnalities:
   //  -  Stabilize the ready-valid protocol. The ICACHE can abort a valid
   //     transaction without receiving the corresponding ready signal. This
@@ -173,7 +175,7 @@ module cva6_hpdcache_subsystem_axi_arbiter
   hpdcache_fifo_reg #(
       .FIFO_DEPTH  (1),
       .fifo_data_t (hpdcache_mem_req_t)
-  ) i_icache_miss_req_fifo (
+  ) i_icache_miss_req_fifo(
       .clk_i,
       .rst_ni,
 
@@ -210,12 +212,7 @@ module cva6_hpdcache_subsystem_axi_arbiter
   logic                      icache_miss_resp_meta_r, icache_miss_resp_meta_rok;
   hpdcache_mem_id_t          icache_miss_resp_meta_id;
 
-  assign icache_miss_resp_valid_o = icache_miss_resp_meta_rok,
-         icache_miss_resp_o.rtype = wt_cache_pkg::ICACHE_IFILL_ACK,
-         icache_miss_resp_o.data = icache_miss_resp_data_rdata,
-         icache_miss_resp_o.user = '0,
-         icache_miss_resp_o.inv = '0,
-         icache_miss_resp_o.tid = icache_miss_resp_meta_id;
+  icache_resp_data_t         icache_miss_rdata;
 
   generate
     if (HPDcacheMemDataWidth < ariane_pkg::ICACHE_LINE_WIDTH) begin
@@ -264,14 +261,42 @@ module cva6_hpdcache_subsystem_axi_arbiter
       assign icache_miss_resp_wok = icache_miss_resp_data_wok & (
                icache_miss_resp_meta_wok | ~icache_miss_resp_wdata.mem_resp_r_last);
 
+      assign icache_miss_rdata = icache_miss_resp_data_rdata;
+
     end else begin
       assign icache_miss_resp_data_rok = icache_miss_resp_w;
       assign icache_miss_resp_meta_rok = icache_miss_resp_w;
       assign icache_miss_resp_wok = 1'b1;
       assign icache_miss_resp_meta_id = icache_miss_resp_wdata.mem_resp_r_id;
       assign icache_miss_resp_data_rdata = icache_miss_resp_wdata.mem_resp_r_data;
+
+      //  In the case of uncacheable accesses, the Icache expects the data to be right-aligned
+      always_comb
+      begin : icache_miss_resp_data_comb
+        if (!icache_miss_req_rdata.mem_req_cacheable) begin
+          automatic logic [ICACHE_CL_WORD_INDEX - 1: 0] icache_miss_word_index;
+          automatic logic [63:0] icache_miss_word;
+          icache_miss_word_index = icache_miss_req_rdata.mem_req_addr[3 +: ICACHE_CL_WORD_INDEX];
+          icache_miss_word = icache_miss_resp_data_rdata[icache_miss_word_index*64 +: 64];
+          icache_miss_rdata = {{ariane_pkg::ICACHE_LINE_WIDTH-64{1'b0}}, icache_miss_word};
+        end else begin
+          icache_miss_rdata = icache_miss_resp_data_rdata;
+        end
+      end
     end
   endgenerate
+
+  assign icache_miss_resp_valid_o = icache_miss_resp_meta_rok,
+         icache_miss_resp_o.rtype = wt_cache_pkg::ICACHE_IFILL_ACK,
+         icache_miss_resp_o.user = '0,
+         icache_miss_resp_o.inv = '0,
+         icache_miss_resp_o.tid = icache_miss_resp_meta_id,
+         icache_miss_resp_o.data = icache_miss_rdata;
+
+  //  consume the Icache miss on the arrival of the response. The request
+  //  metadata is decoded to forward the correct word in case of uncacheable
+  //  Icache access
+  assign icache_miss_req_r = icache_miss_resp_meta_rok;
   //  }}}
 
   //  Read request arbiter
@@ -284,8 +309,7 @@ module cva6_hpdcache_subsystem_axi_arbiter
   logic                      mem_req_read_valid_arb;
   hpdcache_mem_req_t         mem_req_read_arb;
 
-  assign icache_miss_req_r      = mem_req_read_ready[0],
-         mem_req_read_valid[0]  = icache_miss_req_rok,
+  assign mem_req_read_valid[0]  = icache_miss_req_rok & ~icache_miss_pending_q,
          mem_req_read[0]        = icache_miss_req_rdata;
 
   assign dcache_miss_ready_o    = mem_req_read_ready[1],
@@ -474,6 +498,19 @@ module cva6_hpdcache_subsystem_axi_arbiter
          mem_resp_write_ready_arb[1]  = dcache_uc_write_resp_ready_i;
   //  }}}
 
+  //  I$ miss pending
+  //  {{{
+  always_ff @(posedge clk_i or negedge rst_ni)
+  begin : icache_miss_pending_ff
+    if (!rst_ni) begin
+      icache_miss_pending_q <= 1'b0;
+    end else begin
+      icache_miss_pending_q <= ( (icache_miss_req_rok & mem_req_read_ready[0]) & ~icache_miss_pending_q) |
+                               (~(icache_miss_req_r   & icache_miss_req_rok)   &  icache_miss_pending_q);
+    end
+  end
+  // }}}
+
   //  AXI adapters
   //  {{{
   axi_req_t axi_req;
@@ -548,6 +585,10 @@ module cva6_hpdcache_subsystem_axi_arbiter
     $fatal("HPDcacheMemIdWidth shall be wide enough to identify all pending HPDcache misses and Icache misses");
   initial assert (HPDcacheMemIdWidth >= (hpdcache_pkg::HPDCACHE_WBUF_DIR_PTR_WIDTH + 1)) else
     $fatal("HPDcacheMemIdWidth shall be wide enough to identify all pending HPDcache cacheable writes and uncacheable writes");
+  initial assert (HPDcacheMemDataWidth <= ariane_pkg::ICACHE_LINE_WIDTH) else
+    $fatal("HPDcacheMemDataWidth shall be less or equal to the width of a Icache line");
+  initial assert (HPDcacheMemDataWidth <= ariane_pkg::DCACHE_LINE_WIDTH) else
+    $fatal("HPDcacheMemDataWidth shall be less or equal to the width of a Dcache line");
   //  pragma translate_on
   //  }}}
 
