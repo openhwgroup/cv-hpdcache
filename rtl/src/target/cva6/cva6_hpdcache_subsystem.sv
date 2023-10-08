@@ -30,7 +30,6 @@ module cva6_hpdcache_subsystem
 //  {{{
 #(
   parameter config_pkg::cva6_cfg_t CVA6Cfg = config_pkg::cva6_cfg_empty,
-  parameter ariane_pkg::ariane_cfg_t ArianeCfg = ariane_pkg::ArianeDefaultConfig,  // contains cacheable regions
   parameter int NumPorts = 4,
   parameter int NrHwPrefetchers = 4,
   parameter type noc_req_t = logic,
@@ -114,8 +113,8 @@ module cva6_hpdcache_subsystem
   localparam int ICACHE_RDTXID = 1 << (ariane_pkg::MEM_TID_WIDTH - 1);
 
   cva6_icache #(
-    .RdTxId             (ICACHE_RDTXID),
-    .ArianeCfg          (ArianeCfg)
+    .CVA6Cfg            (CVA6Cfg),
+    .RdTxId             (ICACHE_RDTXID)
   ) i_cva6_icache (
     .clk_i              (clk_i),
     .rst_ni             (rst_ni),
@@ -228,7 +227,7 @@ module cva6_hpdcache_subsystem
       assign dcache_req_ports[r] = dcache_req_ports_i[r];
 
       cva6_hpdcache_if_adapter #(
-        .ArianeCfg                                   (ArianeCfg),
+        .CVA6Cfg                                     (CVA6Cfg),
         .is_load_port                                (1'b1)
       ) i_cva6_hpdcache_load_if_adapter (
         .clk_i,
@@ -254,7 +253,7 @@ module cva6_hpdcache_subsystem
     end
 
     cva6_hpdcache_if_adapter #(
-      .ArianeCfg                                   (ArianeCfg),
+      .CVA6Cfg                                     (CVA6Cfg),
       .is_load_port                                (1'b0)
     ) i_cva6_hpdcache_store_if_adapter (
       .clk_i,
@@ -280,7 +279,6 @@ module cva6_hpdcache_subsystem
 
 `ifdef HPDCACHE_ENABLE_CMO
     cva6_hpdcache_cmo_if_adapter #(
-      .ArianeCfg                                   (ArianeCfg),
       .cmo_req_t                                   (cmo_req_t),
       .cmo_rsp_t                                   (cmo_rsp_t)
     ) i_cva6_hpdcache_cmo_if_adapter (
@@ -500,7 +498,6 @@ module cva6_hpdcache_subsystem
   `AXI_TYPEDEF_R_CHAN_T(axi_r_chan_t, axi_data_t, axi_id_t, axi_user_t)
 
   cva6_hpdcache_subsystem_axi_arbiter #(
-    .ArianeCfg                                       (ArianeCfg),
     .HPDcacheMemIdWidth                              (ariane_pkg::MEM_TID_WIDTH),
     .HPDcacheMemDataWidth                            (CVA6Cfg.AxiDataWidth),
     .hpdcache_mem_req_t                              (hpdcache_mem_req_t),

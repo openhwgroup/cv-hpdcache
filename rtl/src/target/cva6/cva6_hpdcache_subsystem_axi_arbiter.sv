@@ -29,8 +29,6 @@ module cva6_hpdcache_subsystem_axi_arbiter
 //  Parameters
 //  {{{
 #(
-  parameter ariane_pkg::ariane_cfg_t ArianeCfg = ariane_pkg::ArianeDefaultConfig,
-
   parameter int  HPDcacheMemIdWidth = 8,
   parameter int  HPDcacheMemDataWidth = 512,
   parameter type hpdcache_mem_req_t = logic,

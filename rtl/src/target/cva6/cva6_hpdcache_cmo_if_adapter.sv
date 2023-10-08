@@ -29,7 +29,6 @@ import hpdcache_pkg::*;
 //  Parameters
 //  {{{
 #(
-    parameter ariane_pkg::ariane_cfg_t ArianeCfg = ariane_pkg::ArianeDefaultConfig
     parameter type cmo_req_t = logic,
     parameter type cmo_rsp_t = logic
 )

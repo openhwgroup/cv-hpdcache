@@ -29,7 +29,7 @@ import hpdcache_pkg::*;
 //  Parameters
 //  {{{
 #(
-    parameter ariane_pkg::ariane_cfg_t ArianeCfg = ariane_pkg::ArianeDefaultConfig,
+    parameter config_pkg::cva6_cfg_t CVA6Cfg     = config_pkg::cva6_cfg_empty,
     parameter bit is_load_port                   = 1'b1
 )
 //  }}}
@@ -77,7 +77,7 @@ import hpdcache_pkg::*;
         //  {{{
         if (is_load_port == 1'b1) begin : load_port_gen
             assign hpdcache_req_is_uncacheable =
-                !ariane_pkg::is_inside_cacheable_regions(ArianeCfg,
+                !config_pkg::is_inside_cacheable_regions(CVA6Cfg,
                     {{64 - ariane_pkg::DCACHE_TAG_WIDTH{1'b0}}
                     , cva6_req_i.address_tag
                     , {ariane_pkg::DCACHE_INDEX_WIDTH{1'b0}}});
@@ -160,7 +160,7 @@ import hpdcache_pkg::*;
             //  Request forwarding
             //  {{{
             assign hpdcache_req_is_uncacheable =
-                !ariane_pkg::is_inside_cacheable_regions(ArianeCfg,
+                !config_pkg::is_inside_cacheable_regions(CVA6Cfg,
                     {{64 - ariane_pkg::DCACHE_TAG_WIDTH{1'b0}}
                     , hpdcache_req_o.addr_tag, {ariane_pkg::DCACHE_INDEX_WIDTH{1'b0}}});
 
