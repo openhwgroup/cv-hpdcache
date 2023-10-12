@@ -71,9 +71,7 @@ import hpdcache_pkg::*;
     bufptr_t  wrptr_q, wrptr_d;
     bufptr_t  rdptr_q, rdptr_d;
     occupancy_t  used_q, used_d;
-    logic  used_inc, used_dec;
     wordptr_t [DEPTH-1:0]  words_q, words_d;
-    logic  words_inc, words_reset;
     logic  full, empty;
     logic  shift;
     //  }}}
@@ -86,11 +84,19 @@ import hpdcache_pkg::*;
            rok_o = ~empty;
 
     always_comb
-    begin : write_comb
+    begin : ctrl_comb
+        automatic logic used_inc, used_dec;
+        automatic logic words_inc, words_reset;
+
         wrptr_d = wrptr_q;
+        rdptr_d = rdptr_q;
+        words_d = words_q;
+        used_dec = 1'b0;
         used_inc = 1'b0;
+        words_reset = 1'b0;
         words_inc = 1'b0;
         shift = 1'b0;
+
         if (w_i && wok_o) begin
             shift = 1'b1;
             words_inc = (hpdcache_uint'(words_q[wrptr_q]) < (WR_WORDS-1));
@@ -103,13 +109,7 @@ import hpdcache_pkg::*;
                 end
             end
         end
-    end
 
-    always_comb
-    begin : read_comb
-        rdptr_d = rdptr_q;
-        used_dec = 1'b0;
-        words_reset = 1'b0;
         if (r_i && rok_o) begin
             used_dec = 1'b1;
             words_reset = 1'b1;
@@ -119,27 +119,17 @@ import hpdcache_pkg::*;
                 rdptr_d = rdptr_q + 1;
             end
         end
-    end
 
-    always_comb
-    begin : used_comb
         case ({used_inc, used_dec})
             2'b10  : used_d = used_q + 1;
             2'b01  : used_d = used_q - 1;
             default: used_d = used_q;
         endcase
+
+        if (words_inc)   words_d[wrptr_q] = words_q[wrptr_q] + 1;
+        if (words_reset) words_d[rdptr_q] = 0;
     end
 
-    always_comb
-    begin : words_comb
-        words_d = words_q;
-        if (words_inc) begin
-            words_d[wrptr_q] = words_q[wrptr_q] + 1;
-        end
-        if (words_reset) begin
-            words_d[rdptr_q] = 0;
-        end
-    end
 
     always_ff @(posedge clk_i or negedge rst_ni)
     begin : ctrl_ff
@@ -164,7 +154,9 @@ import hpdcache_pkg::*;
         if (!rst_ni) begin
             buf_q <= '0;
         end else begin
-            if (shift) buf_q[wrptr_q][words_q[wrptr_q]] <= wdata_i;
+            if (shift) begin
+                buf_q[wrptr_q][words_q[wrptr_q]] <= wdata_i;
+            end
         end
     end
 

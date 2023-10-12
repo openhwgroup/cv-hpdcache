@@ -70,9 +70,8 @@ import hpdcache_pkg::*;
     bufptr_t  wrptr_q, wrptr_d;
     bufptr_t  rdptr_q, rdptr_d;
     occupancy_t  used_q, used_d;
-    logic  used_inc, used_dec;
     wordptr_t [DEPTH-1:0]  words_q, words_d;
-    logic  words_set, words_dec;
+    logic words_set;
     logic  full, empty;
     //  }}}
 
@@ -84,10 +83,17 @@ import hpdcache_pkg::*;
            rok_o = ~empty;
 
     always_comb
-    begin : write_comb
+    begin : ctrl_comb
+        automatic logic used_inc, used_dec;
+        automatic logic words_dec;
+
+        rdptr_d = rdptr_q;
         wrptr_d = wrptr_q;
+        used_dec = 1'b0;
         used_inc = 1'b0;
+        words_dec = 1'b0;
         words_set = 1'b0;
+
         if (w_i && wok_o) begin
             used_inc  = 1'b1;
             words_set = 1'b1;
@@ -97,13 +103,7 @@ import hpdcache_pkg::*;
                 wrptr_d = wrptr_q + 1;
             end
         end
-    end
 
-    always_comb
-    begin : read_comb
-        rdptr_d = rdptr_q;
-        words_dec = 1'b0;
-        used_dec = 1'b0;
         if (r_i && rok_o) begin
             words_dec = (words_q[rdptr_q] > 0);
             if (words_q[rdptr_q] == 0) begin
@@ -115,19 +115,13 @@ import hpdcache_pkg::*;
                 end
             end
         end
-    end
 
-    always_comb
-    begin : used_comb
         case ({used_inc, used_dec})
             2'b10  : used_d = used_q + 1;
             2'b01  : used_d = used_q - 1;
             default: used_d = used_q;
         endcase
-    end
 
-    always_comb
-    begin : words_comb
         words_d = words_q;
         if (words_set) begin
             words_d[wrptr_q] = wordptr_t'(RD_WORDS - 1);
