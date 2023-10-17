@@ -23,13 +23,6 @@
  *  Description   : HPDcache Write Buffer
  *  History       :
  */
-/*
- *  Improvements
- *  =================
- *  TODO Use a feedthrough FIFO for the data pointers in the send data interface.
- *       Currently, there is always an one-cycle latency between the write
- *       and the availability of the data.
- */
 module hpdcache_wbuf
     //  Parameters
     //  {{{
@@ -48,6 +41,8 @@ module hpdcache_wbuf
     parameter int unsigned WBUF_TIMECNT_MAX      = 8,
     //  Number of most significant bits to check for read conflicts
     parameter int unsigned WBUF_READ_MATCH_WIDTH = 0,
+    //  Use a feedthrough FIFO on the send interface
+    parameter bit WBUF_SEND_FEEDTHROUGH = 0,
 
     localparam int unsigned WBUF_OFFSET_WIDTH   = $clog2((WBUF_WORD_WIDTH*WBUF_WORDS)/8),
     localparam int unsigned WBUF_TAG_WIDTH      = WBUF_PA_WIDTH - WBUF_OFFSET_WIDTH,
@@ -240,12 +235,10 @@ module hpdcache_wbuf
     logic                                       send_meta_ready;
     wbuf_send_meta_t                            send_meta_wdata, send_meta_rdata;
 
-    logic                                       fifo_send_data_wok;
-    logic                                       fifo_send_data_w;
-    wbuf_send_data_t                            fifo_send_data_d;
-    logic                                       fifo_send_data_r;
-    logic                                       fifo_send_data_rok;
-    wbuf_send_data_t                            fifo_send_data_q;
+    logic                                       send_data_wok;
+    logic                                       send_data_w;
+    wbuf_send_data_t                            send_data_d;
+    wbuf_send_data_t                            send_data_q;
 
     wbuf_tag_t                                  write_tag;
     wbuf_data_buf_t                             write_data;
@@ -322,7 +315,7 @@ module hpdcache_wbuf
 
         wbuf_data_free_ptr_d = wbuf_data_free_ptr_q;
         if (send_data_valid_o && send_data_ready_i) begin
-            wbuf_data_free_ptr_d = fifo_send_data_q.send_data_ptr;
+            wbuf_data_free_ptr_d = send_data_q.send_data_ptr;
         end else if (write_i && wbuf_write_free) begin
             wbuf_data_free_ptr_d = wbuf_data_find_next(wbuf_data_free_ptr_q, wbuf_data_valid_q, 1'b0);
         end
@@ -462,7 +455,7 @@ module hpdcache_wbuf
         wbuf_dir_d = wbuf_dir_q;
         wbuf_data_d = wbuf_data_q;
 
-        fifo_send_data_w = 1'b0;
+        send_data_w = 1'b0;
         send_meta_valid = 1'b0;
 
         for (int unsigned i = 0; i < WBUF_DIR_ENTRIES; i++) begin
@@ -548,9 +541,9 @@ module hpdcache_wbuf
                     end
 
                     if (i == int'(wbuf_dir_send_ptr_q)) begin
-                        fifo_send_data_w = send_meta_ready;
-                        send_meta_valid  = fifo_send_data_wok;
-                        if (send_meta_ready && fifo_send_data_wok) begin
+                        send_data_w = send_meta_ready;
+                        send_meta_valid  = send_data_wok;
+                        if (send_meta_ready && send_data_wok) begin
                             wbuf_dir_state_d[i] = WBUF_SENT;
                         end
                     end
@@ -576,7 +569,7 @@ module hpdcache_wbuf
 
         //  de-allocate a data buffer as soon as it is send
         if (send_data_valid_o && send_data_ready_i) begin
-            wbuf_data_valid_d[fifo_send_data_q.send_data_ptr] = 1'b0;
+            wbuf_data_valid_d[send_data_q.send_data_ptr] = 1'b0;
         end
     end
     //  }}}
@@ -584,32 +577,32 @@ module hpdcache_wbuf
     //  Send control
     //  {{{
     //    Data channel
-    assign fifo_send_data_d.send_data_ptr = wbuf_dir_q[wbuf_dir_send_ptr_q].ptr,
-           fifo_send_data_d.send_data_tag = wbuf_dir_q[wbuf_dir_send_ptr_q].tag;
-
     hpdcache_fifo_reg #(
         .FIFO_DEPTH          (WBUF_SEND_FIFO_DEPTH),
+        .FEEDTHROUGH         (WBUF_SEND_FEEDTHROUGH),
         .fifo_data_t         (wbuf_send_data_t)
     ) send_data_ptr_fifo_i (
         .clk_i,
         .rst_ni,
-        .w_i                 (fifo_send_data_w),
-        .wok_o               (fifo_send_data_wok),
-        .wdata_i             (fifo_send_data_d),
-        .r_i                 (fifo_send_data_r),
-        .rok_o               (fifo_send_data_rok),
-        .rdata_o             (fifo_send_data_q)
+        .w_i                 (send_data_w),
+        .wok_o               (send_data_wok),
+        .wdata_i             (send_data_d),
+        .r_i                 (send_data_ready_i),
+        .rok_o               (send_data_valid_o),
+        .rdata_o             (send_data_q)
     );
 
-    assign fifo_send_data_r  = send_data_ready_i,
-           send_data_valid_o = fifo_send_data_rok,
-           send_data_tag_o   = wbuf_addr_t'(fifo_send_data_q.send_data_tag),
-           send_data_o       = wbuf_data_q[fifo_send_data_q.send_data_ptr].data,
-           send_be_o         = wbuf_data_q[fifo_send_data_q.send_data_ptr].be;
+    assign send_data_d.send_data_ptr = wbuf_dir_q[wbuf_dir_send_ptr_q].ptr,
+           send_data_d.send_data_tag = wbuf_dir_q[wbuf_dir_send_ptr_q].tag;
+
+    assign send_data_tag_o   = wbuf_addr_t'(send_data_q.send_data_tag),
+           send_data_o       = wbuf_data_q[send_data_q.send_data_ptr].data,
+           send_be_o         = wbuf_data_q[send_data_q.send_data_ptr].be;
 
     //    Meta-data channel
     hpdcache_fifo_reg #(
         .FIFO_DEPTH          (WBUF_SEND_FIFO_DEPTH),
+        .FEEDTHROUGH         (WBUF_SEND_FEEDTHROUGH),
         .fifo_data_t         (wbuf_send_meta_t)
     ) send_meta_fifo_i (
         .clk_i,
@@ -678,7 +671,7 @@ module hpdcache_wbuf
             (send_meta_valid -> (wbuf_dir_state_q[wbuf_dir_send_ptr_q] == WBUF_PEND))) else
             $error("WBUF: sending a not PEND slot");
     send_valid_data_assert: assert property (@(posedge clk_i)
-            (send_data_valid_o -> (wbuf_data_valid_q[fifo_send_data_q.send_data_ptr] == 1'b1))) else
+            (send_data_valid_o -> (wbuf_data_valid_q[send_data_q.send_data_ptr] == 1'b1))) else
             $error("WBUF: sending a not valid data");
     //  pragma translate_on
     //  }}}

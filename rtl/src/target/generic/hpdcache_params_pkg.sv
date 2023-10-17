@@ -87,7 +87,9 @@ package hpdcache_params_pkg;
     `endif
     localparam int unsigned PARAM_DATA_SETS_PER_RAM = `CONF_HPDCACHE_DATA_SETS_PER_RAM;
 
-    //  HPDcache DATA RAM implements write byte enable
+    //  HPDcache DATA RAM macros implement write byte enable
+    //  -  Write byte enable (1'b1)
+    //  -  Write bit mask (1'b0)
     `ifndef CONF_HPDCACHE_DATA_RAM_WBYTEENABLE
         `define CONF_HPDCACHE_DATA_RAM_WBYTEENABLE 0
     `endif
@@ -96,7 +98,7 @@ package hpdcache_params_pkg;
     //  Define the number of memory contiguous words that can be accessed
     //  simultaneously from the cache.
     //  -  This limits the maximum width for the data channel from requesters
-    //  -  This impacts the refill latency
+    //  -  This impacts the refill latency (more ACCESS_WORDS -> less REFILL LATENCY)
     `ifndef CONF_HPDCACHE_ACCESS_WORDS
         `define CONF_HPDCACHE_ACCESS_WORDS 4
     `endif
@@ -105,6 +107,7 @@ package hpdcache_params_pkg;
 
     //  Definition of constants and types for the Miss Status Holding Register (MSHR)
     //  {{{
+    //  HPDcache MSHR number of sets
     `ifndef CONF_HPDCACHE_MSHR_SETS
         `define CONF_HPDCACHE_MSHR_SETS 64
     `endif
@@ -128,39 +131,58 @@ package hpdcache_params_pkg;
     `endif
     localparam int unsigned PARAM_MSHR_SETS_PER_RAM = `CONF_HPDCACHE_MSHR_SETS_PER_RAM;
 
-    //  HPDcache MSHR implements write byte enable
+    //  HPDcache MSHR macros implement write byte enable
+    //  -  Write byte enable (1'b1)
+    //  -  Write bit mask (1'b0)
     `ifndef CONF_HPDCACHE_MSHR_RAM_WBYTEENABLE
         `define CONF_HPDCACHE_MSHR_RAM_WBYTEENABLE 0
     `endif
     localparam bit PARAM_MSHR_RAM_WBYTEENABLE = `CONF_HPDCACHE_MSHR_RAM_WBYTEENABLE;
 
+    //  HPDcache MSHR whether uses FFs or SRAM
     `ifndef CONF_HPDCACHE_MSHR_USE_REGBANK
         `define CONF_HPDCACHE_MSHR_USE_REGBANK 0
     `endif
     localparam bit PARAM_MSHR_USE_REGBANK = `CONF_HPDCACHE_MSHR_USE_REGBANK;
+
+    //  HPDcache feedthrough FIFOs from the refill handler to the core
+    `ifndef CONF_HPDCACHE_REFILL_CORE_RSP_FEEDTHROUGH
+        `define CONF_HPDCACHE_REFILL_CORE_RSP_FEEDTHROUGH 1'b1
+    `endif
+    localparam bit PARAM_REFILL_CORE_RSP_FEEDTHROUGH = `CONF_HPDCACHE_REFILL_CORE_RSP_FEEDTHROUGH;
     //  }}}
 
     //  Definition of constants and types for the Write Buffer (WBUF)
     //  {{{
+    //  HPDcache Write-Buffer number of entries in the directory
     `ifndef CONF_HPDCACHE_WBUF_DIR_ENTRIES
         `define CONF_HPDCACHE_WBUF_DIR_ENTRIES 16
     `endif
     localparam int unsigned PARAM_WBUF_DIR_ENTRIES = `CONF_HPDCACHE_WBUF_DIR_ENTRIES;
 
+    //  HPDcache Write-Buffer number of entries in the data buffer
     `ifndef CONF_HPDCACHE_WBUF_DATA_ENTRIES
         `define CONF_HPDCACHE_WBUF_DATA_ENTRIES 4
     `endif
     localparam int unsigned PARAM_WBUF_DATA_ENTRIES = `CONF_HPDCACHE_WBUF_DATA_ENTRIES;
 
+    //  HPDcache Write-Buffer number of words per entry
     `ifndef CONF_HPDCACHE_WBUF_WORDS
         `define CONF_HPDCACHE_WBUF_WORDS PARAM_REQ_WORDS
     `endif
     localparam int unsigned PARAM_WBUF_WORDS = `CONF_HPDCACHE_WBUF_WORDS;
 
+    //  HPDcache Write-Buffer threshold counter width (in bits)
     `ifndef CONF_HPDCACHE_WBUF_TIMECNT_WIDTH
         `define CONF_HPDCACHE_WBUF_TIMECNT_WIDTH 4
     `endif
     localparam int unsigned PARAM_WBUF_TIMECNT_WIDTH = `CONF_HPDCACHE_WBUF_TIMECNT_WIDTH;
+
+    //  HPDCACHE feedthrough FIFOs from the write-buffer to the NoC
+    `ifndef CONF_HPDCACHE_WBUF_SEND_FEEDTHROUGH
+        `define CONF_HPDCACHE_WBUF_SEND_FEEDTHROUGH 1'b1
+    `endif
+    localparam bit PARAM_WBUF_SEND_FEEDTHROUGH = `CONF_HPDCACHE_WBUF_SEND_FEEDTHROUGH;
     //  }}}
 
     //  Definition of constants and types for the Replay Table (RTAB)

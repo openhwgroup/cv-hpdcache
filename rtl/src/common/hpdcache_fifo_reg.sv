@@ -21,7 +21,6 @@
  *  Authors       : Cesar Fuguet
  *  Creation Date : April, 2021
  *  Description   : FIFO buffer (using registers)
- *                  Based on design of Ivan Miro-Panades
  *  History       :
  */
 module hpdcache_fifo_reg
@@ -29,6 +28,7 @@ module hpdcache_fifo_reg
     //  {{{
 #(
     parameter int unsigned FIFO_DEPTH = 0,
+    parameter bit FEEDTHROUGH = 1'b0,
     parameter type fifo_data_t = logic
 )
     //  }}}
@@ -46,99 +46,123 @@ module hpdcache_fifo_reg
 );
     //  }}}
 
-    //  Declaration of constants, types and functions
-    //  {{{
-    typedef logic unsigned [$clog2(FIFO_DEPTH)-1:0] fifo_addr_t;
-    //  }}}
+    /*
+     *  Single-entry FIFO buffer -> synchronization buffer
+     */
+    if (FIFO_DEPTH == 1) begin : gen_sync_buffer
+        hpdcache_sync_buffer #(
+            .FEEDTHROUGH     (FEEDTHROUGH),
+            .data_t          (fifo_data_t)
+        ) i_sync_buffer (
+            .clk_i,
+            .rst_ni,
+            .w_i,
+            .wok_o,
+            .wdata_i,
+            .r_i,
+            .rok_o,
+            .rdata_o
+        );
 
-    //  Declaration of internal wires and registers
-    //  {{{
-    fifo_data_t [FIFO_DEPTH-1:0] fifo_mem_q;
-    fifo_addr_t rptr_q, rptr_d; // read pointer
-    fifo_addr_t wptr_q, wptr_d; // write pointer
-    logic       crossover_q, crossover_d; // write pointer has wrap
-    logic       rexec, wexec;
-    logic       rptr_max, wptr_max;
-    logic       match_ptr;
-    //  }}}
+    /*
+     *  Multi-entry FIFO buffer
+     */
+    end else if (FIFO_DEPTH > 0) begin : gen_fifo
+        //  Declaration of constants, types and functions
+        //  {{{
+        typedef logic unsigned [$clog2(FIFO_DEPTH)-1:0] fifo_addr_t;
+        //  }}}
 
-    //  Global control signals
-    //  {{{
-    assign match_ptr = (wptr_q == rptr_q);
-    assign rok_o = match_ptr ?  crossover_q : 1'b1;
-    assign wok_o = match_ptr ? ~crossover_q : 1'b1;
-    assign rexec = rok_o & r_i;
-    assign wexec = wok_o & w_i;
-    //  }}}
+        //  Declaration of internal wires and registers
+        //  {{{
+        fifo_data_t [FIFO_DEPTH-1:0] fifo_mem_q;
+        fifo_addr_t rptr_q, rptr_d; // read pointer
+        fifo_addr_t wptr_q, wptr_d; // write pointer
+        logic       crossover_q, crossover_d; // write pointer has wrap
+        logic       rexec, wexec;
+        logic       rptr_max, wptr_max;
+        logic       match_ptr;
+        logic       empty, full;
+        //  }}}
 
-    //  Control of read and write pointers
-    //  {{{
-    assign rptr_max = (rptr_q == fifo_addr_t'(FIFO_DEPTH-1));
-    assign wptr_max = (wptr_q == fifo_addr_t'(FIFO_DEPTH-1));
+        //  Global control signals
+        //  {{{
+        assign match_ptr = (wptr_q == rptr_q);
 
-    always_comb
-    begin : rptr_comb
-        if (rexec) begin
-            rptr_d = rptr_max ? 0 : rptr_q + 1;
-        end else begin
+        assign empty = match_ptr & ~crossover_q,
+               full  = match_ptr &  crossover_q;
+
+        assign rok_o = ~empty | (FEEDTHROUGH & w_i),
+               wok_o = ~full  | (FEEDTHROUGH & r_i);
+
+        assign rexec = r_i & ~empty,
+               wexec = w_i & (( FEEDTHROUGH & ((empty & ~r_i) | (full & r_i) | (~full & ~empty))) |
+                              (~FEEDTHROUGH & ~full));
+
+        //  }}}
+
+        //  Control of read and write pointers
+        //  {{{
+        assign rptr_max = (rptr_q == fifo_addr_t'(FIFO_DEPTH-1));
+        assign wptr_max = (wptr_q == fifo_addr_t'(FIFO_DEPTH-1));
+
+        always_comb
+        begin : fifo_ctrl_comb
             rptr_d = rptr_q;
-        end
-    end
-
-    always_comb
-    begin : wptr_comb
-        if (wexec) begin
-            wptr_d = wptr_max ? 0 : wptr_q + 1;
-        end else begin
             wptr_d = wptr_q;
-        end
-    end
-
-    always_comb
-    begin : crossover_comb
-        if (rexec && rptr_max) begin
-            crossover_d = 1'b0;
-        end else if (wexec && wptr_max) begin
-            crossover_d = 1'b1;
-        end else begin
             crossover_d = crossover_q;
+
+            if (rexec) begin
+                rptr_d = rptr_max ? 0 : rptr_q + 1;
+            end
+
+            if (wexec) begin
+                wptr_d = wptr_max ? 0 : wptr_q + 1;
+            end
+
+            if (wexec && wptr_max) begin
+                crossover_d = 1'b1;
+            end else if (rexec && rptr_max) begin
+                crossover_d = 1'b0;
+            end
         end
-    end
-    //  }}}
 
-    //  FIFO buffer memory management
-    //  {{{
-    always_ff @(posedge clk_i)
-    begin
-        if (wexec) fifo_mem_q[wptr_q] <= wdata_i;
-    end
+        //  }}}
 
-    assign rdata_o = fifo_mem_q[rptr_q];
-    //  }}}
-
-    //  Setting of internal state
-    //  {{{
-    always_ff @(posedge clk_i or negedge rst_ni)
-    begin
-        if (!rst_ni) begin
-            rptr_q      <= 0;
-            wptr_q      <= 0;
-            crossover_q <= 1'b0;
-        end else begin
-            rptr_q      <= rptr_d;
-            wptr_q      <= wptr_d;
-            crossover_q <= crossover_d;
+        //  FIFO buffer memory management
+        //  {{{
+        always_ff @(posedge clk_i)
+        begin
+            if (wexec) fifo_mem_q[wptr_q] <= wdata_i;
         end
+
+        assign rdata_o = FEEDTHROUGH && empty ? wdata_i : fifo_mem_q[rptr_q];
+        //  }}}
+
+        //  Setting of internal state
+        //  {{{
+        always_ff @(posedge clk_i or negedge rst_ni)
+        begin
+            if (!rst_ni) begin
+                rptr_q      <= 0;
+                wptr_q      <= 0;
+                crossover_q <= 1'b0;
+            end else begin
+                rptr_q      <= rptr_d;
+                wptr_q      <= wptr_d;
+                crossover_q <= crossover_d;
+            end
+        end
+        //  }}}
+
+        //  Assertions
+        //  {{{
+        //  pragma translate_off
+        rptr_ahead_wptr_assert: assert property (@(posedge clk_i)
+                ((rptr_q <= wptr_q) && !crossover_q) ||
+                ((rptr_q >= wptr_q) &&  crossover_q)) else
+                $error("fifo: read pointer is ahead of the write pointer");
+        //  pragma translate_on
+        //  }}}
     end
-    //  }}}
-
-    //  Assertions
-    //  {{{
-    //  pragma translate_off
-    rptr_ahead_wptr_assert: assert property (@(posedge clk_i)
-            ((rptr_q <= wptr_q) && !crossover_q) || ((rptr_q >= wptr_q) && crossover_q)) else
-            $error("fifo: read pointer is ahead of the write pointer");
-    //  pragma translate_on
-    //  }}}
-
 endmodule

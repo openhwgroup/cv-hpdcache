@@ -23,19 +23,6 @@
  *  Description   : HPDcache Miss Handler
  *  History       :
  */
-/*  Possible improvements
- *  =====================
- *  TODO Allow pipelining of the refilling operation.
- *       The pipelining would be as follows:
- *
- *       |   0   |    1    |   2      |   3    |   4      |   5    |   6    |
- *       | MSHR  |  WDATLO |  WDATHI  |        |          |        |        |
- *       |       |  NOP    |  MSHR    | WDATLO |  WDATHI  |        |        |
- *       |       |  NOP    |  NOP     | NOP    |  MSHR    | WDATLO | WDATHI |
- *
- *       This allows to handle 1 refill every 2 cycles. Otherwise, current implementation handles
- *       1 refill every 3 cycles.
- */
 module hpdcache_miss_handler
 //  {{{
 import hpdcache_pkg::*;
@@ -178,13 +165,13 @@ import hpdcache_pkg::*;
     hpdcache_refill_data_t   refill_fifo_resp_data_rdata;
     logic                    refill_fifo_resp_data_r;
 
-    hpdcache_req_sid_t       refill_core_rsp_sid_q, refill_core_rsp_sid_d;
-    hpdcache_req_tid_t       refill_core_rsp_tid_q, refill_core_rsp_tid_d;
-    hpdcache_req_data_t      refill_core_rsp_data_q, refill_core_rsp_data_d;
-    logic                    refill_core_rsp_error_q, refill_core_rsp_error_d;
-    logic                    refill_core_rsp_valid_q, refill_core_rsp_valid_d;
-    hpdcache_word_t          refill_core_rsp_word;
     logic                    refill_core_rsp_valid;
+    hpdcache_req_data_t      refill_core_rsp_rdata;
+    hpdcache_req_sid_t       refill_core_rsp_sid;
+    hpdcache_req_tid_t       refill_core_rsp_tid;
+    logic                    refill_core_rsp_error;
+    hpdcache_word_t          refill_core_rsp_word;
+    hpdcache_rsp_t           refill_core_rsp;
 
     logic                    refill_is_error;
 
@@ -285,16 +272,14 @@ import hpdcache_pkg::*;
         refill_set_o            = '0;
         refill_write_dir_o      = 1'b0;
         refill_write_data_o     = 1'b0;
-        refill_word_o           = 0;
-        refill_data_o           = '0;
         refill_updt_rtab_o      = 1'b0;
         refill_cnt_d            = refill_cnt_q;
         refill_way_bypass       = 1'b0;
 
         refill_core_rsp_valid   = 1'b0;
-        refill_core_rsp_sid_d   = refill_core_rsp_sid_q;
-        refill_core_rsp_tid_d   = refill_core_rsp_tid_q;
-        refill_core_rsp_error_d = refill_core_rsp_error_q;
+        refill_core_rsp_sid     = '0;
+        refill_core_rsp_tid     = '0;
+        refill_core_rsp_error   = 1'b0;
         refill_core_rsp_word    = 0;
 
         refill_fifo_resp_meta_r = 1'b0;
@@ -345,9 +330,9 @@ import hpdcache_pkg::*;
                         refill_core_rsp_valid = (hpdcache_uint'(_core_rsp_word) == 0);
                     end
 
-                    refill_core_rsp_sid_d = mshr_ack_src_id;
-                    refill_core_rsp_tid_d = mshr_ack_req_id;
-                    refill_core_rsp_error_d = refill_is_error;
+                    refill_core_rsp_sid = mshr_ack_src_id;
+                    refill_core_rsp_tid = mshr_ack_req_id;
+                    refill_core_rsp_error = refill_is_error;
                     refill_core_rsp_word = hpdcache_word_t'(
                         hpdcache_uint'(mshr_ack_word)/HPDCACHE_REQ_WORDS);
                 end else begin
@@ -361,9 +346,9 @@ import hpdcache_pkg::*;
                         refill_core_rsp_valid = (_core_rsp_word == _refill_cnt);
                     end
 
-                    refill_core_rsp_sid_d = refill_sid_q;
-                    refill_core_rsp_tid_d = refill_tid_q;
-                    refill_core_rsp_error_d = refill_is_error;
+                    refill_core_rsp_sid = refill_sid_q;
+                    refill_core_rsp_tid = refill_tid_q;
+                    refill_core_rsp_error = refill_is_error;
                     refill_core_rsp_word = hpdcache_word_t'(
                         hpdcache_uint'(refill_core_rsp_word_q)/HPDCACHE_REQ_WORDS);
                 end
@@ -379,8 +364,6 @@ import hpdcache_pkg::*;
                     is_prefetch = refill_is_prefetch_q;
                 end
                 refill_write_data_o = ~refill_is_error;
-                refill_data_o = refill_fifo_resp_data_rdata;
-                refill_word_o = refill_cnt_q;
 
                 //  Consume chunk of data from the FIFO buffer in the memory interface
                 refill_fifo_resp_data_r = 1'b1;
@@ -459,7 +442,8 @@ import hpdcache_pkg::*;
     assign  refill_is_error = (refill_fifo_resp_meta_rdata.r_error == HPDCACHE_MEM_RESP_NOK);
 
     assign  refill_busy_o  = (refill_fsm_q != REFILL_IDLE),
-            refill_nline_o = {refill_tag_q, refill_set_q};
+            refill_nline_o = {refill_tag_q, refill_set_q},
+            refill_word_o  = refill_cnt_q;
 
     assign  mshr_ack_set = get_ack_mshr_set(refill_fifo_resp_meta_rdata.r_id),
             mshr_ack_way = get_ack_mshr_way(refill_fifo_resp_meta_rdata.r_id);
@@ -467,14 +451,26 @@ import hpdcache_pkg::*;
     assign  refill_dir_entry_o.tag      = refill_tag_q,
             refill_dir_entry_o.reserved = '0;
 
-    assign  refill_core_rsp_valid_d = ~refill_core_rsp_valid_q & refill_core_rsp_valid;
+    assign  refill_core_rsp.rdata   = refill_core_rsp_rdata,
+            refill_core_rsp.sid     = refill_core_rsp_sid,
+            refill_core_rsp.tid     = refill_core_rsp_tid,
+            refill_core_rsp.error   = refill_core_rsp_error,
+            refill_core_rsp.aborted = 1'b0;
 
-    assign  refill_core_rsp_valid_o   = refill_core_rsp_valid_q,
-            refill_core_rsp_o.rdata   = refill_core_rsp_data_q,
-            refill_core_rsp_o.sid     = refill_core_rsp_sid_q,
-            refill_core_rsp_o.tid     = refill_core_rsp_tid_q,
-            refill_core_rsp_o.error   = refill_core_rsp_error_q,
-            refill_core_rsp_o.aborted = 1'b0;
+    hpdcache_fifo_reg #(
+        .FIFO_DEPTH  (1),
+        .FEEDTHROUGH (HPDCACHE_REFILL_CORE_RSP_FEEDTHROUGH),
+        .fifo_data_t (hpdcache_rsp_t)
+    ) i_refill_core_rsp_buf(
+        .clk_i,
+        .rst_ni,
+        .w_i         (refill_core_rsp_valid),
+        .wok_o       (/*unused*/),
+        .wdata_i     (refill_core_rsp),
+        .r_i         (1'b1),  //  core shall always be ready to consume a response
+        .rok_o       (refill_core_rsp_valid_o),
+        .rdata_o     (refill_core_rsp_o)
+    );
 
     generate
         //  refill's width is bigger than the width of the core's interface
@@ -485,13 +481,13 @@ import hpdcache_pkg::*;
             ) data_read_rsp_mux_i(
                 .data_i      (refill_data_o),
                 .sel_i       (refill_core_rsp_word[0 +: $clog2(REFILL_REQ_RATIO)]),
-                .data_o      (refill_core_rsp_data_d)
+                .data_o      (refill_core_rsp_rdata)
             );
         end
 
         //  refill's width is equal to the width of the core's interface
         else begin
-            assign refill_core_rsp_data_d = refill_data_o;
+            assign refill_core_rsp_rdata = refill_data_o;
         end
     endgenerate
 
@@ -573,6 +569,8 @@ import hpdcache_pkg::*;
         end
     endgenerate
 
+    assign           refill_data_o = refill_fifo_resp_data_rdata;
+
     assign refill_fifo_resp_data_w = mem_resp_valid_i &
                                      (refill_fifo_resp_meta_wok | ~mem_resp_i.mem_resp_r_last),
            refill_fifo_resp_meta_w = mem_resp_valid_i &
@@ -584,10 +582,8 @@ import hpdcache_pkg::*;
     begin : miss_resp_fsm_ff
         if (!rst_ni) begin
             refill_fsm_q <= REFILL_IDLE;
-            refill_core_rsp_valid_q <= 1'b0;
         end else begin
             refill_fsm_q <= refill_fsm_d;
-            refill_core_rsp_valid_q <= refill_core_rsp_valid_d;
         end
     end
 
@@ -604,16 +600,6 @@ import hpdcache_pkg::*;
             refill_core_rsp_word_q <= mshr_ack_word;
         end
         refill_cnt_q <= refill_cnt_d;
-    end
-
-    always_ff @(posedge clk_i)
-    begin : core_rsp_ff
-        if (!refill_core_rsp_valid_q && refill_core_rsp_valid) begin
-            refill_core_rsp_sid_q <= refill_core_rsp_sid_d;
-            refill_core_rsp_tid_q <= refill_core_rsp_tid_d;
-            refill_core_rsp_data_q <= refill_core_rsp_data_d;
-            refill_core_rsp_error_q <= refill_core_rsp_error_d;
-        end
     end
     //  }}}
 

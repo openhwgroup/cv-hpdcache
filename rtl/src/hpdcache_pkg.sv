@@ -164,6 +164,11 @@ package hpdcache_pkg;
     //  {{{
     localparam int unsigned HPDCACHE_REFILL_DATA_WIDTH = HPDCACHE_DATA_RAM_ACCESS_WIDTH;
 
+    //    Use feedthrough FIFOs from the refill handler to the core. This
+    //    reduces the latency (by one cycle) but adds an additional timing path
+    localparam bit HPDCACHE_REFILL_CORE_RSP_FEEDTHROUGH =
+        hpdcache_params_pkg::PARAM_REFILL_CORE_RSP_FEEDTHROUGH;
+
     typedef hpdcache_data_word_t[HPDCACHE_ACCESS_WORDS-1:0] hpdcache_refill_data_t;
     typedef hpdcache_data_be_t  [HPDCACHE_ACCESS_WORDS-1:0] hpdcache_refill_be_t;
     //  }}}
@@ -558,6 +563,11 @@ package hpdcache_pkg;
 
     localparam int unsigned HPDCACHE_WBUF_TIMECNT_WIDTH =
         hpdcache_params_pkg::PARAM_WBUF_TIMECNT_WIDTH;
+
+    //    Use feedthrough FIFOs from the write-buffer to the NoC. This reduces
+    //    the latency (by one cycle) but adds an additional timing path
+    localparam bit HPDCACHE_WBUF_SEND_FEEDTHROUGH =
+        hpdcache_params_pkg::PARAM_WBUF_SEND_FEEDTHROUGH;
 
     localparam int unsigned HPDCACHE_WBUF_DATA_WIDTH     = HPDCACHE_REQ_DATA_WIDTH*
                                                            HPDCACHE_WBUF_WORDS;

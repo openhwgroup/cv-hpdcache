@@ -119,7 +119,8 @@ import hpdcache_pkg::*;
         .WBUF_WORDS                    (HPDCACHE_WBUF_WORDS),
         .WBUF_PA_WIDTH                 (HPDCACHE_PA_WIDTH),
         .WBUF_TIMECNT_MAX              ((2**HPDCACHE_WBUF_TIMECNT_WIDTH) - 1),
-        .WBUF_READ_MATCH_WIDTH         (HPDCACHE_NLINE_WIDTH)
+        .WBUF_READ_MATCH_WIDTH         (HPDCACHE_NLINE_WIDTH),
+        .WBUF_SEND_FEEDTHROUGH         (HPDCACHE_WBUF_SEND_FEEDTHROUGH)
     ) hpdcache_wbuf_i (
         .clk_i,
         .rst_ni,
