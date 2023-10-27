@@ -36,6 +36,8 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
 `else 
     parameter bit              WriteByteMaskEnabled = 0,
 `endif
+    // Default value is compatible with CVA6
+    parameter logic [2:0]      IcacheNoCachableSize = 3'b010,
 
     parameter type hpdcache_mem_req_t = logic,
     parameter type hpdcache_mem_req_w_t = logic,
@@ -169,7 +171,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                                                 (req_is_write || req_is_unc_write) ? L15_STORE_RQ : L15_ATOMIC_RQ,
            l15_req_o.l15_nc                   = ~req_i.mem_req_cacheable,
                                                 // IMiss Unch: 4B Cach: 32B cacheline; Load/Store/AMO Max 16B cacheline (other possible sizes: 1,2,4,8B)
-           l15_req_o.l15_size                 = (req_is_ifill)                              ? ((req_i.mem_req_cacheable) ? 3'b111 : 3'b010) : // IMiss     
+           l15_req_o.l15_size                 = (req_is_ifill)                              ? ((req_i.mem_req_cacheable) ? 3'b111 : IcacheNoCachableSize) : // IMiss     
                                                 (req_is_write  && ~WriteByteMaskEnabled)    ? req_wt_size :                                   // Store (1/2/4/8) 
                                                 (req_i.mem_req_size == 3'b100)              ? 3'b111 : req_i.mem_req_size,                    // Load & Unc. Load &  Unc. Store (1/2/4/8) & AMO (4/8) & Store (8)
            l15_req_o.l15_threadid             = req_thid, 
@@ -196,7 +198,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     // Type of request based on the request mux index port (req_index_i: 0->IMISS, 1->Read 2-> Write 3-> Un.Read 4-> Un. Write)
     assign req_is_ifill                       = req_index_i[0],
            req_is_read                        = req_index_i[1] & (req_i.mem_req_command==hpdcache_pkg::HPDCACHE_MEM_READ),  // Load 
-           req_is_write                       = req_index_i[2] & (req_i.mem_req_command==hpdcache_pkg::HPDCACHE_MEM_WRITE), // Store & Unc. Store 
+           req_is_write                       = req_index_i[2] & (req_i.mem_req_command==hpdcache_pkg::HPDCACHE_MEM_WRITE), // Store
            req_is_unc_read                    = req_index_i[3] & (req_i.mem_req_command==hpdcache_pkg::HPDCACHE_MEM_READ),  // Unc. Load  
            req_is_unc_write                   = req_index_i[4] & (req_i.mem_req_command==hpdcache_pkg::HPDCACHE_MEM_WRITE), // Unc. Store 
            req_is_atomic                      = req_index_i[4] & (req_i.mem_req_command==hpdcache_pkg::HPDCACHE_MEM_ATOMIC);// AMO
