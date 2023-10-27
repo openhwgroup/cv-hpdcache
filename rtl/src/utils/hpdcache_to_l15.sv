@@ -28,7 +28,8 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
 //  {{{
 #(
     parameter hpdcache_uint    N = 0,
-    parameter hpdcache_uint    AdapterInvalFifoDepth = 5,
+    /* FIXME: Should we increase it even more? */
+    parameter hpdcache_uint    AdapterInvalFifoDepth = 10,
     parameter bit              SwapEndianess = 1,
     parameter hpdcache_uint    HPDcacheMemDataWidth = 128,
 `ifdef WRITE_BYTE_MASK
