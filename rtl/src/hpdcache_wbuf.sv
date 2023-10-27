@@ -664,13 +664,13 @@ module hpdcache_wbuf
     //  pragma translate_off
     initial assert(WBUF_WORDS inside {1, 2, 4, 8, 16}) else
             $error("WBUF: width of data buffers must be a power of 2");
-    ack_sent_assert: assert property (@(posedge clk_i)
+    ack_sent_assert: assert property (@(posedge clk_i) disable iff (!rst_ni)
             (ack_i -> (wbuf_dir_state_q[ack_id_i] == WBUF_SENT))) else
             $error("WBUF: acknowledging a not SENT slot");
-    send_pend_assert: assert property (@(posedge clk_i)
+    send_pend_assert: assert property (@(posedge clk_i) disable iff (!rst_ni)
             (send_meta_valid -> (wbuf_dir_state_q[wbuf_dir_send_ptr_q] == WBUF_PEND))) else
             $error("WBUF: sending a not PEND slot");
-    send_valid_data_assert: assert property (@(posedge clk_i)
+    send_valid_data_assert: assert property (@(posedge clk_i) disable iff (!rst_ni)
             (send_data_valid_o -> (wbuf_data_valid_q[send_data_q.send_data_ptr] == 1'b1))) else
             $error("WBUF: sending a not valid data");
     //  pragma translate_on

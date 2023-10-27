@@ -752,7 +752,7 @@ import hpdcache_pkg::*;
     //  Assertions
     //  pragma translate_off
     //  {{{
-    assert property (@(posedge clk_i)
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
             $onehot0({core_req_ready_o, st0_rtab_pop_try_ready, refill_req_ready_o})) else
                     $error("ctrl: only one request can be served per cycle");
     //  }}}

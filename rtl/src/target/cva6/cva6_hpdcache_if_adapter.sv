@@ -209,7 +209,7 @@ import hpdcache_pkg::*;
     //  Assertions
     //  {{{
     //    pragma translate_off
-    forward_one_request_assert: assert property (@(posedge clk_i)
+    forward_one_request_assert: assert property (@(posedge clk_i) disable iff (!rst_ni)
         ($onehot0({forward_store, forward_amo}))) else
         $error("Only one request shall be forwarded");
     //    pragma translate_on

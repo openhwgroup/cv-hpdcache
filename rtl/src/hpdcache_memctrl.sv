@@ -644,11 +644,11 @@ import hpdcache_pkg::*;
     //  Assertions
     //  {{{
     //  pragma translate_off
-    concurrent_dir_access_assert: assert property (@(posedge clk_i)
+    concurrent_dir_access_assert: assert property (@(posedge clk_i) disable iff (!rst_ni)
             $onehot0({dir_match_i, dir_amo_match_i, dir_cmo_check_i, dir_refill_i})) else
             $error("hpdcache_memctrl: more than one process is accessing the cache directory");
 
-    concurrent_data_access_assert: assert property (@(posedge clk_i)
+    concurrent_data_access_assert: assert property (@(posedge clk_i) disable iff (!rst_ni)
             $onehot0({data_req_read_i, data_req_write_i, data_amo_write_i, data_refill_i})) else
             $error("hpdcache_memctrl: more than one process is accessing the cache data");
     //  pragma translate_on

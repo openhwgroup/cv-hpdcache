@@ -618,47 +618,47 @@ import hpdcache_pkg::*;
 //  Assertions
 //  {{{
 //  pragma translate_off
-    assert property (@(posedge clk_i)
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
             check_i |-> $onehot0(match_check_tail)) else
                     $error("rtab: more than one entry matching");
 
-    assert property (@(posedge clk_i)
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
             alloc_and_link_i |-> (check_i & check_hit_o)) else
                     $error("rtab: alloc and link shall be performed in case of check hit");
 
-    assert property (@(posedge clk_i)
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
             alloc_and_link_i |->
                     ({alloc_req_i.addr_tag, hpdcache_get_req_offset_set(alloc_req_i.addr_offset)} ==
                         check_nline_i)) else
                     $error("rtab: nline for alloc and link shall match the one being checked");
 
-    assert property (@(posedge clk_i)
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
             alloc_i |-> !alloc_and_link_i) else
                     $error("rtab: only one allocation per cycle is allowed");
 
 `ifndef VERILATOR
-    assert property (@(posedge clk_i)
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
             pop_try_i |-> ##1 (pop_commit_i | pop_rback_i)) else
                     $error("rtab: a pop try shall be followed by a commit or rollback");
 `endif
 
-    assert property (@(posedge clk_i)
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
             pop_commit_i |-> valid_q[pop_commit_ptr_i]) else
                     $error("rtab: commiting an invalid entry");
 
-    assert property (@(posedge clk_i)
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
             pop_rback_i |-> valid_q[pop_rback_ptr_i]) else
                     $error("rtab: rolling-back an invalid entry");
 
-    assert property (@(posedge clk_i)
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
             pop_rback_i |-> !pop_try_i) else
                     $error("rtab: cache shall not accept a new request while rolling back");
 
-    assert property (@(posedge clk_i)
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
             alloc |-> ~full_o) else
                     $error("rtab: trying to allocate while the table is full");
 
-    assert property (@(posedge clk_i)
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
             alloc_and_link_i |-> ~cfg_single_entry_i) else
                     $error("rtab: trying to link a request in single entry mode");
 //  pragma translate_on

@@ -237,11 +237,11 @@ import hpdcache_pkg::*;
 //  Assertions
 //  {{{
 //  pragma translate_off
-    assert property (@(posedge clk_i)
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
             req_valid_i -> $onehot(req_op_i)) else
                     $error("cmo_handler: more than one operation type requested");
 
-    assert property (@(posedge clk_i)
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
             req_valid_i -> (cmoh_fsm_q == CMOH_IDLE)) else
                     $error("cmo_handler: new request received while busy");
 //  pragma translate_on
