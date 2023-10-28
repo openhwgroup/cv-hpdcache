@@ -238,8 +238,8 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     // Invalidation request translated as a CMO 
     assign resp_o.mem_inval_icache_valid      = mem_inval_icache_valid,
            resp_o.mem_inval_dcache_valid      = mem_inval_dcache_valid,
-           resp_o.mem_inval.addr              = mem_inval_icache_valid ? { l15_rtrn_i.l15_transducer_address[ariane_pkg::ICACHE_INDEX_WIDTH-1:4], 4'b0000} : 
-                                                                         { hpdcache_req_addr_t'(l15_rtrn_i.l15_transducer_address)},
+           resp_o.mem_inval.addr              = mem_inval_icache_valid ? { l15_rtrn_i.l15_inval_address[ariane_pkg::ICACHE_INDEX_WIDTH-1:4], 4'b0000} : 
+                                                                         { hpdcache_req_addr_t'(l15_rtrn_i.l15_inval_address)},
            resp_o.mem_inval.need_rsp          = 1'b0,
            resp_o.mem_inval.uncacheable       = 1'b0,
            resp_o.mem_inval.sid               = '0,
