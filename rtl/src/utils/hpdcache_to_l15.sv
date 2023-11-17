@@ -27,7 +27,14 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
 //  Parameters
 //  {{{
 #(
-    parameter hpdcache_uint    N = 0,
+    parameter hpdcache_uint          NumPorts           = 6,
+    parameter [$clog2(NumPorts)-1:0] IcachePort         = 0, 
+    parameter [$clog2(NumPorts)-1:0] DcachePort         = 1, 
+    parameter [$clog2(NumPorts)-1:0] DcacheWbufPort     = 2, 
+    parameter [$clog2(NumPorts)-1:0] DcacheUncReadPort  = 3, 
+    parameter [$clog2(NumPorts)-1:0] DcacheUncWritePort = 4, 
+    parameter [$clog2(NumPorts)-1:0] DcacheAmoPort      = 5,
+
     /* FIXME: Should we increase it even more? */
     parameter hpdcache_uint    AdapterInvalFifoDepth = 10,
     parameter bit              SwapEndianess = 1,
@@ -60,7 +67,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     input   req_portid_t                   req_pid_i,
     input   hpdcache_mem_req_t             req_i,
     input   hpdcache_mem_req_w_t           req_data_i,
-    input   logic                          req_index_i [N-1:0],
+    input   logic                          req_index_i [NumPorts-2:0],
 
     input   logic                          resp_ready_i,
     output  logic                          resp_valid_o,
@@ -196,13 +203,13 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
 `endif
 
 
-    // Type of request based on the request mux index port (req_index_i: 0->IMISS, 1->Read 2-> Write 3-> Un.Read 4-> Un. Write)
-    assign req_is_ifill                       = req_index_i[0],
-           req_is_read                        = req_index_i[1] & (req_i.mem_req_command==hpdcache_pkg::HPDCACHE_MEM_READ),  // Load 
-           req_is_write                       = req_index_i[2] & (req_i.mem_req_command==hpdcache_pkg::HPDCACHE_MEM_WRITE), // Store
-           req_is_unc_read                    = req_index_i[3] & (req_i.mem_req_command==hpdcache_pkg::HPDCACHE_MEM_READ),  // Unc. Load  
-           req_is_unc_write                   = req_index_i[4] & (req_i.mem_req_command==hpdcache_pkg::HPDCACHE_MEM_WRITE), // Unc. Store 
-           req_is_atomic                      = req_index_i[4] & (req_i.mem_req_command==hpdcache_pkg::HPDCACHE_MEM_ATOMIC);// AMO
+    // Type of request based on the request mux index port (req_index_i: IcachePort->IMISS, DcachePort->Read DcacheWbufPort-> Write DcacheUncReadPort-> Un.Read DcacheUncWritePort-> Un. Write/AMO)
+    assign req_is_ifill                       = req_index_i[IcachePort],
+           req_is_read                        = req_index_i[DcachePort]         & (req_i.mem_req_command==hpdcache_pkg::HPDCACHE_MEM_READ),  // Load 
+           req_is_write                       = req_index_i[DcacheWbufPort]     & (req_i.mem_req_command==hpdcache_pkg::HPDCACHE_MEM_WRITE), // Store
+           req_is_unc_read                    = req_index_i[DcacheUncReadPort]  & (req_i.mem_req_command==hpdcache_pkg::HPDCACHE_MEM_READ),  // Unc. Load  
+           req_is_unc_write                   = req_index_i[DcacheUncWritePort] & (req_i.mem_req_command==hpdcache_pkg::HPDCACHE_MEM_WRITE), // Unc. Store 
+           req_is_atomic                      = req_index_i[DcacheUncWritePort] & (req_i.mem_req_command==hpdcache_pkg::HPDCACHE_MEM_ATOMIC);// AMO
 
     // Data sended by the request
     // If the request is a AMO_CLR, its translated as a AMO_AND. Therefore, the data sended has to be inverted
@@ -219,8 +226,8 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                                                                                               l15_rtrn_i.l15_val & hpdc_fifo_inval_wok : // Response + DCACHE Invalidation
                                                                                               l15_rtrn_i.l15_val,                        // Response/ICACHE Invalidation
                                                 // ICACHE Invalidations demux port 0 otherwise saved port id
-           resp_pid_o                         = (mem_only_inval & mem_inval_icache_valid) ? '0 : 
-                                                (l15_rtrn_i.l15_returntype==L15_CPX_RESTYPE_ATOMIC_RES) ? 3'b101 : hpdc_pid_q[l15_rtrn_i.l15_threadid];
+           resp_pid_o                         = (mem_only_inval & mem_inval_icache_valid) ? IcachePort : 
+                                                (l15_rtrn_i.l15_returntype==L15_CPX_RESTYPE_ATOMIC_RES) ? DcacheAmoPort : hpdc_pid_q[l15_rtrn_i.l15_threadid];
                                                 
     assign resp_o.mem_resp_error              = (l15_rtrn_i.l15_returntype==L15_ERR_RET) ? HPDCACHE_MEM_RESP_NOK : HPDCACHE_MEM_RESP_OK, // Should be always HPDCACHE_MEM_RESP_OK, unused in openpiton
            resp_o.mem_resp_id                 = hpdc_tid_q[l15_rtrn_i.l15_threadid],
@@ -323,16 +330,16 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     begin: thread_id_fsm_ff
      if (!rst_ni) begin
             th_state_q     <= IDLE;
-            hpdc_tid_q[0]  <= '0;
-            hpdc_tid_q[1]  <= '0; 
-            hpdc_pid_q[0]  <= '0;
-            hpdc_pid_q[1]  <= '0;
+            for (int i = 0; i < NUM_THREAD_IDS; i++) begin
+        	    hpdc_tid_q[i] <= '0;
+        	    hpdc_pid_q[i] <= '0;
+	        end
         end else begin
             th_state_q     <= th_state_d;
-            hpdc_tid_q[0]  <= hpdc_tid_d[0];
-            hpdc_tid_q[1]  <= hpdc_tid_d[1]; 
-            hpdc_pid_q[0]  <= hpdc_pid_d[0];
-            hpdc_pid_q[1]  <= hpdc_pid_d[1];
+            for (int i = 0; i < NUM_THREAD_IDS; i++) begin
+                hpdc_tid_q[i] <= hpdc_tid_d[i];
+        		hpdc_pid_q[i] <= hpdc_pid_d[i];
+	        end
         end
     end
         // }}}

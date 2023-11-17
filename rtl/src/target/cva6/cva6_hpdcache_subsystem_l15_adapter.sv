@@ -29,7 +29,13 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
 //  {{{
 #(
   parameter ariane_pkg::ariane_cfg_t ArianeCfg = ariane_pkg::ArianeDefaultConfig,  // contains cacheable regions
-
+  parameter int  NumPorts = 6, 
+  parameter [$clog2(NumPorts)-1:0] IcachePort         = 0, 
+  parameter [$clog2(NumPorts)-1:0] DcachePort         = 1, 
+  parameter [$clog2(NumPorts)-1:0] DcacheWbufPort     = 2, 
+  parameter [$clog2(NumPorts)-1:0] DcacheUncReadPort  = 3, 
+  parameter [$clog2(NumPorts)-1:0] DcacheUncWritePort = 4, 
+  parameter [$clog2(NumPorts)-1:0] DcacheAmoPort      = 5,
   parameter int  HPDcacheMemDataWidth = 128, //L1D cacheline
 
   parameter type hpdcache_mem_req_t = logic,
@@ -53,7 +59,6 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   input   logic                               icache_miss_valid_i,
   output  logic                               icache_miss_ready_o,
   input   wt_cache_pkg::icache_req_t          icache_miss_i,
-  input   req_portid_t                        icache_miss_pid_i,
 
   output  logic                               icache_miss_resp_valid_o,
   output  wt_cache_pkg::icache_rtrn_t         icache_miss_resp_o,
@@ -64,7 +69,6 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   output  logic                               dcache_miss_ready_o,
   input   logic                               dcache_miss_valid_i,
   input   hpdcache_mem_req_t                  dcache_miss_i,
-  input   req_portid_t                        dcache_miss_pid_i,
 
   input   logic                               dcache_miss_resp_ready_i,
   output  logic                               dcache_miss_resp_valid_o,
@@ -74,7 +78,6 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   output  logic                               dcache_wbuf_ready_o,
   input   logic                               dcache_wbuf_valid_i,
   input   hpdcache_mem_req_t                  dcache_wbuf_i,
-  input   req_portid_t                        dcache_wbuf_pid_i,
 
   output  logic                               dcache_wbuf_data_ready_o,
   input   logic                               dcache_wbuf_data_valid_i,
@@ -88,7 +91,6 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   output  logic                               dcache_uc_read_ready_o,
   input   logic                               dcache_uc_read_valid_i,
   input   hpdcache_mem_req_t                  dcache_uc_read_i,
-  input   req_portid_t                        dcache_uc_read_pid_i,
 
   input   logic                               dcache_uc_read_resp_ready_i,
   output  logic                               dcache_uc_read_resp_valid_o,
@@ -98,7 +100,6 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   output  logic                               dcache_uc_write_ready_o,
   input   logic                               dcache_uc_write_valid_i,
   input   hpdcache_mem_req_t                  dcache_uc_write_i,
-  input   req_portid_t                        dcache_uc_write_pid_i,
 
   output  logic                               dcache_uc_write_data_ready_o,
   input   logic                               dcache_uc_write_data_valid_i,
@@ -115,8 +116,8 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   
   //    Ports to/from L1.5 
   //  {{{
-  output l15_req_t                                l15_req_o,
-  input  l15_rtrn_t                               l15_rtrn_i
+  output l15_req_t                            l15_req_o,
+  input  l15_rtrn_t                           l15_rtrn_i
   //  }}}
 );
 //  }}}
@@ -145,12 +146,9 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   localparam int ICACHE_CL_WORD_INDEX   = $clog2(ICACHE_CL_WORDS);
   localparam int ICACHE_CL_SIZE         = $clog2(ariane_pkg::ICACHE_LINE_WIDTH/8);
   localparam int ICACHE_WORD_SIZE       = ArianeCfg.Axi64BitCompliant ? 3 : 2;
-  localparam int ICACHE_MEM_REQ_CL_LEN  =
-    (ariane_pkg::ICACHE_LINE_WIDTH + HPDcacheMemDataWidth - 1)/HPDcacheMemDataWidth;
-  localparam int ICACHE_MEM_REQ_CL_SIZE =
-    (HPDcacheMemDataWidth <= ariane_pkg::ICACHE_LINE_WIDTH) ?
-      $clog2(HPDcacheMemDataWidth/8) :
-      ICACHE_CL_SIZE;
+  localparam int ICACHE_MEM_REQ_CL_LEN  = (ariane_pkg::ICACHE_LINE_WIDTH + HPDcacheMemDataWidth - 1)/HPDcacheMemDataWidth;
+  localparam int ICACHE_MEM_REQ_CL_SIZE = (HPDcacheMemDataWidth <= ariane_pkg::ICACHE_LINE_WIDTH) ? $clog2(HPDcacheMemDataWidth/8) :
+                                                                                                    ICACHE_CL_SIZE;
 
   //    I$ request
   //    {{{
@@ -228,86 +226,86 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   //  L1.5 Request arbiter
   //  {{{
 
-    // Requests
-  logic                            mem_req_ready      [4:0];
-  logic                            mem_req_valid      [4:0];
-  hpdcache_mem_req_t               mem_req            [4:0];
+  // Requests
+  logic                            mem_req_ready      [NumPorts-2:0];
+  logic                            mem_req_valid      [NumPorts-2:0];
+  hpdcache_mem_req_t               mem_req            [NumPorts-2:0];
   
 
   logic                            mem_req_ready_arb;
   logic                            mem_req_valid_arb;
   hpdcache_mem_req_t               mem_req_arb;
 
-    // Data
-  logic                              mem_req_data_ready  [4:0];
-  logic                              mem_req_data_valid  [4:0];
-  hpdcache_mem_req_w_t               mem_req_data        [4:0];
-  hpdcache_mem_req_w_t               mem_req_data_arb;
+  // Data
+  logic                            mem_req_data_ready  [NumPorts-2:0];
+  logic                            mem_req_data_valid  [NumPorts-2:0];
+  hpdcache_mem_req_w_t             mem_req_data        [NumPorts-2:0];
+  hpdcache_mem_req_w_t             mem_req_data_arb;
 
-    // Port of the Request, 5 available ports
-  req_portid_t         mem_req_pid [4:0];
-  req_portid_t         mem_req_pid_arb;
+  // Port of the Request, NumPorts-1 available request ports
+  req_portid_t                     mem_req_pid         [NumPorts-2:0];
+  req_portid_t                     mem_req_pid_arb;
     
-   // Request type selected
-  logic                              mem_req_index_arb   [4:0];
+  // Request type selected
+  logic                            mem_req_index_arb   [NumPorts-2:0];
   // LR/SC back-off
-  logic                              sc_backoff_over;
+  logic                            sc_backoff_over;
 
 
   //Request types
   //IFILL
-  assign icache_miss_req_r      = mem_req_ready[0],
-         mem_req_valid[0]       = icache_miss_req_rok,
-         mem_req_pid[0]         = icache_miss_pid_i,
-         mem_req[0]             = icache_miss_req_rdata,
-         mem_req_data_valid[0]  = 1'b1, //There is no data for this request -> always valid
-         mem_req_data[0]        = '0;
+  assign icache_miss_req_r                    = mem_req_ready[IcachePort],
+         mem_req_valid[IcachePort]            = icache_miss_req_rok,
+         mem_req_pid[IcachePort]              = IcachePort,
+         mem_req[IcachePort]                  = icache_miss_req_rdata,
+         mem_req_data_valid[IcachePort]       = 1'b1, //There is no data for this request -> always valid
+         mem_req_data[IcachePort]             = '0;
          
   //Read
-  assign dcache_miss_ready_o    = mem_req_ready[1],
-         mem_req_valid[1]       = dcache_miss_valid_i,
-         mem_req_pid[1]         = dcache_miss_pid_i,
-         mem_req[1]             = dcache_miss_i,
-         mem_req_data_valid[1]  = 1'b1, //There is no data for this request -> always valid
-         mem_req_data[1]        = '0;
+  assign dcache_miss_ready_o                  = mem_req_ready[DcachePort],
+         mem_req_valid[DcachePort]            = dcache_miss_valid_i,
+         mem_req_pid[DcachePort]              = DcachePort,
+         mem_req[DcachePort]                  = dcache_miss_i,
+         mem_req_data_valid[DcachePort]       = 1'b1, //There is no data for this request -> always valid
+         mem_req_data[DcachePort]             = '0;
          
   //Write
-  assign dcache_wbuf_ready_o    = mem_req_ready[2],
-         mem_req_valid[2]       = dcache_wbuf_valid_i,
-         mem_req_pid[2]         = dcache_wbuf_pid_i,
-         mem_req[2]             = dcache_wbuf_i;
+  assign dcache_wbuf_ready_o                 = mem_req_ready[DcacheWbufPort],
+         mem_req_valid[DcacheWbufPort]       = dcache_wbuf_valid_i,
+         mem_req_pid[DcacheWbufPort]         = DcacheWbufPort,
+         mem_req[DcacheWbufPort]             = dcache_wbuf_i;
          
 
-  assign dcache_wbuf_data_ready_o = mem_req_ready[2], //Ready at the same time as the request
-         mem_req_data_valid[2]    = dcache_wbuf_data_valid_i,
-         mem_req_data[2]          = dcache_wbuf_data_i;
+  assign dcache_wbuf_data_ready_o            = mem_req_ready[DcacheWbufPort], //Ready at the same time as the request
+         mem_req_data_valid[DcacheWbufPort]  = dcache_wbuf_data_valid_i,
+         mem_req_data[DcacheWbufPort]        = dcache_wbuf_data_i;
 
   //Uncachable Read
-  assign dcache_uc_read_ready_o   = mem_req_ready[3],
-                                                      // If this is an LR, we need to consult the backoff counter
-         mem_req_valid[3]         = (dcache_uc_read_i.mem_req_atomic == hpdcache_pkg::HPDCACHE_MEM_ATOMIC_LDEX) ? dcache_uc_read_valid_i & sc_backoff_over : 
-                                                                                                                  dcache_uc_read_valid_i,
-         mem_req_pid[3]           = dcache_uc_read_pid_i,
-         mem_req[3]               = dcache_uc_read_i,
-         mem_req_data_valid[3]    = 1'b1, //There is no data for this request -> always valid
-         mem_req_data[3]          = '0;
+  assign dcache_uc_read_ready_o                    = mem_req_ready[DcacheUncReadPort],
+                                                     // If this is an LR, we need to consult the backoff counter
+         mem_req_valid[DcacheUncReadPort]          = (dcache_uc_read_i.mem_req_atomic == hpdcache_pkg::HPDCACHE_MEM_ATOMIC_LDEX) ? dcache_uc_read_valid_i & sc_backoff_over : 
+                                                                                                                                   dcache_uc_read_valid_i,
+         mem_req_pid[DcacheUncReadPort]            = DcacheUncReadPort,
+         mem_req[DcacheUncReadPort]                = dcache_uc_read_i,
+         mem_req_data_valid[DcacheUncReadPort]     = 1'b1, //There is no data for this request -> always valid
+         mem_req_data[DcacheUncReadPort]           = '0;
          
  //Uncachable Write
-  assign dcache_uc_write_ready_o  = mem_req_ready[4],
-         mem_req_valid[4]         = dcache_uc_write_valid_i,
-         mem_req_pid[4]           = dcache_uc_write_pid_i,
-         mem_req[4]               = dcache_uc_write_i;
+  assign dcache_uc_write_ready_o                   = mem_req_ready[DcacheUncWritePort],
+         mem_req_valid[DcacheUncWritePort]         = dcache_uc_write_valid_i,
+         mem_req_pid[DcacheUncWritePort]           = DcacheUncWritePort,
+         mem_req[DcacheUncWritePort]               = dcache_uc_write_i;
          
 
-  assign dcache_uc_write_data_ready_o = mem_req_ready[4], //Ready at the same time as the request
-         mem_req_data_valid[4]  = dcache_uc_write_data_valid_i,
-         mem_req_data[4]        = dcache_uc_write_data_i;
+  assign dcache_uc_write_data_ready_o              = mem_req_ready[DcacheUncWritePort], //Ready at the same time as the request
+         mem_req_data_valid[DcacheUncWritePort]    = dcache_uc_write_data_valid_i,
+         mem_req_data[DcacheUncWritePort]          = dcache_uc_write_data_i;
 
   hpdcache_l15_req_arbiter #(
-    .N(5),
-    .hpdcache_mem_req_t                              (hpdcache_mem_req_t),
-    .hpdcache_mem_req_w_t                            (hpdcache_mem_req_w_t),
-    .req_portid_t                                    (req_portid_t) //NTODO: Optimize for more threads
+    .N                      (NumPorts-1),
+    .hpdcache_mem_req_t     (hpdcache_mem_req_t),
+    .hpdcache_mem_req_w_t   (hpdcache_mem_req_w_t),
+    .req_portid_t           (req_portid_t)
   ) i_l15_req_arbiter (
     .clk_i,
     .rst_ni,
@@ -342,15 +340,15 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   logic                                mem_resp_valid;
   hpdcache_mem_resp_t                  mem_resp;
 
-  logic                                mem_resp_ready_arb [5:0];
-  logic                                mem_resp_valid_arb [5:0];
-  hpdcache_mem_resp_t                  mem_resp_arb       [5:0];
+  logic                                mem_resp_ready_arb [NumPorts-1:0];
+  logic                                mem_resp_valid_arb [NumPorts-1:0];
+  hpdcache_mem_resp_t                  mem_resp_arb       [NumPorts-1:0];
 
-  //Port 0 -> ICACHE, Port 1 -> Read, Port 2 -> Write, Port 3 -> UC Read, Port 4 -> UC Write 5-> Atomic operations
+  //Port IcachePort -> ICACHE, Port DcachePort -> Read, Port DcacheWbufPort -> Write, Port DcacheUncReadPort -> UC Read, Port DcacheUncWritePort -> UC Write DcacheAmoPort -> Atomic operations
   req_portid_t           mem_resp_pid;
 
   hpdcache_l15_resp_demux #(
-    .N                  (6),
+    .N                  (NumPorts),
     .resp_t             (hpdcache_mem_resp_t),
     .resp_id_t          (hpdcache_mem_id_t),
     .req_portid_t       (req_portid_t)
@@ -360,7 +358,6 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
     //From arbiter
     .mem_resp_ready_o   (mem_resp_ready),
     .mem_resp_valid_i   (mem_resp_valid),
-    .mem_resp_id_i      (mem_resp.mem_resp_id),
     .mem_resp_i         (mem_resp),
     //To HPDC
     .mem_resp_ready_i   (mem_resp_ready_arb),
@@ -372,50 +369,50 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
 
   // Responses 
   // IFILL
-  assign icache_miss_resp_w          = mem_resp_valid_arb[0],
-         icache_miss_resp_wdata      = mem_resp_arb[0],
-         mem_resp_ready_arb[0]       = icache_miss_resp_wok;
+  assign icache_miss_resp_w                             = mem_resp_valid_arb[IcachePort],
+         icache_miss_resp_wdata                         = mem_resp_arb[IcachePort],
+         mem_resp_ready_arb[IcachePort]                 = icache_miss_resp_wok;
   // Read
-  assign dcache_miss_resp_valid_o            = mem_resp_valid_arb[1],
-         dcache_miss_resp_o.mem_resp_r_data  = mem_resp_arb[1].mem_resp_r_data[HPDcacheMemDataWidth-1:0],
-         dcache_miss_resp_o.mem_resp_r_error = mem_resp_arb[1].mem_resp_error,
-         dcache_miss_resp_o.mem_resp_r_id    = mem_resp_arb[1].mem_resp_id,
-         dcache_miss_resp_o.mem_resp_r_last  = mem_resp_arb[1].mem_resp_r_last,
-         mem_resp_ready_arb[1]               = dcache_miss_resp_ready_i;
+  assign dcache_miss_resp_valid_o                       = mem_resp_valid_arb[DcachePort],
+         dcache_miss_resp_o.mem_resp_r_data             = mem_resp_arb[DcachePort].mem_resp_r_data[HPDcacheMemDataWidth-1:0],
+         dcache_miss_resp_o.mem_resp_r_error            = mem_resp_arb[DcachePort].mem_resp_error,
+         dcache_miss_resp_o.mem_resp_r_id               = mem_resp_arb[DcachePort].mem_resp_id,
+         dcache_miss_resp_o.mem_resp_r_last             = mem_resp_arb[DcachePort].mem_resp_r_last,
+         mem_resp_ready_arb[DcachePort]                 = dcache_miss_resp_ready_i;
   // Write
-  assign dcache_wbuf_resp_valid_o                = mem_resp_valid_arb[2],
-         dcache_wbuf_resp_o.mem_resp_w_is_atomic = mem_resp_arb[2].mem_resp_w_is_atomic,
-         dcache_wbuf_resp_o.mem_resp_w_error     = mem_resp_arb[2].mem_resp_error,
-         dcache_wbuf_resp_o.mem_resp_w_id        = mem_resp_arb[2].mem_resp_id,
-         mem_resp_ready_arb[2]                   = dcache_wbuf_resp_ready_i;
+  assign dcache_wbuf_resp_valid_o                       = mem_resp_valid_arb[DcacheWbufPort],
+         dcache_wbuf_resp_o.mem_resp_w_is_atomic        = mem_resp_arb[DcacheWbufPort].mem_resp_w_is_atomic,
+         dcache_wbuf_resp_o.mem_resp_w_error            = mem_resp_arb[DcacheWbufPort].mem_resp_error,
+         dcache_wbuf_resp_o.mem_resp_w_id               = mem_resp_arb[DcacheWbufPort].mem_resp_id,
+         mem_resp_ready_arb[DcacheWbufPort]             = dcache_wbuf_resp_ready_i;
 
   // Uncachable Read
-  // If the response comes from the port 3, its a Unc. Read.
-  // If the response comes from the port 5, its an AMO since this operations must response to both Unc. Read and Write ports
-  assign dcache_uc_read_resp_valid_o            = mem_resp_valid_arb[3] || mem_resp_valid_arb[5],
-         dcache_uc_read_resp_o.mem_resp_r_error = (mem_resp_valid_arb[5]) ?  mem_resp_arb[5].mem_resp_error : 
-                                                                             mem_resp_arb[3].mem_resp_error,
-         dcache_uc_read_resp_o.mem_resp_r_id    = (mem_resp_valid_arb[5]) ?  mem_resp_arb[5].mem_resp_id : 
-                                                                             mem_resp_arb[3].mem_resp_id,
-         dcache_uc_read_resp_o.mem_resp_r_data  = (mem_resp_valid_arb[5]) ?  mem_resp_arb[5].mem_resp_r_data[HPDcacheMemDataWidth-1:0] : 
-                                                                             mem_resp_arb[3].mem_resp_r_data[HPDcacheMemDataWidth-1:0],
-         dcache_uc_read_resp_o.mem_resp_r_last  = (mem_resp_valid_arb[5]) ?  mem_resp_arb[5].mem_resp_r_last :
-                                                                             mem_resp_arb[3].mem_resp_r_last,
-         mem_resp_ready_arb[3]                  = dcache_uc_read_resp_ready_i;
+  // If the response comes from the port DcacheUncWritePort, its a Unc. Read.
+  // If the response comes from the port DcacheAmoPort, its an AMO since this operations must response to both Unc. Read and Write ports
+  assign dcache_uc_read_resp_valid_o            = mem_resp_valid_arb[DcacheUncReadPort] || mem_resp_valid_arb[DcacheAmoPort],
+         dcache_uc_read_resp_o.mem_resp_r_error = (mem_resp_valid_arb[DcacheAmoPort]) ?  mem_resp_arb[DcacheAmoPort].mem_resp_error : 
+                                                                                         mem_resp_arb[DcacheUncReadPort].mem_resp_error,
+         dcache_uc_read_resp_o.mem_resp_r_id    = (mem_resp_valid_arb[DcacheAmoPort]) ?  mem_resp_arb[DcacheAmoPort].mem_resp_id : 
+                                                                                         mem_resp_arb[DcacheUncReadPort].mem_resp_id,
+         dcache_uc_read_resp_o.mem_resp_r_data  = (mem_resp_valid_arb[DcacheAmoPort]) ?  mem_resp_arb[DcacheAmoPort].mem_resp_r_data[HPDcacheMemDataWidth-1:0] : 
+                                                                                         mem_resp_arb[DcacheUncReadPort].mem_resp_r_data[HPDcacheMemDataWidth-1:0],
+         dcache_uc_read_resp_o.mem_resp_r_last  = (mem_resp_valid_arb[DcacheAmoPort]) ?  mem_resp_arb[DcacheAmoPort].mem_resp_r_last :
+                                                                                         mem_resp_arb[DcacheUncReadPort].mem_resp_r_last,
+         mem_resp_ready_arb[DcacheUncReadPort]  = dcache_uc_read_resp_ready_i;
   // Uncachable Write
-  // If the response comes from the port 4, its a Unc. Write.
-  // If the response comes from the port 5, its an AMO since this operations must response to both Unc. Read and Write ports
-  assign dcache_uc_write_resp_valid_o = mem_resp_valid_arb[4] || mem_resp_valid_arb[5],
-         dcache_uc_write_resp_o.mem_resp_w_is_atomic = (mem_resp_valid_arb[5]) ? mem_resp_arb[5].mem_resp_w_is_atomic : 
-                                                                                 mem_resp_arb[4].mem_resp_w_is_atomic,
-         dcache_uc_write_resp_o.mem_resp_w_error     = (mem_resp_valid_arb[5]) ? mem_resp_arb[5].mem_resp_error : 
-                                                                                 mem_resp_arb[4].mem_resp_error,
-         dcache_uc_write_resp_o.mem_resp_w_id        = (mem_resp_valid_arb[5]) ? mem_resp_arb[5].mem_resp_id :
-                                                                                 mem_resp_arb[4].mem_resp_id,
-         mem_resp_ready_arb[4]        = dcache_uc_write_resp_ready_i;
+  // If the response comes from the port DcacheUncWritePort, its a Unc. Write.
+  // If the response comes from the port DcacheAmoPort, its an AMO since this operations must response to both Unc. Read and Write ports
+  assign dcache_uc_write_resp_valid_o                   = mem_resp_valid_arb[DcacheUncWritePort] || mem_resp_valid_arb[DcacheAmoPort],
+         dcache_uc_write_resp_o.mem_resp_w_is_atomic    = (mem_resp_valid_arb[DcacheAmoPort]) ? mem_resp_arb[DcacheAmoPort].mem_resp_w_is_atomic : 
+                                                                                                mem_resp_arb[DcacheUncWritePort].mem_resp_w_is_atomic,
+         dcache_uc_write_resp_o.mem_resp_w_error        = (mem_resp_valid_arb[DcacheAmoPort]) ? mem_resp_arb[DcacheAmoPort].mem_resp_error : 
+                                                                                                mem_resp_arb[DcacheUncWritePort].mem_resp_error,
+         dcache_uc_write_resp_o.mem_resp_w_id           = (mem_resp_valid_arb[DcacheAmoPort]) ? mem_resp_arb[DcacheAmoPort].mem_resp_id :
+                                                                                                mem_resp_arb[DcacheUncWritePort].mem_resp_id,
+         mem_resp_ready_arb[DcacheUncWritePort]         = dcache_uc_write_resp_ready_i;
 
   // Atomic operations send the response to both Unc. Read and Write ports
-  assign mem_resp_ready_arb[5]        = dcache_uc_write_resp_ready_i & dcache_uc_read_resp_ready_i;
+  assign mem_resp_ready_arb[DcacheAmoPort] = dcache_uc_write_resp_ready_i & dcache_uc_read_resp_ready_i;
 
   //  }}}
 
@@ -429,7 +426,13 @@ module cva6_hpdcache_subsystem_l15_adapter import ariane_pkg::*;import wt_cache_
   hpdcache_pkg::hpdcache_req_t     dcache_inval;
 
   hpdcache_to_l15 #(
-       .N                        (5), // Number of request types
+       .NumPorts                 (NumPorts), // Number of request types
+       .IcachePort               (IcachePort),
+       .DcachePort               (DcachePort),
+       .DcacheWbufPort           (DcacheWbufPort),
+       .DcacheUncReadPort        (DcacheUncReadPort),
+       .DcacheUncWritePort       (DcacheUncWritePort),
+       .DcacheAmoPort            (DcacheAmoPort),
        .SwapEndianess            (ArianeCfg.SwapEndianess),
        .hpdcache_mem_req_t       (hpdcache_mem_req_t),
        .hpdcache_mem_req_w_t     (hpdcache_mem_req_w_t),

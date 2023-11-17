@@ -45,7 +45,6 @@ module hpdcache_l15_resp_demux
 
   output  logic           mem_resp_ready_o,
   input   logic           mem_resp_valid_i,
-  input   resp_id_t       mem_resp_id_i,
   input   resp_t          mem_resp_i,
 
   input   logic           mem_resp_ready_i [N-1:0],

@@ -472,13 +472,31 @@ module cva6_hpdcache_subsystem import ariane_pkg::*; import wt_cache_pkg::*; imp
 
 `ifdef PITON_ARIANE
 
-//Adapter HPDC-L1.5 Request Ports type
-typedef logic [$clog2(5)-1:0]               req_portid_t;  //NTODO: Optimize for more threads
+  localparam NUM_PORTS_ADAPTER = 6;
+  localparam NUM_PORTS_ADAPTER_WIDTH = $clog2(NUM_PORTS_ADAPTER);
+  // Adapter HPDC-L1.5 Request Ports type
+  // 0: Maximum priority 
+  // NUM_PORTS_ADAPTER - 1 : Less priority 
+  localparam [NUM_PORTS_ADAPTER_WIDTH-1:0] ICACHE_PORT            = 0;
+  localparam [NUM_PORTS_ADAPTER_WIDTH-1:0] DCACHE_PORT            = 1;
+  localparam [NUM_PORTS_ADAPTER_WIDTH-1:0] DCACHE_WBUF_PORT       = 2;
+  localparam [NUM_PORTS_ADAPTER_WIDTH-1:0] DCACHE_UNC_READ_PORT   = 3;
+  localparam [NUM_PORTS_ADAPTER_WIDTH-1:0] DCACHE_UNC_WRITE_PORT  = 4;
+  localparam [NUM_PORTS_ADAPTER_WIDTH-1:0] DCACHE_AMO_PORT        = 5;
+  
+  typedef logic [NUM_PORTS_ADAPTER_WIDTH-1:0] req_portid_t;
 
   //L15 adapter instantiation
   //{{{
   cva6_hpdcache_subsystem_l15_adapter #(
     .ArianeCfg                                       (ArianeCfg),
+    .NumPorts                                        (NUM_PORTS_ADAPTER),
+    .IcachePort                                      (ICACHE_PORT),
+    .DcachePort                                      (DCACHE_PORT),
+    .DcacheWbufPort                                  (DCACHE_WBUF_PORT),
+    .DcacheUncReadPort                               (DCACHE_UNC_READ_PORT),
+    .DcacheUncWritePort                              (DCACHE_UNC_WRITE_PORT),
+    .DcacheAmoPort                                   (DCACHE_AMO_PORT),
     .HPDcacheMemDataWidth                            (ariane_pkg::DCACHE_LINE_WIDTH),
     .hpdcache_mem_req_t                              (hpdcache_mem_req_t),
     .hpdcache_mem_req_w_t                            (hpdcache_mem_req_w_t),
@@ -486,7 +504,7 @@ typedef logic [$clog2(5)-1:0]               req_portid_t;  //NTODO: Optimize for
     .hpdcache_mem_resp_w_t                           (hpdcache_mem_resp_w_t),
     .hpdcache_mem_id_t                               (hpdcache_mem_id_t),
     .hpdcache_mem_addr_t                             (hpdcache_mem_addr_t),
-    .req_portid_t                                    (req_portid_t) //NTODO: Optimize for more threads
+    .req_portid_t                                    (req_portid_t)
   ) i_l15_adapter (
     .clk_i,
     .rst_ni,
@@ -494,7 +512,6 @@ typedef logic [$clog2(5)-1:0]               req_portid_t;  //NTODO: Optimize for
     .icache_miss_valid_i                             (icache_miss_valid),
     .icache_miss_ready_o                             (icache_miss_ready),
     .icache_miss_i                                   (icache_miss),
-    .icache_miss_pid_i                               (3'b000), //Port 0 DEMUX
 
     .icache_miss_resp_valid_o                        (icache_miss_resp_valid),
     .icache_miss_resp_o                              (icache_miss_resp),
@@ -502,7 +519,6 @@ typedef logic [$clog2(5)-1:0]               req_portid_t;  //NTODO: Optimize for
     .dcache_miss_ready_o                             (dcache_miss_ready),
     .dcache_miss_valid_i                             (dcache_miss_valid),
     .dcache_miss_i                                   (dcache_miss),
-    .dcache_miss_pid_i                               (3'b001),
 
     .dcache_miss_resp_ready_i                        (dcache_miss_resp_ready),
     .dcache_miss_resp_valid_o                        (dcache_miss_resp_valid),
@@ -511,7 +527,6 @@ typedef logic [$clog2(5)-1:0]               req_portid_t;  //NTODO: Optimize for
     .dcache_wbuf_ready_o                             (dcache_wbuf_ready),
     .dcache_wbuf_valid_i                             (dcache_wbuf_valid),
     .dcache_wbuf_i                                   (dcache_wbuf),
-    .dcache_wbuf_pid_i                               (3'b010),
 
     .dcache_wbuf_data_ready_o                        (dcache_wbuf_data_ready),
     .dcache_wbuf_data_valid_i                        (dcache_wbuf_data_valid),
@@ -524,7 +539,6 @@ typedef logic [$clog2(5)-1:0]               req_portid_t;  //NTODO: Optimize for
     .dcache_uc_read_ready_o                          (dcache_uc_read_ready),
     .dcache_uc_read_valid_i                          (dcache_uc_read_valid),
     .dcache_uc_read_i                                (dcache_uc_read),
-    .dcache_uc_read_pid_i                            (3'b011),
 
     .dcache_uc_read_resp_ready_i                     (dcache_uc_read_resp_ready),
     .dcache_uc_read_resp_valid_o                     (dcache_uc_read_resp_valid),
@@ -533,7 +547,6 @@ typedef logic [$clog2(5)-1:0]               req_portid_t;  //NTODO: Optimize for
     .dcache_uc_write_ready_o                         (dcache_uc_write_ready),
     .dcache_uc_write_valid_i                         (dcache_uc_write_valid),
     .dcache_uc_write_i                               (dcache_uc_write),
-    .dcache_uc_write_pid_i                           (3'b100),
 
     .dcache_uc_write_data_ready_o                    (dcache_uc_write_data_ready),
     .dcache_uc_write_data_valid_i                    (dcache_uc_write_data_valid),
