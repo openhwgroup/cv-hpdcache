@@ -46,6 +46,8 @@ import hpdcache_pkg::*;
     input  hpdcache_cmoh_op_t     req_op_i,
     input  hpdcache_req_addr_t    req_addr_i,
     input  hpdcache_req_data_t    req_wdata_i,
+    input  logic                  req_mem_inval_valid_i,
+    output logic                  req_mem_inval_ready_o, 
     //  }}}
 
     //  Write Buffer Interface
@@ -62,7 +64,8 @@ import hpdcache_pkg::*;
 
     output logic                  dir_inval_o,
     output hpdcache_set_t         dir_inval_set_o,
-    output hpdcache_way_vector_t  dir_inval_way_o
+    output hpdcache_way_vector_t  dir_inval_way_o,
+    input logic                   dir_busy_i
     // }}}
 );
 //  }}}
@@ -120,6 +123,8 @@ import hpdcache_pkg::*;
         dir_inval_way_o       = '0;
 
         wbuf_flush_all_o      = 1'b0;
+        // Determines if a memory invalidation can be handled
+        req_mem_inval_ready_o = 1'b1; 
 
         cmoh_fsm_d            = cmoh_fsm_q;
 
@@ -145,7 +150,10 @@ import hpdcache_pkg::*;
                             cmoh_addr_d    = req_addr_i;
                             cmoh_way_d     = cmoh_wdata[0 +: HPDCACHE_WAYS];
                             cmoh_set_cnt_d = 0;
-                            if (mshr_empty_i && rtab_empty_i && ctrl_empty_i) begin
+                            if (req_mem_inval_valid_i) begin // Memory invalidation request
+                                cmoh_fsm_d = CMOH_INVAL_CHECK_NLINE;
+                                req_mem_inval_ready_o = 1'b0; 
+                            end else if (mshr_empty_i && rtab_empty_i && ctrl_empty_i) begin // CMO
                                 if (req_op_i.is_inval_by_nline) begin
                                     cmoh_fsm_d = CMOH_INVAL_CHECK_NLINE;
                                 end else begin
@@ -183,13 +191,25 @@ import hpdcache_pkg::*;
                 end
             end
             CMOH_INVAL_CHECK_NLINE: begin
-                dir_check_o = 1'b1;
-                cmoh_fsm_d  = CMOH_INVAL_SET;
+                if (req_mem_inval_valid_i) begin // Memory invalidation request
+                    req_mem_inval_ready_o = 1'b0;
+                    cmoh_fsm_d  = CMOH_INVAL_CHECK_NLINE;
+                    if (!dir_busy_i) begin
+                       dir_check_o = 1'b1;
+                       cmoh_fsm_d  = CMOH_INVAL_SET;
+                    end
+                end else begin
+                    dir_check_o = 1'b1;
+                    cmoh_fsm_d  = CMOH_INVAL_SET;
+                end 
             end
             CMOH_INVAL_SET: begin
                 cmoh_fsm_d = CMOH_INVAL_SET;
                 case (1'b1)
                     cmoh_op_q.is_inval_by_nline: begin
+                        if (req_mem_inval_valid_i) begin // Memory invalidation request
+                            req_mem_inval_ready_o = 1'b0;
+                        end
                         dir_inval_o     = |dir_check_hit_way_i;
                         dir_inval_way_o =  dir_check_hit_way_i;
                         cmoh_fsm_d      = CMOH_IDLE;
