@@ -41,102 +41,103 @@ import hpdcache_pkg::*;
 //  Ports
 //  {{{
 (
-    input  logic                  clk_i,
-    input  logic                  rst_ni,
+    input  wire logic                  clk_i,
+    input  wire logic                  rst_ni,
 
     //  Global control signals
     //  {{{
-    input  logic                  wbuf_empty_i,
-    input  logic                  mshr_empty_i,
-    input  logic                  rtab_empty_i,
-    input  logic                  ctrl_empty_i,
+    input  wire logic                  wbuf_empty_i,
+    input  wire logic                  mshr_empty_i,
+    input  wire logic                  rtab_empty_i,
+    input  wire logic                  ctrl_empty_i,
     //  }}}
 
     //  Cache-side request interface
     //  {{{
-    input  logic                  req_valid_i,
-    output logic                  req_ready_o,
-    input  hpdcache_uc_op_t       req_op_i,
-    input  hpdcache_req_addr_t    req_addr_i,
-    input  hpdcache_req_size_t    req_size_i,
-    input  hpdcache_req_data_t    req_data_i,
-    input  hpdcache_req_be_t      req_be_i,
-    input  logic                  req_uc_i,
-    input  hpdcache_req_sid_t     req_sid_i,
-    input  hpdcache_req_tid_t     req_tid_i,
-    input  logic                  req_need_rsp_i,
+    input  wire logic                  req_valid_i,
+    output wire logic                  req_ready_o,
+    input  wire hpdcache_uc_op_t       req_op_i,
+    input  wire hpdcache_req_addr_t    req_addr_i,
+    input  wire hpdcache_req_size_t    req_size_i,
+    input  wire hpdcache_req_data_t    req_data_i,
+    input  wire hpdcache_req_be_t      req_be_i,
+    input  wire logic                  req_uc_i,
+    input  wire hpdcache_req_sid_t     req_sid_i,
+    input  wire hpdcache_req_tid_t     req_tid_i,
+    input  wire logic                  req_need_rsp_i,
     //  }}}
 
     //  Write buffer interface
     //  {{{
-    output logic                  wbuf_flush_all_o,
+    output var  logic                  wbuf_flush_all_o,
     //  }}}
 
     //  AMO Cache Interface
     //  {{{
-    output logic                  dir_amo_match_o,
-    output hpdcache_set_t         dir_amo_match_set_o,
-    output hpdcache_tag_t         dir_amo_match_tag_o,
-    output logic                  dir_amo_update_plru_o,
-    input  hpdcache_way_vector_t  dir_amo_hit_way_i,
+    output wire logic                  dir_amo_match_o,
+    output wire hpdcache_set_t         dir_amo_match_set_o,
+    output wire hpdcache_tag_t         dir_amo_match_tag_o,
+    output wire logic                  dir_amo_update_plru_o,
+    input  wire hpdcache_way_vector_t  dir_amo_hit_way_i,
 
-    output logic                  data_amo_write_o,
-    output logic                  data_amo_write_enable_o,
-    output hpdcache_set_t         data_amo_write_set_o,
-    output hpdcache_req_size_t    data_amo_write_size_o,
-    output hpdcache_word_t        data_amo_write_word_o,
-    output logic [63:0]           data_amo_write_data_o,
-    output logic  [7:0]           data_amo_write_be_o,
+    output wire logic                  data_amo_write_o,
+    output wire logic                  data_amo_write_enable_o,
+    output wire hpdcache_set_t         data_amo_write_set_o,
+    output wire hpdcache_req_size_t    data_amo_write_size_o,
+    output wire hpdcache_word_t        data_amo_write_word_o,
+    output wire logic [63:0]           data_amo_write_data_o,
+    output wire logic  [7:0]           data_amo_write_be_o,
     // }}}
 
     //  LR/SC reservation buffer
     //  {{{
-    input  logic                  lrsc_snoop_i,
-    input  hpdcache_req_addr_t    lrsc_snoop_addr_i,
-    input  hpdcache_req_size_t    lrsc_snoop_size_i,
+    input  wire logic                  lrsc_snoop_i,
+    input  wire hpdcache_req_addr_t    lrsc_snoop_addr_i,
+    input  wire hpdcache_req_size_t    lrsc_snoop_size_i,
     //  }}}
 
     //  Core response interface
     //  {{{
-    input  logic                  core_rsp_ready_i,
-    output logic                  core_rsp_valid_o,
-    output hpdcache_rsp_t         core_rsp_o,
+    input  wire logic                  core_rsp_ready_i,
+    output wire logic                  core_rsp_valid_o,
+    output wire hpdcache_rsp_t         core_rsp_o,
     //  }}}
 
     //  MEMORY interfaces
     //  {{{
     //      Memory request unique identifier
-    input  hpdcache_mem_id_t      mem_read_id_i,
-    input  hpdcache_mem_id_t      mem_write_id_i,
+    input  wire hpdcache_mem_id_t      mem_read_id_i,
+    input  wire hpdcache_mem_id_t      mem_write_id_i,
 
     //      Read interface
-    input  logic                  mem_req_read_ready_i,
-    output logic                  mem_req_read_valid_o,
-    output hpdcache_mem_req_t     mem_req_read_o,
+    input  wire logic                  mem_req_read_ready_i,
+    output var  logic                  mem_req_read_valid_o,
+    output var  hpdcache_mem_req_t     mem_req_read_o,
 
-    output logic                  mem_resp_read_ready_o,
-    input  logic                  mem_resp_read_valid_i,
-    input  hpdcache_mem_resp_r_t  mem_resp_read_i,
+    output var  logic                  mem_resp_read_ready_o,
+    input  wire logic                  mem_resp_read_valid_i,
+    input  wire hpdcache_mem_resp_r_t  mem_resp_read_i,
 
     //      Write interface
-    input  logic                  mem_req_write_ready_i,
-    output logic                  mem_req_write_valid_o,
-    output hpdcache_mem_req_t     mem_req_write_o,
+    input  wire logic                  mem_req_write_ready_i,
+    output var  logic                  mem_req_write_valid_o,
+    output var  hpdcache_mem_req_t     mem_req_write_o,
 
-    input  logic                  mem_req_write_data_ready_i,
-    output logic                  mem_req_write_data_valid_o,
-    output hpdcache_mem_req_w_t   mem_req_write_data_o,
+    input  wire logic                  mem_req_write_data_ready_i,
+    output var  logic                  mem_req_write_data_valid_o,
+    output wire hpdcache_mem_req_w_t   mem_req_write_data_o,
 
-    output logic                  mem_resp_write_ready_o,
-    input  logic                  mem_resp_write_valid_i,
-    input  hpdcache_mem_resp_w_t  mem_resp_write_i,
+    output wire logic                  mem_resp_write_ready_o,
+    input  wire logic                  mem_resp_write_valid_i,
+    input  wire hpdcache_mem_resp_w_t  mem_resp_write_i,
     //  }}}
 
     //  Configuration interface
     //  {{{
-    input  logic                  cfg_error_on_cacheable_amo_i
+    input  wire logic                  cfg_error_on_cacheable_amo_i
     //  }}}
 );
+//  }}}
 //  }}}
 
 //  Definition of constants and types

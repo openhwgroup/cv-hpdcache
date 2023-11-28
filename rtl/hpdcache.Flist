@@ -28,6 +28,7 @@ ${HPDCACHE_DIR}/rtl/src/hpdcache_pkg.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_demux.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_sync_buffer.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_fifo_reg.sv
+${HPDCACHE_DIR}/rtl/src/common/hpdcache_fifo_reg_initialized.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_fxarb.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_rrarb.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_mux.sv

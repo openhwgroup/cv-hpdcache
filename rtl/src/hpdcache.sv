@@ -106,6 +106,10 @@ import hpdcache_pkg::*;
     input  logic                          mem_resp_uc_write_valid_i,
     input  hpdcache_mem_resp_w_t          mem_resp_uc_write_i,
 
+    output logic                          mem_inval_ready_o,
+    input  logic                          mem_inval_valid_i,
+    input  hpdcache_req_t                 mem_inval_i,
+
     //      Performance events
     output logic                          evt_cache_write_miss_o,
     output logic                          evt_cache_read_miss_o,
@@ -230,6 +234,9 @@ import hpdcache_pkg::*;
     logic                  cmo_dir_inval;
     hpdcache_set_t         cmo_dir_inval_set;
     hpdcache_way_vector_t  cmo_dir_inval_way;
+    logic                  cmo_dir_busy;
+    logic                  cmo_req_mem_inval_valid;
+    logic                  cmo_req_mem_inval_ready;
 
     logic                  rtab_empty;
     logic                  ctrl_empty;
@@ -390,9 +397,16 @@ import hpdcache_pkg::*;
         .cmo_dir_inval_i                    (cmo_dir_inval),
         .cmo_dir_inval_set_i                (cmo_dir_inval_set),
         .cmo_dir_inval_way_i                (cmo_dir_inval_way),
+        .cmo_dir_busy_o                     (cmo_dir_busy),
+        .cmo_req_mem_inval_valid_o          (cmo_req_mem_inval_valid),
+        .cmo_req_mem_inval_ready_i          (cmo_req_mem_inval_ready),
 
         .rtab_empty_o                       (rtab_empty),
         .ctrl_empty_o                       (ctrl_empty),
+
+        .inval_req_ready_o                  (mem_inval_ready_o),
+        .inval_req_valid_i                  (mem_inval_valid_i),
+        .inval_req_i                        (mem_inval_i),
 
         .cfg_enable_i,
         .cfg_rtab_single_entry_i,
@@ -620,6 +634,8 @@ import hpdcache_pkg::*;
         .req_op_i               (cmo_req_op),
         .req_addr_i             (cmo_req_addr),
         .req_wdata_i            (cmo_req_wdata),
+        .req_mem_inval_valid_i  (cmo_req_mem_inval_valid),
+        .req_mem_inval_ready_o  (cmo_req_mem_inval_ready),
 
         .wbuf_flush_all_o       (cmo_wbuf_flush_all),
 
@@ -630,7 +646,8 @@ import hpdcache_pkg::*;
 
         .dir_inval_o            (cmo_dir_inval),
         .dir_inval_set_o        (cmo_dir_inval_set),
-        .dir_inval_way_o        (cmo_dir_inval_way)
+        .dir_inval_way_o        (cmo_dir_inval_way),
+        .dir_busy_i             (cmo_dir_busy)        
     );
     //  }}}
 
