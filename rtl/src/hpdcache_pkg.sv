@@ -454,6 +454,10 @@ package hpdcache_pkg;
         return addr[HPDCACHE_OFFSET_WIDTH +: HPDCACHE_NLINE_WIDTH];
     endfunction
 
+    function automatic hpdcache_req_offset_t hpdcache_get_req_addr_offset_and_set(input hpdcache_req_addr_t addr);
+        return addr[0 +: (HPDCACHE_OFFSET_WIDTH + HPDCACHE_SET_WIDTH)];
+    endfunction
+
     function automatic hpdcache_set_t hpdcache_get_req_offset_set(input hpdcache_req_offset_t offset);
         return offset[HPDCACHE_OFFSET_WIDTH +: HPDCACHE_SET_WIDTH];
     endfunction
