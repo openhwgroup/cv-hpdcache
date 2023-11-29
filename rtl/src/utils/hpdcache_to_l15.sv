@@ -245,7 +245,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     // Invalidation request translated as a CMO 
     assign resp_o.mem_inval_icache_valid      = mem_inval_icache_valid,
            resp_o.mem_inval_dcache_valid      = mem_inval_dcache_valid,
-           resp_o.mem_inval.addr_offset       = hpdcache_req_offset_t'(l15_rtrn_i.l15_inval_address),
+           resp_o.mem_inval.addr_offset       = hpdcache_get_req_addr_offset_and_set(l15_rtrn_i.l15_inval_address),
            resp_o.mem_inval.wdata             = '0,
            resp_o.mem_inval.op                = HPDCACHE_REQ_CMO,
            resp_o.mem_inval.be                = '0,
@@ -254,7 +254,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
            resp_o.mem_inval.tid               = '0,
            resp_o.mem_inval.need_rsp          = 1'b0,
            resp_o.mem_inval.phys_indexed      = 1'b1,
-           resp_o.mem_inval.addr_tag          = hpdcache_tag_t'(l15_rtrn_i.l15_inval_address),
+           resp_o.mem_inval.addr_tag          = hpdcache_get_req_addr_tag(l15_rtrn_i.l15_inval_address),
            resp_o.mem_inval.pma.io            = 1'b0,
            resp_o.mem_inval.pma.uncacheable   = 1'b0;
 
