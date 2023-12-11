@@ -39,11 +39,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     parameter hpdcache_uint    AdapterInvalFifoDepth = 10,
     parameter bit              SwapEndianess = 1,
     parameter hpdcache_uint    HPDcacheMemDataWidth = 128,
-`ifdef WRITE_BYTE_MASK
-    parameter bit              WriteByteMaskEnabled = 1,
-`else 
     parameter bit              WriteByteMaskEnabled = 0,
-`endif
     // Default value is compatible with CVA6
     parameter logic [2:0]      IcacheNoCachableSize = 3'b010,
 
@@ -197,10 +193,8 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
            l15_req_o.l15_invalidate_cacheline = '0, // unused by Ariane as L1 has no ECC at the moment
            l15_req_o.l15_blockstore           = '0, // unused in openpiton
            l15_req_o.l15_blockinitstore       = '0, // unused in openpiton
-           l15_req_o.l15_l1rplway             = '0; // Not used for this adapter
-`ifdef WRITE_BYTE_MASK
-    assign l15_req_o.l15_be                   = swendian8B(req_wbe[0 +: 8] | req_wbe[HPDcacheMemDataWidth/8-1 -: 8]);
-`endif
+           l15_req_o.l15_l1rplway             = '0, // Not used for this adapter
+           l15_req_o.l15_be                   = swendian8B(req_wbe[0 +: 8] | req_wbe[HPDcacheMemDataWidth/8-1 -: 8]);
 
 
     // Type of request based on the request mux index port (req_index_i: IcachePort->IMISS, DcachePort->Read DcacheWbufPort-> Write DcacheUncReadPort-> Un.Read DcacheUncWritePort-> Un. Write/AMO)
