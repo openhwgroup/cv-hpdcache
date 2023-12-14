@@ -41,7 +41,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     parameter hpdcache_uint    HPDcacheMemDataWidth = 128,
     parameter bit              WriteByteMaskEnabled = 0,
     // Default value is compatible with CVA6
-    parameter logic [2:0]      IcacheNoCachableSize = 3'b010,
+    parameter logic [2:0]      IcacheNoCachableSize = 3'b011,
 
     parameter type hpdcache_mem_req_t = logic,
     parameter type hpdcache_mem_req_w_t = logic,
@@ -175,9 +175,9 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                                                 (req_is_write || req_is_unc_write) ? L15_STORE_RQ : L15_ATOMIC_RQ,
            l15_req_o.l15_nc                   = ~req_i.mem_req_cacheable,
                                                 // IMiss Unch: 4B Cach: 32B cacheline; Load/Store/AMO Max 16B cacheline (other possible sizes: 1,2,4,8B)
-           l15_req_o.l15_size                 = (req_is_ifill)                              ? ((req_i.mem_req_cacheable) ? 3'b111 : IcacheNoCachableSize) : // IMiss     
-                                                (req_is_write  && ~WriteByteMaskEnabled)    ? req_wt_size :                                   // Store (1/2/4/8) 
-                                                (req_i.mem_req_size == 3'b100)              ? 3'b111 : req_i.mem_req_size,                    // Load & Unc. Load &  Unc. Store (1/2/4/8) & AMO (4/8) & Store (8)
+           l15_req_o.l15_size                 = (req_is_ifill)                              ? ((req_i.mem_req_cacheable) ? 3'b110 : IcacheNoCachableSize) : // IMiss     
+                                                (req_is_write  && ~WriteByteMaskEnabled)    ? req_wt_size + 1'b1:  // Store (1/2/4/8) 
+                                                req_i.mem_req_size + 1'b1, // Load & Unc. Load &  Unc. Store (1/2/4/8) & AMO (4/8) & Store (8)
            l15_req_o.l15_threadid             = req_thid, 
                                                 // If WBME=0, the store req. hast to be aligned to its size (by default its aligned to WBUF entry size). 
            l15_req_o.l15_address              = (req_is_write  && ~WriteByteMaskEnabled)    ? req_wt_address : req_i.mem_req_addr,
@@ -414,7 +414,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                  req_wt_address = req_i.mem_req_addr; //Already aligned
             end
             default: begin 
-                req_wt_size     = 3'b111;  //16B
+                req_wt_size     = 3'b011;  //8B
                 req_wt_offset   = '0;
                 req_wt_address  = req_i.mem_req_addr; //Already aligned
             end
