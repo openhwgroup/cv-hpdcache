@@ -173,6 +173,7 @@ import hpdcache_pkg::*;
             end
             CMOH_FENCE_WAIT_WBUF_RTAB_EMPTY: begin
                 wbuf_flush_all_o = rtab_empty_i;
+                req_mem_inval_ready_o = 1'b0;
 
                 if (wbuf_empty_i && rtab_empty_i) begin
                     cmoh_fsm_d = CMOH_IDLE;
@@ -181,6 +182,8 @@ import hpdcache_pkg::*;
                 end
             end
             CMOH_INVAL_WAIT_MSHR_RTAB_EMPTY: begin
+                req_mem_inval_ready_o = 1'b0;
+                
                 cmoh_fsm_d = CMOH_INVAL_WAIT_MSHR_RTAB_EMPTY;
                 if (mshr_empty_i && rtab_empty_i && ctrl_empty_i) begin
                     if (cmoh_op_q.is_inval_by_nline) begin
