@@ -169,6 +169,9 @@ package hpdcache_pkg;
     localparam bit HPDCACHE_REFILL_CORE_RSP_FEEDTHROUGH =
         hpdcache_params_pkg::PARAM_REFILL_CORE_RSP_FEEDTHROUGH;
 
+    //    Depth of the FIFO on the refill memory interface.
+    localparam int unsigned HPDCACHE_REFILL_FIFO_DEPTH = hpdcache_params_pkg::PARAM_REFILL_FIFO_DEPTH;
+
     typedef hpdcache_data_word_t[HPDCACHE_ACCESS_WORDS-1:0] hpdcache_refill_data_t;
     typedef hpdcache_data_be_t  [HPDCACHE_ACCESS_WORDS-1:0] hpdcache_refill_be_t;
     //  }}}
