@@ -499,7 +499,7 @@ import hpdcache_pkg::*;
     };
 
     hpdcache_fifo_reg #(
-        .FIFO_DEPTH  (2),
+        .FIFO_DEPTH  (HPDCACHE_REFILL_FIFO_DEPTH),
         .fifo_data_t (mem_resp_metadata_t)
     ) i_r_metadata_fifo (
         .clk_i,
@@ -519,7 +519,8 @@ import hpdcache_pkg::*;
             hpdcache_data_upsize #(
                 .WR_WIDTH(HPDcacheMemDataWidth),
                 .RD_WIDTH(HPDCACHE_REFILL_DATA_WIDTH),
-                .DEPTH(2*(HPDCACHE_CL_WIDTH/HPDCACHE_REFILL_DATA_WIDTH))
+                .DEPTH(HPDCACHE_REFILL_FIFO_DEPTH*
+                    (HPDCACHE_CL_WIDTH/HPDCACHE_REFILL_DATA_WIDTH))
             ) i_rdata_upsize (
                 .clk_i,
                 .rst_ni,
@@ -537,7 +538,8 @@ import hpdcache_pkg::*;
             hpdcache_data_downsize #(
                 .WR_WIDTH(HPDcacheMemDataWidth),
                 .RD_WIDTH(HPDCACHE_REFILL_DATA_WIDTH),
-                .DEPTH(2*(HPDCACHE_CL_WIDTH/HPDcacheMemDataWidth))
+                .DEPTH(HPDCACHE_REFILL_FIFO_DEPTH*
+                    (HPDCACHE_CL_WIDTH/HPDcacheMemDataWidth))
             ) i_rdata_downsize (
                 .clk_i,
                 .rst_ni,
@@ -552,7 +554,7 @@ import hpdcache_pkg::*;
             );
         end else begin
             hpdcache_fifo_reg #(
-                .FIFO_DEPTH  (2),
+                .FIFO_DEPTH  (HPDCACHE_REFILL_FIFO_DEPTH),
                 .fifo_data_t (hpdcache_refill_data_t)
             ) i_rdata_fifo (
                 .clk_i,
