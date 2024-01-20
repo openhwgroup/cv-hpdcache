@@ -139,6 +139,7 @@ import hpdcache_pkg::*;
 
     //      Cache Management Operation (CMO)
     input  logic                  cmo_busy_i,
+    input  logic                  cmo_wait_i,
     output logic                  cmo_req_valid_o,
     output hpdcache_cmoh_op_t     cmo_req_op_o,
     output hpdcache_req_addr_t    cmo_req_addr_o,
@@ -153,7 +154,6 @@ import hpdcache_pkg::*;
     input  hpdcache_way_vector_t  cmo_dir_inval_way_i,
     output logic                  cmo_dir_busy_o,
     output logic                  cmo_req_mem_inval_valid_o,
-    input  logic                  cmo_req_mem_inval_ready_i,
 
     output logic                  rtab_empty_o,
     output logic                  ctrl_empty_o,
@@ -199,13 +199,6 @@ import hpdcache_pkg::*;
 
     //  Definition of internal signals
     //  {{{
-    logic [1:0]              st0_arb_req;
-    logic [1:0]              st0_arb_req_grant;
-    logic                    st0_arb_ready;
-
-    logic                    st0_req_ready;
-
-    logic                    st0_req_valid;
     hpdcache_req_t           st0_req;
     logic                    st0_req_is_uncacheable;
     logic                    st0_req_is_load;
@@ -221,7 +214,6 @@ import hpdcache_pkg::*;
     logic                    st0_rtab_pop_try_valid;
     logic                    st0_rtab_pop_try_ready;
     hpdcache_req_t           st0_rtab_pop_try_req;
-    logic                    st0_rtab_pop_try_sel;
     rtab_ptr_t               st0_rtab_pop_try_ptr;
 
     logic                    st1_rsp_valid;
@@ -274,65 +266,45 @@ import hpdcache_pkg::*;
 
     logic                    rtab_full;
 
-    logic                    rtab_core_req_valid;
-    logic                    refill_req_valid;
-
     logic                    hpdcache_init_ready;
-
-    logic                    inval_pending;
-    logic                    inval_busy;
-    logic                    inval_valid;
-    //  }}}
-
-    //  Memory invalidations
-    //  {{{
-            // Memory Inval request available
-    assign inval_pending = inval_req_valid_i,     
-            // Determines that a memory inval is already being processed     
-           inval_busy    = ~cmo_req_mem_inval_ready_i, 
-            // Determines that a memory inval is valid when there is a inval. pending
-            // and the CMO handler is not attending another memory inval or a CMO
-           inval_valid   = inval_pending & ~inval_busy & ~cmo_busy_i; 
     //  }}}
 
     //  Decoding of the request
     //  {{{
     //     Select between request in the replay table or a new core requests
-    assign rtab_core_req_valid     = st0_rtab_pop_try_sel ? st0_rtab_pop_try_valid 
-                                                          : core_req_valid_i;
-    assign st0_req.addr_offset     = inval_pending        ? inval_req_i.addr_offset : 
-                                     st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.addr_offset
-                                                          : core_req_i.addr_offset,
-           st0_req.addr_tag        = inval_pending         ? inval_req_i.addr_tag : 
-                                     st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.addr_tag
-                                                          : core_req_i.addr_tag,
-           st0_req.wdata           = inval_pending         ? inval_req_i.wdata :
-                                     st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.wdata
-                                                          : core_req_i.wdata,
-           st0_req.op              = inval_pending         ? inval_req_i.op :
-                                     st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.op
-                                                          : core_req_i.op,
-           st0_req.be              = inval_pending         ? inval_req_i.be :
-                                     st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.be
-                                                          : core_req_i.be,
-           st0_req.size            = inval_pending         ? inval_req_i.size :
-                                     st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.size
-                                                          : core_req_i.size,
-           st0_req.sid             = inval_pending         ? inval_req_i.sid :
-                                     st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.sid
-                                                          : core_req_i.sid,
-           st0_req.tid             = inval_pending         ? inval_req_i.tid :
-                                     st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.tid
-                                                          : core_req_i.tid,
-           st0_req.need_rsp        = inval_pending         ? inval_req_i.need_rsp :
-                                     st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.need_rsp
-                                                          : core_req_i.need_rsp,
-           st0_req.phys_indexed    = inval_pending         ? inval_req_i.phys_indexed :
-                                     st0_rtab_pop_try_sel ? 1'b1
-                                                          : core_req_i.phys_indexed,
-           st0_req.pma             = inval_pending         ? inval_req_i.pma :
-                                     st0_rtab_pop_try_sel ? st0_rtab_pop_try_req.pma
-                                                          : core_req_i.pma;
+    assign st0_req.addr_offset  = inval_req_ready_o      ? inval_req_i.addr_offset :
+                                  st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.addr_offset
+                                                         : core_req_i.addr_offset,
+           st0_req.addr_tag     = inval_req_ready_o      ? inval_req_i.addr_tag :
+                                  st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.addr_tag
+                                                         : core_req_i.addr_tag,
+           st0_req.wdata        = inval_req_ready_o      ? inval_req_i.wdata :
+                                  st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.wdata
+                                                         : core_req_i.wdata,
+           st0_req.op           = inval_req_ready_o      ? inval_req_i.op :
+                                  st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.op
+                                                         : core_req_i.op,
+           st0_req.be           = inval_req_ready_o      ? inval_req_i.be :
+                                  st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.be
+                                                         : core_req_i.be,
+           st0_req.size         = inval_req_ready_o      ? inval_req_i.size :
+                                  st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.size
+                                                         : core_req_i.size,
+           st0_req.sid          = inval_req_ready_o      ? inval_req_i.sid :
+                                  st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.sid
+                                                         : core_req_i.sid,
+           st0_req.tid          = inval_req_ready_o      ? inval_req_i.tid :
+                                  st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.tid
+                                                         : core_req_i.tid,
+           st0_req.need_rsp     = inval_req_ready_o      ? inval_req_i.need_rsp :
+                                  st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.need_rsp
+                                                         : core_req_i.need_rsp,
+           st0_req.phys_indexed = inval_req_ready_o      ? inval_req_i.phys_indexed :
+                                  st0_rtab_pop_try_valid ? 1'b1 :
+                                                           core_req_i.phys_indexed,
+           st0_req.pma          = inval_req_ready_o      ? inval_req_i.pma :
+                                  st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.pma
+                                                         : core_req_i.pma;
 
     //     Decode operation in stage 0
     assign st0_req_is_uncacheable  = ~cfg_enable_i | ( st0_req.phys_indexed
@@ -388,52 +360,21 @@ import hpdcache_pkg::*;
            st1_req_is_cmo_prefetch = is_cmo_prefetch(st1_req.op, st1_req.size);
     //  }}}
 
-    //  Refill arbiter: it arbitrates between normal requests (from the core,
-    //  coprocessor, prefetch) and refill requests (from the miss handler).
-    //
-    //  TODO This arbiter could be replaced by a weighted-round-robin arbiter.
-    //  This way we could distribute asymetrically the bandwidth to the core
-    //  and the refill interfaces.
-    //  {{{
-    hpdcache_rrarb #(.N(2)) st0_arb_i
-    (
-        .clk_i,
-        .rst_ni,
-        .req_i                              (st0_arb_req),
-        .gnt_o                              (st0_arb_req_grant),
-        .ready_i                            (st0_arb_ready)
-    );
-
-    //      The arbiter can cycle the priority token when:
-    //      - The granted request is consumed (req_grant &  req_valid & req_ready)
-    //      - The granted request is aborted  (req_grant & ~req_valid)
-    //  And there is not an invalidation request pending or being processed
-    assign st0_arb_ready  =  ~inval_pending & ~inval_busy &
-                             ((st0_arb_req_grant[0] & rtab_core_req_valid & st0_req_ready) |
-                             (st0_arb_req_grant[1] & refill_req_valid_i & refill_req_ready_o) |
-                             (st0_arb_req_grant[0] & ~rtab_core_req_valid) |
-                             (st0_arb_req_grant[1] & ~refill_req_valid_i));
-
-    assign st0_arb_req[0] = rtab_core_req_valid,
-           st0_arb_req[1] = refill_req_valid_i;
-
-    assign core_req_ready_o       = st0_req_ready   & ~st0_rtab_pop_try_sel & ~inval_pending & ~inval_busy,
-           st0_rtab_pop_try_ready = st0_req_ready   &  st0_rtab_pop_try_sel & ~inval_pending & ~inval_busy,
-           // Ready to process a memory invalidation when there is a pending invalidation 
-           // and the CMO handler is not attending another memory inval or a CMO
-           inval_req_ready_o      = st0_req_ready   &  inval_pending        & ~inval_busy    & ~cmo_busy_i;
-
     //      Trigger an event signal when the pipeline is stalled (new request is not consumed)
-    assign evt_stall_o        = core_req_valid_i & ~core_req_ready_o;
-    //  }}}
+    // assign evt_stall_o = core_req_valid_i & ~core_req_ready_o;
 
     //  Cache controller protocol engine
     //  {{{
     hpdcache_ctrl_pe hpdcache_ctrl_pe_i(
-        .arb_st0_req_valid_i                (st0_req_valid),
-        .arb_st0_req_ready_o                (st0_req_ready),
-        .arb_refill_valid_i                 (refill_req_valid),
-        .arb_refill_ready_o                 (refill_req_ready_o),
+        .core_req_valid_i,
+        .core_req_ready_o,
+        .rtab_req_valid_i                   (st0_rtab_pop_try_valid),
+        .rtab_req_ready_o                   (st0_rtab_pop_try_ready),
+        .refill_req_valid_i,
+        .refill_req_ready_o,
+        .inval_req_valid_i,
+        .inval_req_ready_o,
+
         .st0_req_is_uncacheable_i           (st0_req_is_uncacheable),
         .st0_req_need_rsp_i                 (st0_req.need_rsp),
         .st0_req_is_load_i                  (st0_req_is_load),
@@ -473,8 +414,6 @@ import hpdcache_pkg::*;
         .st2_req_mshr_alloc_cs_o            (miss_mshr_alloc_cs_o),
 
         .rtab_full_i                        (rtab_full),
-        .rtab_req_valid_i                   (st0_rtab_pop_try_valid),
-        .rtab_sel_o                         (st0_rtab_pop_try_sel),
         .rtab_check_o                       (st1_rtab_check),
         .rtab_check_hit_i                   (st1_rtab_check_hit),
         .st1_rtab_alloc_o                   (st1_rtab_alloc),
@@ -508,6 +447,7 @@ import hpdcache_pkg::*;
         .uc_core_rsp_ready_o,
 
         .cmo_busy_i,
+        .cmo_wait_i,
         .cmo_req_valid_o,
 
         .evt_cache_write_miss_o,
@@ -519,16 +459,13 @@ import hpdcache_pkg::*;
         .evt_prefetch_req_o,
         .evt_req_on_hold_o,
         .evt_rtab_rollback_o,
-        .evt_stall_refill_o
+        .evt_stall_refill_o,
+        .evt_stall_o
     );
-    // st0_req -> (rtab/core) or inval request. Its valid when:
-        // - There is a valid memory invalidation request
-        // - There is a valid rtab/core request and there is not a pending memory invalidation active or already being processed 
-    assign st0_req_valid = (rtab_core_req_valid & st0_arb_req_grant[0] & ~inval_pending & ~inval_busy) || inval_valid;
-        // refill request is valid if there is a valid refill 
-        // and there is not a pending memory invalidation active or already being processed 
-    assign refill_req_valid = refill_req_valid_i & st0_arb_req_grant[1] & ~inval_pending & ~inval_busy;
+
+    //  pipeline is empty
     assign ctrl_empty_o = ~(st1_req_valid_q | st2_req_valid_q);
+
     //  }}}
 
     //  Replay table
@@ -591,7 +528,7 @@ import hpdcache_pkg::*;
     //  {{{
     always_ff @(posedge clk_i)
     begin : st1_req_payload_ff
-        if (st0_req_ready) begin
+        if (core_req_ready_o | st0_rtab_pop_try_ready | inval_req_ready_o) begin
             st1_req_q <= st0_req;
         end
     end
@@ -606,10 +543,10 @@ import hpdcache_pkg::*;
 
         end else begin
             st1_req_valid_q <= st1_req_valid_d;
-            if (st0_req_ready) begin
-                st1_req_rtab_q <= st0_rtab_pop_try_sel;
-                st1_req_is_mem_inval_q <= inval_req_valid_i;
-                if (st0_rtab_pop_try_sel) begin
+            if (core_req_ready_o | st0_rtab_pop_try_ready | inval_req_ready_o) begin
+                st1_req_rtab_q <= st0_rtab_pop_try_ready;
+                st1_req_is_mem_inval_q <= inval_req_ready_o;
+                if (st0_rtab_pop_try_ready) begin
                     st1_rtab_pop_try_ptr_q <= st0_rtab_pop_try_ptr;
                 end
             end
@@ -779,7 +716,7 @@ import hpdcache_pkg::*;
            cmo_req_op_o.is_inval_all      = st1_req_is_cmo_inval &
                                             is_cmo_inval_all(st1_req.size),
            cmo_dir_busy_o                 = (st0_req_cachedir_read | uc_dir_amo_match_i | refill_write_dir_i),
-           cmo_req_mem_inval_valid_o      = st1_req_is_mem_inval_q;                                
+           cmo_req_mem_inval_valid_o      = st1_req_is_mem_inval_q;
     //  }}}
 
     //  Control of the response to the core
@@ -798,7 +735,7 @@ import hpdcache_pkg::*;
                                 st1_req.tid)),
            core_rsp_o.error   = (refill_core_rsp_valid_i ? refill_core_rsp_i.error :
                                 (uc_core_rsp_valid_i     ? uc_core_rsp_i.error     :
-                                /* FIXME */1'b0)),
+                                1'b0)),
            core_rsp_o.aborted = st1_rsp_aborted;
     //  }}}
 
