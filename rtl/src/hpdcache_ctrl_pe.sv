@@ -27,12 +27,20 @@ module hpdcache_ctrl_pe
     // Ports
     // {{{
 (
-    //   Refill arbiter
+    //   Requests
     //   {{{
-    input  logic                   arb_st0_req_valid_i,
-    output logic                   arb_st0_req_ready_o,
-    input  logic                   arb_refill_valid_i,
-    output logic                   arb_refill_ready_o,
+    input  logic                   core_req_valid_i,
+    output logic                   core_req_ready_o,
+
+    input  logic                   rtab_req_valid_i,
+    output logic                   rtab_req_ready_o,
+
+    input  logic                   refill_req_valid_i,
+    output logic                   refill_req_ready_o,
+
+    input  logic                   inval_req_valid_i,
+    output logic                   inval_req_ready_o,
+
     //   }}}
 
     //   Pipeline stage 0
@@ -85,8 +93,6 @@ module hpdcache_ctrl_pe
     //   Replay
     //   {{{
     input  logic                   rtab_full_i,
-    input  logic                   rtab_req_valid_i,
-    output logic                   rtab_sel_o,
     output logic                   rtab_check_o,
     input  logic                   rtab_check_hit_i,
     output logic                   st1_rtab_alloc_o,
@@ -138,6 +144,7 @@ module hpdcache_ctrl_pe
     //   Cache Management Operation (CMO)
     //   {{{
     input  logic                   cmo_busy_i,
+    input  logic                   cmo_wait_i,
     output logic                   cmo_req_valid_o,
     //   }}}
 
@@ -152,7 +159,8 @@ module hpdcache_ctrl_pe
     output logic                   evt_prefetch_req_o,
     output logic                   evt_req_on_hold_o,
     output logic                   evt_rtab_rollback_o,
-    output logic                   evt_stall_refill_o
+    output logic                   evt_stall_refill_o,
+    output logic                   evt_stall_o
     //   }}}
 );
     // }}}
@@ -184,25 +192,6 @@ module hpdcache_ctrl_pe
     assign uc_core_rsp_ready_o = ~refill_core_rsp_valid_i;
     //  }}}
 
-    //  Arbiter between core or replay request.
-    //  {{{
-    //      Take the replay request when:
-    //      - The replay table is full.
-    //      - The replay table has a ready request (request with all dependencies solved)
-    //      - There is an outstanding CMO or uncached/AMO request
-    //
-    //      IMPORTANT: When the replay table is full, the cache cannot accept new core
-    //      requests because this can introduce a dead-lock : If the core request needs to
-    //      be put on hold, as there is no place the replay table, the pipeline needs to
-    //      stall. If the pipeline is stalled, dependencies of on-hold requests cannot be
-    //      solved, and the system is locked.
-    assign rtab_sel_o = rtab_full_i                   |
-                        rtab_req_valid_i              |
-                        (st1_req_valid_i & st1_fence) |
-                        cmo_busy_i                    |
-                        uc_busy_i;
-    //  }}}
-
     //  Replay logic
     //  {{{
     //      Replay table allocation
@@ -229,8 +218,10 @@ module hpdcache_ctrl_pe
         wbuf_read_flush_hit_o               = 1'b0;
         wbuf_write_uncacheable_o            = 1'b0; // unused
 
-        arb_st0_req_ready_o                 = 1'b0;
-        arb_refill_ready_o                  = 1'b0;
+        core_req_ready_o                    = 1'b0;
+        rtab_req_ready_o                    = 1'b0;
+        inval_req_ready_o                   = 1'b0;
+        refill_req_ready_o                  = 1'b0;
 
         st0_req_mshr_check_o                = 1'b0;
         st0_req_cachedir_read_o             = 1'b0;
@@ -271,6 +262,7 @@ module hpdcache_ctrl_pe
         evt_read_req_o                      = 1'b0;
         evt_prefetch_req_o                  = 1'b0;
         evt_stall_refill_o                  = 1'b0;
+        evt_stall_o                         = 1'b0;
 
         //  Wait for the cache to be initialized
         //  {{{
@@ -283,7 +275,7 @@ module hpdcache_ctrl_pe
         //  {{{
         else if (refill_busy_i) begin
             //  miss handler has the control of the cache
-            evt_stall_refill_o = arb_st0_req_valid_i;
+            evt_stall_refill_o = core_req_valid_i;
         end
         //  }}}
 
@@ -448,7 +440,7 @@ module hpdcache_ctrl_pe
 
                             //  Add a NOP when replaying a request, and there is no available
                             //  request from the replay table.
-                            st1_nop = st1_req_rtab_i & ~rtab_sel_o;
+                            st1_nop = st1_req_rtab_i & ~rtab_req_valid_i;
 
                             //  Update the PLRU bit for the accessed set
                             st1_req_cachedir_updt_lru_o = st1_req_is_load_i;
@@ -485,8 +477,8 @@ module hpdcache_ctrl_pe
                         //  IMPORTANT: we could remove the NOP in the first scenario if the
                         //  controller checks for the hit of this write. However, this adds
                         //  a DIR_RAM -> DATA_RAM timing path.
-                        st1_nop = (arb_st0_req_valid_i &  st0_req_is_load_i) |
-                                  (st1_req_rtab_i      & ~rtab_sel_o);
+                        st1_nop = ((core_req_valid_i |  rtab_req_valid_i) & st0_req_is_load_i) |
+                                   (st1_req_rtab_i   & ~rtab_req_valid_i);
 
                         //  Enable the data RAM in case of write. However, the actual write
                         //  depends on the hit signal from the cache directory.
@@ -577,19 +569,47 @@ module hpdcache_ctrl_pe
             //  {{{
             nop = st1_nop | st2_nop;
 
-            //      The cache controller accepts a core request when:
-            //      -  The req-refill arbiter grants the request
-            //      -  The pipeline is not being flushed
-            arb_st0_req_ready_o = arb_st0_req_valid_i & ~nop;
+            //     New requests/refill are served according to the following priority:
+            //     0 - Refills (Highest priority)
+            //     1 - Invalidation
+            //     2 - Replay Table
+            //     3 - Core (Lowest priority)
 
-            //      The cache controller accepts a refill when:
-            //      -  The req-refill arbiter grants the refill
-            //      -  The pipeline is empty
-            arb_refill_ready_o = arb_refill_valid_i & ~(st1_req_valid_i | st2_req_valid_i);
+            //     * IMPORTANT: When the replay table is full, the cache
+            //       cannot accept new core requests to prevent a deadlock: If
+            //       the core request needs to be put on hold, as there is no
+            //       place the replay table, the pipeline needs to stall. If
+            //       the pipeline is stalled, dependencies of on-hold requests
+            //       cannot be solved, creating a deadlock
+            core_req_ready_o = core_req_valid_i
+                               & ~rtab_req_valid_i
+                               & ~refill_req_valid_i
+                               & ~inval_req_valid_i
+                               & ~rtab_full_i
+                               & ~cmo_busy_i
+                               & ~uc_busy_i
+                               & ~nop;
 
-            //      Forward the request to stage 1
-            //      - There is a valid request in stage 0
-            st1_req_valid_o = arb_st0_req_ready_o;
+            rtab_req_ready_o = rtab_req_valid_i
+                               & ~refill_req_valid_i
+                               & (~inval_req_valid_i | cmo_wait_i)
+                               & (~cmo_busy_i        | cmo_wait_i)
+                               & ~nop;
+
+            inval_req_ready_o = inval_req_valid_i
+                                & ~refill_req_valid_i
+                                & ~cmo_busy_i
+                                & ~st1_req_valid_i
+                                & ~st2_req_valid_i;
+
+            refill_req_ready_o = refill_req_valid_i
+                                 & ~st1_req_valid_i
+                                 & ~st2_req_valid_i;
+
+            //     Forward the core/rtab/invalidation request to stage 1
+            st1_req_valid_o = core_req_ready_o |
+                              rtab_req_ready_o |
+                              inval_req_ready_o;
 
             //      New cacheable stage 0 request granted
             //      {{{
@@ -598,7 +618,7 @@ module hpdcache_ctrl_pe
             //          This increases the power consumption in that cases, but
             //          removes the timing paths RAM-to-RAM between the cache
             //          directory and the data array.
-            if (arb_st0_req_valid_i && !st0_req_is_uncacheable_i) begin
+            if ((core_req_ready_o | rtab_req_ready_o) && !st0_req_is_uncacheable_i) begin
                 st0_req_cachedata_read_o =
                           st0_req_is_load_i &
                         ~(st1_req_valid_i   & st1_req_is_store_i & ~st1_req_is_uncacheable_i);

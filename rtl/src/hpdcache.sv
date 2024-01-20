@@ -238,7 +238,7 @@ import hpdcache_pkg::*;
     hpdcache_way_vector_t  cmo_dir_inval_way;
     logic                  cmo_dir_busy;
     logic                  cmo_req_mem_inval_valid;
-    logic                  cmo_req_mem_inval_ready;
+    logic                  cmo_wait;
 
     logic                  rtab_empty;
     logic                  ctrl_empty;
@@ -387,6 +387,7 @@ import hpdcache_pkg::*;
         .uc_core_rsp_i                      (uc_core_rsp),
 
         .cmo_busy_i                         (~cmo_ready),
+        .cmo_wait_i                         (cmo_wait),
         .cmo_req_valid_o                    (cmo_req_valid),
         .cmo_req_op_o                       (cmo_req_op),
         .cmo_req_addr_o                     (cmo_req_addr),
@@ -401,7 +402,6 @@ import hpdcache_pkg::*;
         .cmo_dir_inval_way_i                (cmo_dir_inval_way),
         .cmo_dir_busy_o                     (cmo_dir_busy),
         .cmo_req_mem_inval_valid_o          (cmo_req_mem_inval_valid),
-        .cmo_req_mem_inval_ready_i          (cmo_req_mem_inval_ready),
 
         .rtab_empty_o                       (rtab_empty),
         .ctrl_empty_o                       (ctrl_empty),
@@ -643,7 +643,7 @@ import hpdcache_pkg::*;
         .req_addr_i             (cmo_req_addr),
         .req_wdata_i            (cmo_req_wdata),
         .req_mem_inval_valid_i  (cmo_req_mem_inval_valid),
-        .req_mem_inval_ready_o  (cmo_req_mem_inval_ready),
+        .req_wait_o             (cmo_wait),
 
         .wbuf_flush_all_o       (cmo_wbuf_flush_all),
 
