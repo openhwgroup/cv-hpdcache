@@ -103,7 +103,9 @@ import hpdcache_pkg::*;
     assign dir_check_set_o = cmoh_set_q,
            dir_check_tag_o = cmoh_tag_q;
 
-    assign req_ready_o  = (cmoh_fsm_q == CMOH_IDLE);
+    assign req_ready_o  = (cmoh_fsm_q == CMOH_IDLE),
+           req_wait_o   = (cmoh_fsm_q == CMOH_FENCE_WAIT_WBUF_RTAB_EMPTY) |
+                          (cmoh_fsm_q == CMOH_INVAL_WAIT_MSHR_RTAB_EMPTY);
 
     //  Only the least significant word of the write data contains parameters
     //  for the CMO handler
@@ -111,8 +113,6 @@ import hpdcache_pkg::*;
 
     always_comb
     begin : cmoh_fsm_comb
-        req_wait_o            = 1'b0;
-
         cmoh_op_d             = cmoh_op_q;
         cmoh_addr_d           = cmoh_addr_q;
         cmoh_way_d            = cmoh_way_q;
@@ -171,7 +171,6 @@ import hpdcache_pkg::*;
             end
             CMOH_FENCE_WAIT_WBUF_RTAB_EMPTY: begin
                 wbuf_flush_all_o = rtab_empty_i;
-                req_wait_o = 1'b1;
                 if (wbuf_empty_i && rtab_empty_i) begin
                     cmoh_fsm_d = CMOH_IDLE;
                 end else begin
@@ -180,7 +179,6 @@ import hpdcache_pkg::*;
             end
             CMOH_INVAL_WAIT_MSHR_RTAB_EMPTY: begin
                 cmoh_fsm_d = CMOH_INVAL_WAIT_MSHR_RTAB_EMPTY;
-                req_wait_o = 1'b1;
                 if (mshr_empty_i && rtab_empty_i && ctrl_empty_i) begin
                     if (cmoh_op_q.is_inval_by_nline) begin
                         cmoh_fsm_d = CMOH_INVAL_CHECK_NLINE;
