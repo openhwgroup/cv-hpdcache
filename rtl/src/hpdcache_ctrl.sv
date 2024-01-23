@@ -360,9 +360,6 @@ import hpdcache_pkg::*;
            st1_req_is_cmo_prefetch = is_cmo_prefetch(st1_req.op, st1_req.size);
     //  }}}
 
-    //      Trigger an event signal when the pipeline is stalled (new request is not consumed)
-    // assign evt_stall_o = core_req_valid_i & ~core_req_ready_o;
-
     //  Cache controller protocol engine
     //  {{{
     hpdcache_ctrl_pe hpdcache_ctrl_pe_i(
