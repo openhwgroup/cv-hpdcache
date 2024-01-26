@@ -663,7 +663,9 @@ module hpdcache_wbuf
     //  {{{
     //  pragma translate_off
     initial assert(WBUF_WORDS inside {1, 2, 4, 8, 16}) else
-            $error("WBUF: width of data buffers must be a power of 2");
+            $fatal("WBUF: width of data buffers must be a power of 2");
+    initial assert(WBUF_SEND_FEEDTHROUGH == 1'b0) else
+            $fatal("WBUF: WBUF_SEND_FEEDTHROUGH=1 is currently not supported");
     ack_sent_assert: assert property (@(posedge clk_i) disable iff (!rst_ni)
             (ack_i -> (wbuf_dir_state_q[ack_id_i] == WBUF_SENT))) else
             $error("WBUF: acknowledging a not SENT slot");
