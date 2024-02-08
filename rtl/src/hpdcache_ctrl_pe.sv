@@ -265,7 +265,6 @@ module hpdcache_ctrl_pe
         evt_read_req_o                      = 1'b0;
         evt_prefetch_req_o                  = 1'b0;
         evt_stall_refill_o                  = 1'b0;
-        evt_stall_o                         = 1'b0;
 
         //  Wait for the cache to be initialized
         //  {{{
