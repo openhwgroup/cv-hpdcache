@@ -605,6 +605,7 @@ module hpdcache_ctrl_pe
                                 & ~st2_req_valid_i;
 
             refill_req_ready_o = refill_req_valid_i
+                                 & (~cmo_busy_i | cmo_wait_i)
                                  & ~st1_req_valid_i
                                  & ~st2_req_valid_i;
 
