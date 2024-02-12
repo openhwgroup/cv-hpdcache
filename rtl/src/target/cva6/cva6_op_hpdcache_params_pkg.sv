@@ -187,6 +187,13 @@ package hpdcache_params_pkg;
         `define CONF_HPDCACHE_REFILL_CORE_RSP_FEEDTHROUGH 1'b1
     `endif
     localparam bit PARAM_REFILL_CORE_RSP_FEEDTHROUGH = `CONF_HPDCACHE_REFILL_CORE_RSP_FEEDTHROUGH;
+
+    //  HPDcache depth of the refill FIFO
+    `ifndef CONF_HPDCACHE_REFILL_FIFO_DEPTH
+        `define CONF_HPDCACHE_REFILL_FIFO_DEPTH 32'd2
+    `endif
+    localparam int PARAM_REFILL_FIFO_DEPTH = `CONF_HPDCACHE_REFILL_FIFO_DEPTH;
+    
     //  }}}
 
     //  Definition of constants and types for the Write Buffer (WBUF)
