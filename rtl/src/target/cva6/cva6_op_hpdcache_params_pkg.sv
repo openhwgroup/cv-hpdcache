@@ -234,7 +234,8 @@ package hpdcache_params_pkg;
 
     //  HPDCACHE feedthrough FIFOs from the write-buffer to the NoC
     `ifndef CONF_HPDCACHE_WBUF_SEND_FEEDTHROUGH
-        `define CONF_HPDCACHE_WBUF_SEND_FEEDTHROUGH 1'b1
+        // Currently WBUF FIFOs don't support feedthrough
+        `define CONF_HPDCACHE_WBUF_SEND_FEEDTHROUGH 1'b0
     `endif
     localparam bit PARAM_WBUF_SEND_FEEDTHROUGH = `CONF_HPDCACHE_WBUF_SEND_FEEDTHROUGH;
 
