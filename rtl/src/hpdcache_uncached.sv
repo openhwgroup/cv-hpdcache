@@ -640,7 +640,7 @@ import hpdcache_pkg::*;
     assign dir_amo_match_o       = (uc_fsm_q == UC_AMO_READ_DIR),
            dir_amo_match_set_o   = hpdcache_get_req_addr_set(req_addr_q),
            dir_amo_match_tag_o   = hpdcache_get_req_addr_tag(req_addr_q),
-           dir_amo_update_plru_o = dir_amo_match_o;
+           dir_amo_update_plru_o = (uc_fsm_q == UC_AMO_WRITE_DATA);
 
     assign data_amo_write_o        = (uc_fsm_q == UC_AMO_WRITE_DATA),
            data_amo_write_enable_o = |dir_amo_hit_way_i,
