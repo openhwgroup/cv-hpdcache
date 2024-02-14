@@ -129,7 +129,7 @@ package hpdcache_pkg;
 
     typedef logic [                     HPDCACHE_WORD_WIDTH-1:0]      hpdcache_data_word_t;
     typedef logic [                   HPDCACHE_WORD_WIDTH/8-1:0]      hpdcache_data_be_t;
-    typedef logic [        $clog2(HPDCACHE_DATA_RAM_Y_CUTS)-1:0]      hpdcache_data_ram_row_idx_t;
+    typedef logic [                HPDCACHE_DATA_RAM_Y_CUTS-1:0]      hpdcache_data_ram_row_idx_t;
     typedef logic [ $clog2(HPDCACHE_DATA_WAYS_PER_RAM_WORD)-1:0]      hpdcache_data_ram_way_idx_t;
 
     typedef logic [HPDCACHE_DATA_RAM_ADDR_WIDTH-1:0]                  hpdcache_data_ram_addr_t;
@@ -497,8 +497,10 @@ package hpdcache_pkg;
     localparam bit HPDCACHE_MSHR_USE_REGBANK =
         hpdcache_params_pkg::PARAM_MSHR_USE_REGBANK;
 
-    localparam int unsigned HPDCACHE_MSHR_SET_WIDTH = $clog2(HPDCACHE_MSHR_SETS);
-    localparam int unsigned HPDCACHE_MSHR_WAY_WIDTH = $clog2(HPDCACHE_MSHR_WAYS);
+    localparam int unsigned HPDCACHE_MSHR_SET_WIDTH = (HPDCACHE_MSHR_SETS > 1)
+                                                      ? $clog2(HPDCACHE_MSHR_SETS) : 1;
+    localparam int unsigned HPDCACHE_MSHR_WAY_WIDTH = (HPDCACHE_MSHR_WAYS > 1)
+                                                      ? $clog2(HPDCACHE_MSHR_WAYS) : 1;
     localparam int unsigned HPDCACHE_MSHR_TAG_WIDTH = HPDCACHE_NLINE_WIDTH - HPDCACHE_MSHR_SET_WIDTH;
 
     typedef logic unsigned [HPDCACHE_MSHR_SET_WIDTH-1:0] mshr_set_t;

@@ -141,11 +141,12 @@ import hpdcache_pkg::*;
     endfunction
 
     function automatic hpdcache_data_ram_row_idx_t hpdcache_way_to_data_ram_row(
-            input hpdcache_way_vector_t way);
-        for (hpdcache_uint i = 0; i < HPDCACHE_WAYS; i++) begin
-            if (way[i]) return hpdcache_data_ram_row_idx_t'(i / HPDCACHE_DATA_WAYS_PER_RAM_WORD);
+        input hpdcache_way_vector_t way);
+        hpdcache_data_ram_row_idx_t ret;
+        for (hpdcache_uint i = 0; i < HPDCACHE_DATA_RAM_Y_CUTS; i++) begin
+            ret[i] = |way[i*HPDCACHE_DATA_WAYS_PER_RAM_WORD +: HPDCACHE_DATA_WAYS_PER_RAM_WORD];
         end
-        return 0;
+        return ret;
     endfunction
 
     function automatic hpdcache_data_ram_way_idx_t hpdcache_way_to_data_ram_word(
@@ -545,7 +546,7 @@ import hpdcache_pkg::*;
                 for (int unsigned i = 0; i < HPDCACHE_DATA_RAM_Y_CUTS; i++) begin
                     data_cs[i] = hpdcache_compute_data_ram_cs(data_write_size, data_write_word);
 
-                    if (i == hpdcache_uint'(data_ram_row)) begin
+                    if (data_ram_row[i]) begin
                         data_we[i] = data_write_enable ? data_cs[i] : '0;
                     end else begin
                         data_we[i] = '0;
