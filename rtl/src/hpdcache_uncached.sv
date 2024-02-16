@@ -584,10 +584,9 @@ import hpdcache_pkg::*;
 
 //  AMO unit
 //  {{{
-    localparam hpdcache_uint AMO_WORD_INDEX_WIDTH = $clog2(HPDCACHE_REQ_DATA_WIDTH/64);
-
     generate
-        if (AMO_WORD_INDEX_WIDTH > 0) begin : amo_operand_mux_gen
+        if (HPDCACHE_REQ_DATA_WIDTH > 64) begin : amo_data_width_gt_64_gen
+            localparam hpdcache_uint AMO_WORD_INDEX_WIDTH = $clog2(HPDCACHE_REQ_DATA_WIDTH/64);
             hpdcache_mux #(
                 .NINPUT         (HPDCACHE_REQ_DATA_WIDTH/64),
                 .DATA_WIDTH     (64),
@@ -617,11 +616,14 @@ import hpdcache_pkg::*;
                 .sel_i          (req_addr_q[3 +: AMO_WORD_INDEX_WIDTH]),
                 .data_o         (amo_st_be)
             );
-
-        end else begin
+        end else if (HPDCACHE_REQ_DATA_WIDTH == 64) begin : amo_data_width_eq_64_gen
             assign amo_req_ld_data = rsp_rdata_q;
             assign amo_req_st_data = req_data_q;
-            assign amo_st_be   = req_be_q;
+            assign amo_st_be       = req_be_q;
+        end else begin : amo_data_width_eq_32_gen
+            assign amo_req_ld_data = req_addr_q[2] ? {rsp_rdata_q, 32'b0} : {32'b0, rsp_rdata_q};
+            assign amo_req_st_data = req_addr_q[2] ? {req_data_q, 32'b0} : {32'b0, req_data_q};
+            assign amo_st_be       = req_addr_q[2] ? {req_be_q, 4'b0} : {4'b0, req_be_q};
         end
     endgenerate
 
@@ -820,8 +822,17 @@ import hpdcache_pkg::*;
     assign sc_retcode = {{63{1'b0}}, uc_sc_retcode_q},
            sc_rdata   = prepare_amo_data_result(sc_retcode, req_size_q);
 
-    assign core_rsp_o.rdata   = req_op_q.is_amo_sc ? {HPDCACHE_REQ_WORDS{sc_rdata}} : rsp_rdata_q,
-           core_rsp_o.sid     = req_sid_q,
+    if (HPDCACHE_REQ_DATA_WIDTH >= 64) begin : core_rsp_rdata_ge_64_gen
+      assign core_rsp_o.rdata = req_op_q.is_amo_sc
+                              ? {HPDCACHE_REQ_DATA_WIDTH/64{sc_rdata}}
+                              : rsp_rdata_q;
+    end else begin : core_rsp_rdata_lt_64_gen
+      assign core_rsp_o.rdata = req_op_q.is_amo_sc
+                              ? hpdcache_req_data_t'(sc_rdata)
+                              : rsp_rdata_q;
+    end
+
+    assign core_rsp_o.sid     = req_sid_q,
            core_rsp_o.tid     = req_tid_q,
            core_rsp_o.error   = rsp_error_q,
            core_rsp_o.aborted = 1'b0;

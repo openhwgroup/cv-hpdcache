@@ -54,12 +54,14 @@ package hpdcache_pkg;
 
     //  Utility definitions
     //  {{{
-    typedef logic unsigned [31:0] hpdcache_uint;
-    typedef logic signed   [31:0] hpdcache_int;
+    typedef logic unsigned [7:0]  hpdcache_uint8;
+    typedef logic signed   [7:0]  hpdcache_int8;
     typedef logic unsigned [31:0] hpdcache_uint32;
     typedef logic signed   [31:0] hpdcache_int32;
     typedef logic unsigned [63:0] hpdcache_uint64;
     typedef logic signed   [63:0] hpdcache_int64;
+    typedef hpdcache_uint32       hpdcache_uint;
+    typedef hpdcache_int32        hpdcache_int;
     //  }}}
 
     //  Definition of constants and types for HPDcache directory memory

@@ -663,19 +663,24 @@ import hpdcache_pkg::*;
     //  {{{
     // pragma translate_off
     initial begin
+        word_width_assert:
+            assert (HPDCACHE_WORD_WIDTH inside {32, 64}) else
+                $fatal("word width shall be 32 or 64");
         req_access_width_assert:
             assert (HPDCACHE_REQ_WORDS <= HPDCACHE_ACCESS_WORDS) else
-                $error("req data width shall be l.e. to cache access width");
+                $fatal("req data width shall be l.e. to cache access width");
         refill_access_width_assert:
             assert (HPDCACHE_CL_WORDS >= HPDCACHE_ACCESS_WORDS) else
-                $error("cache access width shall be l.e. to cache-line width");
+                $fatal("cache access width shall be l.e. to cache-line width");
+        mem_width_assert:
+            assert (HPDcacheMemDataWidth >= HPDCACHE_REQ_DATA_WIDTH) else
+                $fatal("memory interface data width shall be g.e. to req data width");
         miss_mem_id_width_assert:
             assert (HPDcacheMemIdWidth >= (HPDCACHE_MSHR_WAY_WIDTH + HPDCACHE_MSHR_SET_WIDTH)) else
-                $error("insufficient ID bits on the mem interface to transport misses");
+                $fatal("insufficient ID bits on the mem interface to transport misses");
         wbuf_mem_id_width_assert:
             assert (HPDcacheMemIdWidth >= HPDCACHE_WBUF_DIR_PTR_WIDTH) else
-                $error("insufficient ID bits on the mem interface to transport writes");
-
+                $fatal("insufficient ID bits on the mem interface to transport writes");
     end
     // pragma translate_on
     // }}}
