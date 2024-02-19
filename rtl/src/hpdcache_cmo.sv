@@ -46,7 +46,6 @@ import hpdcache_pkg::*;
     input  hpdcache_cmoh_op_t     req_op_i,
     input  hpdcache_req_addr_t    req_addr_i,
     input  hpdcache_req_data_t    req_wdata_i,
-    input  logic                  req_mem_inval_valid_i,
     output logic                  req_wait_o,
     //  }}}
 
@@ -64,8 +63,7 @@ import hpdcache_pkg::*;
 
     output logic                  dir_inval_o,
     output hpdcache_set_t         dir_inval_set_o,
-    output hpdcache_way_vector_t  dir_inval_way_o,
-    input logic                   dir_busy_i
+    output hpdcache_way_vector_t  dir_inval_way_o
     // }}}
 );
 //  }}}
@@ -113,19 +111,19 @@ import hpdcache_pkg::*;
 
     always_comb
     begin : cmoh_fsm_comb
-        cmoh_op_d             = cmoh_op_q;
-        cmoh_addr_d           = cmoh_addr_q;
-        cmoh_way_d            = cmoh_way_q;
-        cmoh_set_cnt_d        = cmoh_set_cnt_q;
+        cmoh_op_d        = cmoh_op_q;
+        cmoh_addr_d      = cmoh_addr_q;
+        cmoh_way_d       = cmoh_way_q;
+        cmoh_set_cnt_d   = cmoh_set_cnt_q;
 
-        dir_check_o           = 1'b0;
-        dir_inval_o           = 1'b0;
-        dir_inval_set_o       = cmoh_set_q;
-        dir_inval_way_o       = '0;
+        dir_check_o      = 1'b0;
+        dir_inval_o      = 1'b0;
+        dir_inval_set_o  = cmoh_set_q;
+        dir_inval_way_o  = '0;
 
-        wbuf_flush_all_o      = 1'b0;
+        wbuf_flush_all_o = 1'b0;
 
-        cmoh_fsm_d            = cmoh_fsm_q;
+        cmoh_fsm_d       = cmoh_fsm_q;
 
         case (cmoh_fsm_q)
             CMOH_IDLE: begin
@@ -149,9 +147,7 @@ import hpdcache_pkg::*;
                             cmoh_addr_d    = req_addr_i;
                             cmoh_way_d     = cmoh_wdata[0 +: HPDCACHE_WAYS];
                             cmoh_set_cnt_d = 0;
-                            if (req_mem_inval_valid_i) begin // Memory invalidation request
-                                cmoh_fsm_d = CMOH_INVAL_CHECK_NLINE;
-                            end else if (mshr_empty_i && rtab_empty_i && ctrl_empty_i) begin // CMO
+                            if (mshr_empty_i && rtab_empty_i && ctrl_empty_i) begin // CMO
                                 if (req_op_i.is_inval_by_nline) begin
                                     cmoh_fsm_d = CMOH_INVAL_CHECK_NLINE;
                                 end else begin
@@ -188,16 +184,8 @@ import hpdcache_pkg::*;
                 end
             end
             CMOH_INVAL_CHECK_NLINE: begin
-                if (req_mem_inval_valid_i) begin // Memory invalidation request
-                    cmoh_fsm_d  = CMOH_INVAL_CHECK_NLINE;
-                    if (!dir_busy_i) begin
-                       dir_check_o = 1'b1;
-                       cmoh_fsm_d  = CMOH_INVAL_SET;
-                    end
-                end else begin
-                    dir_check_o = 1'b1;
-                    cmoh_fsm_d  = CMOH_INVAL_SET;
-                end
+                dir_check_o = 1'b1;
+                cmoh_fsm_d  = CMOH_INVAL_SET;
             end
             CMOH_INVAL_SET: begin
                 cmoh_fsm_d = CMOH_INVAL_SET;

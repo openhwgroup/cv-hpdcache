@@ -62,7 +62,7 @@ import hpdcache_pkg::*;
     output logic                          core_rsp_valid_o [NREQUESTERS-1:0],
     output hpdcache_rsp_t                 core_rsp_o       [NREQUESTERS-1:0],
 
-    //      Miss read interface
+    //      Miss read / invalidation interface
     input  logic                          mem_req_miss_read_ready_i,
     output logic                          mem_req_miss_read_valid_o,
     output hpdcache_mem_req_t             mem_req_miss_read_o,
@@ -70,6 +70,10 @@ import hpdcache_pkg::*;
     output logic                          mem_resp_miss_read_ready_o,
     input  logic                          mem_resp_miss_read_valid_i,
     input  hpdcache_mem_resp_r_t          mem_resp_miss_read_i,
+`ifdef HPDCACHE_OPENPITON
+    input  logic                          mem_resp_miss_read_inval_i,
+    input  hpdcache_nline_t               mem_resp_miss_read_inval_nline_i,
+`endif
 
     //      Write-buffer write interface
     input  logic                          mem_req_wbuf_write_ready_i,
@@ -105,12 +109,6 @@ import hpdcache_pkg::*;
     output logic                          mem_resp_uc_write_ready_o,
     input  logic                          mem_resp_uc_write_valid_i,
     input  hpdcache_mem_resp_w_t          mem_resp_uc_write_i,
-
-`ifdef HPDCACHE_OPENPITON
-    output logic                          mem_inval_ready_o,
-    input  logic                          mem_inval_valid_i,
-    input  hpdcache_req_t                 mem_inval_i,
-`endif
 
     //      Performance events
     output logic                          evt_cache_write_miss_o,
@@ -159,6 +157,11 @@ import hpdcache_pkg::*;
     hpdcache_rsp_t         refill_core_rsp;
     hpdcache_nline_t       refill_nline;
     logic                  refill_updt_rtab;
+
+    logic                  inval_check_dir;
+    logic                  inval_write_dir;
+    hpdcache_nline_t       inval_nline;
+    logic                  inval_hit;
 
     logic                  miss_mshr_empty;
     logic                  miss_mshr_check;
@@ -236,8 +239,6 @@ import hpdcache_pkg::*;
     logic                  cmo_dir_inval;
     hpdcache_set_t         cmo_dir_inval_set;
     hpdcache_way_vector_t  cmo_dir_inval_way;
-    logic                  cmo_dir_busy;
-    logic                  cmo_req_mem_inval_valid;
     logic                  cmo_wait;
 
     logic                  rtab_empty;
@@ -338,6 +339,11 @@ import hpdcache_pkg::*;
         .refill_nline_i                     (refill_nline),
         .refill_updt_rtab_i                 (refill_updt_rtab),
 
+        .inval_check_dir_i                  (inval_check_dir),
+        .inval_write_dir_i                  (inval_write_dir),
+        .inval_nline_i                      (inval_nline),
+        .inval_hit_o                        (inval_hit),
+
         .wbuf_empty_i                       (wbuf_empty_o),
         .wbuf_flush_all_o                   (wbuf_flush_all),
         .wbuf_write_o                       (wbuf_write),
@@ -400,21 +406,9 @@ import hpdcache_pkg::*;
         .cmo_dir_inval_i                    (cmo_dir_inval),
         .cmo_dir_inval_set_i                (cmo_dir_inval_set),
         .cmo_dir_inval_way_i                (cmo_dir_inval_way),
-        .cmo_dir_busy_o                     (cmo_dir_busy),
-        .cmo_req_mem_inval_valid_o          (cmo_req_mem_inval_valid),
 
         .rtab_empty_o                       (rtab_empty),
         .ctrl_empty_o                       (ctrl_empty),
-
-`ifdef HPDCACHE_OPENPITON
-        .inval_req_ready_o                  (mem_inval_ready_o),
-        .inval_req_valid_i                  (mem_inval_valid_i),
-        .inval_req_i                        (mem_inval_i),
-`else
-        .inval_req_ready_o                  (),
-        .inval_req_valid_i                  (1'b0),
-        .inval_req_i                        ('0),
-`endif
 
         .cfg_enable_i,
         .cfg_rtab_single_entry_i,
@@ -533,6 +527,11 @@ import hpdcache_pkg::*;
         .refill_nline_o                     (refill_nline),
         .refill_updt_rtab_o                 (refill_updt_rtab),
 
+        .inval_check_dir_o                  (inval_check_dir),
+        .inval_write_dir_o                  (inval_write_dir),
+        .inval_nline_o                      (inval_nline),
+        .inval_hit_i                        (inval_hit),
+
         .refill_core_rsp_valid_o            (refill_core_rsp_valid),
         .refill_core_rsp_o                  (refill_core_rsp),
 
@@ -542,7 +541,14 @@ import hpdcache_pkg::*;
 
         .mem_resp_ready_o                   (mem_resp_miss_read_ready_o),
         .mem_resp_valid_i                   (mem_resp_miss_read_valid_i),
-        .mem_resp_i                         (mem_resp_miss_read_i)
+        .mem_resp_i                         (mem_resp_miss_read_i),
+`ifdef HPDCACHE_OPENPITON
+        .mem_resp_inval_i                   (mem_resp_miss_read_inval_i),
+        .mem_resp_inval_nline_i             (mem_resp_miss_read_inval_nline_i)
+`else
+        .mem_resp_inval_i                   (1'b0),
+        .mem_resp_inval_nline_i             ('0)
+`endif
     );
     //  }}}
 
@@ -642,7 +648,6 @@ import hpdcache_pkg::*;
         .req_op_i               (cmo_req_op),
         .req_addr_i             (cmo_req_addr),
         .req_wdata_i            (cmo_req_wdata),
-        .req_mem_inval_valid_i  (cmo_req_mem_inval_valid),
         .req_wait_o             (cmo_wait),
 
         .wbuf_flush_all_o       (cmo_wbuf_flush_all),
@@ -654,8 +659,7 @@ import hpdcache_pkg::*;
 
         .dir_inval_o            (cmo_dir_inval),
         .dir_inval_set_o        (cmo_dir_inval_set),
-        .dir_inval_way_o        (cmo_dir_inval_way),
-        .dir_busy_i             (cmo_dir_busy)        
+        .dir_inval_way_o        (cmo_dir_inval_way)
     );
     //  }}}
 

@@ -59,6 +59,11 @@ import hpdcache_pkg::*;
     input  logic                                dir_refill_updt_plru_i,
     output hpdcache_way_vector_t                dir_victim_way_o,
 
+    input  logic                                dir_inval_check_i,
+    input  hpdcache_nline_t                     dir_inval_nline_i,
+    input  logic                                dir_inval_write_i,
+    output logic                                dir_inval_hit_o,
+
     input  logic                                dir_cmo_check_i,
     input  hpdcache_set_t                       dir_cmo_check_set_i,
     input  hpdcache_tag_t                       dir_cmo_check_tag_i,
@@ -67,7 +72,6 @@ import hpdcache_pkg::*;
     input  logic                                dir_cmo_inval_i,
     input  hpdcache_set_t                       dir_cmo_inval_set_i,
     input  hpdcache_way_vector_t                dir_cmo_inval_way_i,
-
     //      }}}
 
     //      DATA array access interface
@@ -215,6 +219,9 @@ import hpdcache_pkg::*;
     hpdcache_data_ram_row_idx_t                data_ram_row;
     hpdcache_data_ram_way_idx_t                data_ram_word;
 
+    hpdcache_tag_t                             dir_inval_tag;
+    hpdcache_set_t                             dir_inval_set;
+    hpdcache_way_vector_t                      dir_inval_hit_way;
     //  }}}
 
     //  Init FSM
@@ -282,6 +289,9 @@ import hpdcache_pkg::*;
 
     //  Directory RAM request mux
     //  {{{
+    assign dir_inval_set = dir_inval_nline_i[0                  +: HPDCACHE_SET_WIDTH];
+    assign dir_inval_tag = dir_inval_nline_i[HPDCACHE_SET_WIDTH +: HPDCACHE_TAG_WIDTH];
+
     always_comb
     begin : dir_ctrl_comb
         case (1'b1)
@@ -317,6 +327,14 @@ import hpdcache_pkg::*;
                 dir_wentry  = {HPDCACHE_WAYS{dir_refill_entry_i}};
             end
 
+            //  Cache directory invalidate from the NoC
+            dir_inval_check_i: begin
+                dir_addr    = dir_inval_set;
+                dir_cs      = '1;
+                dir_we      = '0;
+                dir_wentry  = '0;
+            end
+
             //  Cache directory CMO match tag
             dir_cmo_check_i: begin
                 dir_addr    = dir_cmo_check_set_i;
@@ -347,6 +365,10 @@ import hpdcache_pkg::*;
             dir_refill_i: begin
                 dir_valid_d[dir_refill_set_i]    = dir_valid_q[dir_refill_set_i]    |  dir_victim_way_o;
             end
+            //  Refill the cache after a miss
+            dir_inval_write_i: begin
+                dir_valid_d[dir_inval_set]       = dir_valid_q[dir_inval_set]       & ~dir_inval_hit_way;
+            end
             //  CMO invalidate a set
             dir_cmo_inval_i: begin
                 dir_valid_d[dir_cmo_inval_set_i] = dir_valid_q[dir_cmo_inval_set_i] & ~dir_cmo_inval_way_i;
@@ -360,27 +382,33 @@ import hpdcache_pkg::*;
 
     //  Directory hit logic
     //  {{{
-    assign dir_req_set_d = dir_match_i     ? dir_match_set_i     :
-                           dir_amo_match_i ? dir_amo_match_set_i :
-                           dir_cmo_check_i ? dir_cmo_check_set_i :
-                                             dir_req_set_q       ;
+    assign dir_req_set_d = dir_match_i       ? dir_match_set_i     :
+                           dir_amo_match_i   ? dir_amo_match_set_i :
+                           dir_cmo_check_i   ? dir_cmo_check_set_i :
+                           dir_inval_check_i ? dir_inval_set       :
+                                               dir_req_set_q       ;
 
     generate
         hpdcache_way_vector_t req_hit;
         hpdcache_way_vector_t amo_hit;
         hpdcache_way_vector_t cmo_hit;
+        hpdcache_way_vector_t inval_hit;
 
         for (gen_i = 0; gen_i < int'(HPDCACHE_WAYS); gen_i++)
         begin : dir_match_tag_gen
-            assign req_hit[gen_i] = (dir_rentry[gen_i].tag == dir_match_tag_i),
-                   amo_hit[gen_i] = (dir_rentry[gen_i].tag == dir_amo_match_tag_i),
-                   cmo_hit[gen_i] = (dir_rentry[gen_i].tag == dir_cmo_check_tag_i);
+            assign req_hit[gen_i]   = (dir_rentry[gen_i].tag == dir_match_tag_i),
+                   amo_hit[gen_i]   = (dir_rentry[gen_i].tag == dir_amo_match_tag_i),
+                   cmo_hit[gen_i]   = (dir_rentry[gen_i].tag == dir_cmo_check_tag_i),
+                   inval_hit[gen_i] = (dir_rentry[gen_i].tag == dir_inval_tag);
 
             assign dir_hit_way_o          [gen_i] = dir_valid_q[dir_req_set_q][gen_i] & req_hit[gen_i],
                    dir_amo_hit_way_o      [gen_i] = dir_valid_q[dir_req_set_q][gen_i] & amo_hit[gen_i],
-                   dir_cmo_check_hit_way_o[gen_i] = dir_valid_q[dir_req_set_q][gen_i] & cmo_hit[gen_i];
+                   dir_cmo_check_hit_way_o[gen_i] = dir_valid_q[dir_req_set_q][gen_i] & cmo_hit[gen_i],
+                   dir_inval_hit_way      [gen_i] = dir_valid_q[dir_req_set_q][gen_i] & inval_hit[gen_i];
         end
     endgenerate
+
+    assign dir_inval_hit_o = |dir_inval_hit_way;
     //  }}}
 
     //  Directory victim select logic
