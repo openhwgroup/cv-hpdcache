@@ -75,7 +75,7 @@ import hpdcache_pkg::*;
     input  logic                  mshr_alloc_need_rsp_i,
     input  logic                  mshr_alloc_is_prefetch_i,
 
-    //          REFILL MISS interface
+    //          REFILL MISS / Invalidation interface
     input  logic                  refill_req_ready_i,
     output logic                  refill_req_valid_o,
     output logic                  refill_busy_o,
@@ -91,6 +91,11 @@ import hpdcache_pkg::*;
     output hpdcache_nline_t       refill_nline_o,
     output logic                  refill_updt_rtab_o,
 
+    output logic                  inval_check_dir_o,
+    output logic                  inval_write_dir_o,
+    output hpdcache_nline_t       inval_nline_o,
+    input  logic                  inval_hit_i,
+
     //          REFILL core response interface
     output logic                  refill_core_rsp_valid_o,
     output hpdcache_rsp_t         refill_core_rsp_o,
@@ -104,7 +109,9 @@ import hpdcache_pkg::*;
 
     output logic                  mem_resp_ready_o,
     input  logic                  mem_resp_valid_i,
-    input  hpdcache_mem_resp_r_t  mem_resp_i
+    input  hpdcache_mem_resp_r_t  mem_resp_i,
+    input  logic                  mem_resp_inval_i,
+    input  hpdcache_nline_t       mem_resp_inval_nline_i
     //      }}}
 );
 //  }}}
@@ -121,12 +128,15 @@ import hpdcache_pkg::*;
     typedef enum {
         REFILL_IDLE,
         REFILL_WRITE,
-        REFILL_WRITE_DIR
+        REFILL_WRITE_DIR,
+        REFILL_INVAL
     } refill_fsm_e;
 
     typedef struct packed {
         hpdcache_mem_error_e r_error;
         hpdcache_mem_id_t    r_id;
+        logic                is_inval;
+        hpdcache_nline_t     inval_nline;
     } mem_resp_metadata_t;
     //  }}}
 
@@ -280,6 +290,9 @@ import hpdcache_pkg::*;
         refill_cnt_d            = refill_cnt_q;
         refill_way_bypass       = 1'b0;
 
+        inval_check_dir_o       = 1'b0;
+        inval_write_dir_o       = 1'b0;
+
         refill_core_rsp_valid   = 1'b0;
         refill_core_rsp_sid     = '0;
         refill_core_rsp_tid     = '0;
@@ -303,18 +316,25 @@ import hpdcache_pkg::*;
                     //  the refill arbiter. This is to avoid the introduction of unnecessary timing
                     //  paths (however there could be a minor augmentation of the power
                     //  consumption).
-                    mshr_ack_cs = 1'b1;
+                    mshr_ack_cs = ~refill_fifo_resp_meta_rdata.is_inval;
 
                     //  if the permission is granted, start refilling
                     if (refill_req_ready_i) begin
-                        refill_fsm_d = REFILL_WRITE;
+                        if (refill_fifo_resp_meta_rdata.is_inval) begin
+                            //  check for a match with the line being invalidated in the cache directory
+                            inval_check_dir_o = 1'b1;
 
-                        //  read the MSHR and reset the valid bit for the
-                        //  corresponding entry
-                        mshr_ack = 1'b1;
+                            refill_fsm_d = REFILL_INVAL;
+                        end else begin
+                            //  read the MSHR and reset the valid bit for the
+                            //  corresponding entry
+                            mshr_ack = ~refill_fifo_resp_meta_rdata.is_inval;
 
-                        //  initialize the counter for refill words
-                        refill_cnt_d = 0;
+                            //  initialize the counter for refill words
+                            refill_cnt_d = 0;
+
+                            refill_fsm_d = REFILL_WRITE;
+                        end
                     end
                 end
             end
@@ -435,6 +455,18 @@ import hpdcache_pkg::*;
             end
             //  }}}
 
+            //  Invalidate the target cacheline (if it matches a valid cacheline)
+            //  {{{
+            REFILL_INVAL: begin
+                //  Invalidate if there is a match
+                inval_write_dir_o = inval_hit_i;
+
+                //  consume the invalidation from the network
+                refill_fifo_resp_meta_r = 1'b1;
+
+                refill_fsm_d = REFILL_IDLE;
+            end
+
             default: begin
                 // pragma translate_off
                 $error("Illegal state");
@@ -448,6 +480,8 @@ import hpdcache_pkg::*;
     assign refill_busy_o  = (refill_fsm_q != REFILL_IDLE),
            refill_nline_o = {refill_tag_q, refill_set_q},
            refill_word_o  = refill_cnt_q;
+
+    assign inval_nline_o = refill_fifo_resp_meta_rdata.inval_nline;
 
     if (HPDCACHE_MSHR_SETS > 1) begin : mshr_check_set_gt_1_gen
         assign mshr_check_set = mshr_check_offset_i[HPDCACHE_OFFSET_WIDTH +:
@@ -522,8 +556,10 @@ import hpdcache_pkg::*;
     /* FIXME: when multiple chunks, in case of error, the error bit is not
      *        necessarily set on all chunks */
     assign refill_fifo_resp_meta_wdata = '{
-        r_error: mem_resp_i.mem_resp_r_error,
-        r_id   : mem_resp_i.mem_resp_r_id
+        r_error    : mem_resp_i.mem_resp_r_error,
+        r_id       : mem_resp_i.mem_resp_r_id,
+        is_inval   : mem_resp_inval_i,
+        inval_nline: mem_resp_inval_nline_i
     };
 
     hpdcache_fifo_reg #(

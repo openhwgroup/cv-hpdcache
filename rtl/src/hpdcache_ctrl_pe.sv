@@ -37,10 +37,6 @@ module hpdcache_ctrl_pe
 
     input  logic                   refill_req_valid_i,
     output logic                   refill_req_ready_o,
-
-    input  logic                   inval_req_valid_i,
-    output logic                   inval_req_ready_o,
-
     //   }}}
 
     //   Pipeline stage 0
@@ -223,7 +219,6 @@ module hpdcache_ctrl_pe
 
         core_req_ready_o                    = 1'b0;
         rtab_req_ready_o                    = 1'b0;
-        inval_req_ready_o                   = 1'b0;
         refill_req_ready_o                  = 1'b0;
 
         st0_req_mshr_check_o                = 1'b0;
@@ -572,10 +567,9 @@ module hpdcache_ctrl_pe
             nop = st1_nop | st2_nop;
 
             //     New requests/refill are served according to the following priority:
-            //     0 - Refills (Highest priority)
-            //     1 - Invalidation
-            //     2 - Replay Table
-            //     3 - Core (Lowest priority)
+            //     0 - Refills/Invalidations (Highest priority)
+            //     1 - Replay Table
+            //     2 - Core (Lowest priority)
 
             //     * IMPORTANT: When the replay table is full, the cache
             //       cannot accept new core requests to prevent a deadlock: If
@@ -586,7 +580,6 @@ module hpdcache_ctrl_pe
             core_req_ready_o = core_req_valid_i
                                & ~rtab_req_valid_i
                                & ~refill_req_valid_i
-                               & ~inval_req_valid_i
                                & ~rtab_full_i
                                & ~cmo_busy_i
                                & ~uc_busy_i
@@ -594,25 +587,16 @@ module hpdcache_ctrl_pe
 
             rtab_req_ready_o = rtab_req_valid_i
                                & ~refill_req_valid_i
-                               & (~inval_req_valid_i | cmo_wait_i)
                                & (~cmo_busy_i        | cmo_wait_i)
                                & ~nop;
-
-            inval_req_ready_o = inval_req_valid_i
-                                & ~refill_req_valid_i
-                                & ~cmo_busy_i
-                                & ~st1_req_valid_i
-                                & ~st2_req_valid_i;
 
             refill_req_ready_o = refill_req_valid_i
                                  & (~cmo_busy_i | cmo_wait_i)
                                  & ~st1_req_valid_i
                                  & ~st2_req_valid_i;
 
-            //     Forward the core/rtab/invalidation request to stage 1
-            st1_req_valid_o = core_req_ready_o |
-                              rtab_req_ready_o |
-                              inval_req_ready_o;
+            //      Forward the core/rtab request to stage 1
+            st1_req_valid_o = core_req_ready_o | rtab_req_ready_o;
 
             //      New cacheable stage 0 request granted
             //      {{{
