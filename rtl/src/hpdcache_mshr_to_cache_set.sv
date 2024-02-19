@@ -52,7 +52,9 @@ import hpdcache_pkg::*;
         //      translation table
         if (HPDCACHE_SETS > HPDCACHE_MSHR_SETS) begin : hpdcache_sets_gt_mshr_sets_gen
             localparam hpdcache_uint TRLT_TAB_ENTRY_WIDTH =
-                    HPDCACHE_SET_WIDTH - HPDCACHE_MSHR_SET_WIDTH;
+                    (HPDCACHE_MSHR_SETS > 1) ? HPDCACHE_SET_WIDTH - HPDCACHE_MSHR_SET_WIDTH
+                                             : HPDCACHE_SET_WIDTH;
+
             typedef logic [TRLT_TAB_ENTRY_WIDTH-1:0] trlt_entry_t;
 
 
@@ -68,22 +70,29 @@ import hpdcache_pkg::*;
             //      Write most significant bits of the HPDcache set into the
             //      translation table
             always_ff @(posedge clk_i)
-            begin
-                if (write_i) begin
-                    tab[write_mshr_set][write_mshr_way_i] <= tab_wdata;
-                end
+            begin : tab_ff
+                if (write_i) tab[write_mshr_set][write_mshr_way_i] <= tab_wdata;
             end
 
-            assign tab_wdata        = write_dcache_set_i[HPDCACHE_MSHR_SET_WIDTH +:
-                                                         TRLT_TAB_ENTRY_WIDTH],
-                   write_mshr_set   = write_dcache_set_i[0 +: HPDCACHE_MSHR_SET_WIDTH];
+            if (HPDCACHE_MSHR_SETS > 1) begin : mshr_sets_gt_1_gen
+                assign tab_wdata = write_dcache_set_i[HPDCACHE_MSHR_SET_WIDTH +:
+                                                      TRLT_TAB_ENTRY_WIDTH];
+                assign write_mshr_set = write_dcache_set_i[0 +: HPDCACHE_MSHR_SET_WIDTH];
+            end else begin : mshr_sets_eq_1_gen
+                assign tab_wdata = write_dcache_set_i[0 +: HPDCACHE_SET_WIDTH];
+                assign write_mshr_set = '0;
+            end
             //  }}}
 
             //  Read operation
             //  {{{
             //      Concatenate the mshr set with the most significant bits of the
             //      dcache set stored in the translation table
-            assign read_dcache_set_o = {tab[read_mshr_set_i][read_mshr_way_i], read_mshr_set_i};
+            if (HPDCACHE_MSHR_SETS > 1) begin : read_dcache_sets_gt_1_gen
+                assign read_dcache_set_o = {tab[read_mshr_set_i][read_mshr_way_i], read_mshr_set_i};
+            end else begin : read_dcache_sets_eq_1_gen
+                assign read_dcache_set_o = tab[read_mshr_set_i][read_mshr_way_i];
+            end
             //  }}}
         end
         //  }}}
@@ -96,10 +105,4 @@ import hpdcache_pkg::*;
         end
         //  }}}
     endgenerate
-
-//  Assertions
-//  {{{
-//  pragma translate_off
-//  pragma translate_on
-//  }}}
 endmodule

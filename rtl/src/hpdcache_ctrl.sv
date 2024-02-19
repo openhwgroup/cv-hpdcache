@@ -55,8 +55,8 @@ import hpdcache_pkg::*;
 
     //      Miss handler interface
     output logic                  miss_mshr_check_o,
-    output mshr_set_t             miss_mshr_check_set_o,
-    output mshr_tag_t             miss_mshr_check_tag_o,
+    output hpdcache_req_offset_t  miss_mshr_check_offset_o,
+    output hpdcache_nline_t       miss_mshr_check_nline_o,
     output logic                  miss_mshr_alloc_o,
     output logic                  miss_mshr_alloc_cs_o,
     input  logic                  miss_mshr_alloc_ready_i,
@@ -660,17 +660,15 @@ import hpdcache_pkg::*;
 
     //  Miss handler outputs
     //  {{{
-    assign miss_mshr_check_set_o =
-            st0_req.addr_offset[HPDCACHE_OFFSET_WIDTH +: HPDCACHE_MSHR_SET_WIDTH];
-    assign miss_mshr_check_tag_o =
-            st1_req_nline[HPDCACHE_MSHR_SET_WIDTH +: HPDCACHE_MSHR_TAG_WIDTH];
+    assign miss_mshr_check_offset_o      = st0_req.addr_offset;
+    assign miss_mshr_check_nline_o       = st1_req_nline;
 
-    assign miss_mshr_alloc_nline_o       = hpdcache_get_req_addr_nline(st2_req_addr_q),
-           miss_mshr_alloc_tid_o         = st2_req_tid_q,
-           miss_mshr_alloc_sid_o         = st2_req_sid_q,
-           miss_mshr_alloc_word_o        = st2_req_word,
-           miss_mshr_alloc_need_rsp_o    = st2_req_need_rsp_q,
-           miss_mshr_alloc_is_prefetch_o = st2_req_is_prefetch_q;
+    assign miss_mshr_alloc_nline_o       = hpdcache_get_req_addr_nline(st2_req_addr_q);
+    assign miss_mshr_alloc_tid_o         = st2_req_tid_q;
+    assign miss_mshr_alloc_sid_o         = st2_req_sid_q;
+    assign miss_mshr_alloc_word_o        = st2_req_word;
+    assign miss_mshr_alloc_need_rsp_o    = st2_req_need_rsp_q;
+    assign miss_mshr_alloc_is_prefetch_o = st2_req_is_prefetch_q;
     //  }}}
 
     //  Uncacheable request handler outputs

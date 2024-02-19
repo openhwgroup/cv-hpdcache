@@ -50,8 +50,6 @@ import hpdcache_pkg::*;
     input  logic              alloc_need_rsp_i,
     input  logic              alloc_is_prefetch_i,
     output logic              alloc_full_o,
-    output mshr_set_t         alloc_set_o,
-    output mshr_tag_t         alloc_tag_o,
     output mshr_way_t         alloc_way_o,
 
     //  Acknowledge interface
@@ -94,7 +92,7 @@ import hpdcache_pkg::*;
 
     //  Definition of internal wires and registers
     //  {{{
-    logic [HPDCACHE_MSHR_SETS*HPDCACHE_MSHR_WAYS-1:0] mshr_valid_q, mshr_valid_d;
+    logic [HPDCACHE_MSHR_SETS * HPDCACHE_MSHR_WAYS-1:0] mshr_valid_q, mshr_valid_d;
     mshr_set_t     check_set_q;
     mshr_set_t     alloc_set;
     mshr_tag_t     alloc_tag;
@@ -120,13 +118,18 @@ import hpdcache_pkg::*;
     //  {{{
 
     //    The allocation operation is prioritary with respect to the check operation
-    assign check            = check_i & ~alloc_i;
+    assign check = check_i & ~alloc_i;
 
-    assign alloc_set        = alloc_nline_i[0                       +: HPDCACHE_MSHR_SET_WIDTH],
-           alloc_tag        = alloc_nline_i[HPDCACHE_MSHR_SET_WIDTH +: HPDCACHE_MSHR_TAG_WIDTH],
-           alloc_dcache_set = alloc_nline_i[0                       +: HPDCACHE_SET_WIDTH];
+    assign alloc_dcache_set = alloc_nline_i[0 +: HPDCACHE_SET_WIDTH];
+    if (HPDCACHE_MSHR_SETS > 1) begin : alloc_mshr_sets_gt_1_gen
+      assign alloc_set = alloc_nline_i[0 +: HPDCACHE_MSHR_SET_WIDTH];
+      assign alloc_tag = alloc_nline_i[HPDCACHE_MSHR_SET_WIDTH +: HPDCACHE_MSHR_TAG_WIDTH];
+    end else begin : alloc_mshr_sets_eq_1_gen
+      assign alloc_set = '0;
+      assign alloc_tag = alloc_nline_i[0 +: HPDCACHE_MSHR_TAG_WIDTH];
+    end
 
-    //  Look for an available way in case of allocation
+    //    Look for an available way in case of allocation
     always_comb
     begin
         automatic mshr_way_t found_available_way;
@@ -141,7 +144,7 @@ import hpdcache_pkg::*;
         alloc_way_o = found_available_way;
     end
 
-    //  Look if the mshr can accept the checked nline (in case of allocation)
+    //    Look if the mshr can accept the checked nline (in case of allocation)
     always_comb
     begin
         automatic bit found_available;
@@ -156,13 +159,10 @@ import hpdcache_pkg::*;
         alloc_full_o = ~found_available;
     end
 
-    assign alloc_set_o = alloc_set,
-           alloc_tag_o = alloc_tag;
-
-    //  Write when there is an allocation operation
+    //    Write when there is an allocation operation
     assign mshr_we = alloc_i;
 
-    //  HPDcache SET to MSHR SET translation table
+    //    HPDcache SET to MSHR SET translation table
     hpdcache_mshr_to_cache_set trlt_i (
         .clk_i,
         .write_i              (mshr_we),
@@ -174,7 +174,7 @@ import hpdcache_pkg::*;
     );
 
 
-    //  Generate write data and mask depending on the available way
+    //    Generate write data and mask depending on the available way
     always_comb
     begin
         for (int unsigned i = 0; i < HPDCACHE_MSHR_WAYS; i++) begin
@@ -196,35 +196,51 @@ import hpdcache_pkg::*;
 
     always_comb
     begin : mshr_valid_comb
-        automatic logic unsigned [HPDCACHE_MSHR_WAY_WIDTH+HPDCACHE_MSHR_SET_WIDTH-1:0] mshr_alloc_slot;
-        automatic logic unsigned [HPDCACHE_MSHR_WAY_WIDTH+HPDCACHE_MSHR_SET_WIDTH-1:0] mshr_ack_slot;
+        automatic logic unsigned [HPDCACHE_MSHR_WAY_WIDTH + HPDCACHE_MSHR_SET_WIDTH-1:0]
+                mshr_alloc_slot;
+        automatic logic unsigned [HPDCACHE_MSHR_WAY_WIDTH + HPDCACHE_MSHR_SET_WIDTH-1:0]
+                mshr_ack_slot;
 
-        mshr_alloc_slot = {alloc_way_o, alloc_set};
-        mshr_ack_slot   = {  ack_way_i, ack_set_i};
-
+        if ((HPDCACHE_MSHR_SETS > 1) && (HPDCACHE_MSHR_WAYS > 1)) begin
+            mshr_alloc_slot = {alloc_way_o, alloc_set};
+            mshr_ack_slot   = {  ack_way_i, ack_set_i};
+        end else if (HPDCACHE_MSHR_SETS > 1) begin
+            mshr_alloc_slot = alloc_set;
+            mshr_ack_slot   = ack_set_i;
+        end else if (HPDCACHE_MSHR_WAYS > 1) begin
+            mshr_alloc_slot = alloc_way_o;
+            mshr_ack_slot   = ack_way_i;
+        end else begin
+            mshr_alloc_slot = '0;
+            mshr_ack_slot   = '0;
+        end
         for (int unsigned i = 0; i < HPDCACHE_MSHR_SETS*HPDCACHE_MSHR_WAYS; i++) begin
             mshr_valid_rst[i] = (i ==   hpdcache_uint'(mshr_ack_slot)) ? ack_i   : 1'b0;
             mshr_valid_set[i] = (i == hpdcache_uint'(mshr_alloc_slot)) ? alloc_i : 1'b0;
         end
     end
-    assign mshr_valid_d   = (~mshr_valid_q & mshr_valid_set) | (mshr_valid_q & ~mshr_valid_rst);
+    assign mshr_valid_d = (~mshr_valid_q & mshr_valid_set) | (mshr_valid_q & ~mshr_valid_rst);
     //  }}}
 
     //  Read interface (ack)
     //  {{{
     generate
-        //  extract HPDcache tag from the MSb of the MSHT TAG
+        //  extract HPDcache tag from the MSb of the MSHR TAG
         if (HPDCACHE_SETS >= HPDCACHE_MSHR_SETS) begin : ack_dcache_set_ge_mshr_set_gen
             assign ack_dcache_tag = mshr_rentry[ack_way_q].tag[
-                    HPDCACHE_MSHR_TAG_WIDTH - 1               :
+                    HPDCACHE_MSHR_TAG_WIDTH - 1 :
                     HPDCACHE_MSHR_TAG_WIDTH - HPDCACHE_TAG_WIDTH];
         end
 
         //  extract HPDcache tag from MSb of the MSHR set concatenated with the MSHR tag
         else begin : ack_dcache_set_lt_mshr_set_gen
-            assign ack_dcache_tag = {
-                    mshr_rentry[ack_way_q].tag                           ,
-                    ack_set_q[HPDCACHE_MSHR_SET_WIDTH - 1:HPDCACHE_SET_WIDTH]};
+            if (HPDCACHE_MSHR_SETS > 1) begin : ack_mshr_set_gt_1_gen
+                assign ack_dcache_tag = {
+                        mshr_rentry[ack_way_q].tag,
+                        ack_set_q[HPDCACHE_MSHR_SET_WIDTH - 1:HPDCACHE_SET_WIDTH]};
+            end else begin : ack_mshr_set_eq_1_gen
+                assign ack_dcache_tag = mshr_rentry[ack_way_q].tag;
+            end
         end
     endgenerate
 
@@ -296,7 +312,8 @@ import hpdcache_pkg::*;
             if (HPDCACHE_MSHR_USE_REGBANK) begin : mshr_regbank_gen
                 hpdcache_regbank_wbyteenable_1rw #(
                     .DATA_SIZE     (HPDCACHE_MSHR_WAYS*HPDCACHE_MSHR_RAM_ENTRY_BITS),
-                    .ADDR_SIZE     (HPDCACHE_MSHR_SET_WIDTH)
+                    .ADDR_SIZE     (HPDCACHE_MSHR_SET_WIDTH),
+                    .DEPTH         (HPDCACHE_MSHR_SETS)
                 ) mshr_mem(
                     .clk           (clk_i),
                     .rst_n         (rst_ni),
@@ -310,7 +327,8 @@ import hpdcache_pkg::*;
             end else begin : mshr_sram_gen
                 hpdcache_sram_wbyteenable #(
                     .DATA_SIZE     (HPDCACHE_MSHR_WAYS*HPDCACHE_MSHR_RAM_ENTRY_BITS),
-                    .ADDR_SIZE     (HPDCACHE_MSHR_SET_WIDTH)
+                    .ADDR_SIZE     (HPDCACHE_MSHR_SET_WIDTH),
+                    .DEPTH         (HPDCACHE_MSHR_SETS)
                 ) mshr_mem(
                     .clk           (clk_i),
                     .rst_n         (rst_ni),
@@ -336,7 +354,8 @@ import hpdcache_pkg::*;
             if (HPDCACHE_MSHR_USE_REGBANK) begin : mshr_regbank_gen
                 hpdcache_regbank_wmask_1rw #(
                     .DATA_SIZE     (HPDCACHE_MSHR_WAYS*HPDCACHE_MSHR_RAM_ENTRY_BITS),
-                    .ADDR_SIZE     (HPDCACHE_MSHR_SET_WIDTH)
+                    .ADDR_SIZE     (HPDCACHE_MSHR_SET_WIDTH),
+                    .DEPTH         (HPDCACHE_MSHR_SETS)
                 ) mshr_mem(
                     .clk           (clk_i),
                     .rst_n         (rst_ni),
@@ -350,7 +369,8 @@ import hpdcache_pkg::*;
             end else begin : mshr_sram_gen
                 hpdcache_sram_wmask #(
                     .DATA_SIZE     (HPDCACHE_MSHR_WAYS*HPDCACHE_MSHR_RAM_ENTRY_BITS),
-                    .ADDR_SIZE     (HPDCACHE_MSHR_SET_WIDTH)
+                    .ADDR_SIZE     (HPDCACHE_MSHR_SET_WIDTH),
+                    .DEPTH         (HPDCACHE_MSHR_SETS)
                 ) mshr_mem(
                     .clk           (clk_i),
                     .rst_n         (rst_ni),

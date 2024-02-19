@@ -56,8 +56,8 @@ import hpdcache_pkg::*;
     //      CHECK interface
     //      {{{
     input  logic                  mshr_check_i,
-    input  mshr_set_t             mshr_check_set_i,
-    input  mshr_tag_t             mshr_check_tag_i,
+    input  hpdcache_req_offset_t  mshr_check_offset_i,
+    input  hpdcache_nline_t       mshr_check_nline_i,
     output logic                  mshr_check_hit_o,
     //      }}}
 
@@ -128,22 +128,13 @@ import hpdcache_pkg::*;
         hpdcache_mem_error_e r_error;
         hpdcache_mem_id_t    r_id;
     } mem_resp_metadata_t;
-
-    function automatic mshr_set_t get_ack_mshr_set(hpdcache_mem_id_t id);
-        return id[0 +: HPDCACHE_MSHR_SET_WIDTH];
-    endfunction
-
-    function automatic mshr_way_t get_ack_mshr_way(hpdcache_mem_id_t id);
-        return id[HPDCACHE_MSHR_SET_WIDTH +: HPDCACHE_MSHR_WAY_WIDTH];
-    endfunction
     //  }}}
 
     //  Declaration of internal signals and registers
     //  {{{
     miss_req_fsm_e           miss_req_fsm_q, miss_req_fsm_d;
     mshr_way_t               mshr_alloc_way_q, mshr_alloc_way_d;
-    mshr_set_t               mshr_alloc_set_q, mshr_alloc_set_d;
-    mshr_tag_t               mshr_alloc_tag_q, mshr_alloc_tag_d;
+    hpdcache_nline_t         mshr_alloc_nline_q;
 
     refill_fsm_e             refill_fsm_q, refill_fsm_d;
     hpdcache_set_t           refill_set_q;
@@ -175,6 +166,8 @@ import hpdcache_pkg::*;
 
     logic                    refill_is_error;
 
+    mshr_set_t               mshr_check_set;
+    mshr_tag_t               mshr_check_tag;
     logic                    mshr_alloc;
     logic                    mshr_alloc_cs;
     logic                    mshr_ack;
@@ -226,20 +219,31 @@ import hpdcache_pkg::*;
     localparam hpdcache_uint REFILL_REQ_SIZE = $clog2(HPDcacheMemDataWidth/8);
     localparam hpdcache_uint REFILL_REQ_LEN = HPDCACHE_CL_WIDTH/HPDcacheMemDataWidth;
 
-    assign mem_req_o.mem_req_addr = {mshr_alloc_tag_q, mshr_alloc_set_q, {HPDCACHE_OFFSET_WIDTH{1'b0}} },
-           mem_req_o.mem_req_len = hpdcache_mem_len_t'(REFILL_REQ_LEN-1),
-           mem_req_o.mem_req_size = hpdcache_mem_size_t'(REFILL_REQ_SIZE),
-           mem_req_o.mem_req_id = hpdcache_mem_id_t'({mshr_alloc_way_q, mshr_alloc_set_q}),
-           mem_req_o.mem_req_command = HPDCACHE_MEM_READ,
-           mem_req_o.mem_req_atomic = HPDCACHE_MEM_ATOMIC_ADD,
-           mem_req_o.mem_req_cacheable = 1'b1;
+    assign mem_req_o.mem_req_addr = {mshr_alloc_nline_q, {HPDCACHE_OFFSET_WIDTH{1'b0}} };
+    assign mem_req_o.mem_req_len = hpdcache_mem_len_t'(REFILL_REQ_LEN-1);
+    assign mem_req_o.mem_req_size = hpdcache_mem_size_t'(REFILL_REQ_SIZE);
+    assign mem_req_o.mem_req_command = HPDCACHE_MEM_READ;
+    assign mem_req_o.mem_req_atomic = HPDCACHE_MEM_ATOMIC_ADD;
+    assign mem_req_o.mem_req_cacheable = 1'b1;
+
+    if ((HPDCACHE_MSHR_SETS > 1) && (HPDCACHE_MSHR_WAYS > 1))
+    begin : mem_id_mshr_sets_and_ways_gt_1_gen
+        assign mem_req_o.mem_req_id = hpdcache_mem_id_t'({
+                mshr_alloc_way_q, mshr_alloc_nline_q[0 +: HPDCACHE_MSHR_SET_WIDTH]});
+    end else if (HPDCACHE_MSHR_SETS > 1) begin : mem_id_mshr_sets_gt_1_gen
+        assign mem_req_o.mem_req_id = hpdcache_mem_id_t'(
+                mshr_alloc_nline_q[0 +: HPDCACHE_MSHR_SET_WIDTH]);
+    end else if (HPDCACHE_MSHR_WAYS > 1) begin : mem_id_mshr_ways_gt_1_gen
+        assign mem_req_o.mem_req_id = hpdcache_mem_id_t'(mshr_alloc_way_q);
+    end else begin : mem_id_mshr_sets_and_ways_eq_1_gen
+        assign mem_req_o.mem_req_id = '0;
+    end
 
     always_ff @(posedge clk_i)
     begin : miss_req_fsm_internal_ff
         if (mshr_alloc) begin
             mshr_alloc_way_q <= mshr_alloc_way_d;
-            mshr_alloc_set_q <= mshr_alloc_set_d;
-            mshr_alloc_tag_q <= mshr_alloc_tag_d;
+            mshr_alloc_nline_q <= mshr_alloc_nline_i;
         end
     end
 
@@ -439,23 +443,47 @@ import hpdcache_pkg::*;
         endcase
     end
 
-    assign  refill_is_error = (refill_fifo_resp_meta_rdata.r_error == HPDCACHE_MEM_RESP_NOK);
+    assign refill_is_error = (refill_fifo_resp_meta_rdata.r_error == HPDCACHE_MEM_RESP_NOK);
 
-    assign  refill_busy_o  = (refill_fsm_q != REFILL_IDLE),
-            refill_nline_o = {refill_tag_q, refill_set_q},
-            refill_word_o  = refill_cnt_q;
+    assign refill_busy_o  = (refill_fsm_q != REFILL_IDLE),
+           refill_nline_o = {refill_tag_q, refill_set_q},
+           refill_word_o  = refill_cnt_q;
 
-    assign  mshr_ack_set = get_ack_mshr_set(refill_fifo_resp_meta_rdata.r_id),
-            mshr_ack_way = get_ack_mshr_way(refill_fifo_resp_meta_rdata.r_id);
+    if (HPDCACHE_MSHR_SETS > 1) begin : mshr_check_set_gt_1_gen
+        assign mshr_check_set = mshr_check_offset_i[HPDCACHE_OFFSET_WIDTH +:
+                                                    HPDCACHE_MSHR_SET_WIDTH];
+        assign mshr_check_tag = mshr_check_nline_i[HPDCACHE_MSHR_SET_WIDTH +:
+                                                   HPDCACHE_MSHR_TAG_WIDTH];
+    end else begin : mshr_check_set_eq_1_gen
+        assign mshr_check_set = '0;
+        assign mshr_check_tag = mshr_check_nline_i[0 +: HPDCACHE_MSHR_TAG_WIDTH];
+    end
 
-    assign  refill_dir_entry_o.tag      = refill_tag_q,
-            refill_dir_entry_o.reserved = '0;
+    if (HPDCACHE_MSHR_SETS > 1) begin : mshr_ack_set_gt_1_gen
+        assign mshr_ack_set = refill_fifo_resp_meta_rdata.r_id[0 +: HPDCACHE_MSHR_SET_WIDTH];
+        if (HPDCACHE_MSHR_WAYS > 1) begin : mshr_way_gt_1_gen
+            assign mshr_ack_way = refill_fifo_resp_meta_rdata.r_id[HPDCACHE_MSHR_SET_WIDTH +:
+                                                                   HPDCACHE_MSHR_WAY_WIDTH];
+        end else begin : mshr_ack_way_eq_1_gen
+            assign mshr_ack_way = '0;
+        end
+    end else begin : mshr_ack_set_eq_1_gen
+        assign mshr_ack_set = '0;
+        if (HPDCACHE_MSHR_WAYS > 1) begin : mshr_way_gt_1_gen
+            assign mshr_ack_way = refill_fifo_resp_meta_rdata.r_id[0 +: HPDCACHE_MSHR_WAY_WIDTH];
+        end else begin : mshr_ack_way_eq_1_gen
+            assign mshr_ack_way = '0;
+        end
+    end
 
-    assign  refill_core_rsp.rdata   = refill_core_rsp_rdata,
-            refill_core_rsp.sid     = refill_core_rsp_sid,
-            refill_core_rsp.tid     = refill_core_rsp_tid,
-            refill_core_rsp.error   = refill_core_rsp_error,
-            refill_core_rsp.aborted = 1'b0;
+    assign refill_dir_entry_o.tag      = refill_tag_q;
+    assign refill_dir_entry_o.reserved = '0;
+
+    assign refill_core_rsp.rdata   = refill_core_rsp_rdata;
+    assign refill_core_rsp.sid     = refill_core_rsp_sid;
+    assign refill_core_rsp.tid     = refill_core_rsp_tid;
+    assign refill_core_rsp.error   = refill_core_rsp_error;
+    assign refill_core_rsp.aborted = 1'b0;
 
     hpdcache_fifo_reg #(
         .FIFO_DEPTH  (1),
@@ -615,8 +643,8 @@ import hpdcache_pkg::*;
         .full_o                   (mshr_full_o),
 
         .check_i                  (mshr_check_i),
-        .check_set_i              (mshr_check_set_i),
-        .check_tag_i              (mshr_check_tag_i),
+        .check_set_i              (mshr_check_set),
+        .check_tag_i              (mshr_check_tag),
         .hit_o                    (mshr_check_hit_o),
         .alloc_i                  (mshr_alloc),
         .alloc_cs_i               (mshr_alloc_cs),
@@ -627,8 +655,6 @@ import hpdcache_pkg::*;
         .alloc_need_rsp_i         (mshr_alloc_need_rsp_i),
         .alloc_is_prefetch_i      (mshr_alloc_is_prefetch_i),
         .alloc_full_o             (mshr_alloc_full_o),
-        .alloc_set_o              (mshr_alloc_set_d),
-        .alloc_tag_o              (mshr_alloc_tag_d),
         .alloc_way_o              (mshr_alloc_way_d),
 
         .ack_i                    (mshr_ack),

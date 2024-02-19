@@ -162,8 +162,8 @@ import hpdcache_pkg::*;
 
     logic                  miss_mshr_empty;
     logic                  miss_mshr_check;
-    mshr_set_t             miss_mshr_check_set;
-    mshr_tag_t             miss_mshr_check_tag;
+    hpdcache_req_offset_t  miss_mshr_check_offset;
+    hpdcache_nline_t       miss_mshr_check_nline;
     logic                  miss_mshr_hit;
     logic                  miss_mshr_alloc_cs;
     logic                  miss_mshr_alloc;
@@ -307,8 +307,8 @@ import hpdcache_pkg::*;
         .cachedir_hit_o                     (/* unused */),
 
         .miss_mshr_check_o                  (miss_mshr_check),
-        .miss_mshr_check_set_o              (miss_mshr_check_set),
-        .miss_mshr_check_tag_o              (miss_mshr_check_tag),
+        .miss_mshr_check_offset_o           (miss_mshr_check_offset),
+        .miss_mshr_check_nline_o            (miss_mshr_check_nline),
         .miss_mshr_alloc_o                  (miss_mshr_alloc),
         .miss_mshr_alloc_cs_o               (miss_mshr_alloc_cs),
         .miss_mshr_alloc_ready_i            (miss_mshr_alloc_ready),
@@ -503,8 +503,8 @@ import hpdcache_pkg::*;
         .cfg_prefetch_updt_plru_i,
 
         .mshr_check_i                       (miss_mshr_check),
-        .mshr_check_set_i                   (miss_mshr_check_set),
-        .mshr_check_tag_i                   (miss_mshr_check_tag),
+        .mshr_check_offset_i                (miss_mshr_check_offset),
+        .mshr_check_nline_i                 (miss_mshr_check_nline),
         .mshr_check_hit_o                   (miss_mshr_hit),
 
         .mshr_alloc_ready_o                 (miss_mshr_alloc_ready),
