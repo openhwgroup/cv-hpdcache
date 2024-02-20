@@ -635,14 +635,30 @@ import hpdcache_pkg::*;
         end
     endgenerate
 
-    assign           refill_data_o = refill_fifo_resp_data_rdata;
+    assign refill_data_o = refill_fifo_resp_data_rdata;
 
+    //      The DATA fifo is only used for refill responses
     assign refill_fifo_resp_data_w = mem_resp_valid_i &
-                                     (refill_fifo_resp_meta_wok | ~mem_resp_i.mem_resp_r_last),
-           refill_fifo_resp_meta_w = mem_resp_valid_i &
-                                     (refill_fifo_resp_data_wok &  mem_resp_i.mem_resp_r_last),
-                  mem_resp_ready_o = refill_fifo_resp_data_wok &
-                                     (refill_fifo_resp_meta_wok | ~mem_resp_i.mem_resp_r_last);
+            ((refill_fifo_resp_meta_wok | ~mem_resp_i.mem_resp_r_last) &
+            ~mem_resp_inval_i);
+
+    //      The METADATA fifo is used for both refill responses and invalidations
+    assign refill_fifo_resp_meta_w = mem_resp_valid_i &
+            ((refill_fifo_resp_data_wok & mem_resp_i.mem_resp_r_last) |
+            mem_resp_inval_i);
+
+    always_comb
+    begin : mem_resp_ready_comb
+        mem_resp_ready_o = 1'b0;
+        if (mem_resp_valid_i) begin
+            if (mem_resp_inval_i) begin
+                mem_resp_ready_o = refill_fifo_resp_meta_wok;
+            end else begin
+                mem_resp_ready_o = (refill_fifo_resp_meta_wok | ~mem_resp_i.mem_resp_r_last) &
+                                    refill_fifo_resp_data_wok;
+            end
+        end
+    end
 
     always_ff @(posedge clk_i or negedge rst_ni)
     begin : miss_resp_fsm_ff
