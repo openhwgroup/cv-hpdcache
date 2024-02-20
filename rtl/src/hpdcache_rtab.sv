@@ -128,7 +128,11 @@ import hpdcache_pkg::*;
     function automatic bit rtab_mshr_set_equal(
             input hpdcache_nline_t x,
             input hpdcache_nline_t y);
-        return (x[0 +: HPDCACHE_MSHR_SET_WIDTH] == y[0 +: HPDCACHE_MSHR_SET_WIDTH]);
+        if (HPDCACHE_MSHR_SETS > 1) begin
+            return (x[0 +: HPDCACHE_MSHR_SET_WIDTH] == y[0 +: HPDCACHE_MSHR_SET_WIDTH]);
+        end else begin
+            return 1'b1;
+        end
     endfunction
 
     function automatic logic [N-1:0] rtab_next(rtab_ptr_t [N-1:0] next, rtab_ptr_t x);
