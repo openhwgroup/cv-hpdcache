@@ -664,7 +664,7 @@ import hpdcache_pkg::*;
     //  next cycle (hit logic)
     always_ff @(posedge clk_i)
     begin : req_read_ff
-        if (dir_match_i || dir_amo_match_i || dir_cmo_check_i) begin
+        if (dir_match_i || dir_amo_match_i || dir_cmo_check_i || dir_inval_check_i) begin
             dir_req_set_q <= dir_req_set_d;
         end
     end
