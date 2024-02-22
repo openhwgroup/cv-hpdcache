@@ -448,4 +448,10 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                      (|l15_rtrn_i.l15_data_0) ? 1'b1 : 1'b0;       // AMO_SC fail if data!=0
         // }}}
     // }}}
+
+    //  Assertions
+    //  {{{
+    initial assert (NUM_THREAD_IDS == (hpdcache_pkg::HPDCACHE_MSHR_SETS * hpdcache_pkg::HPDCACHE_MSHR_WAYS)) else
+            $error("The number of thread ids should be equal to the number of MSHRs of the D$");
+    //  }}}
 endmodule

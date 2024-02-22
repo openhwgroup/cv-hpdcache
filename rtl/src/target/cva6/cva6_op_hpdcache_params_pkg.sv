@@ -145,7 +145,7 @@ package hpdcache_params_pkg;
     `endif
 
     `ifdef PITON_ARIANE
-        localparam int unsigned PARAM_MSHR_SETS = 2;
+        localparam int unsigned PARAM_MSHR_SETS = 1;
     `else
         localparam int unsigned PARAM_MSHR_SETS = `CONF_HPDCACHE_MSHR_SETS;
     `endif
@@ -208,7 +208,7 @@ package hpdcache_params_pkg;
         `define CONF_HPDCACHE_WBUF_DIR_ENTRIES 16
     `endif
     `ifdef PITON_ARIANE
-        localparam int unsigned PARAM_WBUF_DIR_ENTRIES = 8;
+        localparam int unsigned PARAM_WBUF_DIR_ENTRIES = 4;
     `else
         localparam int unsigned PARAM_WBUF_DIR_ENTRIES = `CONF_HPDCACHE_WBUF_DIR_ENTRIES;
     `endif
