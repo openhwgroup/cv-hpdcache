@@ -192,8 +192,13 @@ package hpdcache_params_pkg;
     `ifndef CONF_HPDCACHE_REFILL_FIFO_DEPTH
         `define CONF_HPDCACHE_REFILL_FIFO_DEPTH 32'd2
     `endif
-    localparam int PARAM_REFILL_FIFO_DEPTH = `CONF_HPDCACHE_REFILL_FIFO_DEPTH;
     
+    `ifdef PITON_ARIANE
+         /* FIXME: Should we increase it even more? */
+        localparam int PARAM_REFILL_FIFO_DEPTH = (PARAM_MSHR_SETS*PARAM_MSHR_WAYS) + 32'd10;
+    `else
+        localparam int PARAM_REFILL_FIFO_DEPTH = `CONF_HPDCACHE_REFILL_FIFO_DEPTH
+    `endif
     //  }}}
 
     //  Definition of constants and types for the Write Buffer (WBUF)

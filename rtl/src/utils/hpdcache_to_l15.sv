@@ -35,8 +35,6 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     parameter [$clog2(NumPorts)-1:0] DcacheUncWritePort = 4, 
     parameter [$clog2(NumPorts)-1:0] DcacheAmoPort      = 5,
 
-    /* FIXME: Should we increase it even more? */
-    parameter hpdcache_uint    AdapterInvalFifoDepth = 10,
     parameter bit              SwapEndianess = 1,
     parameter hpdcache_uint    HPDcacheMemDataWidth = 128,
     parameter bit              WriteByteMaskEnabled = 0,
@@ -70,9 +68,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     output  req_portid_t                   resp_pid_o,
     output  hpdcache_mem_resp_t            resp_o,
 
-    input   logic                          hpdc_fifo_inval_ready_i,
-    output  logic                          hpdc_fifo_inval_valid_o,
-    output  hpdcache_pkg::hpdcache_req_t   hpdc_fifo_inval_o,
+    input   logic                          hpdc_inval_ready_i,
 
     output  logic                          sc_backoff_over_o,
 
@@ -152,7 +148,6 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     logic                                       mem_inval_icache_valid;
     logic                                       mem_inval_dcache_valid;
     logic                                       mem_only_inval;
-    logic                                       hpdc_fifo_inval_wok;
     // LR/SC Back-off mechanism
     logic                                       sc_pass;
     logic                                       sc_fail;
@@ -166,8 +161,8 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                                                 // Determines that a request is valid
     assign l15_req_o.l15_val                  = req_valid,  
                                                 // Determines if we can hold the coming response
-           l15_req_o.l15_req_ack              = (mem_inval_dcache_valid) ? (mem_only_inval) ? l15_rtrn_i.l15_val & hpdc_fifo_inval_wok :                // DCACHE Invalidation
-                                                                                              l15_rtrn_i.l15_val & hpdc_fifo_inval_wok & resp_ready_i : // Response + DCACHE Invalidation
+           l15_req_o.l15_req_ack              = (mem_inval_dcache_valid) ? (mem_only_inval) ? l15_rtrn_i.l15_val & hpdc_inval_ready_i :                // DCACHE Invalidation
+                                                                                              l15_rtrn_i.l15_val & hpdc_inval_ready_i & resp_ready_i : // Response + DCACHE Invalidation
                                                                             l15_rtrn_i.l15_val & resp_ready_i,                                          // Response/ICACHE Invalidation
                                                 // Request type
            l15_req_o.l15_rqtype               = (req_is_ifill) ? L15_IMISS_RQ :
@@ -216,9 +211,8 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     // Response
     // {{{
                                                 // Determines if the response received is valid for the response demux
-    assign resp_valid_o                       = (mem_inval_dcache_valid) ? (mem_only_inval) ? '0 :                                       // DCACHE Invalidation
-                                                                                              l15_rtrn_i.l15_val & hpdc_fifo_inval_wok : // Response + DCACHE Invalidation
-                                                                                              l15_rtrn_i.l15_val,                        // Response/ICACHE Invalidation
+    assign resp_valid_o                       = (mem_only_inval & mem_inval_dcache_valid) ? '0 :                // Just a DCACHE Invalidation
+                                                                                            l15_rtrn_i.l15_val, // Response/ICACHE Invalidation (optional + DCACHE Inval)
                                                 // ICACHE Invalidations demux port 0 otherwise saved port id
            resp_pid_o                         = (mem_only_inval & mem_inval_icache_valid) ? IcachePort : 
                                                 (l15_rtrn_i.l15_returntype==L15_CPX_RESTYPE_ATOMIC_RES) ? DcacheAmoPort : hpdc_pid_q[l15_rtrn_i.l15_threadid];
@@ -236,24 +230,13 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                                                                     l15_rtrn_i.l15_data_1,
                                                                     l15_rtrn_i.l15_data_0};
 
-    // Invalidation request translated as a CMO 
+    // Invalidation request
     assign resp_o.mem_inval_icache_valid      = mem_inval_icache_valid,
            resp_o.mem_inval_dcache_valid      = mem_inval_dcache_valid,
-           resp_o.mem_inval.addr_offset       = hpdcache_get_req_addr_offset_and_set(l15_rtrn_i.l15_inval_address),
-           resp_o.mem_inval.wdata             = '0,
-           resp_o.mem_inval.op                = HPDCACHE_REQ_CMO,
-           resp_o.mem_inval.be                = '0,
-           resp_o.mem_inval.size              = HPDCACHE_REQ_CMO_INVAL_NLINE,
-           resp_o.mem_inval.sid               = '0,
-           resp_o.mem_inval.tid               = '0,
-           resp_o.mem_inval.need_rsp          = 1'b0,
-           resp_o.mem_inval.phys_indexed      = 1'b1,
-           resp_o.mem_inval.addr_tag          = hpdcache_get_req_addr_tag(l15_rtrn_i.l15_inval_address),
-           resp_o.mem_inval.pma.io            = 1'b0,
-           resp_o.mem_inval.pma.uncacheable   = 1'b0;
+           resp_o.mem_inval                   = hpdcache_get_req_addr_nline(l15_rtrn_i.l15_inval_address);
 
-    assign mem_inval_icache_valid             = (l15_rtrn_i.l15_inval_icache_inval || l15_rtrn_i.l15_inval_icache_all_way), 
-           mem_inval_dcache_valid             = (l15_rtrn_i.l15_inval_dcache_inval || l15_rtrn_i.l15_inval_dcache_all_way),
+    assign mem_inval_icache_valid             = (l15_rtrn_i.l15_inval_icache_inval || l15_rtrn_i.l15_inval_icache_all_way) & l15_rtrn_i.l15_val, 
+           mem_inval_dcache_valid             = (l15_rtrn_i.l15_inval_dcache_inval || l15_rtrn_i.l15_inval_dcache_all_way) & l15_rtrn_i.l15_val,
            mem_only_inval                     = l15_rtrn_i.l15_returntype==L15_EVICT_REQ;
     // }}}
 
@@ -464,26 +447,5 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     assign sc_fail = (l15_rtrn_i.l15_returntype!=L15_CPX_RESTYPE_ATOMIC_RES) ? 1'b0 : 
                      (|l15_rtrn_i.l15_data_0) ? 1'b1 : 1'b0;       // AMO_SC fail if data!=0
         // }}}
-    // }}}
-
-    // FIFO to keep invalidation requests until they are attended by the HPDC
-    // {{{
-    hpdcache_fifo_reg #(
-            .FIFO_DEPTH  (AdapterInvalFifoDepth),
-            .fifo_data_t (hpdcache_pkg::hpdcache_req_t)
-    ) i_dcache_inval_fifo (
-            .clk_i,
-            .rst_ni,
-            // Valid input if its an DCACHE invalidation and its a valid response
-            .w_i    (resp_o.mem_inval_dcache_valid & l15_rtrn_i.l15_val),
-            // Space available
-            .wok_o  (hpdc_fifo_inval_wok), 
-            .wdata_i(resp_o.mem_inval),
-            // HPDC is ready to process an invalidation 
-            .r_i    (hpdc_fifo_inval_ready_i), 
-            // Inval pending
-            .rok_o  (hpdc_fifo_inval_valid_o),
-            .rdata_o(hpdc_fifo_inval_o)
-    );
     // }}}
 endmodule
