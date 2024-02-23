@@ -233,7 +233,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     // Invalidation request
     assign resp_o.mem_inval_icache_valid      = mem_inval_icache_valid,
            resp_o.mem_inval_dcache_valid      = mem_inval_dcache_valid,
-           resp_o.mem_inval                   = hpdcache_get_req_addr_nline(l15_rtrn_i.l15_inval_address);
+           resp_o.mem_inval                   = l15_rtrn_i.l15_inval_address;
 
     assign mem_inval_icache_valid             = (l15_rtrn_i.l15_inval_icache_inval || l15_rtrn_i.l15_inval_icache_all_way) & l15_rtrn_i.l15_val, 
            mem_inval_dcache_valid             = (l15_rtrn_i.l15_inval_dcache_inval || l15_rtrn_i.l15_inval_dcache_all_way) & l15_rtrn_i.l15_val,
