@@ -737,19 +737,19 @@ import hpdcache_pkg::*;
         );
     endproperty
 
-    property prop_core_req_be_align;
-        int offset;
-        @(posedge clk_i) disable iff (!rst_ni) (
-            core_req_valid_i && core_req_ready_o &&
-            (is_store(core_req_i.op) || is_amo(core_req_i.op)),
-            offset = (core_req_i.addr_offset % HPDCACHE_REQ_DATA_BYTES)
-        ) |-> (
-            ((core_req_i.be >> offset) << offset) == core_req_i.be
-        );
-    endproperty
-
     assert property (prop_core_req_size_max) else
             $error("ctrl: bad SIZE for request");
+
+    property prop_core_req_be_align;
+        @(posedge clk_i) disable iff (!rst_ni) (
+            core_req_valid_i && core_req_ready_o &&
+            (is_store(core_req_i.op) || is_amo(core_req_i.op))
+        ) |-> (
+            ((core_req_i.be >> core_req_i.addr_offset[0 +: HPDCACHE_REQ_BYTE_OFFSET_WIDTH])
+                            << core_req_i.addr_offset[0 +: HPDCACHE_REQ_BYTE_OFFSET_WIDTH])
+                            == core_req_i.be
+        );
+    endproperty
 
     assert property (prop_core_req_be_align) else
             $error("ctrl: bad BE alignment for request");
