@@ -181,17 +181,15 @@ import hpdcache_pkg::*;
     logic                                      init_q,     init_d;
     hpdcache_dir_addr_t                        init_set_q, init_set_d;
     hpdcache_way_vector_t                      init_dir_cs;
-    hpdcache_way_vector_t                      init_dir_we;
-    hpdcache_dir_entry_t                       init_dir_wentry;
 
     //      Directory valid bit vector (one bit per set and way)
-    hpdcache_way_vector_t [HPDCACHE_SETS-1:0]  dir_valid_q, dir_valid_d;
     hpdcache_set_t                             dir_req_set_q, dir_req_set_d;
     hpdcache_dir_addr_t                        dir_addr;
     hpdcache_way_vector_t                      dir_cs;
     hpdcache_way_vector_t                      dir_we;
     hpdcache_dir_entry_t  [HPDCACHE_WAYS-1:0]  dir_wentry;
     hpdcache_dir_entry_t  [HPDCACHE_WAYS-1:0]  dir_rentry;
+    logic                 [HPDCACHE_WAYS-1:0]  dir_valid;
 
     hpdcache_data_addr_t                       data_addr;
     hpdcache_data_enable_t                     data_cs;
@@ -228,10 +226,7 @@ import hpdcache_pkg::*;
     //  {{{
     always_comb
     begin : init_comb
-        init_dir_wentry.tag      = '0;
-        init_dir_wentry.reserved = '0;
         init_dir_cs              = '0;
-        init_dir_we              = '0;
         init_d                   = init_q;
         init_set_d               = init_set_q;
 
@@ -240,7 +235,6 @@ import hpdcache_pkg::*;
                 init_d      = (hpdcache_uint'(init_set_q) == (HPDCACHE_SETS - 1));
                 init_set_d  = init_set_q + 1;
                 init_dir_cs = '1;
-                init_dir_we = '1;
             end
 
             1'b1: begin
@@ -257,11 +251,9 @@ import hpdcache_pkg::*;
         if (!rst_ni) begin
             init_q      <= 1'b0;
             init_set_q  <= 0;
-            dir_valid_q <= '0;
         end else begin
             init_q      <= init_d;
             init_set_q  <= init_set_d;
-            dir_valid_q <= dir_valid_d;
         end
     end
     //  }}}
@@ -299,8 +291,8 @@ import hpdcache_pkg::*;
             ~init_q: begin
                 dir_addr    = init_set_q;
                 dir_cs      = init_dir_cs;
-                dir_we      = init_dir_we;
-                dir_wentry  = {HPDCACHE_WAYS{init_dir_wentry}};
+                dir_we      = '1;
+                dir_wentry  = '0;
             end
 
             //  Cache directory match tag -> hit
@@ -327,11 +319,19 @@ import hpdcache_pkg::*;
                 dir_wentry  = {HPDCACHE_WAYS{dir_refill_entry_i}};
             end
 
-            //  Cache directory invalidate from the NoC
+            //  Cache directory invalidate check from the NoC
             dir_inval_check_i: begin
                 dir_addr    = dir_inval_set;
                 dir_cs      = '1;
                 dir_we      = '0;
+                dir_wentry  = '0;
+            end
+
+            //  Cache directory invalidate from the NoC
+            dir_inval_write_i: begin
+                dir_addr    = dir_inval_set;
+                dir_cs      = dir_inval_hit_way;
+                dir_we      = dir_inval_hit_way;
                 dir_wentry  = '0;
             end
 
@@ -343,38 +343,20 @@ import hpdcache_pkg::*;
                 dir_wentry  = '0;
             end
 
+            //  Cache directory CMO inval tag
+            dir_cmo_inval_i: begin
+                dir_addr    = dir_cmo_inval_set_i;
+                dir_cs      = dir_cmo_inval_way_i;
+                dir_we      = dir_cmo_inval_way_i;
+                dir_wentry  = '0;
+            end
+
             //  Do nothing
             default: begin
                 dir_addr    = '0;
                 dir_cs      = '0;
                 dir_we      = '0;
                 dir_wentry  = '0;
-            end
-        endcase
-    end
-    //  }}}
-
-    //  Directory valid logic
-    //  {{{
-    always_comb
-    begin : dir_valid_comb
-        dir_valid_d = dir_valid_q;
-
-        unique case (1'b1)
-            //  Refill the cache after a miss
-            dir_refill_i: begin
-                dir_valid_d[dir_refill_set_i]    = dir_valid_q[dir_refill_set_i]    |  dir_victim_way_o;
-            end
-            //  Refill the cache after a miss
-            dir_inval_write_i: begin
-                dir_valid_d[dir_inval_set]       = dir_valid_q[dir_inval_set]       & ~dir_inval_hit_way;
-            end
-            //  CMO invalidate a set
-            dir_cmo_inval_i: begin
-                dir_valid_d[dir_cmo_inval_set_i] = dir_valid_q[dir_cmo_inval_set_i] & ~dir_cmo_inval_way_i;
-            end
-            default: begin
-                // do nothing
             end
         endcase
     end
@@ -401,10 +383,10 @@ import hpdcache_pkg::*;
                    cmo_hit[gen_i]   = (dir_rentry[gen_i].tag == dir_cmo_check_tag_i),
                    inval_hit[gen_i] = (dir_rentry[gen_i].tag == dir_inval_tag);
 
-            assign dir_hit_way_o          [gen_i] = dir_valid_q[dir_req_set_q][gen_i] & req_hit[gen_i],
-                   dir_amo_hit_way_o      [gen_i] = dir_valid_q[dir_req_set_q][gen_i] & amo_hit[gen_i],
-                   dir_cmo_check_hit_way_o[gen_i] = dir_valid_q[dir_req_set_q][gen_i] & cmo_hit[gen_i],
-                   dir_inval_hit_way      [gen_i] = dir_valid_q[dir_req_set_q][gen_i] & inval_hit[gen_i];
+            assign dir_hit_way_o[gen_i]           = dir_rentry[gen_i].valid & req_hit[gen_i],
+                   dir_amo_hit_way_o[gen_i]       = dir_rentry[gen_i].valid & amo_hit[gen_i],
+                   dir_cmo_check_hit_way_o[gen_i] = dir_rentry[gen_i].valid & cmo_hit[gen_i],
+                   dir_inval_hit_way[gen_i]       = dir_rentry[gen_i].valid & inval_hit[gen_i];
         end
     endgenerate
 
@@ -413,11 +395,16 @@ import hpdcache_pkg::*;
 
     //  Directory victim select logic
     //  {{{
-    logic               plru_updt;
+    logic                 plru_updt;
     hpdcache_way_vector_t plru_updt_way;
 
     assign plru_updt     = dir_update_lru_i | dir_amo_update_plru_i,
            plru_updt_way = dir_update_lru_i ? dir_hit_way_o : dir_amo_hit_way_o;
+
+    for (gen_i = 0; gen_i < HPDCACHE_WAYS; gen_i++) begin : dir_valid_bv_gen
+        assign dir_valid[gen_i] = dir_rentry[gen_i].valid;
+    end
+
 
     hpdcache_plru #(
         .SETS                (HPDCACHE_SETS),
@@ -432,7 +419,7 @@ import hpdcache_pkg::*;
 
         .repl_i              (dir_refill_i),
         .repl_set_i          (dir_refill_set_i),
-        .repl_dir_valid_i    (dir_valid_q[dir_refill_set_i]),
+        .repl_dir_valid_i    (dir_valid),
         .repl_updt_plru_i    (dir_refill_updt_plru_i),
 
         .victim_way_o        (dir_victim_way_o)

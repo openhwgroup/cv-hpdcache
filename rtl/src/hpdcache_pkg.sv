@@ -82,8 +82,9 @@ package hpdcache_pkg;
     typedef logic unsigned [HPDCACHE_WORD_IDX_WIDTH-1:0] hpdcache_word_t;
 
     typedef struct packed {
-        hpdcache_tag_t  tag;
-        logic [1:0]     reserved;
+        logic          valid;
+        hpdcache_tag_t tag;
+        logic          reserved;
     } hpdcache_dir_entry_t;
 
     localparam int unsigned HPDCACHE_DIR_RAM_WIDTH       = $bits(hpdcache_dir_entry_t);
