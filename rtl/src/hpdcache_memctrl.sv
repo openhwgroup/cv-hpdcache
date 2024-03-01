@@ -364,31 +364,29 @@ import hpdcache_pkg::*;
 
     //  Directory hit logic
     //  {{{
+    hpdcache_way_vector_t req_hit;
+    hpdcache_way_vector_t amo_hit;
+    hpdcache_way_vector_t cmo_hit;
+    hpdcache_way_vector_t inval_hit;
+
     assign dir_req_set_d = dir_match_i       ? dir_match_set_i     :
                            dir_amo_match_i   ? dir_amo_match_set_i :
                            dir_cmo_check_i   ? dir_cmo_check_set_i :
                            dir_inval_check_i ? dir_inval_set       :
                                                dir_req_set_q       ;
 
-    generate
-        hpdcache_way_vector_t req_hit;
-        hpdcache_way_vector_t amo_hit;
-        hpdcache_way_vector_t cmo_hit;
-        hpdcache_way_vector_t inval_hit;
+    for (gen_i = 0; gen_i < int'(HPDCACHE_WAYS); gen_i++)
+    begin : dir_match_tag_gen
+        assign req_hit[gen_i]   = (dir_rentry[gen_i].tag == dir_match_tag_i),
+               amo_hit[gen_i]   = (dir_rentry[gen_i].tag == dir_amo_match_tag_i),
+               cmo_hit[gen_i]   = (dir_rentry[gen_i].tag == dir_cmo_check_tag_i),
+               inval_hit[gen_i] = (dir_rentry[gen_i].tag == dir_inval_tag);
 
-        for (gen_i = 0; gen_i < int'(HPDCACHE_WAYS); gen_i++)
-        begin : dir_match_tag_gen
-            assign req_hit[gen_i]   = (dir_rentry[gen_i].tag == dir_match_tag_i),
-                   amo_hit[gen_i]   = (dir_rentry[gen_i].tag == dir_amo_match_tag_i),
-                   cmo_hit[gen_i]   = (dir_rentry[gen_i].tag == dir_cmo_check_tag_i),
-                   inval_hit[gen_i] = (dir_rentry[gen_i].tag == dir_inval_tag);
-
-            assign dir_hit_way_o[gen_i]           = dir_rentry[gen_i].valid & req_hit[gen_i],
-                   dir_amo_hit_way_o[gen_i]       = dir_rentry[gen_i].valid & amo_hit[gen_i],
-                   dir_cmo_check_hit_way_o[gen_i] = dir_rentry[gen_i].valid & cmo_hit[gen_i],
-                   dir_inval_hit_way[gen_i]       = dir_rentry[gen_i].valid & inval_hit[gen_i];
-        end
-    endgenerate
+        assign dir_hit_way_o[gen_i]           = dir_rentry[gen_i].valid & req_hit[gen_i],
+               dir_amo_hit_way_o[gen_i]       = dir_rentry[gen_i].valid & amo_hit[gen_i],
+               dir_cmo_check_hit_way_o[gen_i] = dir_rentry[gen_i].valid & cmo_hit[gen_i],
+               dir_inval_hit_way[gen_i]       = dir_rentry[gen_i].valid & inval_hit[gen_i];
+    end
 
     assign dir_inval_hit_o = |dir_inval_hit_way;
     //  }}}
@@ -430,50 +428,46 @@ import hpdcache_pkg::*;
     //  {{{
 
     //  Upsize the request interface to match the maximum access width of the data RAM
-    generate
-        if (HPDCACHE_DATA_REQ_RATIO > 1) begin : upsize_data_req_write_gen
-            //  demux request DATA
-            assign data_req_write_data = {HPDCACHE_DATA_REQ_RATIO{data_req_write_data_i}};
+    if (HPDCACHE_DATA_REQ_RATIO > 1) begin : upsize_data_req_write_gen
+        //  demux request DATA
+        assign data_req_write_data = {HPDCACHE_DATA_REQ_RATIO{data_req_write_data_i}};
 
-            //  demux request BE
-            hpdcache_demux #(
-                .NOUTPUT     (HPDCACHE_DATA_REQ_RATIO),
-                .DATA_WIDTH  (HPDCACHE_REQ_DATA_WIDTH/8),
-                .ONE_HOT_SEL (1'b0)
-            ) data_req_write_be_demux_i (
-                .data_i      (data_req_write_be_i),
-                .sel_i       (data_req_write_word_i[HPDCACHE_REQ_WORD_INDEX_WIDTH +:
-                                                    $clog2(HPDCACHE_DATA_REQ_RATIO)]),
-                .data_o      (data_req_write_be)
-            );
-        end else begin
-            assign data_req_write_data = data_req_write_data_i,
-                   data_req_write_be   = data_req_write_be_i;
-        end
-    endgenerate
+        //  demux request BE
+        hpdcache_demux #(
+            .NOUTPUT     (HPDCACHE_DATA_REQ_RATIO),
+            .DATA_WIDTH  (HPDCACHE_REQ_DATA_WIDTH/8),
+            .ONE_HOT_SEL (1'b0)
+        ) data_req_write_be_demux_i (
+            .data_i      (data_req_write_be_i),
+            .sel_i       (data_req_write_word_i[HPDCACHE_REQ_WORD_INDEX_WIDTH +:
+                                                $clog2(HPDCACHE_DATA_REQ_RATIO)]),
+            .data_o      (data_req_write_be)
+        );
+    end else begin : eqsize_data_req_write_gen
+        assign data_req_write_data = data_req_write_data_i,
+               data_req_write_be   = data_req_write_be_i;
+    end
 
     //  Upsize the AMO data interface to match the maximum access width of the data RAM
-    generate
-        localparam hpdcache_uint AMO_DATA_RATIO       = HPDCACHE_DATA_RAM_ACCESS_WIDTH/64;
-        localparam hpdcache_uint AMO_DATA_INDEX_WIDTH = $clog2(AMO_DATA_RATIO);
+    localparam hpdcache_uint AMO_DATA_RATIO       = HPDCACHE_DATA_RAM_ACCESS_WIDTH/64;
+    localparam hpdcache_uint AMO_DATA_INDEX_WIDTH = $clog2(AMO_DATA_RATIO);
 
-        if (AMO_DATA_RATIO > 1) begin
-            assign data_amo_write_data = {AMO_DATA_RATIO{data_amo_write_data_i}};
+    if (AMO_DATA_RATIO > 1) begin : upsize_amo_req_write_gen
+        assign data_amo_write_data = {AMO_DATA_RATIO{data_amo_write_data_i}};
 
-            hpdcache_demux #(
-                .NOUTPUT          (AMO_DATA_RATIO),
-                .DATA_WIDTH       (8),
-                .ONE_HOT_SEL      (1'b0)
-            ) amo_be_demux_i (
-                .data_i           (data_amo_write_be_i),
-                .sel_i            (data_amo_write_word_i[0 +: AMO_DATA_INDEX_WIDTH]),
-                .data_o           (data_amo_write_be)
-            );
-        end else begin
-            assign data_amo_write_data = data_amo_write_data_i,
-                   data_amo_write_be   = data_amo_write_be_i;
-        end
-    endgenerate
+        hpdcache_demux #(
+            .NOUTPUT          (AMO_DATA_RATIO),
+            .DATA_WIDTH       (8),
+            .ONE_HOT_SEL      (1'b0)
+        ) amo_be_demux_i (
+            .data_i           (data_amo_write_be_i),
+            .sel_i            (data_amo_write_word_i[0 +: AMO_DATA_INDEX_WIDTH]),
+            .data_o           (data_amo_write_be)
+        );
+    end else begin : eqsize_amo_req_write_gen
+        assign data_amo_write_data = data_amo_write_data_i,
+            data_amo_write_be   = data_amo_write_be_i;
+    end
 
     //  Multiplex between data write requests
     always_comb
@@ -591,60 +585,58 @@ import hpdcache_pkg::*;
 
     //  Data RAM read data multiplexor
     //  {{{
-    generate
-        hpdcache_req_data_t [HPDCACHE_DATA_REQ_RATIO-1:0][HPDCACHE_WAYS-1:0] data_read_words;
-        hpdcache_req_data_t                              [HPDCACHE_WAYS-1:0] data_read_req_word;
+    hpdcache_req_data_t [HPDCACHE_DATA_REQ_RATIO-1:0][HPDCACHE_WAYS-1:0] data_read_words;
+    hpdcache_req_data_t                              [HPDCACHE_WAYS-1:0] data_read_req_word;
 
-        //  Organize the read data by words (all ways for the same word are contiguous)
-        for (gen_i = 0; gen_i < int'(HPDCACHE_DATA_REQ_RATIO); gen_i++) begin
-            for (gen_j = 0; gen_j < int'(HPDCACHE_WAYS); gen_j++) begin
-                for (gen_k = 0; gen_k < int'(HPDCACHE_REQ_WORDS); gen_k++) begin
-                    assign data_read_words[gen_i][gen_j][gen_k] =
-                            data_rentry[(gen_j / HPDCACHE_DATA_WAYS_PER_RAM_WORD)]
-                                       [(gen_i * HPDCACHE_REQ_WORDS     ) + gen_k]
-                                       [(gen_j % HPDCACHE_DATA_WAYS_PER_RAM_WORD)];
-                end
+    //  Organize the read data by words (all ways for the same word are contiguous)
+    for (gen_i = 0; gen_i < int'(HPDCACHE_DATA_REQ_RATIO); gen_i++) begin : data_rentry_gen_i
+        for (gen_j = 0; gen_j < int'(HPDCACHE_WAYS); gen_j++) begin : data_rentry_gen_j
+            for (gen_k = 0; gen_k < int'(HPDCACHE_REQ_WORDS); gen_k++) begin : data_rentry_gen_k
+                assign data_read_words[gen_i][gen_j][gen_k] =
+                        data_rentry[(gen_j / HPDCACHE_DATA_WAYS_PER_RAM_WORD)]
+                                   [(gen_i * HPDCACHE_REQ_WORDS     ) + gen_k]
+                                   [(gen_j % HPDCACHE_DATA_WAYS_PER_RAM_WORD)];
             end
         end
+    end
 
-        //  Mux the data according to the access word
-        if (HPDCACHE_DATA_REQ_RATIO > 1) begin : req_width_lt_ram_width
-            typedef logic [$clog2(HPDCACHE_DATA_REQ_RATIO)-1:0] data_req_word_t;
-            data_req_word_t data_read_req_word_index_q;
+    //  Mux the data according to the access word
+    if (HPDCACHE_DATA_REQ_RATIO > 1) begin : req_width_lt_ram_width
+        typedef logic [$clog2(HPDCACHE_DATA_REQ_RATIO)-1:0] data_req_word_t;
+        data_req_word_t data_read_req_word_index_q;
 
-            hpdcache_mux #(
-                .NINPUT      (HPDCACHE_DATA_REQ_RATIO),
-                .DATA_WIDTH  (HPDCACHE_REQ_DATA_WIDTH*HPDCACHE_WAYS)
-            ) data_read_req_word_mux_i(
-                .data_i      (data_read_words),
-                .sel_i       (data_read_req_word_index_q),
-                .data_o      (data_read_req_word)
-            );
-
-            always_ff @(posedge clk_i)
-            begin : data_req_read_word_ff
-                data_read_req_word_index_q <=
-                        data_req_read_word_i[HPDCACHE_REQ_WORD_INDEX_WIDTH +:
-                                             $clog2(HPDCACHE_DATA_REQ_RATIO)];
-            end
-        end
-
-        //  Request data interface width is equal to the data RAM width
-        else begin : req_width_eq_ram_width
-            assign data_read_req_word = data_read_words;
-        end
-
-        //  Mux the data according to the hit way
         hpdcache_mux #(
-            .NINPUT      (HPDCACHE_WAYS),
-            .DATA_WIDTH  (HPDCACHE_REQ_DATA_WIDTH),
-            .ONE_HOT_SEL (1'b1)
-        ) data_read_req_word_way_mux_i(
-            .data_i      (data_read_req_word),
-            .sel_i       (dir_hit_way_o),
-            .data_o      (data_req_read_data_o)
+            .NINPUT      (HPDCACHE_DATA_REQ_RATIO),
+            .DATA_WIDTH  (HPDCACHE_REQ_DATA_WIDTH*HPDCACHE_WAYS)
+        ) data_read_req_word_mux_i(
+            .data_i      (data_read_words),
+            .sel_i       (data_read_req_word_index_q),
+            .data_o      (data_read_req_word)
         );
-    endgenerate
+
+        always_ff @(posedge clk_i)
+        begin : data_req_read_word_ff
+            data_read_req_word_index_q <=
+                    data_req_read_word_i[HPDCACHE_REQ_WORD_INDEX_WIDTH +:
+                                         $clog2(HPDCACHE_DATA_REQ_RATIO)];
+        end
+    end
+
+    //  Request data interface width is equal to the data RAM width
+    else begin : req_width_eq_ram_width
+        assign data_read_req_word = data_read_words;
+    end
+
+    //  Mux the data according to the hit way
+    hpdcache_mux #(
+        .NINPUT      (HPDCACHE_WAYS),
+        .DATA_WIDTH  (HPDCACHE_REQ_DATA_WIDTH),
+        .ONE_HOT_SEL (1'b1)
+    ) data_read_req_word_way_mux_i(
+        .data_i      (data_read_req_word),
+        .sel_i       (dir_hit_way_o),
+        .data_o      (data_req_read_data_o)
+    );
 
 
     //  Delay the accessed set for checking the tag from the directory in the

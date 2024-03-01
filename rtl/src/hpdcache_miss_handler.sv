@@ -535,24 +535,22 @@ import hpdcache_pkg::*;
         .rdata_o     (refill_core_rsp_o)
     );
 
-    generate
-        //  refill's width is bigger than the width of the core's interface
-        if (REFILL_REQ_RATIO > 1) begin : core_rsp_data_mux_gen
-            hpdcache_mux #(
-                .NINPUT      (REFILL_REQ_RATIO),
-                .DATA_WIDTH  (HPDCACHE_REQ_DATA_WIDTH)
-            ) data_read_rsp_mux_i(
-                .data_i      (refill_data_o),
-                .sel_i       (refill_core_rsp_word[0 +: $clog2(REFILL_REQ_RATIO)]),
-                .data_o      (refill_core_rsp_rdata)
-            );
-        end
+    //  refill's width is bigger than the width of the core's interface
+    if (REFILL_REQ_RATIO > 1) begin : core_rsp_data_mux_gen
+        hpdcache_mux #(
+            .NINPUT      (REFILL_REQ_RATIO),
+            .DATA_WIDTH  (HPDCACHE_REQ_DATA_WIDTH)
+        ) data_read_rsp_mux_i(
+            .data_i      (refill_data_o),
+            .sel_i       (refill_core_rsp_word[0 +: $clog2(REFILL_REQ_RATIO)]),
+            .data_o      (refill_core_rsp_rdata)
+        );
+    end
 
-        //  refill's width is equal to the width of the core's interface
-        else begin
-            assign refill_core_rsp_rdata = refill_data_o;
-        end
-    endgenerate
+    //  refill's width is equal to the width of the core's interface
+    else begin : core_rsp_eqsize_gen
+        assign refill_core_rsp_rdata = refill_data_o;
+    end
 
     /* FIXME: when multiple chunks, in case of error, the error bit is not
      *        necessarily set on all chunks */
@@ -579,62 +577,63 @@ import hpdcache_pkg::*;
         .rdata_o(refill_fifo_resp_meta_rdata)
     );
 
-    generate
-        if (HPDcacheMemDataWidth < HPDCACHE_REFILL_DATA_WIDTH) begin
-            hpdcache_data_upsize #(
-                .WR_WIDTH(HPDcacheMemDataWidth),
-                .RD_WIDTH(HPDCACHE_REFILL_DATA_WIDTH),
-                .DEPTH(HPDCACHE_REFILL_FIFO_DEPTH*
-                    (HPDCACHE_CL_WIDTH/HPDCACHE_REFILL_DATA_WIDTH))
-            ) i_rdata_upsize (
-                .clk_i,
-                .rst_ni,
+    if (HPDcacheMemDataWidth < HPDCACHE_REFILL_DATA_WIDTH)
+    begin : upsize_mem_data_gen
+        hpdcache_data_upsize #(
+            .WR_WIDTH(HPDcacheMemDataWidth),
+            .RD_WIDTH(HPDCACHE_REFILL_DATA_WIDTH),
+            .DEPTH(HPDCACHE_REFILL_FIFO_DEPTH*
+                (HPDCACHE_CL_WIDTH/HPDCACHE_REFILL_DATA_WIDTH))
+        ) i_rdata_upsize (
+            .clk_i,
+            .rst_ni,
 
-                .w_i      (refill_fifo_resp_data_w),
-                .wlast_i  (mem_resp_i.mem_resp_r_last),
-                .wok_o    (refill_fifo_resp_data_wok),
-                .wdata_i  (mem_resp_i.mem_resp_r_data),
+            .w_i      (refill_fifo_resp_data_w),
+            .wlast_i  (mem_resp_i.mem_resp_r_last),
+            .wok_o    (refill_fifo_resp_data_wok),
+            .wdata_i  (mem_resp_i.mem_resp_r_data),
 
-                .r_i      (refill_fifo_resp_data_r),
-                .rok_o    (/* unused */),
-                .rdata_o  (refill_fifo_resp_data_rdata)
-            );
-        end else if (HPDcacheMemDataWidth > HPDCACHE_REFILL_DATA_WIDTH) begin
-            hpdcache_data_downsize #(
-                .WR_WIDTH(HPDcacheMemDataWidth),
-                .RD_WIDTH(HPDCACHE_REFILL_DATA_WIDTH),
-                .DEPTH(HPDCACHE_REFILL_FIFO_DEPTH*
-                    (HPDCACHE_CL_WIDTH/HPDcacheMemDataWidth))
-            ) i_rdata_downsize (
-                .clk_i,
-                .rst_ni,
+            .r_i      (refill_fifo_resp_data_r),
+            .rok_o    (/* unused */),
+            .rdata_o  (refill_fifo_resp_data_rdata)
+        );
+    end else if (HPDcacheMemDataWidth > HPDCACHE_REFILL_DATA_WIDTH)
+    begin : downsize_mem_data_gen
+        hpdcache_data_downsize #(
+            .WR_WIDTH(HPDcacheMemDataWidth),
+            .RD_WIDTH(HPDCACHE_REFILL_DATA_WIDTH),
+            .DEPTH(HPDCACHE_REFILL_FIFO_DEPTH*
+                (HPDCACHE_CL_WIDTH/HPDcacheMemDataWidth))
+        ) i_rdata_downsize (
+            .clk_i,
+            .rst_ni,
 
-                .w_i      (refill_fifo_resp_data_w),
-                .wok_o    (refill_fifo_resp_data_wok),
-                .wdata_i  (mem_resp_i.mem_resp_r_data),
+            .w_i      (refill_fifo_resp_data_w),
+            .wok_o    (refill_fifo_resp_data_wok),
+            .wdata_i  (mem_resp_i.mem_resp_r_data),
 
-                .r_i      (refill_fifo_resp_data_r),
-                .rok_o    (/* unused */),
-                .rdata_o  (refill_fifo_resp_data_rdata)
-            );
-        end else begin
-            hpdcache_fifo_reg #(
-                .FIFO_DEPTH  (HPDCACHE_REFILL_FIFO_DEPTH),
-                .fifo_data_t (hpdcache_refill_data_t)
-            ) i_rdata_fifo (
-                .clk_i,
-                .rst_ni,
+            .r_i      (refill_fifo_resp_data_r),
+            .rok_o    (/* unused */),
+            .rdata_o  (refill_fifo_resp_data_rdata)
+        );
+    end else
+    begin : eqsize_mem_data_gen
+        hpdcache_fifo_reg #(
+            .FIFO_DEPTH  (HPDCACHE_REFILL_FIFO_DEPTH),
+            .fifo_data_t (hpdcache_refill_data_t)
+        ) i_rdata_fifo (
+            .clk_i,
+            .rst_ni,
 
-                .w_i      (refill_fifo_resp_data_w),
-                .wok_o    (refill_fifo_resp_data_wok),
-                .wdata_i  (mem_resp_i.mem_resp_r_data),
+            .w_i      (refill_fifo_resp_data_w),
+            .wok_o    (refill_fifo_resp_data_wok),
+            .wdata_i  (mem_resp_i.mem_resp_r_data),
 
-                .r_i      (refill_fifo_resp_data_r),
-                .rok_o    (/* unused */),
-                .rdata_o  (refill_fifo_resp_data_rdata)
-            );
-        end
-    endgenerate
+            .r_i      (refill_fifo_resp_data_r),
+            .rok_o    (/* unused */),
+            .rdata_o  (refill_fifo_resp_data_rdata)
+        );
+    end
 
     assign refill_data_o = refill_fifo_resp_data_rdata;
 

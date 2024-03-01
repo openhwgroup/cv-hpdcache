@@ -54,26 +54,24 @@ module hpdcache_mux
 );
     //  }}}
 
-    generate
-        //  Selector is one-hot encoded
-        if (ONE_HOT_SEL == 1) begin
-            always_comb
-            begin : data_out_mux_comb
-                data_o = '0;
-                for (int unsigned i = 0; i < NINPUT; i++) begin
-                    data_o |= sel_i[i] ? data_i[i] : '0;
-                end
-            end
-
-        //  Selector is binary encoded
-        end else begin
-            always_comb
-            begin : data_out_mux_comb
-                data_o = '0;
-                for (int unsigned i = 0; i < NINPUT; i++) begin
-                    data_o |= (i == int'(sel_i)) ? data_i[i] : '0;
-                end
+    //  Selector is one-hot encoded
+    if (ONE_HOT_SEL == 1) begin : onehot_sel_gen
+        always_comb
+        begin : data_out_mux_comb
+            data_o = '0;
+            for (int unsigned i = 0; i < NINPUT; i++) begin
+                data_o |= sel_i[i] ? data_i[i] : '0;
             end
         end
-    endgenerate
+
+    //  Selector is binary encoded
+    end else begin : binary_sel_gen
+        always_comb
+        begin : data_out_mux_comb
+            data_o = '0;
+            for (int unsigned i = 0; i < NINPUT; i++) begin
+                data_o |= (i == int'(sel_i)) ? data_i[i] : '0;
+            end
+        end
+    end
 endmodule

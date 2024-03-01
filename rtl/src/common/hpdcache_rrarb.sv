@@ -57,9 +57,10 @@ module hpdcache_rrarb
     //  Elaboration-time assertions
     //  {{{
     //  pragma translate_off
-    generate
-        if (N == 0) $error("N must be greater than 0");
-    endgenerate
+    initial
+    begin : initial_assertions
+        n_assertion : assert (N > 0) else $fatal("N must be greater than 0");
+    end
     //  pragma translate_on
     //  }}}
 
