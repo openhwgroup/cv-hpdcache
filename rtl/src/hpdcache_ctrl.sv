@@ -727,6 +727,32 @@ import hpdcache_pkg::*;
     assert property (@(posedge clk_i) disable iff (!rst_ni)
             $onehot0({core_req_ready_o, st0_rtab_pop_try_ready, refill_req_ready_o})) else
                     $error("ctrl: only one request can be served per cycle");
+
+    property prop_core_req_size_max;
+        @(posedge clk_i) disable iff (!rst_ni) (
+            core_req_valid_i && core_req_ready_o &&
+            (core_req_i.op != HPDCACHE_REQ_CMO)
+        ) |-> (
+            (2**core_req_i.size) <= HPDCACHE_REQ_DATA_BYTES
+        );
+    endproperty
+
+    property prop_core_req_be_align;
+        int offset;
+        @(posedge clk_i) disable iff (!rst_ni) (
+            core_req_valid_i && core_req_ready_o &&
+            (is_store(core_req_i.op) || is_amo(core_req_i.op)),
+            offset = (core_req_i.addr_offset % HPDCACHE_REQ_DATA_BYTES)
+        ) |-> (
+            ((core_req_i.be >> offset) << offset) == core_req_i.be
+        );
+    endproperty
+
+    assert property (prop_core_req_size_max) else
+            $error("ctrl: bad SIZE for request");
+
+    assert property (prop_core_req_be_align) else
+            $error("ctrl: bad BE alignment for request");
     //  }}}
     //  pragma translate_on
 endmodule
