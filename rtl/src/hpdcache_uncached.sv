@@ -924,7 +924,7 @@ import hpdcache_pkg::*;
 
 //  Assertions
 //  {{{
-//  pragma translate_off
+`ifndef HPDCACHE_ASSERT_OFF
     assert property (@(posedge clk_i) disable iff (!rst_ni)
             (req_valid_i && req_op_i.is_ld) -> req_uc_i) else
                     $error("uc_handler: unexpected load request on cacheable region");
@@ -964,7 +964,7 @@ import hpdcache_pkg::*;
     assert property (@(posedge clk_i) disable iff (!rst_ni)
             (mem_resp_write_valid_i || mem_resp_read_valid_i) -> (uc_fsm_q == UC_MEM_WAIT_RSP)) else
                     $error("uc_handler: unexpected response from memory");
-//  pragma translate_on
+`endif
 //  }}}
 
 endmodule

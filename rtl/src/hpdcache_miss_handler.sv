@@ -468,9 +468,9 @@ import hpdcache_pkg::*;
             end
 
             default: begin
-                // pragma translate_off
+`ifndef HPDCACHE_ASSERT_OFF
                 $error("Illegal state");
-                // pragma translate_on
+`endif
             end
         endcase
     end
@@ -729,10 +729,10 @@ import hpdcache_pkg::*;
 
     //  Assertions
     //  {{{
-    //  pragma translate_off
+`ifndef HPDCACHE_ASSERT_OFF
     initial assert (HPDcacheMemIdWidth >= (HPDCACHE_MSHR_SET_WIDTH + HPDCACHE_MSHR_WAY_WIDTH)) else
             $error("miss_handler: not enough ID bits in the memory interface");
-    //  pragma translate_on
+`endif
     //  }}}
 
 endmodule

@@ -722,8 +722,8 @@ import hpdcache_pkg::*;
     //  }}}
 
     //  Assertions
-    //  pragma translate_off
     //  {{{
+`ifndef HPDCACHE_ASSERT_OFF
     assert property (@(posedge clk_i) disable iff (!rst_ni)
             $onehot0({core_req_ready_o, st0_rtab_pop_try_ready, refill_req_ready_o})) else
                     $error("ctrl: only one request can be served per cycle");
@@ -753,6 +753,6 @@ import hpdcache_pkg::*;
 
     assert property (prop_core_req_be_align) else
             $error("ctrl: bad BE alignment for request");
+`endif
     //  }}}
-    //  pragma translate_on
 endmodule

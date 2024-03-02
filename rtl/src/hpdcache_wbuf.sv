@@ -661,7 +661,7 @@ module hpdcache_wbuf
 
     //  Assertions
     //  {{{
-    //  pragma translate_off
+`ifndef HPDCACHE_ASSERT_OFF
     initial assert(WBUF_WORDS inside {1, 2, 4, 8, 16}) else
             $fatal("WBUF: width of data buffers must be a power of 2");
     initial assert(WBUF_SEND_FEEDTHROUGH == 1'b0) else
@@ -675,6 +675,6 @@ module hpdcache_wbuf
     send_valid_data_assert: assert property (@(posedge clk_i) disable iff (!rst_ni)
             (send_data_valid_o -> (wbuf_data_valid_q[send_data_q.send_data_ptr] == 1'b1))) else
             $error("WBUF: sending a not valid data");
-    //  pragma translate_on
+`endif
     //  }}}
 endmodule

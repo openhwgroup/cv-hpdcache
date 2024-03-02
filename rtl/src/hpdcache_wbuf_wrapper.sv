@@ -204,11 +204,12 @@ import hpdcache_pkg::*;
 
         //  Assertions
         //  {{{
-        //  pragma translate_off
+`ifndef HPDCACHE_ASSERT_OFF
         initial assert(WBUF_MEM_DATA_RATIO > 0) else
                 $error($sformatf("WBUF: data width of mem interface (%d) shall be g.e. to wbuf data width(%d)",
                                  HPDcacheMemDataWidth, HPDCACHE_WBUF_DATA_WIDTH));
         //  pragma translate_on
+`endif
         //  }}}
     endgenerate
 
@@ -219,10 +220,10 @@ import hpdcache_pkg::*;
 
     //  Assertions
     //  {{{
-    //  pragma translate_off
+`ifndef HPDCACHE_ASSERT_OFF
     initial assert (HPDCACHE_WBUF_DIR_PTR_WIDTH <= HPDcacheMemIdWidth) else
       $fatal("HPDcacheMemIdWidth is not wide enough to fit all possible write buffer transactions");
-    //  pragma translate_on
+`endif
     //  }}}
 
 endmodule

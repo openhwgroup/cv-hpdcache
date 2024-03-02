@@ -56,12 +56,12 @@ module hpdcache_rrarb
 
     //  Elaboration-time assertions
     //  {{{
-    //  pragma translate_off
+`ifndef HPDCACHE_ASSERT_OFF
     initial
     begin : initial_assertions
         n_assertion : assert (N > 0) else $fatal("N must be greater than 0");
     end
-    //  pragma translate_on
+`endif
     //  }}}
 
     //  Compute the thermometer mask vector
@@ -111,12 +111,12 @@ module hpdcache_rrarb
 
     //  Assertions
     //  {{{
-    //  pragma translate_off
+`ifndef HPDCACHE_ASSERT_OFF
     gnt_at_most_one_requester: assert property (@(posedge clk_i) disable iff (!rst_ni)
             $onehot0(gnt)) else $error("arbiter: granting more than one requester");
     gnt_q_exactly_one_requester: assert property (@(posedge clk_i) disable iff (!rst_ni)
             $onehot(gnt_q)) else $error("arbiter: grant state is not one-hot");
-    //  pragma translate_on
+`endif
     //  }}}
 
 endmodule

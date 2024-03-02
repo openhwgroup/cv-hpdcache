@@ -165,7 +165,7 @@ import hpdcache_pkg::*;
 
     //  Assertions
     //  {{{
-    //  pragma translate_off
+`ifndef HPDCACHE_ASSERT_OFF
     initial
     begin : initial_assertions
         assert  (DEPTH     >        0)       else $error("DEPTH must be greater than 0");
@@ -174,7 +174,7 @@ import hpdcache_pkg::*;
         assert  (RD_WIDTH  < WR_WIDTH)       else $error("RD_WIDTH must be less to WR_WIDTH");
         assert ((WR_WIDTH  % RD_WIDTH) == 0) else $error("WR_WIDTH must be a multiple RD_WIDTH");
     end
-    //  pragma translate_on
+`endif
     //  }}}
 //  }}}
 endmodule

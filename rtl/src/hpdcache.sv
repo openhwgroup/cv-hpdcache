@@ -665,7 +665,7 @@ import hpdcache_pkg::*;
 
     //  Assertions
     //  {{{
-    // pragma translate_off
+`ifndef HPDCACHE_ASSERT_OFF
     initial begin
         word_width_assert:
             assert (HPDCACHE_WORD_WIDTH inside {32, 64}) else
@@ -686,7 +686,7 @@ import hpdcache_pkg::*;
             assert (HPDcacheMemIdWidth >= HPDCACHE_WBUF_DIR_PTR_WIDTH) else
                 $fatal("insufficient ID bits on the mem interface to transport writes");
     end
-    // pragma translate_on
+`endif
     // }}}
 
 endmodule

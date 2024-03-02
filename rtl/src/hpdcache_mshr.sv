@@ -396,10 +396,10 @@ import hpdcache_pkg::*;
 
     //  Assertions
     //  {{{
-    //  pragma translate_off
+`ifndef HPDCACHE_ASSERT_OFF
     one_command_assert: assert property (@(posedge clk_i)
             (ack_i -> !(alloc_i || check_i))) else
             $error("MSHR: ack with concurrent alloc or check");
-    //  pragma translate_on
+`endif
     //  }}}
 endmodule

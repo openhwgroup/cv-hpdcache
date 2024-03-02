@@ -621,7 +621,7 @@ import hpdcache_pkg::*;
 
 //  Assertions
 //  {{{
-//  pragma translate_off
+`ifndef HPDCACHE_ASSERT_OFF
     assert property (@(posedge clk_i) disable iff (!rst_ni)
             check_i |-> $onehot0(match_check_tail)) else
                     $error("rtab: more than one entry matching");
@@ -665,6 +665,6 @@ import hpdcache_pkg::*;
     assert property (@(posedge clk_i) disable iff (!rst_ni)
             alloc_and_link_i |-> ~cfg_single_entry_i) else
                     $error("rtab: trying to link a request in single entry mode");
-//  pragma translate_on
+`endif
 //  }}}
 endmodule

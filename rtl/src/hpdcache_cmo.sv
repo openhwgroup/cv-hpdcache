@@ -158,9 +158,9 @@ import hpdcache_pkg::*;
                             end
                         end
                         default: begin
-                            // pragma translate_off
+`ifndef HPDCACHE_ASSERT_OFF
                             $error("cmo handler: unexpected operation");
-                            // pragma translate_on
+`endif
                         end
                     endcase
                 end
@@ -237,7 +237,7 @@ import hpdcache_pkg::*;
 
 //  Assertions
 //  {{{
-//  pragma translate_off
+`ifndef HPDCACHE_ASSERT_OFF
     assert property (@(posedge clk_i) disable iff (!rst_ni)
             req_valid_i -> $onehot(req_op_i)) else
                     $error("cmo_handler: more than one operation type requested");
@@ -245,7 +245,7 @@ import hpdcache_pkg::*;
     assert property (@(posedge clk_i) disable iff (!rst_ni)
             req_valid_i -> (cmoh_fsm_q == CMOH_IDLE)) else
                     $error("cmo_handler: new request received while busy");
-//  pragma translate_on
+`endif
 //  }}}
 
 endmodule
