@@ -23,18 +23,33 @@
  *  Description   : HPDcache top
  *  History       :
  */
+`include "hpdcache_typedef.svh"
+
 module hpdcache
 import hpdcache_pkg::*;
     //  Parameters
     //  {{{
 #(
-    parameter int  NREQUESTERS           = 1,
-    parameter int  HPDcacheMemIdWidth    = 8,
-    parameter int  HPDcacheMemDataWidth  = 512,
-    parameter type hpdcache_mem_req_t    = logic,
-    parameter type hpdcache_mem_req_w_t  = logic,
-    parameter type hpdcache_mem_resp_r_t = logic,
-    parameter type hpdcache_mem_resp_w_t = logic
+    parameter int NREQUESTERS          = 1,
+    parameter int HPDcacheMemIdWidth   = 8,
+    parameter int HPDcacheMemDataWidth = 512,
+
+    //      Memory Interface Definitions
+    //      {{{
+    localparam type hpdcache_mem_addr_t = logic [HPDCACHE_PA_WIDTH-1:0],
+    localparam type hpdcache_mem_id_t   = logic [HPDcacheMemIdWidth-1:0],
+    localparam type hpdcache_mem_data_t = logic [HPDcacheMemDataWidth-1:0],
+    localparam type hpdcache_mem_be_t   = logic [HPDcacheMemDataWidth/8-1:0],
+
+    localparam type hpdcache_mem_req_t =
+            `HPDCACHE_DECL_MEM_REQ_T(hpdcache_mem_addr_t, hpdcache_mem_id_t),
+    localparam type hpdcache_mem_req_w_t =
+            `HPDCACHE_DECL_MEM_REQ_W_T(hpdcache_mem_data_t, hpdcache_mem_be_t),
+    localparam type hpdcache_mem_resp_r_t =
+            `HPDCACHE_DECL_MEM_RESP_R_T(hpdcache_mem_id_t, hpdcache_mem_data_t),
+    localparam type hpdcache_mem_resp_w_t =
+            `HPDCACHE_DECL_MEM_RESP_W_T(hpdcache_mem_id_t)
+    //      }}}
 )
     //  }}}
 
