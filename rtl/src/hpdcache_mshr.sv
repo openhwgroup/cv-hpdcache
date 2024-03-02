@@ -190,33 +190,32 @@ import hpdcache_pkg::*;
 
     //  Shared control signals
     //  {{{
+    hpdcache_uint mshr_alloc_slot;
+    hpdcache_uint mshr_ack_slot;
+
+    if ((HPDCACHE_MSHR_SETS > 1) && (HPDCACHE_MSHR_WAYS > 1)) begin : mshr_set_associative_gen
+        assign mshr_alloc_slot = hpdcache_uint'({alloc_way_o, alloc_set});
+        assign mshr_ack_slot   = hpdcache_uint'({  ack_way_i, ack_set_i});
+    end else if (HPDCACHE_MSHR_SETS > 1) begin : mshr_direct_mapped_gen
+        assign mshr_alloc_slot = hpdcache_uint'(alloc_set);
+        assign mshr_ack_slot   = hpdcache_uint'(ack_set_i);
+    end else if (HPDCACHE_MSHR_WAYS > 1) begin : mshr_fully_associative_gen
+        assign mshr_alloc_slot = hpdcache_uint'(alloc_way_o);
+        assign mshr_ack_slot   = hpdcache_uint'(ack_way_i);
+    end else begin : mshr_single_entry_gen
+        assign mshr_alloc_slot = '0;
+        assign mshr_ack_slot   = '0;
+    end
+
     assign mshr_cs   = check_i | alloc_cs_i | ack_cs_i;
     assign mshr_addr =  ack_i   ? ack_set_i :
                        (alloc_i ? alloc_set : check_set_i);
 
     always_comb
     begin : mshr_valid_comb
-        automatic logic unsigned [HPDCACHE_MSHR_WAY_WIDTH + HPDCACHE_MSHR_SET_WIDTH-1:0]
-                mshr_alloc_slot;
-        automatic logic unsigned [HPDCACHE_MSHR_WAY_WIDTH + HPDCACHE_MSHR_SET_WIDTH-1:0]
-                mshr_ack_slot;
-
-        if ((HPDCACHE_MSHR_SETS > 1) && (HPDCACHE_MSHR_WAYS > 1)) begin
-            mshr_alloc_slot = {alloc_way_o, alloc_set};
-            mshr_ack_slot   = {  ack_way_i, ack_set_i};
-        end else if (HPDCACHE_MSHR_SETS > 1) begin
-            mshr_alloc_slot = alloc_set;
-            mshr_ack_slot   = ack_set_i;
-        end else if (HPDCACHE_MSHR_WAYS > 1) begin
-            mshr_alloc_slot = alloc_way_o;
-            mshr_ack_slot   = ack_way_i;
-        end else begin
-            mshr_alloc_slot = '0;
-            mshr_ack_slot   = '0;
-        end
-        for (int unsigned i = 0; i < HPDCACHE_MSHR_SETS*HPDCACHE_MSHR_WAYS; i++) begin
-            mshr_valid_rst[i] = (i ==   hpdcache_uint'(mshr_ack_slot)) ? ack_i   : 1'b0;
-            mshr_valid_set[i] = (i == hpdcache_uint'(mshr_alloc_slot)) ? alloc_i : 1'b0;
+        for (hpdcache_uint i = 0; i < HPDCACHE_MSHR_SETS*HPDCACHE_MSHR_WAYS; i++) begin
+            mshr_valid_rst[i] = (i ==   mshr_ack_slot) ? ack_i   : 1'b0;
+            mshr_valid_set[i] = (i == mshr_alloc_slot) ? alloc_i : 1'b0;
         end
     end
     assign mshr_valid_d = (~mshr_valid_q & mshr_valid_set) | (mshr_valid_q & ~mshr_valid_rst);
@@ -224,25 +223,23 @@ import hpdcache_pkg::*;
 
     //  Read interface (ack)
     //  {{{
-    generate
-        //  extract HPDcache tag from the MSb of the MSHR TAG
-        if (HPDCACHE_SETS >= HPDCACHE_MSHR_SETS) begin : ack_dcache_set_ge_mshr_set_gen
-            assign ack_dcache_tag = mshr_rentry[ack_way_q].tag[
-                    HPDCACHE_MSHR_TAG_WIDTH - 1 :
-                    HPDCACHE_MSHR_TAG_WIDTH - HPDCACHE_TAG_WIDTH];
-        end
+    //      extract HPDcache tag from the MSb of the MSHR TAG
+    if (HPDCACHE_SETS >= HPDCACHE_MSHR_SETS) begin : ack_dcache_set_ge_mshr_set_gen
+        assign ack_dcache_tag = mshr_rentry[ack_way_q].tag[
+                HPDCACHE_MSHR_TAG_WIDTH - 1 :
+                HPDCACHE_MSHR_TAG_WIDTH - HPDCACHE_TAG_WIDTH];
+    end
 
-        //  extract HPDcache tag from MSb of the MSHR set concatenated with the MSHR tag
-        else begin : ack_dcache_set_lt_mshr_set_gen
-            if (HPDCACHE_MSHR_SETS > 1) begin : ack_mshr_set_gt_1_gen
-                assign ack_dcache_tag = {
-                        mshr_rentry[ack_way_q].tag,
-                        ack_set_q[HPDCACHE_MSHR_SET_WIDTH - 1:HPDCACHE_SET_WIDTH]};
-            end else begin : ack_mshr_set_eq_1_gen
-                assign ack_dcache_tag = mshr_rentry[ack_way_q].tag;
-            end
+    //      extract HPDcache tag from MSb of the MSHR set concatenated with the MSHR tag
+    else begin : ack_dcache_set_lt_mshr_set_gen
+        if (HPDCACHE_MSHR_SETS > 1) begin : ack_mshr_set_gt_1_gen
+            assign ack_dcache_tag = {
+                    mshr_rentry[ack_way_q].tag,
+                    ack_set_q[HPDCACHE_MSHR_SET_WIDTH - 1:HPDCACHE_SET_WIDTH]};
+        end else begin : ack_mshr_set_eq_1_gen
+            assign ack_dcache_tag = mshr_rentry[ack_way_q].tag;
         end
-    endgenerate
+    end
 
     assign ack_req_id_o      = mshr_rentry[ack_way_q].req_id,
            ack_src_id_o      = mshr_rentry[ack_way_q].src_id,
