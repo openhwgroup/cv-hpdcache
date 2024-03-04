@@ -26,6 +26,7 @@
 +incdir+${HPDCACHE_DIR}/rtl/include
 ${HPDCACHE_DIR}/rtl/src/hpdcache_pkg.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_demux.sv
+${HPDCACHE_DIR}/rtl/src/common/hpdcache_lfsr.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_sync_buffer.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_fifo_reg.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_fifo_reg_initialized.sv
@@ -59,5 +60,6 @@ ${HPDCACHE_DIR}/rtl/src/hpdcache_mshr_to_cache_set.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_plru.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_rtab.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_uncached.sv
+${HPDCACHE_DIR}/rtl/src/hpdcache_victim_sel.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_wbuf.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_wbuf_wrapper.sv

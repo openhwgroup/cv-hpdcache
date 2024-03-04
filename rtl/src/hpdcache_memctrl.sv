@@ -404,10 +404,7 @@ import hpdcache_pkg::*;
     end
 
 
-    hpdcache_plru #(
-        .SETS                (HPDCACHE_SETS),
-        .WAYS                (HPDCACHE_WAYS)
-    ) plru_i (
+    hpdcache_victim_sel victim_sel_i(
         .clk_i,
         .rst_ni,
 
@@ -418,7 +415,7 @@ import hpdcache_pkg::*;
         .repl_i              (dir_refill_i),
         .repl_set_i          (dir_refill_set_i),
         .repl_dir_valid_i    (dir_valid),
-        .repl_updt_plru_i    (dir_refill_updt_plru_i),
+        .repl_updt_i         (dir_refill_updt_plru_i),
 
         .victim_way_o        (dir_victim_way_o)
     );

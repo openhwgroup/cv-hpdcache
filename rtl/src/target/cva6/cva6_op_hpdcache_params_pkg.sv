@@ -100,6 +100,12 @@ package hpdcache_params_pkg;
         `define CONF_HPDCACHE_REQ_SRC_ID_WIDTH 3
     `endif
     localparam int unsigned PARAM_REQ_SRC_ID_WIDTH = `CONF_HPDCACHE_REQ_SRC_ID_WIDTH;
+
+    //  HPDcache victim select
+    `ifndef CONF_HPDCACHE_VICTIM_SEL
+        `define CONF_HPDCACHE_VICTIM_SEL 1
+    `endif
+    localparam int unsigned PARAM_VICTIM_SEL = `CONF_HPDCACHE_VICTIM_SEL;
     //  }}}
 
     //  Definition of constants and types for HPDcache data memory

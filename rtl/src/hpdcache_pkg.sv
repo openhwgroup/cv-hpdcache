@@ -73,6 +73,14 @@ package hpdcache_pkg;
     localparam int unsigned HPDCACHE_TAG_WIDTH      = HPDCACHE_NLINE_WIDTH - HPDCACHE_SET_WIDTH;
     localparam int unsigned HPDCACHE_WORD_IDX_WIDTH = $clog2(HPDCACHE_CL_WORDS);
 
+    //      Victim selection policy
+    typedef enum {
+        HPDCACHE_VICTIM_RANDOM = 0,
+        HPDCACHE_VICTIM_PLRU   = 1
+    } hpdcache_victim_sel_policy_t;
+
+    localparam int unsigned HPDCACHE_VICTIM_SEL = hpdcache_params_pkg::PARAM_VICTIM_SEL;
+
     typedef logic unsigned [  HPDCACHE_OFFSET_WIDTH-1:0] hpdcache_offset_t;
     typedef logic unsigned [   HPDCACHE_NLINE_WIDTH-1:0] hpdcache_nline_t;
     typedef logic unsigned [     HPDCACHE_SET_WIDTH-1:0] hpdcache_set_t;
@@ -99,7 +107,6 @@ package hpdcache_pkg;
         end
         return 0;
     endfunction
-
     //  }}}
 
     //  Definition of constants and types for HPDcache data memory
