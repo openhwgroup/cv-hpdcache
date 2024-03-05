@@ -31,12 +31,13 @@ import hpdcache_pkg::*;
     //  {{{
 #(
     parameter int NREQUESTERS          = 1,
+    parameter int HPDcacheMemAddrWidth = HPDCACHE_PA_WIDTH,
     parameter int HPDcacheMemIdWidth   = 8,
     parameter int HPDcacheMemDataWidth = 512,
 
     //      Memory Interface Definitions
     //      {{{
-    localparam type hpdcache_mem_addr_t = logic [HPDCACHE_PA_WIDTH-1:0],
+    localparam type hpdcache_mem_addr_t = logic [HPDcacheMemAddrWidth-1:0],
     localparam type hpdcache_mem_id_t   = logic [HPDcacheMemIdWidth-1:0],
     localparam type hpdcache_mem_data_t = logic [HPDcacheMemDataWidth-1:0],
     localparam type hpdcache_mem_be_t   = logic [HPDcacheMemDataWidth/8-1:0],
