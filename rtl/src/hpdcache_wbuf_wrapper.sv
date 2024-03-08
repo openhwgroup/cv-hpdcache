@@ -208,7 +208,6 @@ import hpdcache_pkg::*;
         initial assert(WBUF_MEM_DATA_RATIO > 0) else
                 $error($sformatf("WBUF: data width of mem interface (%d) shall be g.e. to wbuf data width(%d)",
                                  HPDcacheMemDataWidth, HPDCACHE_WBUF_DATA_WIDTH));
-        //  pragma translate_on
 `endif
         //  }}}
     endgenerate
