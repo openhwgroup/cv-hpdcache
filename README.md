@@ -43,3 +43,12 @@ This *Makefile* needs the *latexmk* command-line tool (included in most common L
 
 The HPDcache is released under the Solderpad Hardware License (version 2.1).
 Please refer to the [LICENSE](LICENSE) file for further information.
+
+
+## HPDcache Publications & Tutorials
+
+- Technical Paper: César Fuguet. 2023. HPDcache: Open-Source High-Performance L1 Data Cache for RISC-V Cores. In Proceedings of the 20th ACM International Conference on Computing Frontiers (CF '23). Association for Computing Machinery, New York, NY, USA, 377–378. <https://doi.org/10.1145/3587135.3591413>
+
+- Video: César Fuguet. 2023. High Performance L1 Dcache for RISC-V Cores. TRISTAN Workshop. RISC-V Summit Europe 2023. <https://www.youtube.com/watch?v=3r5STMiUq9s>
+
+- Video: Christian Fabre, César Fuguet. 2023. One Year of Improvements on OpenHW Group's HPDCache. RISC-V Summit US 2023. <https://www.youtube.com/watch?v=ODHA-wPOmW0>
