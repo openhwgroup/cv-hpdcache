@@ -94,11 +94,11 @@ import hpdcache_pkg::*;
     //      Write-buffer write interface
     input  logic                          mem_req_wbuf_write_ready_i,
     output logic                          mem_req_wbuf_write_valid_o,
-    output hpdcache_mem_req_t             mem_req_wbuf_write_o,
+    output hpdcache_mem_req_t             mem_req_wbuf_write_o, // shoud be ignored
 
     input  logic                          mem_req_wbuf_write_data_ready_i,
     output logic                          mem_req_wbuf_write_data_valid_o,
-    output hpdcache_mem_req_w_t           mem_req_wbuf_write_data_o,
+    output hpdcache_mem_req_w_t           mem_req_wbuf_write_data_o, // should be ignored
 
     output logic                          mem_resp_wbuf_write_ready_o,
     input  logic                          mem_resp_wbuf_write_valid_i,
@@ -273,6 +273,17 @@ import hpdcache_pkg::*;
     localparam logic [HPDcacheMemIdWidth-1:0] HPDCACHE_UC_READ_ID  = {HPDcacheMemIdWidth{1'b1}};
     localparam logic [HPDcacheMemIdWidth-1:0] HPDCACHE_UC_WRITE_ID = {HPDcacheMemIdWidth{1'b1}};
     //  }}}
+
+    assign wbuf_empty_o = 0;
+    assign wbuf_write_ready = 0;
+    assign wbuf_read_hit = 0;
+    assign wbuf_rtab_hit_open = 0;
+    assign wbuf_rtab_hit_pend = 0;
+    assign wbuf_rtab_hit_sent = 0;
+    assign wbuf_rtab_not_ready = 0;
+    assign mem_req_wbuf_write_valid_o = 0;
+    assign mem_req_wbuf_write_data_valid_o = 0;
+    assign mem_resp_wbuf_write_ready_o = 0;
 
     //  Requesters arbiter
     //  {{{
@@ -455,7 +466,8 @@ import hpdcache_pkg::*;
         .clk_i,
         .rst_ni,
 
-        .empty_o                            (wbuf_empty_o),
+        // .empty_o                            (wbuf_empty_o),
+        .empty_o                            (/* unused */),
         .full_o                             (/* unused */),
         .flush_all_i                        (wbuf_flush_all),
 
@@ -465,32 +477,43 @@ import hpdcache_pkg::*;
         .cfg_inhibit_write_coalescing_i     (cfg_wbuf_inhibit_write_coalescing_i),
 
         .write_i                            (wbuf_write),
-        .write_ready_o                      (wbuf_write_ready),
+        // .write_ready_o                      (wbuf_write_ready),
+        .write_ready_o                      (/* unused */),
         .write_addr_i                       (wbuf_write_addr),
         .write_data_i                       (wbuf_write_data),
         .write_be_i                         (wbuf_write_be),
         .write_uc_i                         (wbuf_write_uncacheable),
 
         .read_addr_i                        (wbuf_write_addr),
-        .read_hit_o                         (wbuf_read_hit),
+        // .read_hit_o                         (wbuf_read_hit),
+        .read_hit_o                         (/* unused */),
         .read_flush_hit_i                   (wbuf_read_flush_hit),
 
         .replay_addr_i                      (wbuf_rtab_addr),
         .replay_is_read_i                   (wbuf_rtab_is_read),
-        .replay_open_hit_o                  (wbuf_rtab_hit_open),
-        .replay_pend_hit_o                  (wbuf_rtab_hit_pend),
-        .replay_sent_hit_o                  (wbuf_rtab_hit_sent),
-        .replay_not_ready_o                 (wbuf_rtab_not_ready),
+        // .replay_open_hit_o                  (wbuf_rtab_hit_open),
+        .replay_open_hit_o                  (/* unused */),
+        // .replay_pend_hit_o                  (wbuf_rtab_hit_pend),
+        .replay_pend_hit_o                  (/* unused */),
+        // .replay_sent_hit_o                  (wbuf_rtab_hit_sent),
+        .replay_sent_hit_o                  (/* unused */),
+        // .replay_not_ready_o                 (wbuf_rtab_not_ready),
+        .replay_not_ready_o                 (/* unused */),
 
         .mem_req_write_ready_i              (mem_req_wbuf_write_ready_i),
-        .mem_req_write_valid_o              (mem_req_wbuf_write_valid_o),
-        .mem_req_write_o                    (mem_req_wbuf_write_o),
+        // .mem_req_write_valid_o              (mem_req_wbuf_write_valid_o),
+        .mem_req_write_valid_o              (/* unused */),
+        // .mem_req_write_o                    (mem_req_wbuf_write_o), // how to initialize? but only output, so may not need to worry
+        .mem_req_write_o                    (/* unused */),
 
         .mem_req_write_data_ready_i         (mem_req_wbuf_write_data_ready_i),
-        .mem_req_write_data_valid_o         (mem_req_wbuf_write_data_valid_o),
-        .mem_req_write_data_o               (mem_req_wbuf_write_data_o),
+        // .mem_req_write_data_valid_o         (mem_req_wbuf_write_data_valid_o),
+        .mem_req_write_data_valid_o         (/* unused */),
+        // .mem_req_write_data_o               (mem_req_wbuf_write_data_o),
+        .mem_req_write_data_o               (/* unused */), // same as mem_req_write_o
 
-        .mem_resp_write_ready_o             (mem_resp_wbuf_write_ready_o),
+        // .mem_resp_write_ready_o             (mem_resp_wbuf_write_ready_o),
+        .mem_resp_write_ready_o             (/* unused */),
         .mem_resp_write_valid_i             (mem_resp_wbuf_write_valid_i),
         .mem_resp_write_i                   (mem_resp_wbuf_write_i)
     );
