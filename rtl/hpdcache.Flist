@@ -56,7 +56,6 @@ ${HPDCACHE_DIR}/rtl/src/hpdcache_memarray.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_memctrl.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_miss_handler.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_mshr.sv
-${HPDCACHE_DIR}/rtl/src/hpdcache_mshr_to_cache_set.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_plru.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_rtab.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_uncached.sv

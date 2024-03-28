@@ -79,6 +79,7 @@ import hpdcache_pkg::*;
     input  logic                  refill_req_ready_i,
     output logic                  refill_req_valid_o,
     output logic                  refill_busy_o,
+    output logic                  refill_sel_victim_o,
     output logic                  refill_updt_plru_o,
     output hpdcache_set_t         refill_set_o,
     output hpdcache_dir_entry_t   refill_dir_entry_o,
@@ -119,6 +120,7 @@ import hpdcache_pkg::*;
     //  Declaration of constants and types
     //  {{{
     localparam int unsigned REFILL_REQ_RATIO = HPDCACHE_ACCESS_WORDS/HPDCACHE_REQ_WORDS;
+    localparam hpdcache_uint REFILL_LAST_CHUNK_WORD = HPDCACHE_CL_WORDS - HPDCACHE_ACCESS_WORDS;
 
     typedef enum logic {
         MISS_REQ_IDLE = 1'b0,
@@ -177,14 +179,15 @@ import hpdcache_pkg::*;
     logic                    refill_is_error;
 
     mshr_set_t               mshr_check_set;
-    mshr_tag_t               mshr_check_tag;
+    hpdcache_tag_t           mshr_check_tag;
     logic                    mshr_alloc;
     logic                    mshr_alloc_cs;
     logic                    mshr_ack;
     logic                    mshr_ack_cs;
     mshr_set_t               mshr_ack_set;
     mshr_way_t               mshr_ack_way;
-    hpdcache_nline_t         mshr_ack_nline;
+    hpdcache_set_t           mshr_ack_cache_set;
+    hpdcache_tag_t           mshr_ack_cache_tag;
     hpdcache_req_sid_t       mshr_ack_src_id;
     hpdcache_req_tid_t       mshr_ack_req_id;
     hpdcache_word_t          mshr_ack_word;
@@ -279,9 +282,8 @@ import hpdcache_pkg::*;
 
     always_comb
     begin : miss_resp_fsm_comb
-        automatic hpdcache_uint REFILL_LAST_CHUNK_WORD;
-        REFILL_LAST_CHUNK_WORD = HPDCACHE_CL_WORDS - HPDCACHE_ACCESS_WORDS;
 
+        refill_sel_victim_o     = 1'b0;
         refill_updt_plru_o      = 1'b0;
         refill_set_o            = '0;
         refill_write_dir_o      = 1'b0;
@@ -320,6 +322,9 @@ import hpdcache_pkg::*;
 
                     //  if the permission is granted, start refilling
                     if (refill_req_ready_i) begin
+                        refill_sel_victim_o = 1'b1;
+                        refill_set_o = mshr_ack_cache_set;
+
                         if (refill_fifo_resp_meta_rdata.is_inval) begin
                             //  check for a match with the line being invalidated in the cache directory
                             inval_check_dir_o = 1'b1;
@@ -379,7 +384,7 @@ import hpdcache_pkg::*;
 
                 //  Write the the data in the cache data array
                 if (refill_cnt_q == 0) begin
-                    refill_set_o = mshr_ack_nline[0 +: HPDCACHE_SET_WIDTH];
+                    refill_set_o = mshr_ack_cache_set;
                     refill_way_bypass = 1'b1;
                     is_prefetch = mshr_ack_is_prefetch;
                 end else begin
@@ -483,27 +488,29 @@ import hpdcache_pkg::*;
 
     assign inval_nline_o = refill_fifo_resp_meta_rdata.inval_nline;
 
-    if (HPDCACHE_MSHR_SETS > 1) begin : mshr_check_set_gt_1_gen
+    if (HPDCACHE_MSHR_SETS > 1) begin : mshr_set_gt_1_gen
+        //  MSHR check set and tag
         assign mshr_check_set = mshr_check_offset_i[HPDCACHE_OFFSET_WIDTH +:
                                                     HPDCACHE_MSHR_SET_WIDTH];
-        assign mshr_check_tag = mshr_check_nline_i[HPDCACHE_MSHR_SET_WIDTH +:
-                                                   HPDCACHE_MSHR_TAG_WIDTH];
-    end else begin : mshr_check_set_eq_1_gen
-        assign mshr_check_set = '0;
-        assign mshr_check_tag = mshr_check_nline_i[0 +: HPDCACHE_MSHR_TAG_WIDTH];
-    end
+        assign mshr_check_tag = mshr_check_nline_i[HPDCACHE_SET_WIDTH +:
+                                                   HPDCACHE_TAG_WIDTH];
 
-    if (HPDCACHE_MSHR_SETS > 1) begin : mshr_ack_set_gt_1_gen
+        //  MSHR ack set and way
         assign mshr_ack_set = refill_fifo_resp_meta_rdata.r_id[0 +: HPDCACHE_MSHR_SET_WIDTH];
-        if (HPDCACHE_MSHR_WAYS > 1) begin : mshr_way_gt_1_gen
+        if (HPDCACHE_MSHR_WAYS > 1) begin : mshr_ack_way_gt_1_gen
             assign mshr_ack_way = refill_fifo_resp_meta_rdata.r_id[HPDCACHE_MSHR_SET_WIDTH +:
                                                                    HPDCACHE_MSHR_WAY_WIDTH];
         end else begin : mshr_ack_way_eq_1_gen
             assign mshr_ack_way = '0;
         end
-    end else begin : mshr_ack_set_eq_1_gen
+    end else begin : mshr_set_eq_1_gen
+        //  MSHR check set and tag
+        assign mshr_check_set = '0;
+        assign mshr_check_tag = mshr_check_nline_i[HPDCACHE_SET_WIDTH +: HPDCACHE_TAG_WIDTH];
+
+        //  MSHR ack set and way
         assign mshr_ack_set = '0;
-        if (HPDCACHE_MSHR_WAYS > 1) begin : mshr_way_gt_1_gen
+        if (HPDCACHE_MSHR_WAYS > 1) begin : mshr_ack_way_gt_1_gen
             assign mshr_ack_way = refill_fifo_resp_meta_rdata.r_id[0 +: HPDCACHE_MSHR_WAY_WIDTH];
         end else begin : mshr_ack_way_eq_1_gen
             assign mshr_ack_way = '0;
@@ -672,8 +679,8 @@ import hpdcache_pkg::*;
     always_ff @(posedge clk_i)
     begin : miss_resp_fsm_internal_ff
         if ((refill_fsm_q == REFILL_WRITE) && (refill_cnt_q == 0)) begin
-            refill_set_q <= mshr_ack_nline[0                  +: HPDCACHE_SET_WIDTH];
-            refill_tag_q <= mshr_ack_nline[HPDCACHE_SET_WIDTH +: HPDCACHE_TAG_WIDTH];;
+            refill_set_q <= mshr_ack_cache_set;
+            refill_tag_q <= mshr_ack_cache_tag;
             refill_way_q <= refill_victim_way_i;
             refill_sid_q <= mshr_ack_src_id;
             refill_tid_q <= mshr_ack_req_id;
@@ -687,7 +694,7 @@ import hpdcache_pkg::*;
 
     //  Miss Status Holding Register component
     //  {{{
-    hpdcache_mshr hpdcache_mshr_i (
+    hpdcache_mshr hpdcache_mshr_i(
         .clk_i,
         .rst_ni,
 
@@ -715,7 +722,8 @@ import hpdcache_pkg::*;
         .ack_way_i                (mshr_ack_way),
         .ack_req_id_o             (mshr_ack_req_id),
         .ack_src_id_o             (mshr_ack_src_id),
-        .ack_nline_o              (mshr_ack_nline),
+        .ack_cache_set_o          (mshr_ack_cache_set),
+        .ack_cache_tag_o          (mshr_ack_cache_tag),
         .ack_word_o               (mshr_ack_word),
         .ack_need_rsp_o           (mshr_ack_need_rsp),
         .ack_is_prefetch_o        (mshr_ack_is_prefetch)

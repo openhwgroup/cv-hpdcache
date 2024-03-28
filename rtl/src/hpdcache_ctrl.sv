@@ -73,6 +73,7 @@ import hpdcache_pkg::*;
     input  logic                  refill_req_valid_i,
     output logic                  refill_req_ready_o,
     input  logic                  refill_busy_i,
+    input  logic                  refill_sel_victim_i,
     input  logic                  refill_updt_plru_i,
     input  hpdcache_set_t         refill_set_i,
     input  hpdcache_dir_entry_t   refill_dir_entry_i,
@@ -569,7 +570,7 @@ import hpdcache_pkg::*;
            st1_req_nline = hpdcache_get_req_addr_nline(st1_req_addr),
            st2_req_word  = hpdcache_get_req_addr_word(st2_req_addr_q);
 
-    hpdcache_memctrl hpdcache_memctrl_i (
+    hpdcache_memctrl hpdcache_memctrl_i(
         .clk_i,
         .rst_ni,
 
@@ -587,6 +588,7 @@ import hpdcache_pkg::*;
         .dir_amo_update_plru_i         (uc_dir_amo_update_plru_i),
         .dir_amo_hit_way_o             (uc_dir_amo_hit_way_o),
 
+        .dir_refill_sel_victim_i       (refill_sel_victim_i),
         .dir_refill_i                  (refill_write_dir_i),
         .dir_refill_set_i              (refill_set_i),
         .dir_refill_entry_i            (refill_dir_entry_i),

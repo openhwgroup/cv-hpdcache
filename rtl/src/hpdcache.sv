@@ -160,6 +160,7 @@ import hpdcache_pkg::*;
     logic                  refill_req_valid;
     logic                  refill_req_ready;
     logic                  refill_busy;
+    logic                  refill_sel_victim;
     logic                  refill_updt_plru;
     hpdcache_set_t         refill_set;
     hpdcache_dir_entry_t   refill_dir_entry;
@@ -341,6 +342,7 @@ import hpdcache_pkg::*;
         .refill_req_valid_i                 (refill_req_valid),
         .refill_req_ready_o                 (refill_req_ready),
         .refill_busy_i                      (refill_busy),
+        .refill_sel_victim_i                (refill_sel_victim),
         .refill_updt_plru_i                 (refill_updt_plru),
         .refill_set_i                       (refill_set),
         .refill_dir_entry_i                 (refill_dir_entry),
@@ -531,6 +533,7 @@ import hpdcache_pkg::*;
         .refill_req_ready_i                 (refill_req_ready),
         .refill_req_valid_o                 (refill_req_valid),
         .refill_busy_o                      (refill_busy),
+        .refill_sel_victim_o                (refill_sel_victim),
         .refill_updt_plru_o                 (refill_updt_plru),
         .refill_set_o                       (refill_set),
         .refill_dir_entry_o                 (refill_dir_entry),

@@ -53,6 +53,7 @@ import hpdcache_pkg::*;
     input  logic                                dir_amo_update_plru_i,
     output hpdcache_way_vector_t                dir_amo_hit_way_o,
 
+    input  logic                                dir_refill_sel_victim_i,
     input  logic                                dir_refill_i,
     input  hpdcache_set_t                       dir_refill_set_i,
     input  hpdcache_dir_entry_t                 dir_refill_entry_i,
@@ -306,6 +307,14 @@ import hpdcache_pkg::*;
             //  Cache directory AMO match tag -> hit
             dir_amo_match_i: begin
                 dir_addr    = dir_amo_match_set_i;
+                dir_cs      = '1;
+                dir_we      = '0;
+                dir_wentry  = '0;
+            end
+
+            //  Cache directory update
+            dir_refill_sel_victim_i: begin
+                dir_addr    = dir_refill_set_i;
                 dir_cs      = '1;
                 dir_we      = '0;
                 dir_wentry  = '0;
@@ -650,7 +659,14 @@ import hpdcache_pkg::*;
     //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
     concurrent_dir_access_assert: assert property (@(posedge clk_i) disable iff (!rst_ni)
-            $onehot0({dir_match_i, dir_amo_match_i, dir_cmo_check_i, dir_refill_i})) else
+            $onehot0({dir_match_i,
+                      dir_amo_match_i,
+                      dir_refill_sel_victim_i,
+                      dir_refill_i,
+                      dir_inval_check_i,
+                      dir_inval_write_i,
+                      dir_cmo_check_i,
+                      dir_cmo_inval_i})) else
             $error("hpdcache_memctrl: more than one process is accessing the cache directory");
 
     concurrent_data_access_assert: assert property (@(posedge clk_i) disable iff (!rst_ni)
