@@ -157,11 +157,6 @@ import hpdcache_pkg::*;
                                 cmoh_fsm_d = CMOH_INVAL_WAIT_MSHR_RTAB_EMPTY;
                             end
                         end
-                        default: begin
-`ifndef HPDCACHE_ASSERT_OFF
-                            $error("cmo handler: unexpected operation");
-`endif
-                        end
                     endcase
                 end
             end
@@ -239,8 +234,11 @@ import hpdcache_pkg::*;
 //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
     assert property (@(posedge clk_i) disable iff (!rst_ni)
-            req_valid_i -> $onehot(req_op_i)) else
-                    $error("cmo_handler: more than one operation type requested");
+            req_valid_i -> $onehot({req_op_i.is_fence,
+                                    req_op_i.is_inval_by_nline,
+                                    req_op_i.is_inval_by_set,
+                                    req_op_i.is_inval_all})) else
+                    $error("cmo_handler: invalid request");
 
     assert property (@(posedge clk_i) disable iff (!rst_ni)
             req_valid_i -> (cmoh_fsm_q == CMOH_IDLE)) else

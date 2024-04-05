@@ -567,7 +567,7 @@ package hpdcache_pkg;
         else if (bytes <= 128) return 7;
         else begin
 `ifndef HPDCACHE_ASSERT_OFF
-            $error("hpdcache: unsupported number of bytes");
+            assert (1) $error("hpdcache: unsupported number of bytes");
 `endif
             return 0;
         end

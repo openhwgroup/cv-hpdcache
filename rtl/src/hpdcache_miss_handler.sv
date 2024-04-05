@@ -474,7 +474,7 @@ import hpdcache_pkg::*;
 
             default: begin
 `ifndef HPDCACHE_ASSERT_OFF
-                $error("Illegal state");
+                assert (1) $error("miss_handler: illegal state");
 `endif
             end
         endcase
