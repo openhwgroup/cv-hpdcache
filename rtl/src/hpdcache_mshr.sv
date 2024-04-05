@@ -38,7 +38,7 @@ import hpdcache_pkg::*;
 
     //  Check and allocation interface
     input  logic              check_i,
-    input  mshr_set_t         check_set_i,
+    input  hpdcache_set_t     check_set_i,
     input  hpdcache_tag_t     check_tag_i,
     output logic              hit_o,
     input  logic              alloc_i,
@@ -96,7 +96,8 @@ import hpdcache_pkg::*;
     logic          [HPDCACHE_MSHR_SETS * HPDCACHE_MSHR_WAYS-1:0] mshr_valid_q;
     hpdcache_set_t [HPDCACHE_MSHR_SETS * HPDCACHE_MSHR_WAYS-1:0] mshr_cache_set_q;
 
-    mshr_set_t     check_set_q;
+    hpdcache_set_t check_cache_set_q;
+    mshr_set_t     check_set_st0, check_set_st1;
     mshr_set_t     alloc_set;
     mshr_way_t     ack_way_q;
 
@@ -119,8 +120,12 @@ import hpdcache_pkg::*;
     assign check = check_i & ~alloc_i;
 
     if (HPDCACHE_MSHR_SETS > 1) begin : alloc_mshr_sets_gt_1_gen
+      assign check_set_st0 = check_set_i[0 +: HPDCACHE_MSHR_SET_WIDTH];
+      assign check_set_st1 = check_cache_set_q[0 +: HPDCACHE_MSHR_SET_WIDTH];
       assign alloc_set = alloc_nline_i[0 +: HPDCACHE_MSHR_SET_WIDTH];
     end else begin : alloc_mshr_sets_eq_1_gen
+      assign check_set_st0 = '0;
+      assign check_set_st1 = '0;
       assign alloc_set = '0;
     end
 
@@ -146,7 +151,7 @@ import hpdcache_pkg::*;
 
         found_available = 1'b0;
         for (int unsigned i = 0; i < HPDCACHE_MSHR_WAYS; i++) begin
-            if (!mshr_valid_q[i*HPDCACHE_MSHR_SETS + int'(check_set_q)]) begin
+            if (!mshr_valid_q[i*HPDCACHE_MSHR_SETS + int'(check_set_st1)]) begin
                 found_available = 1'b1;
                 break;
             end
@@ -191,7 +196,7 @@ import hpdcache_pkg::*;
     end
 
     assign mshr_cs   = check_i | alloc_cs_i | ack_cs_i;
-    assign mshr_addr = ack_i ? ack_set_i : (alloc_i ? alloc_set : check_set_i);
+    assign mshr_addr = ack_i ? ack_set_i : (alloc_i ? alloc_set : check_set_st0);
 
     always_comb
     begin : mshr_valid_comb
@@ -224,10 +229,12 @@ import hpdcache_pkg::*;
 
         for (int unsigned w = 0; w < HPDCACHE_MSHR_WAYS; w++) begin
             automatic bit __valid;
-            automatic bit __match;
-            __valid = mshr_valid_q[w*HPDCACHE_MSHR_SETS + int'(check_set_q)];
-            __match = (mshr_rentry[w].tag == check_tag_i);
-            __hit_way[w] = (__valid && __match);
+            automatic bit __match_set;
+            automatic bit __match_tag;
+            __valid = mshr_valid_q[w*HPDCACHE_MSHR_SETS + int'(check_set_st1)];
+            __match_set  = (mshr_cache_set_q[w*HPDCACHE_MSHR_SETS + int'(check_set_st1)] == check_cache_set_q);
+            __match_tag  = (mshr_rentry[w].tag == check_tag_i);
+            __hit_way[w] = (__valid && __match_tag && __match_set);
         end
 
         hit_o = |__hit_way;
@@ -241,11 +248,11 @@ import hpdcache_pkg::*;
         if (!rst_ni) begin
             mshr_valid_q <= '0;
             ack_way_q <= '0;
-            check_set_q <= '0;
+            check_cache_set_q <= '0;
         end else begin
             mshr_valid_q <= (~mshr_valid_q & mshr_valid_set) | (mshr_valid_q & ~mshr_valid_rst);
             if (ack_i) ack_way_q <= ack_way_i;
-            if (check) check_set_q <= check_set_i;
+            if (check) check_cache_set_q <= check_set_i;
         end
     end
     //  }}}
@@ -338,9 +345,15 @@ import hpdcache_pkg::*;
         end
     end
 
-    always_ff @(posedge clk_i)
+    always_ff @(posedge clk_i or negedge rst_ni)
     begin
-        if (alloc_i) mshr_cache_set_q[mshr_alloc_slot] <= alloc_nline_i[0 +: HPDCACHE_SET_WIDTH];
+        if (!rst_ni) begin
+          mshr_cache_set_q <= '0;
+        end else begin
+            if (alloc_i) begin
+                mshr_cache_set_q[mshr_alloc_slot] <= alloc_nline_i[0 +: HPDCACHE_SET_WIDTH];
+            end
+        end
     end
 
     always_comb

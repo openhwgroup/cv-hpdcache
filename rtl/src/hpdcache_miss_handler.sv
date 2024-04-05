@@ -178,7 +178,7 @@ import hpdcache_pkg::*;
 
     logic                    refill_is_error;
 
-    mshr_set_t               mshr_check_set;
+    hpdcache_set_t           mshr_check_set;
     hpdcache_tag_t           mshr_check_tag;
     logic                    mshr_alloc;
     logic                    mshr_alloc_cs;
@@ -488,13 +488,10 @@ import hpdcache_pkg::*;
 
     assign inval_nline_o = refill_fifo_resp_meta_rdata.inval_nline;
 
-    if (HPDCACHE_MSHR_SETS > 1) begin : mshr_set_gt_1_gen
-        //  MSHR check set and tag
-        assign mshr_check_set = mshr_check_offset_i[HPDCACHE_OFFSET_WIDTH +:
-                                                    HPDCACHE_MSHR_SET_WIDTH];
-        assign mshr_check_tag = mshr_check_nline_i[HPDCACHE_SET_WIDTH +:
-                                                   HPDCACHE_TAG_WIDTH];
+    assign mshr_check_tag = mshr_check_nline_i[HPDCACHE_SET_WIDTH +: HPDCACHE_TAG_WIDTH];
+    assign mshr_check_set = mshr_check_offset_i[HPDCACHE_OFFSET_WIDTH +: HPDCACHE_SET_WIDTH];
 
+    if (HPDCACHE_MSHR_SETS > 1) begin : mshr_set_gt_1_gen
         //  MSHR ack set and way
         assign mshr_ack_set = refill_fifo_resp_meta_rdata.r_id[0 +: HPDCACHE_MSHR_SET_WIDTH];
         if (HPDCACHE_MSHR_WAYS > 1) begin : mshr_ack_way_gt_1_gen
@@ -504,10 +501,6 @@ import hpdcache_pkg::*;
             assign mshr_ack_way = '0;
         end
     end else begin : mshr_set_eq_1_gen
-        //  MSHR check set and tag
-        assign mshr_check_set = '0;
-        assign mshr_check_tag = mshr_check_nline_i[HPDCACHE_SET_WIDTH +: HPDCACHE_TAG_WIDTH];
-
         //  MSHR ack set and way
         assign mshr_ack_set = '0;
         if (HPDCACHE_MSHR_WAYS > 1) begin : mshr_ack_way_gt_1_gen
