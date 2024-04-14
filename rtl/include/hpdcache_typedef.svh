@@ -71,4 +71,34 @@
 `define HPDCACHE_TYPEDEF_MEM_RESP_W_T(__name__, id_t) \
     typedef `HPDCACHE_DECL_MEM_RESP_W_T(id_t) __name__
 
-`endif
+`define HPDCACHE_DECL_REQ_T(offset_t, data_t, be_t, sid_t, tid_t, tag_t) \
+    struct packed { \
+        offset_t                          addr_offset; \
+        data_t                            wdata; \
+        hpdcache_pkg::hpdcache_req_op_t   op; \
+        be_t                              be; \
+        hpdcache_pkg::hpdcache_req_size_t size; \
+        sid_t                             sid; \
+        tid_t                             tid; \
+        logic                             need_rsp; \
+        logic                             phys_indexed; \
+        tag_t                             addr_tag; \
+        hpdcache_pkg::hpdcache_pma_t      pma; \
+    }
+
+`define HPDCACHE_TYPEDEF_REQ_T(__name__, offset_t, data_t, be_t, sid_t, tid_t, tag_t) \
+    typedef `HPDCACHE_DECL_REQ_T(offset_t, data_t, be_t, sid_t, tid_t, tag_t) __name__
+
+`define HPDCACHE_DECL_RSP_T(data_t, sid_t, tid_t) \
+    struct packed { \
+        data_t   rdata; \
+        sid_t    sid; \
+        tid_t    tid; \
+        logic    error; \
+        logic    aborted; \
+    }
+
+`define HPDCACHE_TYPEDEF_RSP_T(__name__, data_t, sid_t, tid_t) \
+    typedef `HPDCACHE_DECL_RSP_T(data_t, sid_t, tid_t) __name__
+
+`endif //  __HPDCACHE_TYPEDEF_SVH__

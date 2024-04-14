@@ -25,6 +25,18 @@
  */
 module hpdcache_victim_sel
 import hpdcache_pkg::*;
+//  Parameters
+//  {{{
+#(
+    parameter hpdcache_cfg_t hpdcacheCfg = '0,
+
+    parameter type hpdcache_set_t = logic,
+    parameter type hpdcache_way_vector_t = logic
+)
+//  }}}
+
+//  Ports
+//  {{{
 (
     input  logic                  clk_i,
     input  logic                  rst_ni,
@@ -42,11 +54,12 @@ import hpdcache_pkg::*;
 
     output hpdcache_way_vector_t  victim_way_o
 );
+//  }}}
 
-if (HPDCACHE_WAYS == 1) begin : single_way_victim_sel_gen
+if (hpdcacheCfg.ways == 1) begin : gen_single_way_victim_sel
     assign victim_way_o = 1'b1;
 
-end else if (HPDCACHE_VICTIM_SEL == HPDCACHE_VICTIM_RANDOM) begin : random_victim_sel_gen
+end else if (hpdcacheCfg.victimSel == HPDCACHE_VICTIM_RANDOM) begin : gen_random_victim_sel
     hpdcache_way_vector_t random_victim_way;
     hpdcache_way_vector_t unused_victim_way;
     logic [7:0] lfsr_val;
@@ -66,24 +79,24 @@ end else if (HPDCACHE_VICTIM_SEL == HPDCACHE_VICTIM_RANDOM) begin : random_victi
     always_comb
     begin : random_way_encoder_comb
         random_victim_way = '0;
-        for (int i = 0; i < HPDCACHE_WAYS; i++) begin
-            random_victim_way[i] = (i == (lfsr_val % HPDCACHE_WAYS));
+        for (int i = 0; i < hpdcacheCfg.ways; i++) begin
+            random_victim_way[i] = (i == (lfsr_val % hpdcacheCfg.ways));
         end
     end
 
     hpdcache_prio_1hot_encoder #(
-        .N(HPDCACHE_WAYS)
+        .N                   (hpdcacheCfg.ways)
     ) unused_victim_select_i(
-        .val_i     (~repl_dir_valid_i),
-        .val_o     (unused_victim_way)
+        .val_i               (~repl_dir_valid_i),
+        .val_o               (unused_victim_way)
     );
 
     assign victim_way_o = sel_random ? random_victim_way : unused_victim_way;
 
-end else if (HPDCACHE_VICTIM_SEL == HPDCACHE_VICTIM_PLRU) begin : plru_victim_sel_gen
+end else if (hpdcacheCfg.victimSel == HPDCACHE_VICTIM_PLRU) begin : gen_plru_victim_sel
     hpdcache_plru #(
-        .SETS                (HPDCACHE_SETS),
-        .WAYS                (HPDCACHE_WAYS)
+        .SETS                (hpdcacheCfg.sets),
+        .WAYS                (hpdcacheCfg.ways)
     ) plru_i(
         .clk_i,
         .rst_ni,
@@ -103,7 +116,7 @@ end
 
 `ifndef HPDCACHE_ASSERT_OFF
     initial victim_sel_assert:
-            assert (HPDCACHE_VICTIM_SEL inside {HPDCACHE_VICTIM_RANDOM, HPDCACHE_VICTIM_PLRU}) else
+            assert (hpdcacheCfg.victimSel inside {HPDCACHE_VICTIM_RANDOM, HPDCACHE_VICTIM_PLRU}) else
                     $fatal("unsupported victim selection policy");
 `endif
 

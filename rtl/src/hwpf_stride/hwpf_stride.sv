@@ -30,7 +30,12 @@ import hpdcache_pkg::*;
 //  Parameters
 //  {{{
 #(
-    parameter int CACHE_LINE_BYTES = 64
+    parameter hpdcache_cfg_t hpdcacheCfg = '0,
+    parameter type hpdcache_nline_t = logic,
+    parameter type hpdcache_tag_t = logic,
+    parameter type hpdcache_set_t = logic,
+    parameter type hpdcache_req_t = logic,
+    parameter type hpdcache_rsp_t = logic
 )
 //  }}}
 
@@ -59,7 +64,7 @@ import hpdcache_pkg::*;
     //   Address to snoop on requests ports
     output hpdcache_nline_t             snoop_nline_o,
     //   If set to one, the snoop address matched one of the requests
-    input  snoop_match_i,
+    input  logic                        snoop_match_i,
 
     // D-Cache interface
     output logic                        hpdcache_req_valid_o,
@@ -69,8 +74,6 @@ import hpdcache_pkg::*;
     input  hpdcache_rsp_t               hpdcache_rsp_i
 );
 //  }}}
-
-    import hpdcache_pkg::hpdcache_req_addr_t;
 
     //  Definition of constants
     //  {{{
@@ -119,8 +122,8 @@ import hpdcache_pkg::*;
     assign increment_stride = hpdcache_nline_t'(shadow_param_q.stride) + 1'b1;
     assign inflight_dec     = hpdcache_rsp_valid_i;
     assign snoop_nline_o    = shadow_base_q.base_cline;
-    assign is_inflight_max  = ( shadow_throttle_q.ninflight == '0 ) ?
-                              1'b0 : ( inflight_cnt_q >= shadow_throttle_q.ninflight );
+    assign is_inflight_max  = (shadow_throttle_q.ninflight == '0) ?
+                              1'b0 : (inflight_cnt_q >= shadow_throttle_q.ninflight);
     assign csr_base_o       = csr_base_q;
     assign csr_param_o      = csr_param_q;
     assign csr_throttle_o   = csr_throttle_q;
@@ -128,10 +131,10 @@ import hpdcache_pkg::*;
 
     //  Dcache outputs
     //  {{{
-    assign hpdcache_req_set = request_nline_q[0                  +: HPDCACHE_SET_WIDTH],
-           hpdcache_req_tag = request_nline_q[HPDCACHE_SET_WIDTH +: HPDCACHE_TAG_WIDTH];
+    assign hpdcache_req_set = request_nline_q[0 +: hpdcacheCfg.setWidth],
+           hpdcache_req_tag = request_nline_q[hpdcacheCfg.setWidth +: hpdcacheCfg.tagWidth];
 
-    assign hpdcache_req_o.addr_offset     = { hpdcache_req_set, {HPDCACHE_OFFSET_WIDTH{1'b0}} },
+    assign hpdcache_req_o.addr_offset     = { hpdcache_req_set, {hpdcacheCfg.clOffsetWidth{1'b0}} },
            hpdcache_req_o.wdata           = '0,
            hpdcache_req_o.op              = HPDCACHE_REQ_CMO,
            hpdcache_req_o.be              = '1,

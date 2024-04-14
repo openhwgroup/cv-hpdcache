@@ -24,34 +24,6 @@
  *  History       :
  */
 package hpdcache_pkg;
-    //  Definition of global constants for the HPDcache data and directory
-    //  {{{
-
-    //  HPDcache physical address width (bits)
-    localparam int unsigned HPDCACHE_PA_WIDTH = hpdcache_params_pkg::PARAM_PA_WIDTH;
-
-    //  HPDcache number of sets
-    localparam int unsigned HPDCACHE_SETS = hpdcache_params_pkg::PARAM_SETS;
-
-    //  HPDcache number of ways
-    localparam int unsigned HPDCACHE_WAYS = hpdcache_params_pkg::PARAM_WAYS;
-
-    //  HPDcache word width (bits)
-    localparam int unsigned HPDCACHE_WORD_WIDTH = hpdcache_params_pkg::PARAM_WORD_WIDTH;
-
-    //  HPDcache cache-line width (bits)
-    localparam int unsigned HPDCACHE_CL_WORDS = hpdcache_params_pkg::PARAM_CL_WORDS;
-
-    //  HPDcache number of words in the request data channels (request and response)
-    localparam int unsigned HPDCACHE_REQ_WORDS = hpdcache_params_pkg::PARAM_REQ_WORDS;
-
-    //  HPDcache request transaction ID width (bits)
-    localparam int unsigned HPDCACHE_REQ_TRANS_ID_WIDTH = hpdcache_params_pkg::PARAM_REQ_TRANS_ID_WIDTH;
-
-    //  HPDcache request source ID width (bits)
-    localparam int unsigned HPDCACHE_REQ_SRC_ID_WIDTH = hpdcache_params_pkg::PARAM_REQ_SRC_ID_WIDTH;
-    //  }}}
-
     //  Utility definitions
     //  {{{
     typedef logic unsigned [7:0]  hpdcache_uint8;
@@ -66,141 +38,16 @@ package hpdcache_pkg;
 
     //  Definition of constants and types for HPDcache directory memory
     //  {{{
-    localparam int unsigned HPDCACHE_CL_WIDTH       = HPDCACHE_CL_WORDS*HPDCACHE_WORD_WIDTH;
-    localparam int unsigned HPDCACHE_OFFSET_WIDTH   = $clog2(HPDCACHE_CL_WIDTH/8);
-    localparam int unsigned HPDCACHE_NLINE_WIDTH    = HPDCACHE_PA_WIDTH - HPDCACHE_OFFSET_WIDTH;
-    localparam int unsigned HPDCACHE_SET_WIDTH      = $clog2(HPDCACHE_SETS);
-    localparam int unsigned HPDCACHE_TAG_WIDTH      = HPDCACHE_NLINE_WIDTH - HPDCACHE_SET_WIDTH;
-    localparam int unsigned HPDCACHE_WORD_IDX_WIDTH = $clog2(HPDCACHE_CL_WORDS);
-
     //      Victim selection policy
-    typedef enum {
-        HPDCACHE_VICTIM_RANDOM = 0,
-        HPDCACHE_VICTIM_PLRU   = 1
+    typedef enum logic {
+        HPDCACHE_VICTIM_RANDOM = 1'b0,
+        HPDCACHE_VICTIM_PLRU   = 1'b1
     } hpdcache_victim_sel_policy_t;
-
-    localparam int unsigned HPDCACHE_VICTIM_SEL = hpdcache_params_pkg::PARAM_VICTIM_SEL;
-
-    typedef logic unsigned [  HPDCACHE_OFFSET_WIDTH-1:0] hpdcache_offset_t;
-    typedef logic unsigned [   HPDCACHE_NLINE_WIDTH-1:0] hpdcache_nline_t;
-    typedef logic unsigned [     HPDCACHE_SET_WIDTH-1:0] hpdcache_set_t;
-    typedef logic unsigned [     HPDCACHE_TAG_WIDTH-1:0] hpdcache_tag_t;
-    typedef logic unsigned [  $clog2(HPDCACHE_WAYS)-1:0] hpdcache_way_t;
-    typedef logic unsigned [          HPDCACHE_WAYS-1:0] hpdcache_way_vector_t;
-    typedef logic unsigned [HPDCACHE_WORD_IDX_WIDTH-1:0] hpdcache_word_t;
-
-    typedef struct packed {
-        logic          valid;
-        hpdcache_tag_t tag;
-        logic          reserved;
-    } hpdcache_dir_entry_t;
-
-    localparam int unsigned HPDCACHE_DIR_RAM_WIDTH       = $bits(hpdcache_dir_entry_t);
-    localparam int unsigned HPDCACHE_DIR_RAM_DEPTH       = HPDCACHE_SETS;
-    localparam int unsigned HPDCACHE_DIR_RAM_ADDR_WIDTH  = $clog2(HPDCACHE_DIR_RAM_DEPTH);
-
-    typedef logic [HPDCACHE_DIR_RAM_ADDR_WIDTH-1:0] hpdcache_dir_addr_t;
-
-    function automatic hpdcache_way_t hpdcache_way_vector_to_index(input hpdcache_way_vector_t way);
-        for (int unsigned i = 0; i < HPDCACHE_WAYS; i++) begin
-            if (way[i]) return hpdcache_way_t'(i);
-        end
-        return 0;
-    endfunction
-    //  }}}
-
-    //  Definition of constants and types for HPDcache data memory
-    //  {{{
-    localparam int unsigned HPDCACHE_DATA_WAYS_PER_RAM_WORD =
-        hpdcache_params_pkg::PARAM_DATA_WAYS_PER_RAM_WORD;
-
-    localparam int unsigned HPDCACHE_DATA_SETS_PER_RAM = /* FIXME this parameter is currently ignored */
-        hpdcache_params_pkg::PARAM_DATA_SETS_PER_RAM;
-
-    //  HPDcache DATA RAM implements write byte enable
-    localparam bit HPDCACHE_DATA_RAM_WBYTEENABLE =
-        hpdcache_params_pkg::PARAM_DATA_RAM_WBYTEENABLE;
-
-    //  Define the number of memory contiguous words that can be accessed
-    //  simultaneously from the cache.
-    //  -  This limits the maximum width for the data channel from requesters
-    //  -  This impacts the refill latency
-    localparam int unsigned HPDCACHE_ACCESS_WORDS = hpdcache_params_pkg::PARAM_ACCESS_WORDS;
-
-
-    localparam int unsigned HPDCACHE_DATA_RAM_WIDTH        =
-            HPDCACHE_DATA_WAYS_PER_RAM_WORD*HPDCACHE_WORD_WIDTH;
-    localparam int unsigned HPDCACHE_DATA_RAM_Y_CUTS       = HPDCACHE_WAYS/HPDCACHE_DATA_WAYS_PER_RAM_WORD;
-    localparam int unsigned HPDCACHE_DATA_RAM_X_CUTS       = HPDCACHE_ACCESS_WORDS;
-    localparam int unsigned HPDCACHE_DATA_RAM_ACCESS_WIDTH = HPDCACHE_ACCESS_WORDS*HPDCACHE_WORD_WIDTH;
-    localparam int unsigned HPDCACHE_DATA_RAM_ENTR_PER_SET = HPDCACHE_CL_WORDS/HPDCACHE_ACCESS_WORDS;
-    localparam int unsigned HPDCACHE_DATA_RAM_DEPTH        = HPDCACHE_SETS*HPDCACHE_DATA_RAM_ENTR_PER_SET;
-    localparam int unsigned HPDCACHE_DATA_RAM_ADDR_WIDTH   = $clog2(HPDCACHE_DATA_RAM_DEPTH);
-
-    typedef logic [                     HPDCACHE_WORD_WIDTH-1:0]      hpdcache_data_word_t;
-    typedef logic [                   HPDCACHE_WORD_WIDTH/8-1:0]      hpdcache_data_be_t;
-    typedef logic [                HPDCACHE_DATA_RAM_Y_CUTS-1:0]      hpdcache_data_ram_row_idx_t;
-    typedef logic [ $clog2(HPDCACHE_DATA_WAYS_PER_RAM_WORD)-1:0]      hpdcache_data_ram_way_idx_t;
-
-    typedef logic [HPDCACHE_DATA_RAM_ADDR_WIDTH-1:0]                  hpdcache_data_ram_addr_t;
-    typedef hpdcache_data_word_t[HPDCACHE_DATA_WAYS_PER_RAM_WORD-1:0] hpdcache_data_ram_data_t;
-    typedef hpdcache_data_be_t  [HPDCACHE_DATA_WAYS_PER_RAM_WORD-1:0] hpdcache_data_ram_be_t;
-
-    typedef hpdcache_data_ram_data_t
-        [HPDCACHE_DATA_RAM_Y_CUTS-1:0]
-        [HPDCACHE_DATA_RAM_X_CUTS-1:0]
-        hpdcache_data_entry_t;
-
-    typedef hpdcache_data_ram_be_t
-        [HPDCACHE_DATA_RAM_Y_CUTS-1:0]
-        [HPDCACHE_DATA_RAM_X_CUTS-1:0]
-        hpdcache_data_be_entry_t;
-
-    typedef logic
-        [HPDCACHE_DATA_RAM_X_CUTS-1:0]
-        hpdcache_data_row_enable_t;
-
-    typedef hpdcache_data_row_enable_t
-        [HPDCACHE_DATA_RAM_Y_CUTS-1:0]
-        hpdcache_data_enable_t;
-
-    typedef hpdcache_data_ram_addr_t
-        [HPDCACHE_DATA_RAM_Y_CUTS-1:0]
-        [HPDCACHE_DATA_RAM_X_CUTS-1:0]
-        hpdcache_data_addr_t;
-    //  }}}
-
-    //  Definition of interface with miss handler
-    //  {{{
-    localparam int unsigned HPDCACHE_REFILL_DATA_WIDTH = HPDCACHE_DATA_RAM_ACCESS_WIDTH;
-
-    //    Use feedthrough FIFOs from the refill handler to the core. This
-    //    reduces the latency (by one cycle) but adds an additional timing path
-    localparam bit HPDCACHE_REFILL_CORE_RSP_FEEDTHROUGH =
-        hpdcache_params_pkg::PARAM_REFILL_CORE_RSP_FEEDTHROUGH;
-
-    //    Depth of the FIFO on the refill memory interface.
-    localparam int unsigned HPDCACHE_REFILL_FIFO_DEPTH = hpdcache_params_pkg::PARAM_REFILL_FIFO_DEPTH;
-
-    typedef hpdcache_data_word_t[HPDCACHE_ACCESS_WORDS-1:0] hpdcache_refill_data_t;
-    typedef hpdcache_data_be_t  [HPDCACHE_ACCESS_WORDS-1:0] hpdcache_refill_be_t;
     //  }}}
 
     //  Definition of interface with requesters
     //  {{{
-    localparam int unsigned HPDCACHE_REQ_DATA_WIDTH = HPDCACHE_REQ_WORDS*HPDCACHE_WORD_WIDTH;
-    localparam int unsigned HPDCACHE_REQ_DATA_BYTES = HPDCACHE_REQ_DATA_WIDTH/8;
-    localparam int unsigned HPDCACHE_REQ_WORD_INDEX_WIDTH = $clog2(HPDCACHE_REQ_WORDS);
-    localparam int unsigned HPDCACHE_REQ_BYTE_OFFSET_WIDTH = $clog2(HPDCACHE_REQ_DATA_BYTES);
-    localparam int unsigned HPDCACHE_REQ_OFFSET_WIDTH = HPDCACHE_PA_WIDTH - HPDCACHE_TAG_WIDTH;
-
-    typedef logic                       [HPDCACHE_PA_WIDTH-1:0] hpdcache_req_addr_t;
-    typedef logic               [HPDCACHE_REQ_OFFSET_WIDTH-1:0] hpdcache_req_offset_t;
-    typedef hpdcache_data_word_t       [HPDCACHE_REQ_WORDS-1:0] hpdcache_req_data_t;
-    typedef hpdcache_data_be_t         [HPDCACHE_REQ_WORDS-1:0] hpdcache_req_be_t;
-    typedef logic                                         [2:0] hpdcache_req_size_t;
-    typedef logic               [HPDCACHE_REQ_SRC_ID_WIDTH-1:0] hpdcache_req_sid_t;
-    typedef logic             [HPDCACHE_REQ_TRANS_ID_WIDTH-1:0] hpdcache_req_tid_t;
+    typedef logic [2:0] hpdcache_req_size_t;
 
     //      Definition of operation codes
     //      {{{
@@ -243,37 +90,6 @@ package hpdcache_pkg;
         logic uncacheable;
         logic io; //  FIXME: for future use
     } hpdcache_pma_t;
-    //      }}}
-
-    //      Definition of interfaces
-    //      {{{
-    //          Request Interface
-    typedef struct packed
-    {
-        hpdcache_req_offset_t addr_offset;
-        hpdcache_req_data_t   wdata;
-        hpdcache_req_op_t     op;
-        hpdcache_req_be_t     be;
-        hpdcache_req_size_t   size;
-        hpdcache_req_sid_t    sid;
-        hpdcache_req_tid_t    tid;
-        logic                 need_rsp;
-
-        //  only valid in case of physically indexed requests
-        logic                 phys_indexed;
-        hpdcache_tag_t        addr_tag;
-        hpdcache_pma_t        pma;
-    } hpdcache_req_t;
-
-    //          Response Interface
-    typedef struct packed
-    {
-        hpdcache_req_data_t   rdata;
-        hpdcache_req_sid_t    sid;
-        hpdcache_req_tid_t    tid;
-        logic                 error;
-        logic                 aborted;
-    } hpdcache_rsp_t;
     //      }}}
 
     //      Definition of functions
@@ -446,78 +262,7 @@ package hpdcache_pkg;
             end
         endcase
     endfunction
-
-    function automatic hpdcache_tag_t hpdcache_get_req_addr_tag(input hpdcache_req_addr_t addr);
-        return addr[(HPDCACHE_OFFSET_WIDTH + HPDCACHE_SET_WIDTH) +: HPDCACHE_TAG_WIDTH];
-    endfunction
-
-    function automatic hpdcache_set_t hpdcache_get_req_addr_set(input hpdcache_req_addr_t addr);
-        return addr[HPDCACHE_OFFSET_WIDTH +: HPDCACHE_SET_WIDTH];
-    endfunction
-
-    function automatic hpdcache_word_t hpdcache_get_req_addr_word(input hpdcache_req_addr_t addr);
-        return addr[$clog2(HPDCACHE_WORD_WIDTH/8) +: HPDCACHE_WORD_IDX_WIDTH];
-    endfunction
-
-    function automatic hpdcache_offset_t hpdcache_get_req_addr_offset(input hpdcache_req_addr_t addr);
-        return addr[0 +: HPDCACHE_OFFSET_WIDTH];
-    endfunction
-
-    function automatic hpdcache_nline_t hpdcache_get_req_addr_nline(input hpdcache_req_addr_t addr);
-        return addr[HPDCACHE_OFFSET_WIDTH +: HPDCACHE_NLINE_WIDTH];
-    endfunction
-
-    function automatic hpdcache_req_offset_t hpdcache_get_req_addr_offset_and_set(input hpdcache_req_addr_t addr);
-        return addr[0 +: (HPDCACHE_OFFSET_WIDTH + HPDCACHE_SET_WIDTH)];
-    endfunction
-
-    function automatic hpdcache_set_t hpdcache_get_req_offset_set(input hpdcache_req_offset_t offset);
-        return offset[HPDCACHE_OFFSET_WIDTH +: HPDCACHE_SET_WIDTH];
-    endfunction
-
-    function automatic hpdcache_word_t hpdcache_get_req_offset_word(input hpdcache_req_offset_t offset);
-        return offset[$clog2(HPDCACHE_WORD_WIDTH/8) +: HPDCACHE_WORD_IDX_WIDTH];
-    endfunction
-
     //      }}}
-    //  }}}
-
-    //  Definition of constants and types for the Miss Status Holding Register (MSHR)
-    //  {{{
-
-    //  HPDcache MSHR number of sets
-    localparam int unsigned HPDCACHE_MSHR_SETS =
-        hpdcache_params_pkg::PARAM_MSHR_SETS;
-
-    //  HPDcache MSHR number of ways
-    localparam int unsigned HPDCACHE_MSHR_WAYS =
-        hpdcache_params_pkg::PARAM_MSHR_WAYS;
-
-    //  HPDcache MSHR number of ways in the same SRAM word
-    localparam int unsigned HPDCACHE_MSHR_WAYS_PER_RAM_WORD =
-        hpdcache_params_pkg::PARAM_MSHR_WAYS_PER_RAM_WORD; /* FIXME this parameter is currently ignored */
-
-    //  HPDcache MSHR number of sets in the same SRAM
-    localparam int unsigned HPDCACHE_MSHR_SETS_PER_RAM =
-        hpdcache_params_pkg::PARAM_MSHR_SETS_PER_RAM; /* FIXME this parameter is currently ignored */
-
-    //  HPDcache MSHR implements write byte enable
-    localparam bit HPDCACHE_MSHR_RAM_WBYTEENABLE =
-        hpdcache_params_pkg::PARAM_MSHR_RAM_WBYTEENABLE;
-    localparam bit HPDCACHE_MSHR_USE_REGBANK =
-        hpdcache_params_pkg::PARAM_MSHR_USE_REGBANK;
-
-    localparam int unsigned HPDCACHE_MSHR_SET_WIDTH =
-            (HPDCACHE_MSHR_SETS > 1) ? $clog2(HPDCACHE_MSHR_SETS) : 1;
-    localparam int unsigned HPDCACHE_MSHR_WAY_WIDTH =
-            (HPDCACHE_MSHR_WAYS > 1) ? $clog2(HPDCACHE_MSHR_WAYS) : 1;
-    localparam int unsigned HPDCACHE_MSHR_TAG_WIDTH =
-            (HPDCACHE_MSHR_SETS > 1) ? HPDCACHE_NLINE_WIDTH - HPDCACHE_MSHR_SET_WIDTH :
-                                       HPDCACHE_NLINE_WIDTH;
-
-    typedef logic unsigned [HPDCACHE_MSHR_SET_WIDTH-1:0] mshr_set_t;
-    typedef logic unsigned [HPDCACHE_MSHR_TAG_WIDTH-1:0] mshr_tag_t;
-    typedef logic unsigned [HPDCACHE_MSHR_WAY_WIDTH-1:0] mshr_way_t;
     //  }}}
 
     //  Definition of interface with memory
@@ -574,48 +319,6 @@ package hpdcache_pkg;
     endfunction
     //  }}}
 
-    //  Definition of constants and types for the Write Buffer (WBUF)
-    //  {{{
-    localparam int unsigned HPDCACHE_WBUF_DIR_ENTRIES =
-        hpdcache_params_pkg::PARAM_WBUF_DIR_ENTRIES;
-
-    localparam int unsigned HPDCACHE_WBUF_DATA_ENTRIES =
-        hpdcache_params_pkg::PARAM_WBUF_DATA_ENTRIES;
-
-    localparam int unsigned HPDCACHE_WBUF_WORDS =
-        hpdcache_params_pkg::PARAM_WBUF_WORDS;
-
-    localparam int unsigned HPDCACHE_WBUF_TIMECNT_WIDTH =
-        hpdcache_params_pkg::PARAM_WBUF_TIMECNT_WIDTH;
-
-    //    Use feedthrough FIFOs from the write-buffer to the NoC. This reduces
-    //    the latency (by one cycle) but adds an additional timing path
-    localparam bit HPDCACHE_WBUF_SEND_FEEDTHROUGH =
-        hpdcache_params_pkg::PARAM_WBUF_SEND_FEEDTHROUGH;
-
-    localparam int unsigned HPDCACHE_WBUF_DATA_WIDTH     = HPDCACHE_REQ_DATA_WIDTH*
-                                                           HPDCACHE_WBUF_WORDS;
-    localparam int unsigned HPDCACHE_WBUF_DATA_PTR_WIDTH = $clog2(HPDCACHE_WBUF_DATA_ENTRIES);
-    localparam int unsigned HPDCACHE_WBUF_DIR_PTR_WIDTH  = $clog2(HPDCACHE_WBUF_DIR_ENTRIES);
-
-    typedef hpdcache_req_addr_t                                 wbuf_addr_t;
-    typedef hpdcache_nline_t                                    wbuf_match_t;
-    typedef hpdcache_req_data_t                                 wbuf_data_t;
-    typedef hpdcache_req_be_t                                   wbuf_be_t;
-    typedef wbuf_data_t[HPDCACHE_WBUF_WORDS-1:0]                wbuf_data_buf_t;
-    typedef wbuf_be_t  [HPDCACHE_WBUF_WORDS-1:0]                wbuf_be_buf_t;
-    typedef logic unsigned   [ HPDCACHE_WBUF_TIMECNT_WIDTH-1:0] wbuf_timecnt_t;
-    typedef logic unsigned   [ HPDCACHE_WBUF_DIR_PTR_WIDTH-1:0] wbuf_dir_ptr_t;
-    typedef logic unsigned   [HPDCACHE_WBUF_DATA_PTR_WIDTH-1:0] wbuf_data_ptr_t;
-    //  }}}
-
-    //  Definition of constants and types for the Replay Table (RTAB)
-    //  {{{
-    localparam int HPDCACHE_RTAB_ENTRIES = hpdcache_params_pkg::PARAM_RTAB_ENTRIES;
-
-    typedef logic [$clog2(HPDCACHE_RTAB_ENTRIES)-1:0] rtab_ptr_t;
-    //  }}}
-
     //  Definition of constants and types for the uncacheable request handler (UC)
     //  {{{
     typedef struct packed {
@@ -643,5 +346,166 @@ package hpdcache_pkg;
         logic is_inval_all;
         logic is_fence;
     } hpdcache_cmoh_op_t;
+    //  }}}
+
+    //  Definition of parameters
+    //  {{{
+    `define HPDCACHE_DECL_PARAMS \
+        /*  Number of requesters */ \
+        int unsigned nRequesters; \
+        /*  Physical Address Width */ \
+        int unsigned paWidth; \
+        /*  Word width (bits) */ \
+        int unsigned wordWidth; \
+        /*  Number of sets */ \
+        int unsigned sets; \
+        /*  Number of ways */ \
+        int unsigned ways; \
+        /*  Cache-Line width (bits) */ \
+        int unsigned clWords; \
+        /*  Number of words in the request data channels (request and response) */ \
+        int unsigned reqWords; \
+        /*  Request transaction ID width (bits) */ \
+        int unsigned reqTransIdWidth; \
+        /*  Request source ID width (bits) */ \
+        int unsigned reqSrcIdWidth; \
+        /*  Victim select */ \
+        hpdcache_victim_sel_policy_t victimSel; \
+        /*  Number of ways per RAM entry */ \
+        int unsigned dataWaysPerRamWord; \
+        /*  Number of sets per RAM */ \
+        int unsigned dataSetsPerRam; \
+        /*  DATA RAM macros implement write byte enable \
+         *  -  Write byte enable (1'b1) \
+         *  -  Write bit mask (1'b0) */ \
+        bit dataRamByteEnable; \
+        /*  Define the number of memory contiguous words that can be accessed \
+         *  simultaneously from the cache. \
+         *  -  This limits the maximum width for the data channel from requesters \
+         *  -  This impacts the refill latency (more ACCESS_WORDS -> less REFILL LATENCY) */ \
+        int unsigned accessWords; \
+        /*  MSHR number of sets */ \
+        int unsigned mshrSets; \
+        /*  MSHR number of ways */ \
+        int unsigned mshrWays; \
+        /*  MSHR number of ways in the same SRAM word (entry) */ \
+        int unsigned mshrWaysPerRamWord; \
+        /*  MSHR number of sets in the same SRAM */ \
+        int unsigned mshrSetsPerRam; \
+        /*  MSHR macros implement write byte enable \
+         *  -  Write byte enable (1'b1) \
+         *  -  Write bit mask (1'b0) */ \
+        bit mshrRamByteEnable; \
+        /*  MSHR uses whether FFs or SRAM */ \
+        bit mshrUseRegbank; \
+        /*  Use feedthrough FIFOs from the refill handler to the core */ \
+        bit refillCoreRspFeedthrough; \
+        /*  Depth of the refill FIFO */ \
+        int refillFifoDepth; \
+        /*  Write-Buffer number of entries in the directory */ \
+        int unsigned wbufDirEntries; \
+        /*  Write-Buffer number of entries in the data buffer */ \
+        int unsigned wbufDataEntries; \
+        /*  Write-Buffer number of words per entry */ \
+        int unsigned wbufWords; \
+        /*  Write-Buffer threshold counter width (in bits) */ \
+        int unsigned wbufTimecntWidth; \
+        /*  Use feedthrough FIFOs from the write-buffer to the NoC */ \
+        bit wbufSendFeedThrough; \
+        /*  Number of entries in the replay table */ \
+        int rtabEntries; \
+        /*  Width of the address in the memory interface */ \
+        int unsigned memAddrWidth; \
+        /*  Width of the ID in the memory interface */ \
+        int unsigned memIdWidth; \
+        /*  Width of the data in the memory interface */ \
+        int unsigned memDataWidth;
+
+
+    typedef struct packed {
+        `HPDCACHE_DECL_PARAMS
+    } hpdcache_user_cfg_t;
+
+    typedef struct packed {
+        `HPDCACHE_DECL_PARAMS
+
+        //  Internal parameter
+        int unsigned clWidth;
+        int unsigned clWordIdxWidth;
+        int unsigned wordByteIdxWidth;
+        int unsigned clOffsetWidth;
+        int unsigned setWidth;
+        int unsigned nlineWidth;
+        int unsigned tagWidth;
+        int unsigned reqWordIdxWidth;
+        int unsigned reqOffsetWidth;
+        int unsigned reqDataWidth;
+        int unsigned mshrSetWidth;
+        int unsigned mshrWayWidth;
+        int unsigned wbufDataWidth;
+        int unsigned wbufDirPtrWidth;
+        int unsigned wbufDataPtrWidth;
+        int unsigned accessWidth;
+    } hpdcache_cfg_t;
+
+    `undef HPDCACHE_DECL_PARAMS
+
+    function automatic hpdcache_cfg_t hpdcacheBuildConfig(input hpdcache_user_cfg_t p);
+        hpdcache_cfg_t ret;
+
+        ret.nRequesters = p.nRequesters;
+        ret.paWidth = p.paWidth;
+        ret.wordWidth = p.wordWidth;
+        ret.sets = p.sets;
+        ret.ways = p.ways;
+        ret.clWords = p.clWords;
+        ret.reqWords = p.reqWords;
+        ret.reqTransIdWidth = p.reqTransIdWidth;
+        ret.reqSrcIdWidth = p.reqSrcIdWidth;
+        ret.victimSel = p.victimSel;
+        ret.dataWaysPerRamWord = p.dataWaysPerRamWord;
+        ret.dataSetsPerRam = p.dataSetsPerRam;
+        ret.dataRamByteEnable = p.dataRamByteEnable;
+        ret.accessWords = p.accessWords;
+        ret.mshrSets = p.mshrSets;
+        ret.mshrWays = p.mshrWays;
+        ret.mshrWaysPerRamWord = p.mshrWaysPerRamWord;
+        ret.mshrSetsPerRam = p.mshrSetsPerRam;
+        ret.mshrRamByteEnable = p.mshrRamByteEnable;
+        ret.mshrUseRegbank = p.mshrUseRegbank;
+        ret.refillCoreRspFeedthrough = p.refillCoreRspFeedthrough;
+        ret.refillFifoDepth = p.refillFifoDepth;
+        ret.wbufDirEntries = p.wbufDirEntries;
+        ret.wbufDataEntries = p.wbufDataEntries;
+        ret.wbufWords = p.wbufWords;
+        ret.wbufTimecntWidth = p.wbufTimecntWidth;
+        ret.wbufSendFeedThrough = p.wbufSendFeedThrough;
+        ret.rtabEntries = p.rtabEntries;
+        ret.memAddrWidth = p.memAddrWidth;
+        ret.memIdWidth = p.memIdWidth;
+        ret.memDataWidth = p.memDataWidth;
+
+        ret.clWidth = p.clWords * p.wordWidth;
+        ret.clOffsetWidth = $clog2(ret.clWidth / 8);
+        ret.clWordIdxWidth = $clog2(p.clWords);
+        ret.wordByteIdxWidth = $clog2(p.wordWidth / 8);
+        ret.setWidth = $clog2(p.sets);
+        ret.nlineWidth = p.paWidth - ret.clOffsetWidth;
+        ret.tagWidth = ret.nlineWidth - ret.setWidth;
+        ret.reqWordIdxWidth = $clog2(p.reqWords);
+        ret.reqOffsetWidth = p.paWidth - ret.tagWidth;
+        ret.reqDataWidth = p.reqWords * p.wordWidth;
+
+        ret.mshrSetWidth = (p.mshrSets > 1) ? $clog2(p.mshrSets) : 1;
+        ret.mshrWayWidth = (p.mshrWays > 1) ? $clog2(p.mshrWays) : 1;
+
+        ret.wbufDataWidth = ret.reqDataWidth*p.wbufWords;
+        ret.wbufDirPtrWidth = $clog2(p.wbufDirEntries);
+        ret.wbufDataPtrWidth = $clog2(p.wbufDataEntries);
+
+        ret.accessWidth = p.accessWords * p.wordWidth;
+
+        return ret;
+    endfunction
     //  }}}
 endpackage

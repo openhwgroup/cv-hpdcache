@@ -28,18 +28,34 @@ import hpdcache_pkg::*;
     //  Parameters
     //  {{{
 #(
-    parameter int  HPDcacheMemIdWidth    = 8,
-    parameter int  HPDcacheMemDataWidth  = 512,
-    parameter type hpdcache_mem_req_t    = logic,
-    parameter type hpdcache_mem_req_w_t  = logic,
-    parameter type hpdcache_mem_resp_r_t = logic,
-    parameter type hpdcache_mem_resp_w_t = logic,
+    parameter hpdcache_cfg_t hpdcacheCfg = '0,
 
-    localparam type hpdcache_mem_id_t = logic [HPDcacheMemIdWidth-1:0]
+    parameter type hpdcache_nline_t = logic,
+    parameter type hpdcache_tag_t = logic,
+    parameter type hpdcache_set_t = logic,
+    parameter type hpdcache_offset_t = logic,
+    parameter type hpdcache_word_t = logic,
+
+    parameter type hpdcache_req_addr_t = logic,
+    parameter type hpdcache_req_tid_t = logic,
+    parameter type hpdcache_req_sid_t = logic,
+    parameter type hpdcache_req_data_t = logic,
+    parameter type hpdcache_req_be_t = logic,
+
+    parameter type hpdcache_way_vector_t = logic,
+
+    parameter type hpdcache_req_t = logic,
+    parameter type hpdcache_rsp_t = logic,
+    parameter type hpdcache_mem_id_t = logic,
+    parameter type hpdcache_mem_req_t = logic,
+    parameter type hpdcache_mem_req_w_t = logic,
+    parameter type hpdcache_mem_resp_r_t = logic,
+    parameter type hpdcache_mem_resp_w_t = logic
 )
     //  }}}
-//  Ports
-//  {{{
+
+    //  Ports
+    //  {{{
 (
     input  logic                  clk_i,
     input  logic                  rst_ni,
@@ -137,11 +153,11 @@ import hpdcache_pkg::*;
     input  logic                  cfg_error_on_cacheable_amo_i
     //  }}}
 );
-//  }}}
+    //  }}}
 
 //  Definition of constants and types
 //  {{{
-    localparam hpdcache_uint MEM_REQ_RATIO = HPDcacheMemDataWidth/HPDCACHE_REQ_DATA_WIDTH;
+    localparam hpdcache_uint MEM_REQ_RATIO = hpdcacheCfg.memDataWidth/hpdcacheCfg.reqDataWidth;
     localparam hpdcache_uint MEM_REQ_WORD_INDEX_WIDTH = $clog2(MEM_REQ_RATIO);
 
     typedef enum {
@@ -263,14 +279,15 @@ import hpdcache_pkg::*;
 
     //  NOTE: Reservation set for LR instruction is always 8-bytes in this
     //  implementation.
-    assign lrsc_rsrv_nline  = hpdcache_get_req_addr_nline(lrsc_rsrv_addr_q),
-           lrsc_rsrv_word   = hpdcache_get_req_addr_offset(lrsc_rsrv_addr_q) >> 3;
+    assign lrsc_rsrv_nline  = lrsc_rsrv_addr_q[hpdcacheCfg.clOffsetWidth +: hpdcacheCfg.nlineWidth];
+    assign lrsc_rsrv_word   = lrsc_rsrv_addr_q[0 +: hpdcacheCfg.clOffsetWidth] >> 3;
 
     //  Check hit on LR/SC reservation for snoop port (normal write accesses)
-    assign lrsc_snoop_words = (lrsc_snoop_size_i < 3) ? 1 : hpdcache_offset_t'((8'h1 << lrsc_snoop_size_i) >> 3),
-           lrsc_snoop_nline = hpdcache_get_req_addr_nline(lrsc_snoop_addr_i),
-           lrsc_snoop_base  = hpdcache_get_req_addr_offset(lrsc_snoop_addr_i) >> 3,
-           lrsc_snoop_end   = lrsc_snoop_base + lrsc_snoop_words;
+    assign lrsc_snoop_words = (lrsc_snoop_size_i < 3) ?
+            1 : hpdcache_offset_t'((8'h1 << lrsc_snoop_size_i) >> 3);
+    assign lrsc_snoop_nline = lrsc_snoop_addr_i[hpdcacheCfg.clOffsetWidth +: hpdcacheCfg.nlineWidth];
+    assign lrsc_snoop_base  = lrsc_snoop_addr_i[0 +: hpdcacheCfg.clOffsetWidth] >> 3;
+    assign lrsc_snoop_end   = lrsc_snoop_base + lrsc_snoop_words;
 
     assign lrsc_snoop_hit   = lrsc_rsrv_valid_q & (lrsc_rsrv_nline == lrsc_snoop_nline) &
                                                   (lrsc_rsrv_word  >= lrsc_snoop_base) &
@@ -279,8 +296,8 @@ import hpdcache_pkg::*;
     assign lrsc_snoop_reset = lrsc_snoop_i & lrsc_snoop_hit;
 
     //  Check hit on LR/SC reservation for AMOs and SC
-    assign lrsc_uc_nline    = hpdcache_get_req_addr_nline(req_addr_i),
-           lrsc_uc_word     = hpdcache_get_req_addr_offset(req_addr_i) >> 3;
+    assign lrsc_uc_nline    = req_addr_i[hpdcacheCfg.clOffsetWidth +: hpdcacheCfg.nlineWidth];
+    assign lrsc_uc_word     = req_addr_i[0 +: hpdcacheCfg.clOffsetWidth] >> 3;
 
     assign lrsc_uc_hit      = lrsc_rsrv_valid_q & (lrsc_rsrv_nline == lrsc_uc_nline) &
                                                   (lrsc_rsrv_word  == lrsc_uc_word);
@@ -584,10 +601,10 @@ import hpdcache_pkg::*;
 
 //  AMO unit
 //  {{{
-    if (HPDCACHE_REQ_DATA_WIDTH > 64) begin : amo_data_width_gt_64_gen
-        localparam hpdcache_uint AMO_WORD_INDEX_WIDTH = $clog2(HPDCACHE_REQ_DATA_WIDTH/64);
+    if (hpdcacheCfg.reqDataWidth > 64) begin : gen_amo_data_width_gt_64
+        localparam hpdcache_uint AMO_WORD_INDEX_WIDTH = $clog2(hpdcacheCfg.reqDataWidth/64);
         hpdcache_mux #(
-            .NINPUT         (HPDCACHE_REQ_DATA_WIDTH/64),
+            .NINPUT         (hpdcacheCfg.reqDataWidth/64),
             .DATA_WIDTH     (64),
             .ONE_HOT_SEL    (1'b0)
         ) amo_ld_data_mux_i (
@@ -597,7 +614,7 @@ import hpdcache_pkg::*;
         );
 
         hpdcache_mux #(
-            .NINPUT         (HPDCACHE_REQ_DATA_WIDTH/64),
+            .NINPUT         (hpdcacheCfg.reqDataWidth/64),
             .DATA_WIDTH     (64),
             .ONE_HOT_SEL    (1'b0)
         ) amo_st_data_mux_i (
@@ -605,10 +622,10 @@ import hpdcache_pkg::*;
             .sel_i          (req_addr_q[3 +: AMO_WORD_INDEX_WIDTH]),
             .data_o         (amo_req_st_data)
         );
-    end else if (HPDCACHE_REQ_DATA_WIDTH == 64) begin : amo_data_width_eq_64_gen
+    end else if (hpdcacheCfg.reqDataWidth == 64) begin : gen_amo_data_width_eq_64
         assign amo_req_ld_data = rsp_rdata_q;
         assign amo_req_st_data = req_data_q;
-    end else begin : amo_data_width_eq_32_gen
+    end else begin : gen_amo_data_width_eq_32
         assign amo_req_ld_data = req_addr_q[2] ? {rsp_rdata_q, 32'b0} : {32'b0, rsp_rdata_q};
         assign amo_req_st_data = req_addr_q[2] ? {req_data_q, 32'b0} : {32'b0, req_data_q};
     end
@@ -625,21 +642,22 @@ import hpdcache_pkg::*;
         .result_o            (amo_result)
     );
 
-    assign dir_amo_match_o       = (uc_fsm_q == UC_AMO_READ_DIR),
-           dir_amo_match_set_o   = hpdcache_get_req_addr_set(req_addr_q),
-           dir_amo_match_tag_o   = hpdcache_get_req_addr_tag(req_addr_q),
-           dir_amo_update_plru_o = (uc_fsm_q == UC_AMO_WRITE_DATA);
+    assign dir_amo_match_o         = (uc_fsm_q == UC_AMO_READ_DIR);
+    assign dir_amo_match_set_o     = req_addr_q[hpdcacheCfg.clOffsetWidth +: hpdcacheCfg.setWidth];
+    assign dir_amo_match_tag_o     = req_addr_q[(hpdcacheCfg.clOffsetWidth + hpdcacheCfg.setWidth) +:
+                                                hpdcacheCfg.tagWidth];
+    assign dir_amo_update_plru_o   = (uc_fsm_q == UC_AMO_WRITE_DATA);
 
-    assign data_amo_write_o        = (uc_fsm_q == UC_AMO_WRITE_DATA),
-           data_amo_write_enable_o = |dir_amo_hit_way_i,
-           data_amo_write_set_o    = hpdcache_get_req_addr_set(req_addr_q),
-           data_amo_write_size_o   = req_size_q,
-           data_amo_write_word_o   = hpdcache_get_req_addr_word(req_addr_q),
-           data_amo_write_be_o     = req_be_q;
+    assign data_amo_write_o        = (uc_fsm_q == UC_AMO_WRITE_DATA);
+    assign data_amo_write_enable_o = |dir_amo_hit_way_i;
+    assign data_amo_write_set_o    = req_addr_q[hpdcacheCfg.clOffsetWidth +: hpdcacheCfg.setWidth];
+    assign data_amo_write_size_o   = req_size_q;
+    assign data_amo_write_word_o   = req_addr_q[hpdcacheCfg.wordByteIdxWidth +: hpdcacheCfg.clWordIdxWidth];
+    assign data_amo_write_be_o     = req_be_q;
 
     assign amo_write_data = prepare_amo_data_result(amo_result, req_size_q);
-    if (HPDCACHE_REQ_DATA_WIDTH >= 64) begin : gen_amo_ram_write_data_ge_64
-        assign data_amo_write_data_o = {HPDCACHE_REQ_DATA_WIDTH/64{amo_write_data}};
+    if (hpdcacheCfg.reqDataWidth >= 64) begin : gen_amo_ram_write_data_ge_64
+        assign data_amo_write_data_o = {hpdcacheCfg.reqDataWidth/64{amo_write_data}};
     end else begin : gen_amo_ram_write_data_lt_64
         assign data_amo_write_data_o = amo_write_data;
     end
@@ -780,23 +798,23 @@ import hpdcache_pkg::*;
     end
 
     //  memory data width is bigger than the width of the core's interface
-    if (MEM_REQ_RATIO > 1) begin : upsize_mem_req_data_gen
+    if (MEM_REQ_RATIO > 1) begin : gen_upsize_mem_req_data
         //  replicate data
         assign mem_req_write_data_o.mem_req_w_data = {MEM_REQ_RATIO{mem_req_write_data}};
 
         //  demultiplex the byte-enable
         hpdcache_demux #(
             .NOUTPUT     (MEM_REQ_RATIO),
-            .DATA_WIDTH  (HPDCACHE_REQ_DATA_WIDTH/8)
+            .DATA_WIDTH  (hpdcacheCfg.reqDataWidth/8)
         ) mem_write_be_demux_i (
             .data_i      (req_be_q),
-            .sel_i       (req_addr_q[HPDCACHE_REQ_BYTE_OFFSET_WIDTH +: MEM_REQ_WORD_INDEX_WIDTH]),
+            .sel_i       (req_addr_q[$clog2(hpdcacheCfg.reqDataWidth/8) +: MEM_REQ_WORD_INDEX_WIDTH]),
             .data_o      (mem_req_write_data_o.mem_req_w_be)
         );
     end
 
     //  memory data width is equal to the width of the core's interface
-    else begin : eqsize_mem_req_data_gen
+    else begin : gen_eqsize_mem_req_data
         assign mem_req_write_data_o.mem_req_w_data = mem_req_write_data;
         assign mem_req_write_data_o.mem_req_w_be   = req_be_q;
     end
@@ -812,8 +830,8 @@ import hpdcache_pkg::*;
 
     assign sc_retcode = {{63{1'b0}}, uc_sc_retcode_q};
     assign sc_rdata_dword = prepare_amo_data_result(sc_retcode, req_size_q);
-    if (HPDCACHE_REQ_DATA_WIDTH >= 64) begin : gen_sc_rdata_ge_64
-        assign sc_rdata = {HPDCACHE_REQ_DATA_WIDTH/64{sc_rdata_dword}};
+    if (hpdcacheCfg.reqDataWidth >= 64) begin : gen_sc_rdata_ge_64
+        assign sc_rdata = {hpdcacheCfg.reqDataWidth/64{sc_rdata_dword}};
     end else begin : gen_sc_rdata_lt_64
         assign sc_rdata = sc_rdata_dword;
     end
@@ -826,19 +844,19 @@ import hpdcache_pkg::*;
 
     //  Resize the memory response data to the core response width
     //  memory data width is bigger than the width of the core's interface
-    if (MEM_REQ_RATIO > 1) begin : downsize_core_rsp_data_gen
+    if (MEM_REQ_RATIO > 1) begin : gen_downsize_core_rsp_data
         hpdcache_mux #(
             .NINPUT      (MEM_REQ_RATIO),
-            .DATA_WIDTH  (HPDCACHE_REQ_DATA_WIDTH)
+            .DATA_WIDTH  (hpdcacheCfg.reqDataWidth)
         ) data_read_rsp_mux_i(
             .data_i      (mem_resp_read_i.mem_resp_r_data),
-            .sel_i       (req_addr_q[HPDCACHE_REQ_BYTE_OFFSET_WIDTH +: MEM_REQ_WORD_INDEX_WIDTH]),
+            .sel_i       (req_addr_q[$clog2(hpdcacheCfg.reqDataWidth/8) +: MEM_REQ_WORD_INDEX_WIDTH]),
             .data_o      (rsp_rdata_d)
         );
     end
 
     //  memory data width is equal to the width of the core's interface
-    else begin : eqsize_core_rsp_data_gen
+    else begin : gen_eqsize_core_rsp_data
         assign rsp_rdata_d = mem_resp_read_i.mem_resp_r_data;
     end
 

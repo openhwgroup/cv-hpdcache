@@ -28,9 +28,17 @@ import hpdcache_pkg::*;
 //  Parameters
 //  {{{
 #(
+    parameter hpdcache_cfg_t hpdcacheCfg = '0,
+
+    parameter type hpdcache_nline_t = logic,
+
+    parameter type hpdcache_req_addr_t = logic,
+
+    parameter type rtab_ptr_t = logic,
     parameter type rtab_entry_t = logic
 )
 //  }}}
+
 //  Ports
 //  {{{
 (
@@ -105,7 +113,7 @@ import hpdcache_pkg::*;
 
 //  Definition of constants, types and functions
 //  {{{
-    localparam int N = HPDCACHE_RTAB_ENTRIES;
+    localparam int N = hpdcacheCfg.rtabEntries;
 
     function automatic rtab_ptr_t rtab_bv_to_index(
             input logic [N-1:0] bv);
@@ -128,8 +136,8 @@ import hpdcache_pkg::*;
     function automatic bit rtab_mshr_set_equal(
             input hpdcache_nline_t x,
             input hpdcache_nline_t y);
-        if (HPDCACHE_MSHR_SETS > 1) begin
-            return (x[0 +: HPDCACHE_MSHR_SET_WIDTH] == y[0 +: HPDCACHE_MSHR_SET_WIDTH]);
+        if (hpdcacheCfg.mshrSets > 1) begin
+            return (x[0 +: hpdcacheCfg.mshrSetWidth] == y[0 +: hpdcacheCfg.mshrSetWidth]);
         end else begin
             return 1'b1;
         end
@@ -216,7 +224,6 @@ import hpdcache_pkg::*;
     logic               [N-1:0]  free_alloc;
     logic                        alloc;
 
-    logic               [N-1:0]  pop_match_next;
     logic               [N-1:0]  pop_rback_ptr_bv;
     logic               [N-1:0]  pop_try_bv;
     logic               [N-1:0]  ready;
@@ -253,9 +260,9 @@ import hpdcache_pkg::*;
 //  Check interface
 //  {{{
     generate
-        for (gen_i = 0; gen_i < N; gen_i++) begin : check_gen
+        for (gen_i = 0; gen_i < N; gen_i++) begin : gen_check
             assign              addr[gen_i] = {req_q[gen_i].addr_tag, req_q[gen_i].addr_offset},
-                               nline[gen_i] = hpdcache_get_req_addr_nline(addr[gen_i]),
+                               nline[gen_i] = addr[gen_i][hpdcacheCfg.clOffsetWidth +: hpdcacheCfg.nlineWidth],
                    match_check_nline[gen_i] = (check_nline_i == nline[gen_i]);
 
             assign is_read[gen_i] =         is_load(req_q[gen_i].op) |
@@ -382,7 +389,7 @@ import hpdcache_pkg::*;
     //  Update refill dependencies
     //  {{{
     generate
-        for (gen_i = 0; gen_i < N; gen_i++) begin : match_refill_gen
+        for (gen_i = 0; gen_i < N; gen_i++) begin : gen_match_refill
             assign match_refill_mshr_set[gen_i] =
                     rtab_mshr_set_equal(refill_nline_i, nline[gen_i]);
             assign match_refill_nline[gen_i] =
@@ -398,9 +405,6 @@ import hpdcache_pkg::*;
 //  Pop interface
 //  {{{
     logic [N-1:0]  pop_sel;
-    logic [N-1:0]  pop_commit_bv;
-
-    assign pop_commit_bv = rtab_index_to_bv(pop_commit_ptr_i);
 
     //  Pop try process
     //  {{{
@@ -632,8 +636,9 @@ import hpdcache_pkg::*;
 
     assert property (@(posedge clk_i) disable iff (!rst_ni)
             alloc_and_link_i |->
-                    ({alloc_req_i.addr_tag, hpdcache_get_req_offset_set(alloc_req_i.addr_offset)} ==
-                        check_nline_i)) else
+                    ({alloc_req_i.addr_tag,
+                      alloc_req_i.addr_offset[hpdcacheCfg.clOffsetWidth +: hpdcacheCfg.setWidth]} ==
+                          check_nline_i)) else
                     $error("rtab: nline for alloc and link shall match the one being checked");
 
     assert property (@(posedge clk_i) disable iff (!rst_ni)

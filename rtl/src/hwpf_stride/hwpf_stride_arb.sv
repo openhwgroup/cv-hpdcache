@@ -28,7 +28,10 @@ import hpdcache_pkg::*;
 //  Parameters
 //  {{{
 #(
-    parameter NUM_HW_PREFETCH = 4
+    parameter NUM_HW_PREFETCH = 4,
+
+    parameter type hpdcache_req_t = logic,
+    parameter type hpdcache_rsp_t = logic
 )
 //  }}}
 

@@ -24,11 +24,10 @@
  *  History       :
  */
 module hpdcache_mem_req_write_arbiter
-import hpdcache_pkg::*;
 //  Parameters
 //  {{{
 #(
-    parameter hpdcache_uint N = 0,
+    parameter int unsigned N = 0,
     parameter type hpdcache_mem_req_t = logic,
     parameter type hpdcache_mem_req_w_t = logic
 )

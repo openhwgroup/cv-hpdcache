@@ -23,14 +23,29 @@
  *  Description   : Linear Hardware Memory Prefetcher wrapper.
  *  History       :
  */
+`include "hpdcache_typedef.svh"
+
 module hwpf_stride_wrapper
 import hwpf_stride_pkg::*;
 import hpdcache_pkg::*;
 //  Parameters
 //  {{{
 #(
-    parameter NUM_HW_PREFETCH = 4,
-    parameter NUM_SNOOP_PORTS = 1
+    parameter hpdcache_cfg_t hpdcacheCfg = '0,
+    parameter int unsigned NUM_HW_PREFETCH = 4,
+    parameter int unsigned NUM_SNOOP_PORTS = 1,
+
+    //  Request Interface Definitions
+    //  {{{
+    parameter type hpdcache_tag_t = logic,
+    parameter type hpdcache_req_offset_t = logic,
+    parameter type hpdcache_req_data_t = logic,
+    parameter type hpdcache_req_be_t = logic,
+    parameter type hpdcache_req_sid_t = logic,
+    parameter type hpdcache_req_tid_t = logic,
+    parameter type hpdcache_req_t = logic,
+    parameter type hpdcache_rsp_t = logic
+    //  }}}
 )
 //  }}}
 
@@ -80,6 +95,12 @@ import hpdcache_pkg::*;
     //  }}}
 );
 //  }}}
+
+    //  Internal registers
+    //  {{{
+    typedef logic [hpdcacheCfg.nlineWidth-1:0] hpdcache_nline_t;
+    typedef logic [hpdcacheCfg.setWidth-1:0] hpdcache_set_t;
+    //  }}}
 
     //  Internal registers
     //  {{{
@@ -145,7 +166,7 @@ import hpdcache_pkg::*;
 
     //  Hardware prefetcher engines
     //  {{{
-    for (genvar j = 0; j < NUM_SNOOP_PORTS; j++) begin : hwpf_snoop_gen
+    for (genvar j = 0; j < NUM_SNOOP_PORTS; j++) begin : gen_hwpf_snoop
         always_ff @(posedge clk_i or negedge rst_ni)
         begin : snoop_ff
             if (!rst_ni) begin
@@ -160,7 +181,7 @@ import hpdcache_pkg::*;
         end
     end
 
-    for (genvar i = 0; i < NUM_HW_PREFETCH; i++) begin : hwpf_stride_gen
+    for (genvar i = 0; i < NUM_HW_PREFETCH; i++) begin : gen_hwpf_stride
         assign hwpf_stride_enable[i] = hwpf_stride_base_o[i].enable;
 
         //  Compute snoop match signals
@@ -188,32 +209,37 @@ import hpdcache_pkg::*;
         //  }}}
 
         hwpf_stride #(
-            .CACHE_LINE_BYTES     ( HPDCACHE_CL_WIDTH/8 )
+            .hpdcacheCfg          (hpdcacheCfg),
+            .hpdcache_nline_t     (hpdcache_nline_t),
+            .hpdcache_tag_t       (hpdcache_tag_t),
+            .hpdcache_set_t       (hpdcache_set_t),
+            .hpdcache_req_t       (hpdcache_req_t),
+            .hpdcache_rsp_t       (hpdcache_rsp_t)
         ) hwpf_stride_i(
             .clk_i,
             .rst_ni,
 
-            .csr_base_set_i       ( hwpf_stride_base_set_i[i] ),
-            .csr_base_i           ( hwpf_stride_base_i[i] ),
-            .csr_param_set_i      ( hwpf_stride_param_set_i[i] ),
-            .csr_param_i          ( hwpf_stride_param_i[i] ),
-            .csr_throttle_set_i   ( hwpf_stride_throttle_set_i[i] ),
-            .csr_throttle_i       ( hwpf_stride_throttle_i[i] ),
+            .csr_base_set_i       (hwpf_stride_base_set_i[i]),
+            .csr_base_i           (hwpf_stride_base_i[i]),
+            .csr_param_set_i      (hwpf_stride_param_set_i[i]),
+            .csr_param_i          (hwpf_stride_param_i[i]),
+            .csr_throttle_set_i   (hwpf_stride_throttle_set_i[i]),
+            .csr_throttle_i       (hwpf_stride_throttle_i[i]),
 
-            .csr_base_o           ( hwpf_stride_base_o[i] ),
-            .csr_param_o          ( hwpf_stride_param_o[i] ),
-            .csr_throttle_o       ( hwpf_stride_throttle_o[i] ),
+            .csr_base_o           (hwpf_stride_base_o[i]),
+            .csr_param_o          (hwpf_stride_param_o[i]),
+            .csr_throttle_o       (hwpf_stride_throttle_o[i]),
 
-            .busy_o               ( hwpf_stride_status_busy[i] ),
+            .busy_o               (hwpf_stride_status_busy[i]),
 
-            .snoop_nline_o        ( hwpf_snoop_nline[i] ),
-            .snoop_match_i        ( hwpf_snoop_match[i] ),
+            .snoop_nline_o        (hwpf_snoop_nline[i]),
+            .snoop_match_i        (hwpf_snoop_match[i]),
 
-            .hpdcache_req_valid_o ( hwpf_stride_req_valid[i] ),
-            .hpdcache_req_ready_i ( hwpf_stride_req_ready[i] ),
-            .hpdcache_req_o       ( hwpf_stride_req[i] ),
-            .hpdcache_rsp_valid_i ( hwpf_stride_arb_in_rsp_valid[i] ),
-            .hpdcache_rsp_i       ( hwpf_stride_arb_in_rsp[i] )
+            .hpdcache_req_valid_o (hwpf_stride_req_valid[i]),
+            .hpdcache_req_ready_i (hwpf_stride_req_ready[i]),
+            .hpdcache_req_o       (hwpf_stride_req[i]),
+            .hpdcache_rsp_valid_i (hwpf_stride_arb_in_rsp_valid[i]),
+            .hpdcache_rsp_i       (hwpf_stride_arb_in_rsp[i])
         );
 
         assign hwpf_stride_req_ready[i]               = hwpf_stride_arb_in_req_ready[i],
@@ -235,17 +261,19 @@ import hpdcache_pkg::*;
     //  Hardware prefetcher arbiter betweem engines
     //  {{{
     hwpf_stride_arb #(
-        .NUM_HW_PREFETCH          ( NUM_HW_PREFETCH )
+        .NUM_HW_PREFETCH          (NUM_HW_PREFETCH),
+        .hpdcache_req_t           (hpdcache_req_t),
+        .hpdcache_rsp_t           (hpdcache_rsp_t)
     ) hwpf_stride_arb_i (
         .clk_i,
         .rst_ni,
 
         // DCache input interface
-        .hwpf_stride_req_valid_i  ( hwpf_stride_arb_in_req_valid ),
-        .hwpf_stride_req_ready_o  ( hwpf_stride_arb_in_req_ready ),
-        .hwpf_stride_req_i        ( hwpf_stride_arb_in_req ),
-        .hwpf_stride_rsp_valid_o  ( hwpf_stride_arb_in_rsp_valid ),
-        .hwpf_stride_rsp_o        ( hwpf_stride_arb_in_rsp ),
+        .hwpf_stride_req_valid_i  (hwpf_stride_arb_in_req_valid),
+        .hwpf_stride_req_ready_o  (hwpf_stride_arb_in_req_ready),
+        .hwpf_stride_req_i        (hwpf_stride_arb_in_req),
+        .hwpf_stride_rsp_valid_o  (hwpf_stride_arb_in_rsp_valid),
+        .hwpf_stride_rsp_o        (hwpf_stride_arb_in_rsp),
 
         // DCache output interface
         .hpdcache_req_valid_o,
