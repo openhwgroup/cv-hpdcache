@@ -240,6 +240,7 @@ import hpdcache_pkg::*;
     logic [63:0]        amo_req_st_data;
     logic [63:0]        amo_st_data;
     logic [63:0]        amo_result;
+    logic [63:0]        amo_write_data;
 //  }}}
 
 //  LR/SC reservation buffer logic
@@ -636,7 +637,7 @@ import hpdcache_pkg::*;
            data_amo_write_word_o   = hpdcache_get_req_addr_word(req_addr_q),
            data_amo_write_be_o     = req_be_q;
 
-    logic [63:0] amo_write_data = prepare_amo_data_result(amo_result, req_size_q);
+    assign amo_write_data = prepare_amo_data_result(amo_result, req_size_q);
     if (HPDCACHE_REQ_DATA_WIDTH >= 64) begin : gen_amo_ram_write_data_ge_64
         assign data_amo_write_data_o = {HPDCACHE_REQ_DATA_WIDTH/64{amo_write_data}};
     end else begin : gen_amo_ram_write_data_lt_64
