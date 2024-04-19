@@ -85,8 +85,8 @@ import hpdcache_pkg::*;
     output hpdcache_set_t         data_amo_write_set_o,
     output hpdcache_req_size_t    data_amo_write_size_o,
     output hpdcache_word_t        data_amo_write_word_o,
-    output logic [63:0]           data_amo_write_data_o,
-    output logic  [7:0]           data_amo_write_be_o,
+    output hpdcache_req_data_t    data_amo_write_data_o,
+    output hpdcache_req_be_t      data_amo_write_be_o,
     // }}}
 
     //  LR/SC reservation buffer
@@ -189,7 +189,7 @@ import hpdcache_pkg::*;
     endfunction;
 
     function automatic logic [63:0] prepare_amo_data_result(
-            input logic [63:0]      data_i,
+            input logic [63:0]        data_i,
             input hpdcache_req_size_t size_i
     );
         // 64-bits AMOs are already aligned, thus do nothing
@@ -239,7 +239,6 @@ import hpdcache_pkg::*;
     logic [63:0]        amo_ld_data;
     logic [63:0]        amo_req_st_data;
     logic [63:0]        amo_st_data;
-    logic [ 7:0]        amo_st_be;
     logic [63:0]        amo_result;
 //  }}}
 
@@ -605,24 +604,12 @@ import hpdcache_pkg::*;
             .sel_i          (req_addr_q[3 +: AMO_WORD_INDEX_WIDTH]),
             .data_o         (amo_req_st_data)
         );
-
-        hpdcache_mux #(
-            .NINPUT         (HPDCACHE_REQ_DATA_WIDTH/64),
-            .DATA_WIDTH     (8),
-            .ONE_HOT_SEL    (1'b0)
-        ) amo_st_be_mux_i (
-            .data_i         (req_be_q),
-            .sel_i          (req_addr_q[3 +: AMO_WORD_INDEX_WIDTH]),
-            .data_o         (amo_st_be)
-        );
     end else if (HPDCACHE_REQ_DATA_WIDTH == 64) begin : amo_data_width_eq_64_gen
         assign amo_req_ld_data = rsp_rdata_q;
         assign amo_req_st_data = req_data_q;
-        assign amo_st_be       = req_be_q;
     end else begin : amo_data_width_eq_32_gen
         assign amo_req_ld_data = req_addr_q[2] ? {rsp_rdata_q, 32'b0} : {32'b0, rsp_rdata_q};
         assign amo_req_st_data = req_addr_q[2] ? {req_data_q, 32'b0} : {32'b0, req_data_q};
-        assign amo_st_be       = req_addr_q[2] ? {req_be_q, 4'b0} : {4'b0, req_be_q};
     end
 
     assign amo_ld_data = prepare_amo_data_operand(amo_req_ld_data, req_size_q,
@@ -647,8 +634,14 @@ import hpdcache_pkg::*;
            data_amo_write_set_o    = hpdcache_get_req_addr_set(req_addr_q),
            data_amo_write_size_o   = req_size_q,
            data_amo_write_word_o   = hpdcache_get_req_addr_word(req_addr_q),
-           data_amo_write_data_o   = prepare_amo_data_result(amo_result, req_size_q),
-           data_amo_write_be_o     = amo_st_be;
+           data_amo_write_be_o     = req_be_q;
+
+    logic [63:0] amo_write_data = prepare_amo_data_result(amo_result, req_size_q);
+    if (HPDCACHE_REQ_DATA_WIDTH >= 64) begin : gen_amo_ram_write_data_ge_64
+        assign data_amo_write_data_o = {HPDCACHE_REQ_DATA_WIDTH/64{amo_write_data}};
+    end else begin : gen_amo_ram_write_data_lt_64
+        assign data_amo_write_data_o = amo_write_data;
+    end
 //  }}}
 
 //  Core response outputs
@@ -812,26 +805,23 @@ import hpdcache_pkg::*;
 
 //  Response handling
 //  {{{
-    logic [63:0] sc_retcode;
-    logic [63:0] sc_rdata;
+    logic [63:0]        sc_retcode;
+    logic [63:0]        sc_rdata_dword;
+    hpdcache_req_data_t sc_rdata;
 
-    assign sc_retcode = {{63{1'b0}}, uc_sc_retcode_q},
-           sc_rdata   = prepare_amo_data_result(sc_retcode, req_size_q);
-
-    if (HPDCACHE_REQ_DATA_WIDTH >= 64) begin : core_rsp_rdata_ge_64_gen
-      assign core_rsp_o.rdata = req_op_q.is_amo_sc
-                              ? {HPDCACHE_REQ_DATA_WIDTH/64{sc_rdata}}
-                              : rsp_rdata_q;
-    end else begin : core_rsp_rdata_lt_64_gen
-      assign core_rsp_o.rdata = req_op_q.is_amo_sc
-                              ? hpdcache_req_data_t'(sc_rdata)
-                              : rsp_rdata_q;
+    assign sc_retcode = {{63{1'b0}}, uc_sc_retcode_q};
+    assign sc_rdata_dword = prepare_amo_data_result(sc_retcode, req_size_q);
+    if (HPDCACHE_REQ_DATA_WIDTH >= 64) begin : gen_sc_rdata_ge_64
+        assign sc_rdata = {HPDCACHE_REQ_DATA_WIDTH/64{sc_rdata_dword}};
+    end else begin : gen_sc_rdata_lt_64
+        assign sc_rdata = sc_rdata_dword;
     end
 
-    assign core_rsp_o.sid     = req_sid_q,
-           core_rsp_o.tid     = req_tid_q,
-           core_rsp_o.error   = rsp_error_q,
-           core_rsp_o.aborted = 1'b0;
+    assign core_rsp_o.rdata   = req_op_q.is_amo_sc ? sc_rdata : rsp_rdata_q;
+    assign core_rsp_o.sid     = req_sid_q;
+    assign core_rsp_o.tid     = req_tid_q;
+    assign core_rsp_o.error   = rsp_error_q;
+    assign core_rsp_o.aborted = 1'b0;
 
     //  Resize the memory response data to the core response width
     //  memory data width is bigger than the width of the core's interface

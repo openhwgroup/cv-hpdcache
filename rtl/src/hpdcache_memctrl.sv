@@ -96,8 +96,8 @@ import hpdcache_pkg::*;
     input  hpdcache_set_t                       data_amo_write_set_i,
     input  hpdcache_req_size_t                  data_amo_write_size_i,
     input  hpdcache_word_t                      data_amo_write_word_i,
-    input  logic [63:0]                         data_amo_write_data_i,
-    input  logic  [7:0]                         data_amo_write_be_i,
+    input  hpdcache_req_data_t                  data_amo_write_data_i,
+    input  hpdcache_req_be_t                    data_amo_write_be_i,
 
     input  logic                                data_refill_i,
     input  hpdcache_way_vector_t                data_refill_way_i,
@@ -450,29 +450,27 @@ import hpdcache_pkg::*;
             .data_o      (data_req_write_be)
         );
     end else begin : eqsize_data_req_write_gen
-        assign data_req_write_data = data_req_write_data_i,
-               data_req_write_be   = data_req_write_be_i;
+        assign data_req_write_data = data_req_write_data_i;
+        assign data_req_write_be   = data_req_write_be_i;
     end
 
     //  Upsize the AMO data interface to match the maximum access width of the data RAM
-    localparam hpdcache_uint AMO_DATA_RATIO       = HPDCACHE_DATA_RAM_ACCESS_WIDTH/64;
-    localparam hpdcache_uint AMO_DATA_INDEX_WIDTH = $clog2(AMO_DATA_RATIO);
-
-    if (AMO_DATA_RATIO > 1) begin : upsize_amo_req_write_gen
-        assign data_amo_write_data = {AMO_DATA_RATIO{data_amo_write_data_i}};
+    if (HPDCACHE_DATA_REQ_RATIO > 1) begin : upsize_amo_req_write_gen
+        assign data_amo_write_data = {HPDCACHE_DATA_REQ_RATIO{data_amo_write_data_i}};
 
         hpdcache_demux #(
-            .NOUTPUT          (AMO_DATA_RATIO),
-            .DATA_WIDTH       (8),
+            .NOUTPUT          (HPDCACHE_DATA_REQ_RATIO),
+            .DATA_WIDTH       (HPDCACHE_REQ_DATA_WIDTH/8),
             .ONE_HOT_SEL      (1'b0)
-        ) amo_be_demux_i (
+        ) amo_be_demux_i(
             .data_i           (data_amo_write_be_i),
-            .sel_i            (data_amo_write_word_i[0 +: AMO_DATA_INDEX_WIDTH]),
+            .sel_i            (data_amo_write_word_i[HPDCACHE_REQ_WORD_INDEX_WIDTH +:
+                                                     $clog2(HPDCACHE_DATA_REQ_RATIO)]),
             .data_o           (data_amo_write_be)
         );
     end else begin : eqsize_amo_req_write_gen
-        assign data_amo_write_data = data_amo_write_data_i,
-            data_amo_write_be   = data_amo_write_be_i;
+        assign data_amo_write_data = data_amo_write_data_i;
+        assign data_amo_write_be   = data_amo_write_be_i;
     end
 
     //  Multiplex between data write requests
