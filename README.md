@@ -45,6 +45,27 @@ The HPDcache is released under the Solderpad Hardware License (version 2.1).
 Please refer to the [LICENSE](LICENSE) file for further information.
 
 
+## Integration Examples of the HPDcache
+
+### CVA6
+
+The HPDcache is integrated with the CVA6 core.
+The HPDcache repository (this repository) is included as a submodule of the CVA6 Git.
+After you clone the [CVA6](https://github.com/openhwgroup/cva6) repository, be sure to pass the ``config_pkg::HPDCACHE`` value to the ``DCacheType`` parameter.
+This selects the HPDcache as the L1 Data Cache of the core.
+For example, the CVA6 configuration package [cv64a6_imafdc_sv39_hpdcache_config_pkg.sv](https://github.com/openhwgroup/cva6/blob/master/core/include/cv64a6_imafdc_sv39_hpdcache_config_pkg.sv) does this.
+
+The HPDcache is instantiated in the [cva6_hpdcache_subsystem.sv](https://github.com/openhwgroup/cva6/blob/master/core/cache_subsystem/cva6_hpdcache_subsystem.sv) file.
+You may take a look if you want to integrate the HPDcache with another core.
+
+### Integration Template
+
+You may look into the docs/lint subdirectory of this repository to see an integration example of the HPDcache ([hpdcache_lint.sv](docs/lint/hpdcache_lint.sv)).
+
+This example uses the macros defined in the [hpdcache_typedef.svh](rtl/include/hpdcache_typedef.svh) file.
+These macros ease the definition of types required by the interface of the HPDcache module.
+
+
 ## HPDcache Publications & Tutorials
 
 - Technical Paper: César Fuguet. 2023. HPDcache: Open-Source High-Performance L1 Data Cache for RISC-V Cores. In Proceedings of the 20th ACM International Conference on Computing Frontiers (CF '23). Association for Computing Machinery, New York, NY, USA, 377–378. <https://doi.org/10.1145/3587135.3591413>
