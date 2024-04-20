@@ -14,6 +14,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
+## [3.1.0] 2024-04-20
+
+### Added
+
+- Add support for pseudo-random (using a LFSR) algorithm for the victim selection
+- Add support for the OpenPiton Cache-Coherent Network-on-Chip
+- Add support for full-associative, direct-mapped or single-entry MSHR
+
+### Removed
+
+### Changed
+
+- Cache directory valid bits are relocated in the Tag RAM
+- Modify the arbitration between the different sources of requests (refill is now prioritary)
+- Add feedthrough (optional) fifo in both wbuf and refill handler
+- Disable assertions during reset
+
+### Fixed
+
+- Fix support for AMOs when using a 32-bit request interface
+
 ## [3.0.0] 2023-10-08
 
 ### Added
