@@ -68,24 +68,24 @@ module hpdcache_lint
       hpdcacheUserCfg
   );
 
-  typedef logic [hpdcacheCfg.memAddrWidth-1:0] hpdcache_mem_addr_t;
-  typedef logic [hpdcacheCfg.memIdWidth-1:0] hpdcache_mem_id_t;
-  typedef logic [hpdcacheCfg.memDataWidth-1:0] hpdcache_mem_data_t;
-  typedef logic [hpdcacheCfg.memDataWidth/8-1:0] hpdcache_mem_be_t;
+  typedef logic [hpdcacheCfg.u.memAddrWidth-1:0] hpdcache_mem_addr_t;
+  typedef logic [hpdcacheCfg.u.memIdWidth-1:0] hpdcache_mem_id_t;
+  typedef logic [hpdcacheCfg.u.memDataWidth-1:0] hpdcache_mem_data_t;
+  typedef logic [hpdcacheCfg.u.memDataWidth/8-1:0] hpdcache_mem_be_t;
   `HPDCACHE_TYPEDEF_MEM_REQ_T(hpdcache_mem_req_t, hpdcache_mem_addr_t, hpdcache_mem_id_t);
   `HPDCACHE_TYPEDEF_MEM_RESP_R_T(hpdcache_mem_resp_r_t, hpdcache_mem_id_t, hpdcache_mem_data_t);
   `HPDCACHE_TYPEDEF_MEM_REQ_W_T(hpdcache_mem_req_w_t, hpdcache_mem_data_t, hpdcache_mem_be_t);
   `HPDCACHE_TYPEDEF_MEM_RESP_W_T(hpdcache_mem_resp_w_t, hpdcache_mem_id_t);
 
-  typedef logic [hpdcacheCfg.wbufTimecntWidth-1:0] hpdcache_wbuf_timecnt_t;
+  typedef logic [hpdcacheCfg.u.wbufTimecntWidth-1:0] hpdcache_wbuf_timecnt_t;
   typedef logic [hpdcacheCfg.tagWidth-1:0] hpdcache_tag_t;
-  typedef logic [hpdcacheCfg.wordWidth-1:0] hpdcache_data_word_t;
-  typedef logic [hpdcacheCfg.wordWidth/8-1:0] hpdcache_data_be_t;
+  typedef logic [hpdcacheCfg.u.wordWidth-1:0] hpdcache_data_word_t;
+  typedef logic [hpdcacheCfg.u.wordWidth/8-1:0] hpdcache_data_be_t;
   typedef logic [hpdcacheCfg.reqOffsetWidth-1:0] hpdcache_req_offset_t;
-  typedef hpdcache_data_word_t [hpdcacheCfg.reqWords-1:0] hpdcache_req_data_t;
-  typedef hpdcache_data_be_t [hpdcacheCfg.reqWords-1:0] hpdcache_req_be_t;
-  typedef logic [hpdcacheCfg.reqSrcIdWidth-1:0] hpdcache_req_sid_t;
-  typedef logic [hpdcacheCfg.reqTransIdWidth-1:0] hpdcache_req_tid_t;
+  typedef hpdcache_data_word_t [hpdcacheCfg.u.reqWords-1:0] hpdcache_req_data_t;
+  typedef hpdcache_data_be_t [hpdcacheCfg.u.reqWords-1:0] hpdcache_req_be_t;
+  typedef logic [hpdcacheCfg.u.reqSrcIdWidth-1:0] hpdcache_req_sid_t;
+  typedef logic [hpdcacheCfg.u.reqTransIdWidth-1:0] hpdcache_req_tid_t;
   `HPDCACHE_TYPEDEF_REQ_T(hpdcache_req_t, hpdcache_req_offset_t, hpdcache_req_data_t,
                           hpdcache_req_be_t, hpdcache_req_sid_t, hpdcache_req_tid_t,
                           hpdcache_tag_t);

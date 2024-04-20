@@ -350,86 +350,83 @@ package hpdcache_pkg;
 
     //  Definition of parameters
     //  {{{
-    `define HPDCACHE_DECL_PARAMS \
-        /*  Number of requesters */ \
-        int unsigned nRequesters; \
-        /*  Physical Address Width */ \
-        int unsigned paWidth; \
-        /*  Word width (bits) */ \
-        int unsigned wordWidth; \
-        /*  Number of sets */ \
-        int unsigned sets; \
-        /*  Number of ways */ \
-        int unsigned ways; \
-        /*  Cache-Line width (bits) */ \
-        int unsigned clWords; \
-        /*  Number of words in the request data channels (request and response) */ \
-        int unsigned reqWords; \
-        /*  Request transaction ID width (bits) */ \
-        int unsigned reqTransIdWidth; \
-        /*  Request source ID width (bits) */ \
-        int unsigned reqSrcIdWidth; \
-        /*  Victim select */ \
-        hpdcache_victim_sel_policy_t victimSel; \
-        /*  Number of ways per RAM entry */ \
-        int unsigned dataWaysPerRamWord; \
-        /*  Number of sets per RAM */ \
-        int unsigned dataSetsPerRam; \
-        /*  DATA RAM macros implement write byte enable \
-         *  -  Write byte enable (1'b1) \
-         *  -  Write bit mask (1'b0) */ \
-        bit dataRamByteEnable; \
-        /*  Define the number of memory contiguous words that can be accessed \
-         *  simultaneously from the cache. \
-         *  -  This limits the maximum width for the data channel from requesters \
-         *  -  This impacts the refill latency (more ACCESS_WORDS -> less REFILL LATENCY) */ \
-        int unsigned accessWords; \
-        /*  MSHR number of sets */ \
-        int unsigned mshrSets; \
-        /*  MSHR number of ways */ \
-        int unsigned mshrWays; \
-        /*  MSHR number of ways in the same SRAM word (entry) */ \
-        int unsigned mshrWaysPerRamWord; \
-        /*  MSHR number of sets in the same SRAM */ \
-        int unsigned mshrSetsPerRam; \
-        /*  MSHR macros implement write byte enable \
-         *  -  Write byte enable (1'b1) \
-         *  -  Write bit mask (1'b0) */ \
-        bit mshrRamByteEnable; \
-        /*  MSHR uses whether FFs or SRAM */ \
-        bit mshrUseRegbank; \
-        /*  Use feedthrough FIFOs from the refill handler to the core */ \
-        bit refillCoreRspFeedthrough; \
-        /*  Depth of the refill FIFO */ \
-        int refillFifoDepth; \
-        /*  Write-Buffer number of entries in the directory */ \
-        int unsigned wbufDirEntries; \
-        /*  Write-Buffer number of entries in the data buffer */ \
-        int unsigned wbufDataEntries; \
-        /*  Write-Buffer number of words per entry */ \
-        int unsigned wbufWords; \
-        /*  Write-Buffer threshold counter width (in bits) */ \
-        int unsigned wbufTimecntWidth; \
-        /*  Use feedthrough FIFOs from the write-buffer to the NoC */ \
-        bit wbufSendFeedThrough; \
-        /*  Number of entries in the replay table */ \
-        int rtabEntries; \
-        /*  Width of the address in the memory interface */ \
-        int unsigned memAddrWidth; \
-        /*  Width of the ID in the memory interface */ \
-        int unsigned memIdWidth; \
-        /*  Width of the data in the memory interface */ \
-        int unsigned memDataWidth;
-
-
     typedef struct packed {
-        `HPDCACHE_DECL_PARAMS
+        //  Number of requesters
+        int unsigned nRequesters;
+        //  Physical Address Width
+        int unsigned paWidth;
+        //  Word width (bits)
+        int unsigned wordWidth;
+        //  Number of sets
+        int unsigned sets;
+        //  Number of ways
+        int unsigned ways;
+        //  Cache-Line width (bits)
+        int unsigned clWords;
+        //  Number of words in the request data channels (request and response)
+        int unsigned reqWords;
+        //  Request transaction ID width (bits)
+        int unsigned reqTransIdWidth;
+        //  Request source ID width (bits)
+        int unsigned reqSrcIdWidth;
+        //  Victim select
+        hpdcache_victim_sel_policy_t victimSel;
+        //  Number of ways per RAM entry
+        int unsigned dataWaysPerRamWord;
+        //  Number of sets per RAM
+        int unsigned dataSetsPerRam;
+        //  DATA RAM macros implement write byte enable
+        //  -  Write byte enable (1'b1)
+        //  -  Write bit mask (1'b0)
+        bit dataRamByteEnable;
+        //  Define the number of memory contiguous words that can be accessed
+        //  simultaneously from the cache.
+        //  -  This limits the maximum width for the data channel from requesters
+        //  -  This impacts the refill latency (more ACCESS_WORDS -> less REFILL LATENCY)
+        int unsigned accessWords;
+        //  MSHR number of sets
+        int unsigned mshrSets;
+        //  MSHR number of ways
+        int unsigned mshrWays;
+        //  MSHR number of ways in the same SRAM word (entry)
+        int unsigned mshrWaysPerRamWord;
+        //  MSHR number of sets in the same SRAM
+        int unsigned mshrSetsPerRam;
+        //  MSHR macros implement write byte enable
+        //  -  Write byte enable (1'b1)
+        //  -  Write bit mask (1'b0)
+        bit mshrRamByteEnable;
+        //  MSHR uses whether FFs or SRAM
+        bit mshrUseRegbank;
+        //  Use feedthrough FIFOs from the refill handler to the core
+        bit refillCoreRspFeedthrough;
+        //  Depth of the refill FIFO
+        int refillFifoDepth;
+        //  Write-Buffer number of entries in the directory
+        int unsigned wbufDirEntries;
+        //  Write-Buffer number of entries in the data buffer
+        int unsigned wbufDataEntries;
+        //  Write-Buffer number of words per entry
+        int unsigned wbufWords;
+        //  Write-Buffer threshold counter width (in bits)
+        int unsigned wbufTimecntWidth;
+        //  Use feedthrough FIFOs from the write-buffer to the NoC
+        bit wbufSendFeedThrough;
+        //  Number of entries in the replay table
+        int rtabEntries;
+        //  Width of the address in the memory interface
+        int unsigned memAddrWidth;
+        //  Width of the ID in the memory interface
+        int unsigned memIdWidth;
+        //  Width of the data in the memory interface
+        int unsigned memDataWidth;
     } hpdcache_user_cfg_t;
 
     typedef struct packed {
-        `HPDCACHE_DECL_PARAMS
+        //  User configuration parameters
+        hpdcache_user_cfg_t u;
 
-        //  Internal parameter
+        //  Internal parameters
         int unsigned clWidth;
         int unsigned clWordIdxWidth;
         int unsigned wordByteIdxWidth;
@@ -448,42 +445,10 @@ package hpdcache_pkg;
         int unsigned accessWidth;
     } hpdcache_cfg_t;
 
-    `undef HPDCACHE_DECL_PARAMS
-
     function automatic hpdcache_cfg_t hpdcacheBuildConfig(input hpdcache_user_cfg_t p);
         hpdcache_cfg_t ret;
 
-        ret.nRequesters = p.nRequesters;
-        ret.paWidth = p.paWidth;
-        ret.wordWidth = p.wordWidth;
-        ret.sets = p.sets;
-        ret.ways = p.ways;
-        ret.clWords = p.clWords;
-        ret.reqWords = p.reqWords;
-        ret.reqTransIdWidth = p.reqTransIdWidth;
-        ret.reqSrcIdWidth = p.reqSrcIdWidth;
-        ret.victimSel = p.victimSel;
-        ret.dataWaysPerRamWord = p.dataWaysPerRamWord;
-        ret.dataSetsPerRam = p.dataSetsPerRam;
-        ret.dataRamByteEnable = p.dataRamByteEnable;
-        ret.accessWords = p.accessWords;
-        ret.mshrSets = p.mshrSets;
-        ret.mshrWays = p.mshrWays;
-        ret.mshrWaysPerRamWord = p.mshrWaysPerRamWord;
-        ret.mshrSetsPerRam = p.mshrSetsPerRam;
-        ret.mshrRamByteEnable = p.mshrRamByteEnable;
-        ret.mshrUseRegbank = p.mshrUseRegbank;
-        ret.refillCoreRspFeedthrough = p.refillCoreRspFeedthrough;
-        ret.refillFifoDepth = p.refillFifoDepth;
-        ret.wbufDirEntries = p.wbufDirEntries;
-        ret.wbufDataEntries = p.wbufDataEntries;
-        ret.wbufWords = p.wbufWords;
-        ret.wbufTimecntWidth = p.wbufTimecntWidth;
-        ret.wbufSendFeedThrough = p.wbufSendFeedThrough;
-        ret.rtabEntries = p.rtabEntries;
-        ret.memAddrWidth = p.memAddrWidth;
-        ret.memIdWidth = p.memIdWidth;
-        ret.memDataWidth = p.memDataWidth;
+        ret.u = p;
 
         ret.clWidth = p.clWords * p.wordWidth;
         ret.clOffsetWidth = $clog2(ret.clWidth / 8);

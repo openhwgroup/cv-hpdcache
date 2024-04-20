@@ -161,7 +161,7 @@ import hpdcache_pkg::*;
                         req_op_i.is_inval_all: begin
                             cmoh_op_d      = req_op_i;
                             cmoh_addr_d    = req_addr_i;
-                            cmoh_way_d     = cmoh_wdata[0 +: hpdcacheCfg.ways];
+                            cmoh_way_d     = cmoh_wdata[0 +: hpdcacheCfg.u.ways];
                             cmoh_set_cnt_d = 0;
                             if (mshr_empty_i && rtab_empty_i && ctrl_empty_i) begin // CMO
                                 if (req_op_i.is_inval_by_nline) begin
@@ -208,10 +208,10 @@ import hpdcache_pkg::*;
                     end
                     cmoh_op_q.is_inval_all: begin
                         dir_inval_o     = 1'b1;
-                        dir_inval_way_o = {hpdcacheCfg.ways{1'b1}};
+                        dir_inval_way_o = {hpdcacheCfg.u.ways{1'b1}};
                         dir_inval_set_o = cmoh_set_cnt_q;
                         cmoh_set_cnt_d  = cmoh_set_cnt_q + 1;
-                        if (cmoh_set_cnt_q == hpdcache_set_t'(hpdcacheCfg.sets - 1)) begin
+                        if (cmoh_set_cnt_q == hpdcache_set_t'(hpdcacheCfg.u.sets - 1)) begin
                             cmoh_fsm_d = CMOH_IDLE;
                         end
                     end

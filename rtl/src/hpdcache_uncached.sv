@@ -157,7 +157,7 @@ import hpdcache_pkg::*;
 
 //  Definition of constants and types
 //  {{{
-    localparam hpdcache_uint MEM_REQ_RATIO = hpdcacheCfg.memDataWidth/hpdcacheCfg.reqDataWidth;
+    localparam hpdcache_uint MEM_REQ_RATIO = hpdcacheCfg.u.memDataWidth/hpdcacheCfg.reqDataWidth;
     localparam hpdcache_uint MEM_REQ_WORD_INDEX_WIDTH = $clog2(MEM_REQ_RATIO);
 
     typedef enum {

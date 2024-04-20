@@ -38,7 +38,7 @@ import hpdcache_pkg::*;
     parameter type hpdcache_mem_req_w_t = logic,
     parameter type hpdcache_mem_resp_w_t = logic,
 
-    localparam int unsigned WBUF_WORD_WIDTH = hpdcacheCfg.reqWords*hpdcacheCfg.wordWidth,
+    localparam int unsigned WBUF_WORD_WIDTH = hpdcacheCfg.u.reqWords*hpdcacheCfg.u.wordWidth,
     localparam type wbuf_data_t = logic [WBUF_WORD_WIDTH-1:0],
     localparam type wbuf_be_t = logic [WBUF_WORD_WIDTH/8-1:0]
 )
@@ -104,16 +104,16 @@ import hpdcache_pkg::*;
 
     //  Definition of constants, types and functions
     //  {{{
-    localparam int unsigned WBUF_OFFSET_WIDTH = $clog2((WBUF_WORD_WIDTH/8)*hpdcacheCfg.wbufWords);
-    localparam int unsigned WBUF_TAG_WIDTH = hpdcacheCfg.paWidth - WBUF_OFFSET_WIDTH;
+    localparam int unsigned WBUF_OFFSET_WIDTH = $clog2((WBUF_WORD_WIDTH/8)*hpdcacheCfg.u.wbufWords);
+    localparam int unsigned WBUF_TAG_WIDTH = hpdcacheCfg.u.paWidth - WBUF_OFFSET_WIDTH;
     localparam int unsigned WBUF_WORD_OFFSET = $clog2(WBUF_WORD_WIDTH/8);
-    localparam int          WBUF_SEND_FIFO_DEPTH = hpdcacheCfg.wbufDataEntries;
+    localparam int          WBUF_SEND_FIFO_DEPTH = hpdcacheCfg.u.wbufDataEntries;
     localparam int unsigned WBUF_READ_MATCH_WIDTH = hpdcacheCfg.nlineWidth;
-    localparam int unsigned WBUF_MEM_DATA_RATIO = hpdcacheCfg.memDataWidth/hpdcacheCfg.wbufDataWidth;
+    localparam int unsigned WBUF_MEM_DATA_RATIO = hpdcacheCfg.u.memDataWidth/hpdcacheCfg.wbufDataWidth;
     localparam int unsigned WBUF_MEM_DATA_WORD_INDEX_WIDTH = $clog2(WBUF_MEM_DATA_RATIO);
 
-    typedef wbuf_data_t [hpdcacheCfg.wbufWords-1:0] wbuf_data_buf_t;
-    typedef wbuf_be_t [hpdcacheCfg.wbufWords-1:0] wbuf_be_buf_t;
+    typedef wbuf_data_t [hpdcacheCfg.u.wbufWords-1:0] wbuf_data_buf_t;
+    typedef wbuf_be_t [hpdcacheCfg.u.wbufWords-1:0] wbuf_be_buf_t;
     typedef logic unsigned [hpdcacheCfg.wbufDirPtrWidth-1:0] wbuf_dir_ptr_t;
     typedef logic unsigned [hpdcacheCfg.wbufDataPtrWidth-1:0] wbuf_data_ptr_t;
     typedef logic unsigned [WBUF_TAG_WIDTH-1:0] wbuf_tag_t;
@@ -151,11 +151,11 @@ import hpdcache_pkg::*;
 
     function automatic wbuf_dir_ptr_t wbuf_dir_find_next(
             input wbuf_dir_ptr_t curr_ptr,
-            input wbuf_state_e [hpdcacheCfg.wbufDirEntries-1:0] dir_state,
+            input wbuf_state_e [hpdcacheCfg.u.wbufDirEntries-1:0] dir_state,
             input wbuf_state_e state);
         automatic wbuf_dir_ptr_t next_ptr;
-        for (int unsigned i = 0; i < hpdcacheCfg.wbufDirEntries; i++) begin
-            next_ptr = wbuf_dir_ptr_t'((i + int'(curr_ptr) + 1) % hpdcacheCfg.wbufDirEntries);
+        for (int unsigned i = 0; i < hpdcacheCfg.u.wbufDirEntries; i++) begin
+            next_ptr = wbuf_dir_ptr_t'((i + int'(curr_ptr) + 1) % hpdcacheCfg.u.wbufDirEntries);
             if (dir_state[next_ptr] == state) begin
                 return next_ptr;
             end
@@ -165,11 +165,11 @@ import hpdcache_pkg::*;
 
     function automatic wbuf_data_ptr_t wbuf_data_find_next(
             input wbuf_data_ptr_t curr_ptr,
-            input logic [hpdcacheCfg.wbufDataEntries-1:0] data_valid,
+            input logic [hpdcacheCfg.u.wbufDataEntries-1:0] data_valid,
             input logic state);
         automatic wbuf_data_ptr_t next_ptr;
-        for (int unsigned i = 0; i < hpdcacheCfg.wbufDataEntries; i++) begin
-            next_ptr = wbuf_data_ptr_t'((i + int'(curr_ptr) + 1) % hpdcacheCfg.wbufDataEntries);
+        for (int unsigned i = 0; i < hpdcacheCfg.u.wbufDataEntries; i++) begin
+            next_ptr = wbuf_data_ptr_t'((i + int'(curr_ptr) + 1) % hpdcacheCfg.u.wbufDataEntries);
             if (data_valid[next_ptr] == state) begin
                 return next_ptr;
             end
@@ -184,7 +184,7 @@ import hpdcache_pkg::*;
             input  wbuf_be_buf_t   wbuf_old_be,
             input  wbuf_data_buf_t wbuf_new_data,
             input  wbuf_be_buf_t   wbuf_new_be);
-        for (int unsigned w = 0; w < hpdcacheCfg.wbufWords; w++) begin
+        for (int unsigned w = 0; w < hpdcacheCfg.u.wbufWords; w++) begin
             for (int unsigned b = 0; b < WBUF_WORD_WIDTH/8; b++) begin
                 wbuf_ret_data[w][b*8 +: 8] = wbuf_new_be[w][b] ?
                         wbuf_new_data[w][b*8 +: 8] :
@@ -201,10 +201,10 @@ import hpdcache_pkg::*;
 
     //  Definition of internal wires and registers
     //  {{{
-    wbuf_state_e      [hpdcacheCfg.wbufDirEntries-1:0]  wbuf_dir_state_q, wbuf_dir_state_d;
-    wbuf_dir_entry_t  [hpdcacheCfg.wbufDirEntries-1:0]  wbuf_dir_q, wbuf_dir_d;
-    logic             [hpdcacheCfg.wbufDataEntries-1:0] wbuf_data_valid_q, wbuf_data_valid_d;
-    wbuf_data_entry_t [hpdcacheCfg.wbufDataEntries-1:0] wbuf_data_q, wbuf_data_d;
+    wbuf_state_e      [hpdcacheCfg.u.wbufDirEntries-1:0]  wbuf_dir_state_q, wbuf_dir_state_d;
+    wbuf_dir_entry_t  [hpdcacheCfg.u.wbufDirEntries-1:0]  wbuf_dir_q, wbuf_dir_d;
+    logic             [hpdcacheCfg.u.wbufDataEntries-1:0] wbuf_data_valid_q, wbuf_data_valid_d;
+    wbuf_data_entry_t [hpdcacheCfg.u.wbufDataEntries-1:0] wbuf_data_q, wbuf_data_d;
 
     wbuf_dir_ptr_t                              wbuf_dir_free_ptr_q, wbuf_dir_free_ptr_d;
     logic                                       wbuf_dir_free;
@@ -239,10 +239,10 @@ import hpdcache_pkg::*;
     wbuf_data_buf_t                             write_data;
     wbuf_be_buf_t                               write_be;
 
-    logic [hpdcacheCfg.wbufDirEntries-1:0]      replay_match;
-    logic [hpdcacheCfg.wbufDirEntries-1:0]      replay_open_hit;
-    logic [hpdcacheCfg.wbufDirEntries-1:0]      replay_pend_hit;
-    logic [hpdcacheCfg.wbufDirEntries-1:0]      replay_sent_hit;
+    logic [hpdcacheCfg.u.wbufDirEntries-1:0]    replay_match;
+    logic [hpdcacheCfg.u.wbufDirEntries-1:0]    replay_open_hit;
+    logic [hpdcacheCfg.u.wbufDirEntries-1:0]    replay_pend_hit;
+    logic [hpdcacheCfg.u.wbufDirEntries-1:0]    replay_sent_hit;
 
     genvar                                      gen_i;
     //  }}}
@@ -252,7 +252,7 @@ import hpdcache_pkg::*;
     always_comb
     begin : empty_comb
         empty_o = 1'b1;
-        for (int unsigned i = 0; i < hpdcacheCfg.wbufDirEntries; i++) begin
+        for (int unsigned i = 0; i < hpdcacheCfg.u.wbufDirEntries; i++) begin
             empty_o &= (wbuf_dir_state_q[i] == WBUF_FREE);
         end
     end
@@ -260,7 +260,7 @@ import hpdcache_pkg::*;
     always_comb
     begin : full_comb
         full_o = 1'b1;
-        for (int unsigned i = 0; i < hpdcacheCfg.wbufDirEntries; i++) begin
+        for (int unsigned i = 0; i < hpdcacheCfg.u.wbufDirEntries; i++) begin
             full_o &= (wbuf_dir_state_q[i] != WBUF_FREE);
         end
     end
@@ -268,13 +268,13 @@ import hpdcache_pkg::*;
 
     //  Write control
     //  {{{
-    assign write_tag = write_addr_i[hpdcacheCfg.paWidth-1:WBUF_OFFSET_WIDTH];
+    assign write_tag = write_addr_i[hpdcacheCfg.u.paWidth-1:WBUF_OFFSET_WIDTH];
     assign ack_id    = mem_resp_write_i.mem_resp_w_id[0 +: hpdcacheCfg.wbufDirPtrWidth];
     assign ack_error = (mem_resp_write_i.mem_resp_w_error != HPDCACHE_MEM_RESP_OK);
 
     always_comb
     begin : wbuf_write_data_comb
-        for (int unsigned w = 0; w < hpdcacheCfg.wbufWords; w++) begin
+        for (int unsigned w = 0; w < hpdcacheCfg.u.wbufWords; w++) begin
             write_data[w] = write_data_i;
         end
     end
@@ -283,7 +283,7 @@ import hpdcache_pkg::*;
         if (WBUF_OFFSET_WIDTH > WBUF_WORD_OFFSET) begin : gen_wbuf_write_be_gt
             always_comb
             begin : wbuf_write_be_comb
-                for (int unsigned w = 0; w < hpdcacheCfg.wbufWords; w++) begin
+                for (int unsigned w = 0; w < hpdcacheCfg.u.wbufWords; w++) begin
                     if (w == int'(write_addr_i[WBUF_OFFSET_WIDTH-1:WBUF_WORD_OFFSET])) begin
                         write_be[w] = write_be_i;
                     end else begin
@@ -294,7 +294,7 @@ import hpdcache_pkg::*;
         end else begin : gen_wbuf_write_be_le
             always_comb
             begin : wbuf_write_be_comb
-                for (int unsigned w = 0; w < hpdcacheCfg.wbufWords; w++) begin
+                for (int unsigned w = 0; w < hpdcacheCfg.u.wbufWords; w++) begin
                     write_be[w] = write_be_i;
                 end
             end
@@ -329,7 +329,7 @@ import hpdcache_pkg::*;
 
         wbuf_write_hit_open_dir_ptr = 0;
         wbuf_write_hit_pend_dir_ptr = 0;
-        for (int unsigned i = 0; i < hpdcacheCfg.wbufDirEntries; i++) begin
+        for (int unsigned i = 0; i < hpdcacheCfg.u.wbufDirEntries; i++) begin
             if (wbuf_dir_q[i].tag == write_tag) begin
                 unique case (wbuf_dir_state_q[i])
                     WBUF_OPEN: begin
@@ -355,9 +355,9 @@ import hpdcache_pkg::*;
     //  of the used slots in the write buffer directory
     always_comb
     begin : read_hit_comb
-        automatic logic [hpdcacheCfg.wbufDirEntries-1:0] read_hit;
+        automatic logic [hpdcacheCfg.u.wbufDirEntries-1:0] read_hit;
 
-        for (int unsigned i = 0; i < hpdcacheCfg.wbufDirEntries; i++) begin
+        for (int unsigned i = 0; i < hpdcacheCfg.u.wbufDirEntries; i++) begin
             read_hit[i] = 1'b0;
             unique case (wbuf_dir_state_q[i])
                 WBUF_OPEN, WBUF_PEND, WBUF_SENT: begin
@@ -366,8 +366,8 @@ import hpdcache_pkg::*;
                     automatic wbuf_match_t read_tag;
 
                     wbuf_addr   = wbuf_addr_t'(wbuf_dir_q[i].tag) << WBUF_OFFSET_WIDTH;
-                    read_tag    = read_addr_i[hpdcacheCfg.paWidth-1:hpdcacheCfg.paWidth - WBUF_READ_MATCH_WIDTH];
-                    wbuf_tag    = wbuf_addr  [hpdcacheCfg.paWidth-1:hpdcacheCfg.paWidth - WBUF_READ_MATCH_WIDTH];
+                    read_tag    = read_addr_i[hpdcacheCfg.u.paWidth-1:hpdcacheCfg.u.paWidth - WBUF_READ_MATCH_WIDTH];
+                    wbuf_tag    = wbuf_addr  [hpdcacheCfg.u.paWidth-1:hpdcacheCfg.u.paWidth - WBUF_READ_MATCH_WIDTH];
                     read_hit[i] = (read_tag == wbuf_tag) ? 1'b1 : 1'b0;
                 end
                 default: begin
@@ -382,14 +382,14 @@ import hpdcache_pkg::*;
     //  Check if there is a match between the replay address and the tag of one
     //  of the used slots in the write buffer directory
     generate
-        for (gen_i = 0; gen_i < hpdcacheCfg.wbufDirEntries; gen_i++) begin : gen_replay_match
+        for (gen_i = 0; gen_i < hpdcacheCfg.u.wbufDirEntries; gen_i++) begin : gen_replay_match
             assign replay_match[gen_i] = replay_is_read_i ?
                     /* replay is read: compare address block tag (e.g. cache line) */
                     (wbuf_tag_to_match_addr(wbuf_dir_q[gen_i].tag) ==
-                        replay_addr_i[hpdcacheCfg.paWidth - 1:hpdcacheCfg.paWidth - WBUF_READ_MATCH_WIDTH]) :
+                        replay_addr_i[hpdcacheCfg.u.paWidth - 1:hpdcacheCfg.u.paWidth - WBUF_READ_MATCH_WIDTH]) :
                     /* replay is write: compare wbuf tag */
                     (wbuf_dir_q[gen_i].tag ==
-                        replay_addr_i[hpdcacheCfg.paWidth - 1:hpdcacheCfg.paWidth - WBUF_TAG_WIDTH]);
+                        replay_addr_i[hpdcacheCfg.u.paWidth - 1:hpdcacheCfg.u.paWidth - WBUF_TAG_WIDTH]);
 
             assign replay_open_hit[gen_i] =
                     replay_match[gen_i] && (wbuf_dir_state_q[gen_i] == WBUF_OPEN);
@@ -455,7 +455,7 @@ import hpdcache_pkg::*;
         send_data_w = 1'b0;
         send_meta_valid = 1'b0;
 
-        for (int unsigned i = 0; i < hpdcacheCfg.wbufDirEntries; i++) begin
+        for (int unsigned i = 0; i < hpdcacheCfg.u.wbufDirEntries; i++) begin
             case (wbuf_dir_state_q[i])
                 WBUF_FREE: begin
                     match_free = wbuf_write_free && (i == int'(wbuf_dir_free_ptr_q));
@@ -576,7 +576,7 @@ import hpdcache_pkg::*;
     //    Data channel
     hpdcache_fifo_reg #(
         .FIFO_DEPTH          (WBUF_SEND_FIFO_DEPTH),
-        .FEEDTHROUGH         (hpdcacheCfg.wbufSendFeedThrough),
+        .FEEDTHROUGH         (hpdcacheCfg.u.wbufSendFeedThrough),
         .fifo_data_t         (wbuf_send_data_t)
     ) send_data_ptr_fifo_i (
         .clk_i,
@@ -599,7 +599,7 @@ import hpdcache_pkg::*;
     //    Meta-data channel
     hpdcache_fifo_reg #(
         .FIFO_DEPTH          (WBUF_SEND_FIFO_DEPTH),
-        .FEEDTHROUGH         (hpdcacheCfg.wbufSendFeedThrough),
+        .FEEDTHROUGH         (hpdcacheCfg.u.wbufSendFeedThrough),
         .fifo_data_t         (wbuf_send_meta_t)
     ) send_meta_fifo_i (
         .clk_i,
@@ -673,7 +673,7 @@ import hpdcache_pkg::*;
     begin : wbuf_state_ff
         if (!rst_ni) begin
             wbuf_dir_q           <= '0;
-            wbuf_dir_state_q     <= {hpdcacheCfg.wbufDirEntries{WBUF_FREE}};
+            wbuf_dir_state_q     <= {hpdcacheCfg.u.wbufDirEntries{WBUF_FREE}};
             wbuf_data_valid_q    <= '0;
             wbuf_dir_free_ptr_q  <= 0;
             wbuf_dir_send_ptr_q  <= 0;
@@ -692,14 +692,14 @@ import hpdcache_pkg::*;
     //  Assertions
     //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
-    initial assert(hpdcacheCfg.wbufWords inside {1, 2, 4, 8, 16}) else
+    initial assert(hpdcacheCfg.u.wbufWords inside {1, 2, 4, 8, 16}) else
             $fatal("WBUF: width of data buffers must be a power of 2");
-    initial assert(hpdcacheCfg.wbufSendFeedThrough == 1'b0) else
+    initial assert(hpdcacheCfg.u.wbufSendFeedThrough == 1'b0) else
             $fatal("WBUF: wbufSendFeedThrough=1 is currently not supported");
     initial assert(WBUF_MEM_DATA_RATIO > 0) else
             $fatal($sformatf("WBUF: width of mem interface (%d) shall be g.e. to wbuf width(%d)",
-                             hpdcacheCfg.memDataWidth, hpdcacheCfg.wbufDataWidth));
-    initial assert (hpdcacheCfg.wbufDirPtrWidth <= hpdcacheCfg.memIdWidth) else
+                             hpdcacheCfg.u.memDataWidth, hpdcacheCfg.wbufDataWidth));
+    initial assert (hpdcacheCfg.wbufDirPtrWidth <= hpdcacheCfg.u.memIdWidth) else
             $fatal("MemIdWidth is not wide enough to fit all possible write buffer transactions");
     ack_sent_assert: assert property (@(posedge clk_i) disable iff (!rst_ni)
             (mem_resp_write_valid_i -> (wbuf_dir_state_q[ack_id] == WBUF_SENT))) else

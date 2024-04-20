@@ -217,7 +217,7 @@ import hpdcache_pkg::*;
 
     //  Definition of internal registers
     //  {{{
-    typedef logic [$clog2(hpdcacheCfg.rtabEntries)-1:0] rtab_ptr_t;
+    typedef logic [$clog2(hpdcacheCfg.u.rtabEntries)-1:0] rtab_ptr_t;
     //  }}}
 
     //  Definition of internal registers

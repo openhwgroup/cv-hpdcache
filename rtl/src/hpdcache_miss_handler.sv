@@ -139,8 +139,8 @@ import hpdcache_pkg::*;
 
     //  Declaration of constants and types
     //  {{{
-    localparam int unsigned REFILL_REQ_RATIO = hpdcacheCfg.accessWords / hpdcacheCfg.reqWords;
-    localparam hpdcache_uint REFILL_LAST_CHUNK_WORD = hpdcacheCfg.clWords - hpdcacheCfg.accessWords;
+    localparam int unsigned REFILL_REQ_RATIO = hpdcacheCfg.u.accessWords / hpdcacheCfg.u.reqWords;
+    localparam hpdcache_uint REFILL_LAST_CHUNK_WORD = hpdcacheCfg.u.clWords - hpdcacheCfg.u.accessWords;
 
     typedef enum logic {
         MISS_REQ_IDLE = 1'b0,
@@ -252,8 +252,8 @@ import hpdcache_pkg::*;
         endcase
     end
 
-    localparam hpdcache_uint REFILL_REQ_SIZE = $clog2(hpdcacheCfg.memDataWidth / 8);
-    localparam hpdcache_uint REFILL_REQ_LEN = hpdcacheCfg.clWidth / hpdcacheCfg.memDataWidth;
+    localparam hpdcache_uint REFILL_REQ_SIZE = $clog2(hpdcacheCfg.u.memDataWidth / 8);
+    localparam hpdcache_uint REFILL_REQ_LEN = hpdcacheCfg.clWidth / hpdcacheCfg.u.memDataWidth;
 
     assign mem_req_o.mem_req_addr = {mshr_alloc_nline_q, {hpdcacheCfg.clOffsetWidth{1'b0}} };
     assign mem_req_o.mem_req_len = hpdcache_mem_len_t'(REFILL_REQ_LEN-1);
@@ -262,14 +262,14 @@ import hpdcache_pkg::*;
     assign mem_req_o.mem_req_atomic = HPDCACHE_MEM_ATOMIC_ADD;
     assign mem_req_o.mem_req_cacheable = 1'b1;
 
-    if ((hpdcacheCfg.mshrSets > 1) && (hpdcacheCfg.mshrWays > 1))
+    if ((hpdcacheCfg.u.mshrSets > 1) && (hpdcacheCfg.u.mshrWays > 1))
     begin : gen_mem_id_mshr_sets_and_ways_gt_1
         assign mem_req_o.mem_req_id = hpdcache_mem_id_t'({
                 mshr_alloc_way_q, mshr_alloc_nline_q[0 +: hpdcacheCfg.mshrSetWidth]});
-    end else if (hpdcacheCfg.mshrSets > 1) begin : gen_mem_id_mshr_sets_gt_1
+    end else if (hpdcacheCfg.u.mshrSets > 1) begin : gen_mem_id_mshr_sets_gt_1
         assign mem_req_o.mem_req_id = hpdcache_mem_id_t'(
                 mshr_alloc_nline_q[0 +: hpdcacheCfg.mshrSetWidth]);
-    end else if (hpdcacheCfg.mshrWays > 1) begin : gen_mem_id_mshr_ways_gt_1
+    end else if (hpdcacheCfg.u.mshrWays > 1) begin : gen_mem_id_mshr_ways_gt_1
         assign mem_req_o.mem_req_id = hpdcache_mem_id_t'(mshr_alloc_way_q);
     end else begin : gen_mem_id_mshr_sets_and_ways_eq_1
         assign mem_req_o.mem_req_id = '0;
@@ -376,7 +376,7 @@ import hpdcache_pkg::*;
                 //  Respond to the core (when needed)
                 if (refill_cnt_q == 0) begin
                     automatic hpdcache_uint _core_rsp_word;
-                    _core_rsp_word = hpdcache_uint'(mshr_ack_word)/hpdcacheCfg.accessWords;
+                    _core_rsp_word = hpdcache_uint'(mshr_ack_word)/hpdcacheCfg.u.accessWords;
 
                     if (mshr_ack_need_rsp) begin
                         refill_core_rsp_valid = (hpdcache_uint'(_core_rsp_word) == 0);
@@ -386,14 +386,14 @@ import hpdcache_pkg::*;
                     refill_core_rsp_tid = mshr_ack_req_id;
                     refill_core_rsp_error = refill_is_error;
                     refill_core_rsp_word = hpdcache_word_t'(
-                        hpdcache_uint'(mshr_ack_word)/hpdcacheCfg.reqWords);
+                        hpdcache_uint'(mshr_ack_word)/hpdcacheCfg.u.reqWords);
                 end else begin
                     automatic hpdcache_uint _core_rsp_word;
-                    _core_rsp_word = hpdcache_uint'(refill_core_rsp_word_q)/hpdcacheCfg.accessWords;
+                    _core_rsp_word = hpdcache_uint'(refill_core_rsp_word_q)/hpdcacheCfg.u.accessWords;
 
                     if (refill_need_rsp_q) begin
                         automatic hpdcache_uint _refill_cnt;
-                        _refill_cnt = hpdcache_uint'(refill_cnt_q)/hpdcacheCfg.accessWords;
+                        _refill_cnt = hpdcache_uint'(refill_cnt_q)/hpdcacheCfg.u.accessWords;
                         refill_core_rsp_valid = (_core_rsp_word == _refill_cnt);
                     end
 
@@ -401,7 +401,7 @@ import hpdcache_pkg::*;
                     refill_core_rsp_tid = refill_tid_q;
                     refill_core_rsp_error = refill_is_error;
                     refill_core_rsp_word = hpdcache_word_t'(
-                        hpdcache_uint'(refill_core_rsp_word_q)/hpdcacheCfg.reqWords);
+                        hpdcache_uint'(refill_core_rsp_word_q)/hpdcacheCfg.u.reqWords);
                 end
 
                 //  Write the the data in the cache data array
@@ -420,7 +420,7 @@ import hpdcache_pkg::*;
                 refill_fifo_resp_data_r = 1'b1;
 
                 //  Update directory on the last chunk of data
-                refill_cnt_d = refill_cnt_q + hpdcache_word_t'(hpdcacheCfg.accessWords);
+                refill_cnt_d = refill_cnt_q + hpdcache_word_t'(hpdcacheCfg.u.accessWords);
 
                 if (hpdcache_uint'(refill_cnt_q) == REFILL_LAST_CHUNK_WORD) begin
                     if (REFILL_LAST_CHUNK_WORD == 0) begin
@@ -513,10 +513,10 @@ import hpdcache_pkg::*;
     assign mshr_check_tag = mshr_check_nline_i[hpdcacheCfg.setWidth +: hpdcacheCfg.tagWidth];
     assign mshr_check_set = mshr_check_offset_i[hpdcacheCfg.clOffsetWidth +: hpdcacheCfg.setWidth];
 
-    if (hpdcacheCfg.mshrSets > 1) begin : mshr_set_gt_1_gen
+    if (hpdcacheCfg.u.mshrSets > 1) begin : mshr_set_gt_1_gen
         //  MSHR ack set and way
         assign mshr_ack_set = refill_fifo_resp_meta_rdata.r_id[0 +: hpdcacheCfg.mshrSetWidth];
-        if (hpdcacheCfg.mshrWays > 1) begin : mshr_ack_way_gt_1_gen
+        if (hpdcacheCfg.u.mshrWays > 1) begin : mshr_ack_way_gt_1_gen
             assign mshr_ack_way = refill_fifo_resp_meta_rdata.r_id[hpdcacheCfg.mshrSetWidth +:
                                                                    hpdcacheCfg.mshrWayWidth];
         end else begin : mshr_ack_way_eq_1_gen
@@ -525,7 +525,7 @@ import hpdcache_pkg::*;
     end else begin : mshr_set_eq_1_gen
         //  MSHR ack set and way
         assign mshr_ack_set = '0;
-        if (hpdcacheCfg.mshrWays > 1) begin : mshr_ack_way_gt_1_gen
+        if (hpdcacheCfg.u.mshrWays > 1) begin : mshr_ack_way_gt_1_gen
             assign mshr_ack_way = refill_fifo_resp_meta_rdata.r_id[0 +: hpdcacheCfg.mshrWayWidth];
         end else begin : mshr_ack_way_eq_1_gen
             assign mshr_ack_way = '0;
@@ -544,7 +544,7 @@ import hpdcache_pkg::*;
 
     hpdcache_fifo_reg #(
         .FIFO_DEPTH  (1),
-        .FEEDTHROUGH (hpdcacheCfg.refillCoreRspFeedthrough),
+        .FEEDTHROUGH (hpdcacheCfg.u.refillCoreRspFeedthrough),
         .fifo_data_t (hpdcache_rsp_t)
     ) i_refill_core_rsp_buf(
         .clk_i,
@@ -584,7 +584,7 @@ import hpdcache_pkg::*;
     };
 
     hpdcache_fifo_reg #(
-        .FIFO_DEPTH  (hpdcacheCfg.refillFifoDepth),
+        .FIFO_DEPTH  (hpdcacheCfg.u.refillFifoDepth),
         .fifo_data_t (mem_resp_metadata_t)
     ) i_r_metadata_fifo (
         .clk_i,
@@ -599,12 +599,12 @@ import hpdcache_pkg::*;
         .rdata_o(refill_fifo_resp_meta_rdata)
     );
 
-    if (hpdcacheCfg.memDataWidth < hpdcacheCfg.accessWidth)
+    if (hpdcacheCfg.u.memDataWidth < hpdcacheCfg.accessWidth)
     begin : upsize_mem_data_gen
         hpdcache_data_upsize #(
-            .WR_WIDTH(hpdcacheCfg.memDataWidth),
+            .WR_WIDTH(hpdcacheCfg.u.memDataWidth),
             .RD_WIDTH(hpdcacheCfg.accessWidth),
-            .DEPTH(hpdcacheCfg.refillFifoDepth*(hpdcacheCfg.clWidth/hpdcacheCfg.accessWidth))
+            .DEPTH(hpdcacheCfg.u.refillFifoDepth*(hpdcacheCfg.clWidth/hpdcacheCfg.accessWidth))
         ) i_rdata_upsize (
             .clk_i,
             .rst_ni,
@@ -618,12 +618,12 @@ import hpdcache_pkg::*;
             .rok_o    (/* unused */),
             .rdata_o  (refill_fifo_resp_data_rdata)
         );
-    end else if (hpdcacheCfg.memDataWidth > hpdcacheCfg.accessWidth)
+    end else if (hpdcacheCfg.u.memDataWidth > hpdcacheCfg.accessWidth)
     begin : downsize_mem_data_gen
         hpdcache_data_downsize #(
-            .WR_WIDTH(hpdcacheCfg.memDataWidth),
+            .WR_WIDTH(hpdcacheCfg.u.memDataWidth),
             .RD_WIDTH(hpdcacheCfg.accessWidth),
-            .DEPTH(hpdcacheCfg.refillFifoDepth*(hpdcacheCfg.clWidth/hpdcacheCfg.memDataWidth))
+            .DEPTH(hpdcacheCfg.u.refillFifoDepth*(hpdcacheCfg.clWidth/hpdcacheCfg.u.memDataWidth))
         ) i_rdata_downsize (
             .clk_i,
             .rst_ni,
@@ -639,7 +639,7 @@ import hpdcache_pkg::*;
     end else
     begin : eqsize_mem_data_gen
         hpdcache_fifo_reg #(
-            .FIFO_DEPTH  (hpdcacheCfg.refillFifoDepth),
+            .FIFO_DEPTH  (hpdcacheCfg.u.refillFifoDepth),
             .fifo_data_t (hpdcache_refill_data_t)
         ) i_rdata_fifo (
             .clk_i,

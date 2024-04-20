@@ -44,19 +44,19 @@ import hpdcache_pkg::*;
 
     //      Core request interface
     //         1st cycle
-    input  logic                          core_req_valid_i [hpdcacheCfg.nRequesters-1:0],
-    output logic                          core_req_ready_o [hpdcacheCfg.nRequesters-1:0],
-    input  hpdcache_req_t                 core_req_i       [hpdcacheCfg.nRequesters-1:0],
+    input  logic                          core_req_valid_i [hpdcacheCfg.u.nRequesters-1:0],
+    output logic                          core_req_ready_o [hpdcacheCfg.u.nRequesters-1:0],
+    input  hpdcache_req_t                 core_req_i       [hpdcacheCfg.u.nRequesters-1:0],
     //         2nd cycle
-    input  logic                          core_req_abort_i [hpdcacheCfg.nRequesters-1:0],
-    input  hpdcache_tag_t                 core_req_tag_i   [hpdcacheCfg.nRequesters-1:0],
-    input  hpdcache_pma_t                 core_req_pma_i   [hpdcacheCfg.nRequesters-1:0],
+    input  logic                          core_req_abort_i [hpdcacheCfg.u.nRequesters-1:0],
+    input  hpdcache_tag_t                 core_req_tag_i   [hpdcacheCfg.u.nRequesters-1:0],
+    input  hpdcache_pma_t                 core_req_pma_i   [hpdcacheCfg.u.nRequesters-1:0],
 
     //      Core response interface
     input  logic                          core_rsp_valid_i,
     input  hpdcache_rsp_t                 core_rsp_i,
-    output logic                          core_rsp_valid_o [hpdcacheCfg.nRequesters-1:0],
-    output hpdcache_rsp_t                 core_rsp_o       [hpdcacheCfg.nRequesters-1:0],
+    output logic                          core_rsp_valid_o [hpdcacheCfg.u.nRequesters-1:0],
+    output hpdcache_rsp_t                 core_rsp_o       [hpdcacheCfg.u.nRequesters-1:0],
 
     //      Granted request
     output logic                          arb_req_valid_o,
@@ -71,13 +71,13 @@ import hpdcache_pkg::*;
 
     //  Declaration of internal signals
     //  {{{
-    logic          [hpdcacheCfg.nRequesters-1:0] core_req_valid;
-    hpdcache_req_t [hpdcacheCfg.nRequesters-1:0] core_req;
-    logic          [hpdcacheCfg.nRequesters-1:0] core_req_abort;
-    hpdcache_tag_t [hpdcacheCfg.nRequesters-1:0] core_req_tag;
-    hpdcache_pma_t [hpdcacheCfg.nRequesters-1:0] core_req_pma;
+    logic          [hpdcacheCfg.u.nRequesters-1:0] core_req_valid;
+    hpdcache_req_t [hpdcacheCfg.u.nRequesters-1:0] core_req;
+    logic          [hpdcacheCfg.u.nRequesters-1:0] core_req_abort;
+    hpdcache_tag_t [hpdcacheCfg.u.nRequesters-1:0] core_req_tag;
+    hpdcache_pma_t [hpdcacheCfg.u.nRequesters-1:0] core_req_pma;
 
-    logic [hpdcacheCfg.nRequesters-1:0] arb_req_gnt_q, arb_req_gnt_d;
+    logic [hpdcacheCfg.u.nRequesters-1:0] arb_req_gnt_q, arb_req_gnt_d;
     //  }}}
 
     //  Requesters arbiter
@@ -86,7 +86,7 @@ import hpdcache_pkg::*;
     genvar gen_i;
 
     generate
-        for (gen_i = 0; gen_i < int'(hpdcacheCfg.nRequesters); gen_i++) begin : gen_core_req
+        for (gen_i = 0; gen_i < int'(hpdcacheCfg.u.nRequesters); gen_i++) begin : gen_core_req
             assign core_req_ready_o[gen_i] = arb_req_gnt_d[gen_i] & arb_req_ready_i,
                    core_req_valid[gen_i]   = core_req_valid_i[gen_i],
                    core_req[gen_i]         = core_req_i[gen_i];
@@ -98,7 +98,7 @@ import hpdcache_pkg::*;
     endgenerate
 
     //      Arbiter
-    hpdcache_fxarb #(.N(hpdcacheCfg.nRequesters)) req_arbiter_i
+    hpdcache_fxarb #(.N(hpdcacheCfg.u.nRequesters)) req_arbiter_i
     (
         .clk_i,
         .rst_ni,
@@ -109,7 +109,7 @@ import hpdcache_pkg::*;
 
     //      Request multiplexor
     hpdcache_mux #(
-        .NINPUT         (hpdcacheCfg.nRequesters),
+        .NINPUT         (hpdcacheCfg.u.nRequesters),
         .DATA_WIDTH     ($bits(hpdcache_req_t)),
         .ONE_HOT_SEL    (1'b1)
     ) core_req_mux_i (
@@ -120,7 +120,7 @@ import hpdcache_pkg::*;
 
     //      Request abort multiplexor
     hpdcache_mux #(
-        .NINPUT         (hpdcacheCfg.nRequesters),
+        .NINPUT         (hpdcacheCfg.u.nRequesters),
         .DATA_WIDTH     (1),
         .ONE_HOT_SEL    (1'b1)
     ) core_req_abort_mux_i (
@@ -131,7 +131,7 @@ import hpdcache_pkg::*;
 
     //      Tag Multiplexor
     hpdcache_mux #(
-        .NINPUT         (hpdcacheCfg.nRequesters),
+        .NINPUT         (hpdcacheCfg.u.nRequesters),
         .DATA_WIDTH     ($bits(hpdcache_tag_t)),
         .ONE_HOT_SEL    (1'b1)
     ) core_req_tag_mux_i (
@@ -142,7 +142,7 @@ import hpdcache_pkg::*;
 
     //      PMA Multiplexor
     hpdcache_mux #(
-        .NINPUT         (hpdcacheCfg.nRequesters),
+        .NINPUT         (hpdcacheCfg.u.nRequesters),
         .DATA_WIDTH     ($bits(hpdcache_pma_t)),
         .ONE_HOT_SEL    (1'b1)
     ) core_req_pma_mux_i (
@@ -165,7 +165,7 @@ import hpdcache_pkg::*;
     //  {{{
     always_comb
     begin : resp_demux
-        for (int unsigned i = 0; i < hpdcacheCfg.nRequesters; i++) begin
+        for (int unsigned i = 0; i < hpdcacheCfg.u.nRequesters; i++) begin
             core_rsp_valid_o[i]  = core_rsp_valid_i && (i == int'(core_rsp_i.sid));
             core_rsp_o[i]        = core_rsp_i;
         end

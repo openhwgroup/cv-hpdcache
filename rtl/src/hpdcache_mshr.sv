@@ -101,7 +101,7 @@ import hpdcache_pkg::*;
     localparam int unsigned HPDCACHE_MSHR_ENTRY_BITS = $bits(mshr_entry_t);
 
     localparam int unsigned HPDCACHE_MSHR_RAM_ENTRY_BITS =
-            hpdcacheCfg.mshrRamByteEnable ?
+            hpdcacheCfg.u.mshrRamByteEnable ?
                     ((HPDCACHE_MSHR_ENTRY_BITS + 7)/8) * 8 : // align to 8 bits
                       HPDCACHE_MSHR_ENTRY_BITS;              // or use the exact number of bits
 
@@ -110,19 +110,19 @@ import hpdcache_pkg::*;
 
     //  Definition of internal wires and registers
     //  {{{
-    logic          [hpdcacheCfg.mshrSets*hpdcacheCfg.mshrWays-1:0] mshr_valid_q;
-    hpdcache_set_t [hpdcacheCfg.mshrSets*hpdcacheCfg.mshrWays-1:0] mshr_cache_set_q;
+    logic          [hpdcacheCfg.u.mshrSets*hpdcacheCfg.u.mshrWays-1:0] mshr_valid_q;
+    hpdcache_set_t [hpdcacheCfg.u.mshrSets*hpdcacheCfg.u.mshrWays-1:0] mshr_cache_set_q;
 
     hpdcache_set_t check_cache_set_q;
     mshr_set_t     check_set_st0, check_set_st1;
     mshr_set_t     alloc_set;
     mshr_way_t     ack_way_q;
 
-    logic [hpdcacheCfg.mshrSets*hpdcacheCfg.mshrWays-1:0] mshr_valid_set, mshr_valid_rst;
-    mshr_entry_t     [hpdcacheCfg.mshrWays-1:0] mshr_wentry;
-    mshr_sram_data_t [hpdcacheCfg.mshrWays-1:0] mshr_wdata;
-    mshr_entry_t     [hpdcacheCfg.mshrWays-1:0] mshr_rentry;
-    mshr_sram_data_t [hpdcacheCfg.mshrWays-1:0] mshr_rdata;
+    logic [hpdcacheCfg.u.mshrSets*hpdcacheCfg.u.mshrWays-1:0] mshr_valid_set, mshr_valid_rst;
+    mshr_entry_t     [hpdcacheCfg.u.mshrWays-1:0] mshr_wentry;
+    mshr_sram_data_t [hpdcacheCfg.u.mshrWays-1:0] mshr_wdata;
+    mshr_entry_t     [hpdcacheCfg.u.mshrWays-1:0] mshr_rentry;
+    mshr_sram_data_t [hpdcacheCfg.u.mshrWays-1:0] mshr_rdata;
 
     logic mshr_we;
     logic mshr_cs;
@@ -136,7 +136,7 @@ import hpdcache_pkg::*;
     //    The allocation operation is prioritary with respect to the check operation
     assign check = check_i & ~alloc_i;
 
-    if (hpdcacheCfg.mshrSets > 1) begin : gen_alloc_mshr_sets_gt_1
+    if (hpdcacheCfg.u.mshrSets > 1) begin : gen_alloc_mshr_sets_gt_1
       assign check_set_st0 = check_set_i[0 +: hpdcacheCfg.mshrSetWidth];
       assign check_set_st1 = check_cache_set_q[0 +: hpdcacheCfg.mshrSetWidth];
       assign alloc_set = alloc_nline_i[0 +: hpdcacheCfg.mshrSetWidth];
@@ -152,8 +152,8 @@ import hpdcache_pkg::*;
         automatic mshr_way_t found_available_way;
 
         found_available_way = 0;
-        for (int unsigned i = 0; i < hpdcacheCfg.mshrWays; i++) begin
-            if (!mshr_valid_q[i*hpdcacheCfg.mshrSets + int'(alloc_set)]) begin
+        for (int unsigned i = 0; i < hpdcacheCfg.u.mshrWays; i++) begin
+            if (!mshr_valid_q[i*hpdcacheCfg.u.mshrSets + int'(alloc_set)]) begin
                 found_available_way = mshr_way_t'(i);
                 break;
             end
@@ -167,8 +167,8 @@ import hpdcache_pkg::*;
         automatic bit found_available;
 
         found_available = 1'b0;
-        for (int unsigned i = 0; i < hpdcacheCfg.mshrWays; i++) begin
-            if (!mshr_valid_q[i*hpdcacheCfg.mshrSets + int'(check_set_st1)]) begin
+        for (int unsigned i = 0; i < hpdcacheCfg.u.mshrWays; i++) begin
+            if (!mshr_valid_q[i*hpdcacheCfg.u.mshrSets + int'(check_set_st1)]) begin
                 found_available = 1'b1;
                 break;
             end
@@ -182,7 +182,7 @@ import hpdcache_pkg::*;
     //    Generate write data and mask depending on the available way
     always_comb
     begin
-        for (int unsigned i = 0; i < hpdcacheCfg.mshrWays; i++) begin
+        for (int unsigned i = 0; i < hpdcacheCfg.u.mshrWays; i++) begin
             mshr_wentry[i].tag = alloc_nline_i[hpdcacheCfg.setWidth +: hpdcacheCfg.tagWidth];
             mshr_wentry[i].req_id = alloc_req_id_i;
             mshr_wentry[i].src_id = alloc_src_id_i;
@@ -198,13 +198,13 @@ import hpdcache_pkg::*;
     hpdcache_uint mshr_alloc_slot;
     hpdcache_uint mshr_ack_slot;
 
-    if ((hpdcacheCfg.mshrSets > 1) && (hpdcacheCfg.mshrWays > 1)) begin : gen_mshr_set_associative
+    if ((hpdcacheCfg.u.mshrSets > 1) && (hpdcacheCfg.u.mshrWays > 1)) begin : gen_mshr_set_associative
         assign mshr_alloc_slot = hpdcache_uint'({alloc_way_o, alloc_set});
         assign mshr_ack_slot   = hpdcache_uint'({  ack_way_i, ack_set_i});
-    end else if (hpdcacheCfg.mshrSets > 1) begin : gen_mshr_direct_mapped
+    end else if (hpdcacheCfg.u.mshrSets > 1) begin : gen_mshr_direct_mapped
         assign mshr_alloc_slot = hpdcache_uint'(alloc_set);
         assign mshr_ack_slot   = hpdcache_uint'(ack_set_i);
-    end else if (hpdcacheCfg.mshrWays > 1) begin : gen_mshr_fully_associative
+    end else if (hpdcacheCfg.u.mshrWays > 1) begin : gen_mshr_fully_associative
         assign mshr_alloc_slot = hpdcache_uint'(alloc_way_o);
         assign mshr_ack_slot   = hpdcache_uint'(ack_way_i);
     end else begin : gen_mshr_single_entry
@@ -217,7 +217,7 @@ import hpdcache_pkg::*;
 
     always_comb
     begin : mshr_valid_comb
-        for (hpdcache_uint i = 0; i < hpdcacheCfg.mshrSets*hpdcacheCfg.mshrWays; i++) begin
+        for (hpdcache_uint i = 0; i < hpdcacheCfg.u.mshrSets*hpdcacheCfg.u.mshrWays; i++) begin
             mshr_valid_rst[i] = (i ==   mshr_ack_slot) ? ack_i   : 1'b0;
             mshr_valid_set[i] = (i == mshr_alloc_slot) ? alloc_i : 1'b0;
         end
@@ -242,14 +242,14 @@ import hpdcache_pkg::*;
 
     always_comb
     begin : hit_comb
-        automatic bit [hpdcacheCfg.mshrWays-1:0] __hit_way;
+        automatic bit [hpdcacheCfg.u.mshrWays-1:0] __hit_way;
 
-        for (int unsigned w = 0; w < hpdcacheCfg.mshrWays; w++) begin
+        for (int unsigned w = 0; w < hpdcacheCfg.u.mshrWays; w++) begin
             automatic bit __valid;
             automatic bit __match_set;
             automatic bit __match_tag;
-            __valid = mshr_valid_q[w*hpdcacheCfg.mshrSets + int'(check_set_st1)];
-            __match_set  = (mshr_cache_set_q[w*hpdcacheCfg.mshrSets + int'(check_set_st1)] == check_cache_set_q);
+            __valid = mshr_valid_q[w*hpdcacheCfg.u.mshrSets + int'(check_set_st1)];
+            __match_set  = (mshr_cache_set_q[w*hpdcacheCfg.u.mshrSets + int'(check_set_st1)] == check_cache_set_q);
             __match_tag  = (mshr_rentry[w].tag == check_tag_i);
             __hit_way[w] = (__valid && __match_tag && __match_set);
         end
@@ -276,22 +276,22 @@ import hpdcache_pkg::*;
 
     //  Internal components
     //  {{{
-    if (hpdcacheCfg.mshrRamByteEnable) begin : gen_mshr_wbyteenable
+    if (hpdcacheCfg.u.mshrRamByteEnable) begin : gen_mshr_wbyteenable
         typedef logic [HPDCACHE_MSHR_RAM_ENTRY_BITS/8-1:0] mshr_sram_wbyteenable_t;
-        mshr_sram_wbyteenable_t [hpdcacheCfg.mshrWays-1:0] mshr_wbyteenable;
+        mshr_sram_wbyteenable_t [hpdcacheCfg.u.mshrWays-1:0] mshr_wbyteenable;
 
         always_comb
         begin : mshr_wbyteenable_comb
-            for (int unsigned i = 0; i < hpdcacheCfg.mshrWays; i++) begin
+            for (int unsigned i = 0; i < hpdcacheCfg.u.mshrWays; i++) begin
                 mshr_wbyteenable[i] = (int'(alloc_way_o) == i) ? '1 : '0;
             end
         end
 
-        if (hpdcacheCfg.mshrUseRegbank) begin : gen_mshr_regbank
+        if (hpdcacheCfg.u.mshrUseRegbank) begin : gen_mshr_regbank
             hpdcache_regbank_wbyteenable_1rw #(
-                .DATA_SIZE     (hpdcacheCfg.mshrWays*HPDCACHE_MSHR_RAM_ENTRY_BITS),
+                .DATA_SIZE     (hpdcacheCfg.u.mshrWays*HPDCACHE_MSHR_RAM_ENTRY_BITS),
                 .ADDR_SIZE     (hpdcacheCfg.mshrSetWidth),
-                .DEPTH         (hpdcacheCfg.mshrSets)
+                .DEPTH         (hpdcacheCfg.u.mshrSets)
             ) mshr_mem(
                 .clk           (clk_i),
                 .rst_n         (rst_ni),
@@ -304,9 +304,9 @@ import hpdcache_pkg::*;
             );
         end else begin : gen_mshr_sram
             hpdcache_sram_wbyteenable #(
-                .DATA_SIZE     (hpdcacheCfg.mshrWays*HPDCACHE_MSHR_RAM_ENTRY_BITS),
+                .DATA_SIZE     (hpdcacheCfg.u.mshrWays*HPDCACHE_MSHR_RAM_ENTRY_BITS),
                 .ADDR_SIZE     (hpdcacheCfg.mshrSetWidth),
-                .DEPTH         (hpdcacheCfg.mshrSets)
+                .DEPTH         (hpdcacheCfg.u.mshrSets)
             ) mshr_mem(
                 .clk           (clk_i),
                 .rst_n         (rst_ni),
@@ -320,20 +320,20 @@ import hpdcache_pkg::*;
         end
     end else begin : gen_mshr_wmask
         typedef logic [HPDCACHE_MSHR_RAM_ENTRY_BITS-1:0] mshr_sram_wmask_t;
-        mshr_sram_wmask_t [hpdcacheCfg.mshrWays-1:0] mshr_wmask;
+        mshr_sram_wmask_t [hpdcacheCfg.u.mshrWays-1:0] mshr_wmask;
 
         always_comb
         begin : mshr_wmask_comb
-            for (int unsigned i = 0; i < hpdcacheCfg.mshrWays; i++) begin
+            for (int unsigned i = 0; i < hpdcacheCfg.u.mshrWays; i++) begin
                 mshr_wmask[i] = (int'(alloc_way_o) == i) ? '1 : '0;
             end
         end
 
-        if (hpdcacheCfg.mshrUseRegbank) begin : gen_mshr_regbank
+        if (hpdcacheCfg.u.mshrUseRegbank) begin : gen_mshr_regbank
             hpdcache_regbank_wmask_1rw #(
-                .DATA_SIZE     (hpdcacheCfg.mshrWays*HPDCACHE_MSHR_RAM_ENTRY_BITS),
+                .DATA_SIZE     (hpdcacheCfg.u.mshrWays*HPDCACHE_MSHR_RAM_ENTRY_BITS),
                 .ADDR_SIZE     (hpdcacheCfg.mshrSetWidth),
-                .DEPTH         (hpdcacheCfg.mshrSets)
+                .DEPTH         (hpdcacheCfg.u.mshrSets)
             ) mshr_mem(
                 .clk           (clk_i),
                 .rst_n         (rst_ni),
@@ -346,9 +346,9 @@ import hpdcache_pkg::*;
             );
         end else begin : gen_mshr_sram
             hpdcache_sram_wmask #(
-                .DATA_SIZE     (hpdcacheCfg.mshrWays*HPDCACHE_MSHR_RAM_ENTRY_BITS),
+                .DATA_SIZE     (hpdcacheCfg.u.mshrWays*HPDCACHE_MSHR_RAM_ENTRY_BITS),
                 .ADDR_SIZE     (hpdcacheCfg.mshrSetWidth),
-                .DEPTH         (hpdcacheCfg.mshrSets)
+                .DEPTH         (hpdcacheCfg.u.mshrSets)
             ) mshr_mem(
                 .clk           (clk_i),
                 .rst_n         (rst_ni),
@@ -375,7 +375,7 @@ import hpdcache_pkg::*;
 
     always_comb
     begin : ram_word_fitting_comb
-        for (int unsigned i = 0; i < hpdcacheCfg.mshrWays; i++) begin
+        for (int unsigned i = 0; i < hpdcacheCfg.u.mshrWays; i++) begin
             mshr_wdata[i]  = mshr_sram_data_t'(mshr_wentry[i]);
             mshr_rentry[i] = mshr_entry_t'(mshr_rdata[i][0 +: HPDCACHE_MSHR_ENTRY_BITS]);
         end

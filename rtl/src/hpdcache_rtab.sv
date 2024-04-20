@@ -113,7 +113,7 @@ import hpdcache_pkg::*;
 
 //  Definition of constants, types and functions
 //  {{{
-    localparam int N = hpdcacheCfg.rtabEntries;
+    localparam int N = hpdcacheCfg.u.rtabEntries;
 
     function automatic rtab_ptr_t rtab_bv_to_index(
             input logic [N-1:0] bv);
@@ -136,7 +136,7 @@ import hpdcache_pkg::*;
     function automatic bit rtab_mshr_set_equal(
             input hpdcache_nline_t x,
             input hpdcache_nline_t y);
-        if (hpdcacheCfg.mshrSets > 1) begin
+        if (hpdcacheCfg.u.mshrSets > 1) begin
             return (x[0 +: hpdcacheCfg.mshrSetWidth] == y[0 +: hpdcacheCfg.mshrSetWidth]);
         end else begin
             return 1'b1;
