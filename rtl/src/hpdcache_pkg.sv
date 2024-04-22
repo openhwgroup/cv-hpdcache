@@ -437,6 +437,7 @@ package hpdcache_pkg;
         int unsigned reqWordIdxWidth;
         int unsigned reqOffsetWidth;
         int unsigned reqDataWidth;
+        int unsigned reqDataBytes;
         int unsigned mshrSetWidth;
         int unsigned mshrWayWidth;
         int unsigned wbufDataWidth;
@@ -460,6 +461,7 @@ package hpdcache_pkg;
         ret.reqWordIdxWidth = $clog2(p.reqWords);
         ret.reqOffsetWidth = p.paWidth - ret.tagWidth;
         ret.reqDataWidth = p.reqWords * p.wordWidth;
+        ret.reqDataBytes = ret.reqDataWidth/8;
 
         ret.mshrSetWidth = (p.mshrSets > 1) ? $clog2(p.mshrSets) : 1;
         ret.mshrWayWidth = (p.mshrWays > 1) ? $clog2(p.mshrWays) : 1;
