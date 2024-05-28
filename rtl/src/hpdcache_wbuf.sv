@@ -461,7 +461,7 @@ import hpdcache_pkg::*;
         wbuf_data_d = wbuf_data_q;
 
         for (int unsigned i = 0; i < WBUF_DIR_NENTRIES; i++) begin
-            case (wbuf_dir_state_q[i])
+            unique case (wbuf_dir_state_q[i])
                 WBUF_FREE: begin
                     match_free = wbuf_write_free && (i == int'(wbuf_dir_free_ptr_q));
 
@@ -653,7 +653,10 @@ import hpdcache_pkg::*;
         .rok_o               (mem_req_write_valid_o),
         .rdata_o             (wbuf_meta_send_q)
     );
+    //  }}}
 
+    //  Memory Address and Data Interface
+    //  {{{
     assign mem_req_write_o.mem_req_addr      = { wbuf_meta_send_q.meta_tag, {WBUF_OFFSET_WIDTH{1'b0}} };
     assign mem_req_write_o.mem_req_len       = 0;
     assign mem_req_write_o.mem_req_size      = get_hpdcache_mem_size(hpdcacheCfg.wbufDataWidth/8);
@@ -662,11 +665,6 @@ import hpdcache_pkg::*;
     assign mem_req_write_o.mem_req_atomic    = HPDCACHE_MEM_ATOMIC_ADD;
     assign mem_req_write_o.mem_req_cacheable = ~wbuf_meta_send_q.meta_uc;
 
-    assign mem_resp_write_ready_o = 1'b1;
-    //  }}}
-
-    //  Memory Data Interface
-    //  {{{
     assign mem_req_write_data_o.mem_req_w_last = 1'b1;
 
     if (WBUF_MEM_DATA_RATIO > 1) begin : gen_wbuf_data_upsizing
@@ -690,6 +688,8 @@ import hpdcache_pkg::*;
         assign mem_req_write_data_o.mem_req_w_data = send_data,
                mem_req_write_data_o.mem_req_w_be   = send_be;
     end
+
+    assign mem_resp_write_ready_o = 1'b1;
     //  }}}
 
     //  Internal state assignment
