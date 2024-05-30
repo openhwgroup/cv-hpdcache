@@ -16,6 +16,7 @@ sources:
   - rtl/src/common/hpdcache_fxarb.sv
   - rtl/src/common/hpdcache_rrarb.sv
   - rtl/src/common/hpdcache_mux.sv
+  - rtl/src/common/hpdcache_1hot_to_binary.sv
   - rtl/src/common/hpdcache_prio_1hot_encoder.sv
   - rtl/src/common/hpdcache_sram.sv
   - rtl/src/common/hpdcache_sram_wbyteenable.sv

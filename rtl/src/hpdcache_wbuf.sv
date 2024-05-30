@@ -152,20 +152,6 @@ import hpdcache_pkg::*;
         logic           meta_uc;
     } wbuf_send_meta_t;
 
-    function automatic wbuf_data_ptr_t wbuf_data_find_next(
-            input wbuf_data_ptr_t curr_ptr,
-            input logic [WBUF_DATA_NENTRIES-1:0] data_valid,
-            input logic state);
-        automatic wbuf_data_ptr_t next_ptr;
-        for (int unsigned i = 0; i < WBUF_DATA_NENTRIES; i++) begin
-            next_ptr = wbuf_data_ptr_t'((i + int'(curr_ptr) + 1) % WBUF_DATA_NENTRIES);
-            if (data_valid[next_ptr] == state) begin
-                return next_ptr;
-            end
-        end
-        return curr_ptr;
-    endfunction
-
     function automatic void wbuf_data_write(
             output wbuf_data_buf_t wbuf_ret_data,
             output wbuf_be_buf_t   wbuf_ret_be,
@@ -197,8 +183,9 @@ import hpdcache_pkg::*;
 
     logic                                       wbuf_dir_free;
     logic [WBUF_DIR_NENTRIES-1:0]               wbuf_dir_free_ptr_bv;
-    wbuf_data_ptr_t                             wbuf_data_free_ptr_q, wbuf_data_free_ptr_d;
     logic                                       wbuf_data_free;
+    wbuf_data_ptr_t                             wbuf_data_free_ptr;
+    logic [WBUF_DATA_NENTRIES-1:0]              wbuf_data_free_ptr_bv;
 
     logic                                       wbuf_write_free;
     logic                                       wbuf_write_hit_open;
@@ -306,19 +293,7 @@ import hpdcache_pkg::*;
         end
     endgenerate
 
-    always_comb
-    begin : wbuf_free_comb
-        wbuf_data_free_ptr_d = wbuf_data_free_ptr_q;
-        if (mem_req_write_data_valid_o && mem_req_write_data_ready_i) begin
-            wbuf_data_free_ptr_d = send_data_q.data_ptr;
-        end else if (write_i && wbuf_write_free) begin
-            wbuf_data_free_ptr_d = wbuf_data_find_next(wbuf_data_free_ptr_q, wbuf_data_valid_q, 1'b0);
-        end
-    end
-
-    assign wbuf_dir_free  = |wbuf_dir_free_bv;
-
-    hpdcache_rrarb #(
+    hpdcache_fxarb #(
         .N       (WBUF_DIR_NENTRIES)
     ) dir_free_rrarb_i(
         .clk_i,
@@ -328,7 +303,25 @@ import hpdcache_pkg::*;
         .ready_i (write_i & wbuf_write_free)
     );
 
-    assign wbuf_data_free = ~wbuf_data_valid_q[wbuf_data_free_ptr_q];
+    hpdcache_fxarb #(
+        .N       (WBUF_DATA_NENTRIES)
+    ) data_free_rrarb_i(
+        .clk_i,
+        .rst_ni,
+        .req_i   (~wbuf_data_valid_q),
+        .gnt_o   (wbuf_data_free_ptr_bv),
+        .ready_i (write_i & wbuf_write_free)
+    );
+
+    hpdcache_1hot_to_binary #(
+        .N       (WBUF_DATA_NENTRIES)
+    ) data_free_ptr_binary_i(
+        .val_i   (wbuf_data_free_ptr_bv),
+        .val_o   (wbuf_data_free_ptr)
+    );
+
+    assign wbuf_dir_free  = |wbuf_dir_free_bv;
+    assign wbuf_data_free = ~(&wbuf_data_valid_q);
 
     always_comb
     begin : wbuf_write_hit_comb
@@ -472,12 +465,12 @@ import hpdcache_pkg::*;
                         wbuf_dir_state_d[i] = send ? WBUF_PEND : WBUF_OPEN;
                         wbuf_dir_d[i].tag = write_tag;
                         wbuf_dir_d[i].cnt = 0;
-                        wbuf_dir_d[i].ptr = wbuf_data_free_ptr_q;
+                        wbuf_dir_d[i].ptr = wbuf_data_free_ptr;
                         wbuf_dir_d[i].uc  = write_uc_i;
 
                         wbuf_data_write(
-                            wbuf_data_d[wbuf_data_free_ptr_q].data,
-                            wbuf_data_d[wbuf_data_free_ptr_q].be,
+                            wbuf_data_d[wbuf_data_free_ptr].data,
+                            wbuf_data_d[wbuf_data_free_ptr].be,
                             '0,
                             '0,
                             write_data,
@@ -560,7 +553,7 @@ import hpdcache_pkg::*;
 
         //  allocate a free data buffer on new write
         if (write_i && wbuf_write_free) begin
-            wbuf_data_valid_d[wbuf_data_free_ptr_q] = 1'b1;
+            wbuf_data_valid_d[wbuf_data_free_ptr] = 1'b1;
         end
 
         //  de-allocate a data buffer as soon as it is send
@@ -699,12 +692,10 @@ import hpdcache_pkg::*;
             wbuf_dir_q           <= '0;
             wbuf_dir_state_q     <= {WBUF_DIR_NENTRIES{WBUF_FREE}};
             wbuf_data_valid_q    <= '0;
-            wbuf_data_free_ptr_q <= 0;
         end else begin
             wbuf_dir_q           <= wbuf_dir_d;
             wbuf_dir_state_q     <= wbuf_dir_state_d;
             wbuf_data_valid_q    <= wbuf_data_valid_d;
-            wbuf_data_free_ptr_q <= wbuf_data_free_ptr_d;
         end
     end
     //  }}}
