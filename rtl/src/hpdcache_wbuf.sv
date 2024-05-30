@@ -221,8 +221,12 @@ import hpdcache_pkg::*;
     wbuf_dir_ptr_t                              wbuf_write_hit_open_dir_ptr;
     wbuf_dir_ptr_t                              wbuf_write_hit_pend_dir_ptr;
 
-    logic [WBUF_DIR_NENTRIES-1:0]               wbuf_dir_pend;
-    logic [WBUF_DIR_NENTRIES-1:0]               wbuf_dir_pend_grant;
+    logic [WBUF_DIR_NENTRIES-1:0]               wbuf_dir_free_bv;
+    logic [WBUF_DIR_NENTRIES-1:0]               wbuf_dir_open_bv;
+    logic [WBUF_DIR_NENTRIES-1:0]               wbuf_dir_pend_bv;
+    logic [WBUF_DIR_NENTRIES-1:0]               wbuf_dir_sent_bv;
+
+    logic [WBUF_DIR_NENTRIES-1:0]               wbuf_send_grant;
     wbuf_send_meta_t [WBUF_DIR_NENTRIES-1:0]    wbuf_meta_pend;
     wbuf_data_ptr_t [WBUF_DIR_NENTRIES-1:0]     wbuf_meta_pend_data_ptr;
     wbuf_data_ptr_t                             wbuf_meta_send_data_ptr;
@@ -257,11 +261,18 @@ import hpdcache_pkg::*;
 
     //  Global control signals
     //  {{{
+    for (gen_i = 0; gen_i < WBUF_DIR_NENTRIES; gen_i++) begin : gen_dir_state_bv
+        assign wbuf_dir_free_bv[gen_i] = (wbuf_dir_state_q[gen_i] == WBUF_FREE);
+        assign wbuf_dir_open_bv[gen_i] = (wbuf_dir_state_q[gen_i] == WBUF_OPEN);
+        assign wbuf_dir_pend_bv[gen_i] = (wbuf_dir_state_q[gen_i] == WBUF_PEND);
+        assign wbuf_dir_sent_bv[gen_i] = (wbuf_dir_state_q[gen_i] == WBUF_SENT);
+    end
+
     always_comb
     begin : empty_comb
         empty_o = 1'b1;
         for (int unsigned i = 0; i < WBUF_DIR_NENTRIES; i++) begin
-            empty_o &= (wbuf_dir_state_q[i] == WBUF_FREE);
+            empty_o &= wbuf_dir_free_bv[i];
         end
     end
 
@@ -269,7 +280,7 @@ import hpdcache_pkg::*;
     begin : full_comb
         full_o = 1'b1;
         for (int unsigned i = 0; i < WBUF_DIR_NENTRIES; i++) begin
-            full_o &= (wbuf_dir_state_q[i] != WBUF_FREE);
+            full_o &= ~wbuf_dir_free_bv[i];
         end
     end
     //  }}}
@@ -399,18 +410,15 @@ import hpdcache_pkg::*;
                     (wbuf_dir_q[gen_i].tag ==
                         replay_addr_i[hpdcacheCfg.u.paWidth - 1:hpdcacheCfg.u.paWidth - WBUF_TAG_WIDTH]);
 
-            assign replay_open_hit[gen_i] =
-                    replay_match[gen_i] && (wbuf_dir_state_q[gen_i] == WBUF_OPEN);
-            assign replay_pend_hit[gen_i] =
-                    replay_match[gen_i] && (wbuf_dir_state_q[gen_i] == WBUF_PEND);
-            assign replay_sent_hit[gen_i] =
-                    replay_match[gen_i] && (wbuf_dir_state_q[gen_i] == WBUF_SENT);
+            assign replay_open_hit[gen_i] = replay_match[gen_i] & wbuf_dir_open_bv[gen_i];
+            assign replay_pend_hit[gen_i] = replay_match[gen_i] & wbuf_dir_pend_bv[gen_i];
+            assign replay_sent_hit[gen_i] = replay_match[gen_i] & wbuf_dir_sent_bv[gen_i];
         end
     endgenerate
 
-    assign replay_open_hit_o = |replay_open_hit,
-           replay_pend_hit_o = |replay_pend_hit,
-           replay_sent_hit_o = |replay_sent_hit;
+    assign replay_open_hit_o = |replay_open_hit;
+    assign replay_pend_hit_o = |replay_pend_hit;
+    assign replay_sent_hit_o = |replay_sent_hit;
 
     always_comb
     begin : replay_wbuf_not_ready_comb
@@ -542,7 +550,7 @@ import hpdcache_pkg::*;
                         );
                     end
 
-                    if (wbuf_dir_pend_grant[i] && send_data_ready && send_meta_ready) begin
+                    if (wbuf_send_grant[i] && send_data_ready && send_meta_ready) begin
                         wbuf_dir_state_d[i] = WBUF_SENT;
                     end
                 end
@@ -575,7 +583,6 @@ import hpdcache_pkg::*;
     //  Send control
     //  {{{
     for (genvar i = 0; i < WBUF_DIR_NENTRIES; i++) begin : gen_wbuf_dir_pend
-        assign wbuf_dir_pend[i] = (wbuf_dir_state_q[i] == WBUF_PEND);
         assign wbuf_meta_pend[i].meta_tag = wbuf_dir_q[i].tag;
         assign wbuf_meta_pend[i].meta_id = i;
         assign wbuf_meta_pend[i].meta_uc = wbuf_dir_q[i].uc;
@@ -587,8 +594,8 @@ import hpdcache_pkg::*;
     ) pend_rrarb_i(
         .clk_i,
         .rst_ni,
-        .req_i   (wbuf_dir_pend),
-        .gnt_o   (wbuf_dir_pend_grant),
+        .req_i   (wbuf_dir_pend_bv),
+        .gnt_o   (wbuf_send_grant),
         .ready_i (send_data_ready & send_meta_ready)
     );
 
@@ -598,7 +605,7 @@ import hpdcache_pkg::*;
         .ONE_HOT_SEL (1'b1)
     ) wbuf_send_meta_mux_i(
         .data_i      (wbuf_meta_pend),
-        .sel_i       (wbuf_dir_pend_grant),
+        .sel_i       (wbuf_send_grant),
         .data_o      (wbuf_meta_send)
     );
 
@@ -608,12 +615,12 @@ import hpdcache_pkg::*;
         .ONE_HOT_SEL (1'b1)
     ) wbuf_send_data_ptr_mux_i(
         .data_i      (wbuf_meta_pend_data_ptr),
-        .sel_i       (wbuf_dir_pend_grant),
+        .sel_i       (wbuf_send_grant),
         .data_o      (wbuf_meta_send_data_ptr)
     );
 
     //    Data channel
-    assign send_data_w = (|wbuf_dir_pend) & send_meta_ready;
+    assign send_data_w = (|wbuf_dir_pend_bv) & send_meta_ready;
     assign send_data_d.data_ptr = wbuf_meta_send_data_ptr;
     assign send_data_d.data_tag = wbuf_meta_send.meta_tag;
 
@@ -637,7 +644,7 @@ import hpdcache_pkg::*;
     assign send_be         = wbuf_data_q[send_data_q.data_ptr].be;
 
     //    Meta-data channel
-    assign send_meta_valid = (|wbuf_dir_pend) & send_data_ready;
+    assign send_meta_valid = (|wbuf_dir_pend_bv) & send_data_ready;
 
     hpdcache_fifo_reg #(
         .FIFO_DEPTH          (WBUF_SEND_FIFO_DEPTH),
