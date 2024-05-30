@@ -152,20 +152,6 @@ import hpdcache_pkg::*;
         logic           meta_uc;
     } wbuf_send_meta_t;
 
-    function automatic wbuf_dir_ptr_t wbuf_dir_find_next(
-            input wbuf_dir_ptr_t curr_ptr,
-            input wbuf_state_e [WBUF_DIR_NENTRIES-1:0] dir_state,
-            input wbuf_state_e state);
-        automatic wbuf_dir_ptr_t next_ptr;
-        for (int unsigned i = 0; i < WBUF_DIR_NENTRIES; i++) begin
-            next_ptr = wbuf_dir_ptr_t'((i + int'(curr_ptr) + 1) % WBUF_DIR_NENTRIES);
-            if (dir_state[next_ptr] == state) begin
-                return next_ptr;
-            end
-        end
-        return curr_ptr;
-    endfunction
-
     function automatic wbuf_data_ptr_t wbuf_data_find_next(
             input wbuf_data_ptr_t curr_ptr,
             input logic [WBUF_DATA_NENTRIES-1:0] data_valid,
@@ -209,8 +195,8 @@ import hpdcache_pkg::*;
     logic             [WBUF_DATA_NENTRIES-1:0]  wbuf_data_valid_q, wbuf_data_valid_d;
     wbuf_data_entry_t [WBUF_DATA_NENTRIES-1:0]  wbuf_data_q, wbuf_data_d;
 
-    wbuf_dir_ptr_t                              wbuf_dir_free_ptr_q, wbuf_dir_free_ptr_d;
     logic                                       wbuf_dir_free;
+    logic [WBUF_DIR_NENTRIES-1:0]               wbuf_dir_free_ptr_bv;
     wbuf_data_ptr_t                             wbuf_data_free_ptr_q, wbuf_data_free_ptr_d;
     logic                                       wbuf_data_free;
 
@@ -322,13 +308,6 @@ import hpdcache_pkg::*;
 
     always_comb
     begin : wbuf_free_comb
-        wbuf_dir_free_ptr_d = wbuf_dir_free_ptr_q;
-        if (mem_resp_write_valid_i) begin
-            wbuf_dir_free_ptr_d = ack_id;
-        end else if (write_i && wbuf_write_free) begin
-            wbuf_dir_free_ptr_d = wbuf_dir_find_next(wbuf_dir_free_ptr_q, wbuf_dir_state_q, WBUF_FREE);
-        end
-
         wbuf_data_free_ptr_d = wbuf_data_free_ptr_q;
         if (mem_req_write_data_valid_o && mem_req_write_data_ready_i) begin
             wbuf_data_free_ptr_d = send_data_q.data_ptr;
@@ -337,7 +316,18 @@ import hpdcache_pkg::*;
         end
     end
 
-    assign wbuf_dir_free  = (wbuf_dir_state_q[wbuf_dir_free_ptr_q] == WBUF_FREE);
+    assign wbuf_dir_free  = |wbuf_dir_free_bv;
+
+    hpdcache_rrarb #(
+        .N       (WBUF_DIR_NENTRIES)
+    ) dir_free_rrarb_i(
+        .clk_i,
+        .rst_ni,
+        .req_i   (wbuf_dir_free_bv),
+        .gnt_o   (wbuf_dir_free_ptr_bv),
+        .ready_i (write_i & wbuf_write_free)
+    );
+
     assign wbuf_data_free = ~wbuf_data_valid_q[wbuf_data_free_ptr_q];
 
     always_comb
@@ -471,7 +461,7 @@ import hpdcache_pkg::*;
         for (int unsigned i = 0; i < WBUF_DIR_NENTRIES; i++) begin
             unique case (wbuf_dir_state_q[i])
                 WBUF_FREE: begin
-                    match_free = wbuf_write_free && (i == int'(wbuf_dir_free_ptr_q));
+                    match_free = wbuf_write_free & wbuf_dir_free_ptr_bv[i];
 
                     if (write_i && match_free) begin
                         send = (cfg_threshold_i == 0)
@@ -709,13 +699,11 @@ import hpdcache_pkg::*;
             wbuf_dir_q           <= '0;
             wbuf_dir_state_q     <= {WBUF_DIR_NENTRIES{WBUF_FREE}};
             wbuf_data_valid_q    <= '0;
-            wbuf_dir_free_ptr_q  <= 0;
             wbuf_data_free_ptr_q <= 0;
         end else begin
             wbuf_dir_q           <= wbuf_dir_d;
             wbuf_dir_state_q     <= wbuf_dir_state_d;
             wbuf_data_valid_q    <= wbuf_data_valid_d;
-            wbuf_dir_free_ptr_q  <= wbuf_dir_free_ptr_d;
             wbuf_data_free_ptr_q <= wbuf_data_free_ptr_d;
         end
     end
