@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Modify the arbitration between the different sources of requests (refill is now prioritary)
 - Add feedthrough (optional) fifo in both wbuf and refill handler
 - Disable assertions during reset
+- Modify write buffer microarchitecture to improve both area and performance
 
 ### Fixed
 
