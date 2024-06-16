@@ -44,19 +44,19 @@ import hpdcache_pkg::*;
 
     //      Core request interface
     //         1st cycle
-    input  logic                          core_req_valid_i [HPDcacheCfg.u.nRequesters-1],
-    output logic                          core_req_ready_o [HPDcacheCfg.u.nRequesters-1],
-    input  hpdcache_req_t                 core_req_i       [HPDcacheCfg.u.nRequesters-1],
+    input  logic                          core_req_valid_i [HPDcacheCfg.u.nRequesters],
+    output logic                          core_req_ready_o [HPDcacheCfg.u.nRequesters],
+    input  hpdcache_req_t                 core_req_i       [HPDcacheCfg.u.nRequesters],
     //         2nd cycle
-    input  logic                          core_req_abort_i [HPDcacheCfg.u.nRequesters-1],
-    input  hpdcache_tag_t                 core_req_tag_i   [HPDcacheCfg.u.nRequesters-1],
-    input  hpdcache_pma_t                 core_req_pma_i   [HPDcacheCfg.u.nRequesters-1],
+    input  logic                          core_req_abort_i [HPDcacheCfg.u.nRequesters],
+    input  hpdcache_tag_t                 core_req_tag_i   [HPDcacheCfg.u.nRequesters],
+    input  hpdcache_pma_t                 core_req_pma_i   [HPDcacheCfg.u.nRequesters],
 
     //      Core response interface
     input  logic                          core_rsp_valid_i,
     input  hpdcache_rsp_t                 core_rsp_i,
-    output logic                          core_rsp_valid_o [HPDcacheCfg.u.nRequesters-1],
-    output hpdcache_rsp_t                 core_rsp_o       [HPDcacheCfg.u.nRequesters-1],
+    output logic                          core_rsp_valid_o [HPDcacheCfg.u.nRequesters],
+    output hpdcache_rsp_t                 core_rsp_o       [HPDcacheCfg.u.nRequesters],
 
     //      Granted request
     output logic                          arb_req_valid_o,
