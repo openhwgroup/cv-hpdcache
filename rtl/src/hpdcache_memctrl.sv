@@ -28,7 +28,7 @@ import hpdcache_pkg::*;
     //  Parameters
     //  {{{
 #(
-    parameter hpdcache_cfg_t hpdcacheCfg = '0,
+    parameter hpdcache_cfg_t HPDcacheCfg = '0,
 
     parameter type hpdcache_nline_t = logic,
     parameter type hpdcache_tag_t = logic,
@@ -134,23 +134,28 @@ import hpdcache_pkg::*;
     //  Definition of constants and types
     //  {{{
     localparam int unsigned HPDCACHE_DIR_RAM_WIDTH = $bits(hpdcache_dir_entry_t);
-    localparam int unsigned HPDCACHE_DIR_RAM_ADDR_WIDTH = $clog2(hpdcacheCfg.u.sets);
-    localparam int unsigned HPDCACHE_DATA_RAM_ENTR_PER_SET = hpdcacheCfg.u.clWords/hpdcacheCfg.u.accessWords;
-    localparam int unsigned HPDCACHE_DATA_RAM_DEPTH = hpdcacheCfg.u.sets*HPDCACHE_DATA_RAM_ENTR_PER_SET;
-    localparam int unsigned HPDCACHE_DATA_RAM_WIDTH = hpdcacheCfg.u.dataWaysPerRamWord*hpdcacheCfg.u.wordWidth;
+    localparam int unsigned HPDCACHE_DIR_RAM_ADDR_WIDTH = $clog2(HPDcacheCfg.u.sets);
+    localparam int unsigned HPDCACHE_DATA_RAM_ENTR_PER_SET = HPDcacheCfg.u.clWords/
+                                                             HPDcacheCfg.u.accessWords;
+    localparam int unsigned HPDCACHE_DATA_RAM_DEPTH = HPDcacheCfg.u.sets*
+                                                      HPDCACHE_DATA_RAM_ENTR_PER_SET;
+    localparam int unsigned HPDCACHE_DATA_RAM_WIDTH = HPDcacheCfg.u.dataWaysPerRamWord*
+                                                      HPDcacheCfg.u.wordWidth;
     localparam int unsigned HPDCACHE_DATA_RAM_ADDR_WIDTH = $clog2(HPDCACHE_DATA_RAM_DEPTH);
-    localparam int unsigned HPDCACHE_DATA_REQ_RATIO = hpdcacheCfg.u.accessWords/hpdcacheCfg.u.reqWords;
-    localparam int unsigned HPDCACHE_DATA_RAM_Y_CUTS = hpdcacheCfg.u.ways/hpdcacheCfg.u.dataWaysPerRamWord;
-    localparam int unsigned HPDCACHE_DATA_RAM_X_CUTS = hpdcacheCfg.u.accessWords;
+    localparam int unsigned HPDCACHE_DATA_REQ_RATIO = HPDcacheCfg.u.accessWords/
+                                                      HPDcacheCfg.u.reqWords;
+    localparam int unsigned HPDCACHE_DATA_RAM_Y_CUTS = HPDcacheCfg.u.ways/
+                                                       HPDcacheCfg.u.dataWaysPerRamWord;
+    localparam int unsigned HPDCACHE_DATA_RAM_X_CUTS = HPDcacheCfg.u.accessWords;
     localparam int unsigned HPDCACHE_ALL_CUTS = HPDCACHE_DATA_RAM_X_CUTS*HPDCACHE_DATA_RAM_Y_CUTS;
 
     typedef logic [HPDCACHE_DIR_RAM_ADDR_WIDTH-1:0] hpdcache_dir_addr_t;
 
     typedef logic [HPDCACHE_DATA_RAM_ADDR_WIDTH-1:0] hpdcache_data_ram_addr_t;
-    typedef hpdcache_data_word_t[hpdcacheCfg.u.dataWaysPerRamWord-1:0] hpdcache_data_ram_data_t;
-    typedef hpdcache_data_be_t  [hpdcacheCfg.u.dataWaysPerRamWord-1:0] hpdcache_data_ram_be_t;
+    typedef hpdcache_data_word_t[HPDcacheCfg.u.dataWaysPerRamWord-1:0] hpdcache_data_ram_data_t;
+    typedef hpdcache_data_be_t  [HPDcacheCfg.u.dataWaysPerRamWord-1:0] hpdcache_data_ram_be_t;
     typedef logic [HPDCACHE_DATA_RAM_Y_CUTS-1:0] hpdcache_data_ram_row_idx_t;
-    typedef logic [$clog2(hpdcacheCfg.u.dataWaysPerRamWord)-1:0] hpdcache_data_ram_way_idx_t;
+    typedef logic [$clog2(HPDcacheCfg.u.dataWaysPerRamWord)-1:0] hpdcache_data_ram_way_idx_t;
     typedef logic [HPDCACHE_DATA_RAM_X_CUTS-1:0] hpdcache_data_row_enable_t;
     typedef hpdcache_data_row_enable_t [HPDCACHE_DATA_RAM_Y_CUTS-1:0] hpdcache_data_enable_t;
 
@@ -179,8 +184,8 @@ import hpdcache_pkg::*;
             input hpdcache_req_size_t size_i,
             input hpdcache_word_t     word_i);
 
-        localparam hpdcache_uint32 off_width =
-                hpdcacheCfg.u.accessWords > 1 ? $clog2(hpdcacheCfg.u.accessWords) : 1;
+        localparam hpdcache_uint32 OffWidth =
+                HPDcacheCfg.u.accessWords > 1 ? $clog2(HPDcacheCfg.u.accessWords) : 1;
 
         hpdcache_data_row_enable_t ret;
         hpdcache_uint32 off;
@@ -189,13 +194,13 @@ import hpdcache_pkg::*;
             3'h0,
             3'h1,
             3'h2,
-            3'h3:    ret = hpdcache_data_row_enable_t'({ 64/hpdcacheCfg.u.wordWidth{1'b1}});
-            3'h4:    ret = hpdcache_data_row_enable_t'({128/hpdcacheCfg.u.wordWidth{1'b1}});
-            3'h5:    ret = hpdcache_data_row_enable_t'({256/hpdcacheCfg.u.wordWidth{1'b1}});
-            default: ret = hpdcache_data_row_enable_t'({512/hpdcacheCfg.u.wordWidth{1'b1}});
+            3'h3:    ret = hpdcache_data_row_enable_t'({ 64/HPDcacheCfg.u.wordWidth{1'b1}});
+            3'h4:    ret = hpdcache_data_row_enable_t'({128/HPDcacheCfg.u.wordWidth{1'b1}});
+            3'h5:    ret = hpdcache_data_row_enable_t'({256/HPDcacheCfg.u.wordWidth{1'b1}});
+            default: ret = hpdcache_data_row_enable_t'({512/HPDcacheCfg.u.wordWidth{1'b1}});
         endcase
 
-        off = hpdcacheCfg.u.accessWords > 1 ? hpdcache_uint'(word_i[0 +: off_width]) : 0;
+        off = HPDcacheCfg.u.accessWords > 1 ? hpdcache_uint'(word_i[0 +: OffWidth]) : 0;
         return hpdcache_data_row_enable_t'(ret << off);
     endfunction
 
@@ -203,15 +208,15 @@ import hpdcache_pkg::*;
         input hpdcache_way_vector_t way);
         hpdcache_data_ram_row_idx_t ret;
         for (hpdcache_uint i = 0; i < HPDCACHE_DATA_RAM_Y_CUTS; i++) begin
-            ret[i] = |way[i*hpdcacheCfg.u.dataWaysPerRamWord +: hpdcacheCfg.u.dataWaysPerRamWord];
+            ret[i] = |way[i*HPDcacheCfg.u.dataWaysPerRamWord +: HPDcacheCfg.u.dataWaysPerRamWord];
         end
         return ret;
     endfunction
 
     function automatic hpdcache_data_ram_way_idx_t hpdcache_way_to_data_ram_word(
             input hpdcache_way_vector_t way);
-        for (hpdcache_uint i = 0; i < hpdcacheCfg.u.ways; i++) begin
-            if (way[i]) return hpdcache_data_ram_way_idx_t'(i % hpdcacheCfg.u.dataWaysPerRamWord);
+        for (hpdcache_uint i = 0; i < HPDcacheCfg.u.ways; i++) begin
+            if (way[i]) return hpdcache_data_ram_way_idx_t'(i % HPDcacheCfg.u.dataWaysPerRamWord);
         end
         return 0;
     endfunction
@@ -221,8 +226,8 @@ import hpdcache_pkg::*;
             input hpdcache_word_t word);
         hpdcache_uint ret;
 
-        ret = (hpdcache_uint'(set)*(hpdcacheCfg.u.clWords / hpdcacheCfg.u.accessWords)) +
-              (hpdcache_uint'(word) / hpdcacheCfg.u.accessWords);
+        ret = (hpdcache_uint'(set)*(HPDcacheCfg.u.clWords / HPDcacheCfg.u.accessWords)) +
+              (hpdcache_uint'(word) / HPDcacheCfg.u.accessWords);
 
         return hpdcache_data_ram_addr_t'(ret);
     endfunction
@@ -242,9 +247,9 @@ import hpdcache_pkg::*;
     hpdcache_dir_addr_t                           dir_addr;
     hpdcache_way_vector_t                         dir_cs;
     hpdcache_way_vector_t                         dir_we;
-    hpdcache_dir_entry_t [hpdcacheCfg.u.ways-1:0] dir_wentry;
-    hpdcache_dir_entry_t [hpdcacheCfg.u.ways-1:0] dir_rentry;
-    logic                [hpdcacheCfg.u.ways-1:0] dir_valid;
+    hpdcache_dir_entry_t [HPDcacheCfg.u.ways-1:0] dir_wentry;
+    hpdcache_dir_entry_t [HPDcacheCfg.u.ways-1:0] dir_rentry;
+    logic                [HPDcacheCfg.u.ways-1:0] dir_valid;
 
     hpdcache_data_addr_t                       data_addr;
     hpdcache_data_enable_t                     data_cs;
@@ -285,9 +290,9 @@ import hpdcache_pkg::*;
         init_d      = init_q;
         init_set_d  = init_set_q;
 
-        case (init_q)
+        unique case (init_q)
             1'b0: begin
-                init_d      = (hpdcache_uint'(init_set_q) == (hpdcacheCfg.u.sets - 1));
+                init_d      = (hpdcache_uint'(init_set_q) == (HPDcacheCfg.u.sets - 1));
                 init_set_d  = init_set_q + 1;
                 init_dir_cs = '1;
             end
@@ -320,7 +325,7 @@ import hpdcache_pkg::*;
 
         //  Directory
         //
-        for (dir_w = 0; dir_w < int'(hpdcacheCfg.u.ways); dir_w++) begin : gen_dir_sram
+        for (dir_w = 0; dir_w < int'(HPDcacheCfg.u.ways); dir_w++) begin : gen_dir_sram
             hpdcache_sram #(
                 .DATA_SIZE (HPDCACHE_DIR_RAM_WIDTH),
                 .ADDR_SIZE (HPDCACHE_DIR_RAM_ADDR_WIDTH)
@@ -339,7 +344,7 @@ import hpdcache_pkg::*;
         //
         for (y = 0; y < int'(HPDCACHE_DATA_RAM_Y_CUTS); y++) begin : gen_data_sram_row
             for (x = 0; x < int'(HPDCACHE_DATA_RAM_X_CUTS); x++) begin : gen_data_sram_col
-                if (hpdcacheCfg.u.dataRamByteEnable) begin : gen_data_sram_wbyteenable
+                if (HPDcacheCfg.u.dataRamByteEnable) begin : gen_data_sram_wbyteenable
                     hpdcache_sram_wbyteenable #(
                         .DATA_SIZE   (HPDCACHE_DATA_RAM_WIDTH),
                         .ADDR_SIZE   (HPDCACHE_DATA_RAM_ADDR_WIDTH)
@@ -359,8 +364,8 @@ import hpdcache_pkg::*;
                     //  build the bitmask from the write byte enable signal
                     always_comb
                     begin : data_wmask_comb
-                        for (int w = 0; w < hpdcacheCfg.u.dataWaysPerRamWord; w++) begin
-                            for (int b = 0; b < hpdcacheCfg.u.wordWidth/8; b++) begin
+                        for (int w = 0; w < HPDcacheCfg.u.dataWaysPerRamWord; w++) begin
+                            for (int b = 0; b < HPDcacheCfg.u.wordWidth/8; b++) begin
                                 data_wmask[w][8*b +: 8] = {8{data_wbyteenable[y][x][w][b]}};
                             end
                         end
@@ -387,8 +392,8 @@ import hpdcache_pkg::*;
 
     //  Directory RAM request mux
     //  {{{
-    assign dir_inval_set = dir_inval_nline_i[0 +: hpdcacheCfg.setWidth];
-    assign dir_inval_tag = dir_inval_nline_i[hpdcacheCfg.setWidth +: hpdcacheCfg.tagWidth];
+    assign dir_inval_set = dir_inval_nline_i[0 +: HPDcacheCfg.setWidth];
+    assign dir_inval_tag = dir_inval_nline_i[HPDcacheCfg.setWidth +: HPDcacheCfg.tagWidth];
 
     always_comb
     begin : dir_ctrl_comb
@@ -430,7 +435,7 @@ import hpdcache_pkg::*;
                 dir_addr    = dir_refill_set_i;
                 dir_cs      = dir_victim_way_o;
                 dir_we      = dir_victim_way_o;
-                dir_wentry  = {hpdcacheCfg.u.ways{dir_refill_entry_i}};
+                dir_wentry  = {HPDcacheCfg.u.ways{dir_refill_entry_i}};
             end
 
             //  Cache directory invalidate check from the NoC
@@ -489,7 +494,7 @@ import hpdcache_pkg::*;
                            dir_inval_check_i ? dir_inval_set       :
                                                dir_req_set_q       ;
 
-    for (gen_i = 0; gen_i < int'(hpdcacheCfg.u.ways); gen_i++)
+    for (gen_i = 0; gen_i < int'(HPDcacheCfg.u.ways); gen_i++)
     begin : gen_dir_match_tag
         assign req_hit[gen_i]   = (dir_rentry[gen_i].tag == dir_match_tag_i),
                amo_hit[gen_i]   = (dir_rentry[gen_i].tag == dir_amo_match_tag_i),
@@ -513,13 +518,13 @@ import hpdcache_pkg::*;
     assign plru_updt     = dir_update_lru_i | dir_amo_update_plru_i,
            plru_updt_way = dir_update_lru_i ? dir_hit_way_o : dir_amo_hit_way_o;
 
-    for (gen_i = 0; gen_i < hpdcacheCfg.u.ways; gen_i++) begin : gen_dir_valid_bv
+    for (gen_i = 0; gen_i < HPDcacheCfg.u.ways; gen_i++) begin : gen_dir_valid_bv
         assign dir_valid[gen_i] = dir_rentry[gen_i].valid;
     end
 
 
     hpdcache_victim_sel #(
-        .hpdcacheCfg              (hpdcacheCfg),
+        .HPDcacheCfg              (HPDcacheCfg),
         .hpdcache_set_t           (hpdcache_set_t),
         .hpdcache_way_vector_t    (hpdcache_way_vector_t)
     ) victim_sel_i(
@@ -550,11 +555,11 @@ import hpdcache_pkg::*;
         //  demux request BE
         hpdcache_demux #(
             .NOUTPUT     (HPDCACHE_DATA_REQ_RATIO),
-            .DATA_WIDTH  (hpdcacheCfg.reqDataWidth/8),
+            .DATA_WIDTH  (HPDcacheCfg.reqDataWidth/8),
             .ONE_HOT_SEL (1'b0)
         ) data_req_write_be_demux_i (
             .data_i      (data_req_write_be_i),
-            .sel_i       (data_req_write_word_i[hpdcacheCfg.reqWordIdxWidth +:
+            .sel_i       (data_req_write_word_i[HPDcacheCfg.reqWordIdxWidth +:
                                                 $clog2(HPDCACHE_DATA_REQ_RATIO)]),
             .data_o      (data_req_write_be)
         );
@@ -569,11 +574,11 @@ import hpdcache_pkg::*;
 
         hpdcache_demux #(
             .NOUTPUT          (HPDCACHE_DATA_REQ_RATIO),
-            .DATA_WIDTH       (hpdcacheCfg.reqDataWidth/8),
+            .DATA_WIDTH       (HPDcacheCfg.reqDataWidth/8),
             .ONE_HOT_SEL      (1'b0)
         ) amo_be_demux_i(
             .data_i           (data_amo_write_be_i),
-            .sel_i            (data_amo_write_word_i[hpdcacheCfg.reqWordIdxWidth +:
+            .sel_i            (data_amo_write_word_i[HPDcacheCfg.reqWordIdxWidth +:
                                                      $clog2(HPDCACHE_DATA_REQ_RATIO)]),
             .data_o           (data_amo_write_be)
         );
@@ -590,7 +595,7 @@ import hpdcache_pkg::*;
                 data_write        = 1'b1;
                 data_write_enable = 1'b1;
                 data_write_set    = data_refill_set_i;
-                data_write_size   = hpdcache_req_size_t'($clog2(hpdcacheCfg.accessWidth/8));
+                data_write_size   = hpdcache_req_size_t'($clog2(HPDcacheCfg.accessWidth/8));
                 data_write_word   = data_refill_word_i;
                 data_write_data   = data_refill_data_i;
                 data_write_be     = '1;
@@ -661,7 +666,7 @@ import hpdcache_pkg::*;
 
                 for (int unsigned i = 0; i < HPDCACHE_DATA_RAM_Y_CUTS; i++) begin
                     for (int unsigned j = 0; j < HPDCACHE_DATA_RAM_X_CUTS; j++) begin
-                        data_wentry[i][j] = {hpdcacheCfg.u.dataWaysPerRamWord{data_write_data[j]}};
+                        data_wentry[i][j] = {HPDcacheCfg.u.dataWaysPerRamWord{data_write_data[j]}};
                     end
                 end
 
@@ -675,8 +680,8 @@ import hpdcache_pkg::*;
                     end
 
                     //  Build the write mask
-                    for (int unsigned j = 0; j < hpdcacheCfg.u.accessWords; j++) begin
-                        for (int unsigned k = 0; k < hpdcacheCfg.u.dataWaysPerRamWord; k++) begin
+                    for (int unsigned j = 0; j < HPDcacheCfg.u.accessWords; j++) begin
+                        for (int unsigned k = 0; k < HPDcacheCfg.u.dataWaysPerRamWord; k++) begin
                             data_wbyteenable[i][j][k] = (k == hpdcache_uint'(data_ram_word)) ?
                                                         data_write_be[j] : '0;
                         end
@@ -698,29 +703,29 @@ import hpdcache_pkg::*;
 
     //  Data RAM read data multiplexor
     //  {{{
-    hpdcache_req_data_t [HPDCACHE_DATA_REQ_RATIO-1:0][hpdcacheCfg.u.ways-1:0] data_read_words;
-    hpdcache_req_data_t                              [hpdcacheCfg.u.ways-1:0] data_read_req_word;
+    hpdcache_req_data_t [HPDCACHE_DATA_REQ_RATIO-1:0][HPDcacheCfg.u.ways-1:0] data_read_words;
+    hpdcache_req_data_t                              [HPDcacheCfg.u.ways-1:0] data_read_req_word;
 
     //  Organize the read data by words (all ways for the same word are contiguous)
     for (gen_i = 0; gen_i < int'(HPDCACHE_DATA_REQ_RATIO); gen_i++) begin : gen_data_rentry_i
-        for (gen_j = 0; gen_j < int'(hpdcacheCfg.u.ways); gen_j++) begin : gen_data_rentry_j
-            for (gen_k = 0; gen_k < int'(hpdcacheCfg.u.reqWords); gen_k++) begin : gen_data_rentry_k
+        for (gen_j = 0; gen_j < int'(HPDcacheCfg.u.ways); gen_j++) begin : gen_data_rentry_j
+            for (gen_k = 0; gen_k < int'(HPDcacheCfg.u.reqWords); gen_k++) begin : gen_data_rentry_k
                 assign data_read_words[gen_i][gen_j][gen_k] =
-                        data_rentry[(gen_j / hpdcacheCfg.u.dataWaysPerRamWord)]
-                                   [(gen_i * hpdcacheCfg.u.reqWords) + gen_k]
-                                   [(gen_j % hpdcacheCfg.u.dataWaysPerRamWord)];
+                        data_rentry[(gen_j / HPDcacheCfg.u.dataWaysPerRamWord)]
+                                   [(gen_i * HPDcacheCfg.u.reqWords) + gen_k]
+                                   [(gen_j % HPDcacheCfg.u.dataWaysPerRamWord)];
             end
         end
     end
 
     //  Mux the data according to the access word
-    if (HPDCACHE_DATA_REQ_RATIO > 1) begin : req_width_lt_ram_width
+    if (HPDCACHE_DATA_REQ_RATIO > 1) begin : gen_req_width_lt_ram_width
         typedef logic [$clog2(HPDCACHE_DATA_REQ_RATIO)-1:0] data_req_word_t;
         data_req_word_t data_read_req_word_index_q;
 
         hpdcache_mux #(
             .NINPUT      (HPDCACHE_DATA_REQ_RATIO),
-            .DATA_WIDTH  (hpdcacheCfg.reqDataWidth*hpdcacheCfg.u.ways)
+            .DATA_WIDTH  (HPDcacheCfg.reqDataWidth*HPDcacheCfg.u.ways)
         ) data_read_req_word_mux_i(
             .data_i      (data_read_words),
             .sel_i       (data_read_req_word_index_q),
@@ -730,20 +735,20 @@ import hpdcache_pkg::*;
         always_ff @(posedge clk_i)
         begin : data_req_read_word_ff
             data_read_req_word_index_q <=
-                    data_req_read_word_i[hpdcacheCfg.reqWordIdxWidth +:
+                    data_req_read_word_i[HPDcacheCfg.reqWordIdxWidth +:
                                          $clog2(HPDCACHE_DATA_REQ_RATIO)];
         end
     end
 
     //  Request data interface width is equal to the data RAM width
-    else begin : req_width_eq_ram_width
+    else begin : gen_req_width_eq_ram_width
         assign data_read_req_word = data_read_words;
     end
 
     //  Mux the data according to the hit way
     hpdcache_mux #(
-        .NINPUT      (hpdcacheCfg.u.ways),
-        .DATA_WIDTH  (hpdcacheCfg.reqDataWidth),
+        .NINPUT      (HPDcacheCfg.u.ways),
+        .DATA_WIDTH  (HPDcacheCfg.reqDataWidth),
         .ONE_HOT_SEL (1'b1)
     ) data_read_req_word_way_mux_i(
         .data_i      (data_read_req_word),

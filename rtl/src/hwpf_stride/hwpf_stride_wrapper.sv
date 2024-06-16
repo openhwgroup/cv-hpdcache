@@ -31,7 +31,7 @@ import hpdcache_pkg::*;
 //  Parameters
 //  {{{
 #(
-    parameter hpdcache_cfg_t hpdcacheCfg = '0,
+    parameter hpdcache_cfg_t HPDcacheCfg = '0,
     parameter int unsigned NUM_HW_PREFETCH = 4,
     parameter int unsigned NUM_SNOOP_PORTS = 1,
 
@@ -98,8 +98,8 @@ import hpdcache_pkg::*;
 
     //  Internal registers
     //  {{{
-    typedef logic [hpdcacheCfg.nlineWidth-1:0] hpdcache_nline_t;
-    typedef logic [hpdcacheCfg.setWidth-1:0] hpdcache_set_t;
+    typedef logic [HPDcacheCfg.nlineWidth-1:0] hpdcache_nline_t;
+    typedef logic [HPDcacheCfg.setWidth-1:0] hpdcache_set_t;
     //  }}}
 
     //  Internal registers
@@ -209,7 +209,7 @@ import hpdcache_pkg::*;
         //  }}}
 
         hwpf_stride #(
-            .hpdcacheCfg          (hpdcacheCfg),
+            .HPDcacheCfg          (HPDcacheCfg),
             .hpdcache_nline_t     (hpdcache_nline_t),
             .hpdcache_tag_t       (hpdcache_tag_t),
             .hpdcache_set_t       (hpdcache_set_t),

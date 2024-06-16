@@ -28,7 +28,7 @@ import hpdcache_pkg::*;
     //  Parameters
     //  {{{
 #(
-    parameter hpdcache_cfg_t hpdcacheCfg = '0,
+    parameter hpdcache_cfg_t HPDcacheCfg = '0,
 
     parameter type hpdcache_nline_t = logic,
     parameter type hpdcache_tag_t = logic,
@@ -157,7 +157,7 @@ import hpdcache_pkg::*;
 
 //  Definition of constants and types
 //  {{{
-    localparam hpdcache_uint MEM_REQ_RATIO = hpdcacheCfg.u.memDataWidth/hpdcacheCfg.reqDataWidth;
+    localparam hpdcache_uint MEM_REQ_RATIO = HPDcacheCfg.u.memDataWidth/HPDcacheCfg.reqDataWidth;
     localparam hpdcache_uint MEM_REQ_WORD_INDEX_WIDTH = $clog2(MEM_REQ_RATIO);
 
     typedef enum {
@@ -279,14 +279,16 @@ import hpdcache_pkg::*;
 
     //  NOTE: Reservation set for LR instruction is always 8-bytes in this
     //  implementation.
-    assign lrsc_rsrv_nline  = lrsc_rsrv_addr_q[hpdcacheCfg.clOffsetWidth +: hpdcacheCfg.nlineWidth];
-    assign lrsc_rsrv_word   = lrsc_rsrv_addr_q[0 +: hpdcacheCfg.clOffsetWidth] >> 3;
+    assign lrsc_rsrv_nline  = lrsc_rsrv_addr_q[HPDcacheCfg.clOffsetWidth +:
+                                               HPDcacheCfg.nlineWidth];
+    assign lrsc_rsrv_word   = lrsc_rsrv_addr_q[0 +: HPDcacheCfg.clOffsetWidth] >> 3;
 
     //  Check hit on LR/SC reservation for snoop port (normal write accesses)
     assign lrsc_snoop_words = (lrsc_snoop_size_i < 3) ?
             1 : hpdcache_offset_t'((8'h1 << lrsc_snoop_size_i) >> 3);
-    assign lrsc_snoop_nline = lrsc_snoop_addr_i[hpdcacheCfg.clOffsetWidth +: hpdcacheCfg.nlineWidth];
-    assign lrsc_snoop_base  = lrsc_snoop_addr_i[0 +: hpdcacheCfg.clOffsetWidth] >> 3;
+    assign lrsc_snoop_nline = lrsc_snoop_addr_i[HPDcacheCfg.clOffsetWidth +:
+                                                HPDcacheCfg.nlineWidth];
+    assign lrsc_snoop_base  = lrsc_snoop_addr_i[0 +: HPDcacheCfg.clOffsetWidth] >> 3;
     assign lrsc_snoop_end   = lrsc_snoop_base + lrsc_snoop_words;
 
     assign lrsc_snoop_hit   = lrsc_rsrv_valid_q & (lrsc_rsrv_nline == lrsc_snoop_nline) &
@@ -296,8 +298,8 @@ import hpdcache_pkg::*;
     assign lrsc_snoop_reset = lrsc_snoop_i & lrsc_snoop_hit;
 
     //  Check hit on LR/SC reservation for AMOs and SC
-    assign lrsc_uc_nline    = req_addr_i[hpdcacheCfg.clOffsetWidth +: hpdcacheCfg.nlineWidth];
-    assign lrsc_uc_word     = req_addr_i[0 +: hpdcacheCfg.clOffsetWidth] >> 3;
+    assign lrsc_uc_nline    = req_addr_i[HPDcacheCfg.clOffsetWidth +: HPDcacheCfg.nlineWidth];
+    assign lrsc_uc_word     = req_addr_i[0 +: HPDcacheCfg.clOffsetWidth] >> 3;
 
     assign lrsc_uc_hit      = lrsc_rsrv_valid_q & (lrsc_rsrv_nline == lrsc_uc_nline) &
                                                   (lrsc_rsrv_word  == lrsc_uc_word);
@@ -319,7 +321,7 @@ import hpdcache_pkg::*;
 
         uc_fsm_d               = uc_fsm_q;
 
-        case (uc_fsm_q)
+        unique case (uc_fsm_q)
             //  Wait for a request
             //  {{{
             UC_IDLE: begin
@@ -330,7 +332,9 @@ import hpdcache_pkg::*;
                     unique case (1'b1)
                         req_op_i.is_ld,
                         req_op_i.is_st: begin
-                            if (wbuf_empty_i && mshr_empty_i && rtab_empty_i && ctrl_empty_i) begin
+                            if (wbuf_empty_i && mshr_empty_i && rtab_empty_i &&
+                                ctrl_empty_i)
+                            begin
                                 uc_fsm_d = UC_MEM_REQ;
                             end else begin
                                 uc_fsm_d = UC_WAIT_PENDING;
@@ -354,7 +358,9 @@ import hpdcache_pkg::*;
                                 rsp_error_set = 1'b1;
                                 uc_fsm_d = UC_CORE_RSP;
                             end else begin
-                                if (wbuf_empty_i && mshr_empty_i && rtab_empty_i && ctrl_empty_i) begin
+                                if (wbuf_empty_i && mshr_empty_i && rtab_empty_i &&
+                                    ctrl_empty_i)
+                                begin
                                     uc_fsm_d = UC_MEM_REQ;
                                 end else begin
                                     uc_fsm_d = UC_WAIT_PENDING;
@@ -372,7 +378,9 @@ import hpdcache_pkg::*;
 
                                 //  SC with valid reservation
                                 if (lrsc_uc_hit) begin
-                                    if (wbuf_empty_i && mshr_empty_i && rtab_empty_i && ctrl_empty_i) begin
+                                    if (wbuf_empty_i && mshr_empty_i && rtab_empty_i &&
+                                        ctrl_empty_i)
+                                    begin
                                         uc_fsm_d = UC_MEM_REQ;
                                     end else begin
                                         uc_fsm_d = UC_WAIT_PENDING;
@@ -416,7 +424,7 @@ import hpdcache_pkg::*;
                 mem_resp_write_valid_d = 1'b0;
                 mem_resp_read_valid_d  = 1'b0;
 
-                case (1'b1)
+                unique case (1'b1)
                     req_op_q.is_ld,
                     req_op_q.is_amo_lr: begin
                         if (mem_req_read_ready_i) begin
@@ -491,7 +499,7 @@ import hpdcache_pkg::*;
                            (mem_resp_write_i.mem_resp_w_error == HPDCACHE_MEM_RESP_NOK);
                 rsp_error_set = req_need_rsp_q & (rd_error | wr_error);
 
-                case (1'b1)
+                unique case (1'b1)
                     req_op_q.is_ld: begin
                         if (mem_resp_read_valid_i) begin
                             if (req_need_rsp_q) begin
@@ -601,10 +609,10 @@ import hpdcache_pkg::*;
 
 //  AMO unit
 //  {{{
-    if (hpdcacheCfg.reqDataWidth > 64) begin : gen_amo_data_width_gt_64
-        localparam hpdcache_uint AMO_WORD_INDEX_WIDTH = $clog2(hpdcacheCfg.reqDataWidth/64);
+    if (HPDcacheCfg.reqDataWidth > 64) begin : gen_amo_data_width_gt_64
+        localparam hpdcache_uint AMO_WORD_INDEX_WIDTH = $clog2(HPDcacheCfg.reqDataWidth/64);
         hpdcache_mux #(
-            .NINPUT         (hpdcacheCfg.reqDataWidth/64),
+            .NINPUT         (HPDcacheCfg.reqDataWidth/64),
             .DATA_WIDTH     (64),
             .ONE_HOT_SEL    (1'b0)
         ) amo_ld_data_mux_i (
@@ -614,7 +622,7 @@ import hpdcache_pkg::*;
         );
 
         hpdcache_mux #(
-            .NINPUT         (hpdcacheCfg.reqDataWidth/64),
+            .NINPUT         (HPDcacheCfg.reqDataWidth/64),
             .DATA_WIDTH     (64),
             .ONE_HOT_SEL    (1'b0)
         ) amo_st_data_mux_i (
@@ -622,7 +630,7 @@ import hpdcache_pkg::*;
             .sel_i          (req_addr_q[3 +: AMO_WORD_INDEX_WIDTH]),
             .data_o         (amo_req_st_data)
         );
-    end else if (hpdcacheCfg.reqDataWidth == 64) begin : gen_amo_data_width_eq_64
+    end else if (HPDcacheCfg.reqDataWidth == 64) begin : gen_amo_data_width_eq_64
         assign amo_req_ld_data = rsp_rdata_q;
         assign amo_req_st_data = req_data_q;
     end else begin : gen_amo_data_width_eq_32
@@ -642,22 +650,23 @@ import hpdcache_pkg::*;
         .result_o            (amo_result)
     );
 
-    assign dir_amo_match_o         = (uc_fsm_q == UC_AMO_READ_DIR);
-    assign dir_amo_match_set_o     = req_addr_q[hpdcacheCfg.clOffsetWidth +: hpdcacheCfg.setWidth];
-    assign dir_amo_match_tag_o     = req_addr_q[(hpdcacheCfg.clOffsetWidth + hpdcacheCfg.setWidth) +:
-                                                hpdcacheCfg.tagWidth];
-    assign dir_amo_update_plru_o   = (uc_fsm_q == UC_AMO_WRITE_DATA);
+    assign dir_amo_match_o = (uc_fsm_q == UC_AMO_READ_DIR);
+    assign dir_amo_match_set_o = req_addr_q[HPDcacheCfg.clOffsetWidth +: HPDcacheCfg.setWidth];
+    assign dir_amo_match_tag_o = req_addr_q[(HPDcacheCfg.clOffsetWidth + HPDcacheCfg.setWidth) +:
+                                            HPDcacheCfg.tagWidth];
+    assign dir_amo_update_plru_o = (uc_fsm_q == UC_AMO_WRITE_DATA);
 
-    assign data_amo_write_o        = (uc_fsm_q == UC_AMO_WRITE_DATA);
+    assign data_amo_write_o = (uc_fsm_q == UC_AMO_WRITE_DATA);
     assign data_amo_write_enable_o = |dir_amo_hit_way_i;
-    assign data_amo_write_set_o    = req_addr_q[hpdcacheCfg.clOffsetWidth +: hpdcacheCfg.setWidth];
-    assign data_amo_write_size_o   = req_size_q;
-    assign data_amo_write_word_o   = req_addr_q[hpdcacheCfg.wordByteIdxWidth +: hpdcacheCfg.clWordIdxWidth];
-    assign data_amo_write_be_o     = req_be_q;
+    assign data_amo_write_set_o = req_addr_q[HPDcacheCfg.clOffsetWidth +: HPDcacheCfg.setWidth];
+    assign data_amo_write_size_o = req_size_q;
+    assign data_amo_write_word_o = req_addr_q[HPDcacheCfg.wordByteIdxWidth +:
+                                              HPDcacheCfg.clWordIdxWidth];
+    assign data_amo_write_be_o = req_be_q;
 
     assign amo_write_data = prepare_amo_data_result(amo_result, req_size_q);
-    if (hpdcacheCfg.reqDataWidth >= 64) begin : gen_amo_ram_write_data_ge_64
-        assign data_amo_write_data_o = {hpdcacheCfg.reqDataWidth/64{amo_write_data}};
+    if (HPDcacheCfg.reqDataWidth >= 64) begin : gen_amo_ram_write_data_ge_64
+        assign data_amo_write_data_o = {HPDcacheCfg.reqDataWidth/64{amo_write_data}};
     end else begin : gen_amo_ram_write_data_lt_64
         assign data_amo_write_data_o = amo_write_data;
     end
@@ -805,10 +814,11 @@ import hpdcache_pkg::*;
         //  demultiplex the byte-enable
         hpdcache_demux #(
             .NOUTPUT     (MEM_REQ_RATIO),
-            .DATA_WIDTH  (hpdcacheCfg.reqDataWidth/8)
+            .DATA_WIDTH  (HPDcacheCfg.reqDataWidth/8)
         ) mem_write_be_demux_i (
             .data_i      (req_be_q),
-            .sel_i       (req_addr_q[$clog2(hpdcacheCfg.reqDataWidth/8) +: MEM_REQ_WORD_INDEX_WIDTH]),
+            .sel_i       (req_addr_q[$clog2(HPDcacheCfg.reqDataWidth/8) +:
+                                     MEM_REQ_WORD_INDEX_WIDTH]),
             .data_o      (mem_req_write_data_o.mem_req_w_be)
         );
     end
@@ -830,8 +840,8 @@ import hpdcache_pkg::*;
 
     assign sc_retcode = {{63{1'b0}}, uc_sc_retcode_q};
     assign sc_rdata_dword = prepare_amo_data_result(sc_retcode, req_size_q);
-    if (hpdcacheCfg.reqDataWidth >= 64) begin : gen_sc_rdata_ge_64
-        assign sc_rdata = {hpdcacheCfg.reqDataWidth/64{sc_rdata_dword}};
+    if (HPDcacheCfg.reqDataWidth >= 64) begin : gen_sc_rdata_ge_64
+        assign sc_rdata = {HPDcacheCfg.reqDataWidth/64{sc_rdata_dword}};
     end else begin : gen_sc_rdata_lt_64
         assign sc_rdata = sc_rdata_dword;
     end
@@ -847,10 +857,11 @@ import hpdcache_pkg::*;
     if (MEM_REQ_RATIO > 1) begin : gen_downsize_core_rsp_data
         hpdcache_mux #(
             .NINPUT      (MEM_REQ_RATIO),
-            .DATA_WIDTH  (hpdcacheCfg.reqDataWidth)
+            .DATA_WIDTH  (HPDcacheCfg.reqDataWidth)
         ) data_read_rsp_mux_i(
             .data_i      (mem_resp_read_i.mem_resp_r_data),
-            .sel_i       (req_addr_q[$clog2(hpdcacheCfg.reqDataWidth/8) +: MEM_REQ_WORD_INDEX_WIDTH]),
+            .sel_i       (req_addr_q[$clog2(HPDcacheCfg.reqDataWidth/8) +:
+                                     MEM_REQ_WORD_INDEX_WIDTH]),
             .data_o      (rsp_rdata_d)
         );
     end

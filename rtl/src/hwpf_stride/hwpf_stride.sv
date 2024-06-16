@@ -30,7 +30,7 @@ import hpdcache_pkg::*;
 //  Parameters
 //  {{{
 #(
-    parameter hpdcache_cfg_t hpdcacheCfg = '0,
+    parameter hpdcache_cfg_t HPDcacheCfg = '0,
     parameter type hpdcache_nline_t = logic,
     parameter type hpdcache_tag_t = logic,
     parameter type hpdcache_set_t = logic,
@@ -88,14 +88,16 @@ import hpdcache_pkg::*;
     //  Internal registers and signals
     //  {{{
     //      FSM
-    enum {
+    typedef enum {
         IDLE,
         SNOOP,
         SEND_REQ,
         WAIT,
         DONE,
         ABORT
-    } state_d, state_q;
+    } hwpf_stride_fsm_t;
+
+    hwpf_stride_fsm_t state_d, state_q;
 
     logic [NBLOCKS_WIDTH-1:0] nblocks_cnt_d, nblocks_cnt_q;
     logic [NLINES_CNT_WIDTH-1:0] nlines_cnt_d, nlines_cnt_q;
@@ -131,10 +133,10 @@ import hpdcache_pkg::*;
 
     //  Dcache outputs
     //  {{{
-    assign hpdcache_req_set = request_nline_q[0 +: hpdcacheCfg.setWidth],
-           hpdcache_req_tag = request_nline_q[hpdcacheCfg.setWidth +: hpdcacheCfg.tagWidth];
+    assign hpdcache_req_set = request_nline_q[0 +: HPDcacheCfg.setWidth],
+           hpdcache_req_tag = request_nline_q[HPDcacheCfg.setWidth +: HPDcacheCfg.tagWidth];
 
-    assign hpdcache_req_o.addr_offset     = { hpdcache_req_set, {hpdcacheCfg.clOffsetWidth{1'b0}} },
+    assign hpdcache_req_o.addr_offset     = { hpdcache_req_set, {HPDcacheCfg.clOffsetWidth{1'b0}} },
            hpdcache_req_o.wdata           = '0,
            hpdcache_req_o.op              = HPDCACHE_REQ_CMO,
            hpdcache_req_o.be              = '1,
@@ -223,7 +225,7 @@ import hpdcache_pkg::*;
         request_nline_d = request_nline_q;
         state_d = state_q;
 
-        case ( state_q )
+        unique case ( state_q )
 
             IDLE: begin
                 // If enabled, go snooping the dcache ports

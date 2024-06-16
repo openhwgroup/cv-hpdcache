@@ -30,7 +30,7 @@ module hpdcache_lint
 ();
   localparam int unsigned HPDCACHE_NREQUESTERS = 1;
 
-  localparam hpdcache_pkg::hpdcache_user_cfg_t hpdcacheUserCfg = '{
+  localparam hpdcache_pkg::hpdcache_user_cfg_t HPDcacheUserCfg = '{
       nRequesters: HPDCACHE_NREQUESTERS,
       paWidth: 56,
       wordWidth: 64,
@@ -64,12 +64,12 @@ module hpdcache_lint
       memDataWidth: 512
   };
 
-  localparam hpdcache_pkg::hpdcache_cfg_t hpdcacheCfg = hpdcache_pkg::hpdcacheBuildConfig(
-      hpdcacheUserCfg
+  localparam hpdcache_pkg::hpdcache_cfg_t HPDcacheCfg = hpdcache_pkg::hpdcacheBuildConfig(
+      HPDcacheUserCfg
   );
 
   `HPDCACHE_TYPEDEF_MEM_ATTR_T(hpdcache_mem_addr_t, hpdcache_mem_id_t, hpdcache_mem_data_t,
-                               hpdcache_mem_be_t, hpdcacheCfg);
+                               hpdcache_mem_be_t, HPDcacheCfg);
   `HPDCACHE_TYPEDEF_MEM_REQ_T(hpdcache_mem_req_t, hpdcache_mem_addr_t, hpdcache_mem_id_t);
   `HPDCACHE_TYPEDEF_MEM_RESP_R_T(hpdcache_mem_resp_r_t, hpdcache_mem_id_t, hpdcache_mem_data_t);
   `HPDCACHE_TYPEDEF_MEM_REQ_W_T(hpdcache_mem_req_w_t, hpdcache_mem_data_t, hpdcache_mem_be_t);
@@ -77,14 +77,14 @@ module hpdcache_lint
 
   `HPDCACHE_TYPEDEF_REQ_ATTR_T(hpdcache_req_offset_t, hpdcache_data_word_t, hpdcache_data_be_t,
                                hpdcache_req_data_t, hpdcache_req_be_t, hpdcache_req_sid_t,
-                               hpdcache_req_tid_t, hpdcache_tag_t, hpdcacheCfg);
+                               hpdcache_req_tid_t, hpdcache_tag_t, HPDcacheCfg);
   `HPDCACHE_TYPEDEF_REQ_T(hpdcache_req_t, hpdcache_req_offset_t, hpdcache_req_data_t,
                           hpdcache_req_be_t, hpdcache_req_sid_t, hpdcache_req_tid_t,
                           hpdcache_tag_t);
   `HPDCACHE_TYPEDEF_RSP_T(hpdcache_rsp_t, hpdcache_req_data_t, hpdcache_req_sid_t,
                           hpdcache_req_tid_t);
 
-  typedef logic [hpdcacheCfg.u.wbufTimecntWidth-1:0] hpdcache_wbuf_timecnt_t;
+  typedef logic [HPDcacheCfg.u.wbufTimecntWidth-1:0] hpdcache_wbuf_timecnt_t;
 
   logic                        clk;
   logic                        rst_n;
@@ -92,14 +92,14 @@ module hpdcache_lint
   logic                        wbuf_flush;
   logic                        wbuf_empty;
 
-  logic                        dcache_req_valid           [HPDCACHE_NREQUESTERS-1:0];
-  logic                        dcache_req_ready           [HPDCACHE_NREQUESTERS-1:0];
-  hpdcache_req_t               dcache_req                 [HPDCACHE_NREQUESTERS-1:0];
-  logic                        dcache_req_abort           [HPDCACHE_NREQUESTERS-1:0];
-  hpdcache_tag_t               dcache_req_tag             [HPDCACHE_NREQUESTERS-1:0];
-  hpdcache_pkg::hpdcache_pma_t dcache_req_pma             [HPDCACHE_NREQUESTERS-1:0];
-  logic                        dcache_rsp_valid           [HPDCACHE_NREQUESTERS-1:0];
-  hpdcache_rsp_t               dcache_rsp                 [HPDCACHE_NREQUESTERS-1:0];
+  logic                        dcache_req_valid           [HPDCACHE_NREQUESTERS-1];
+  logic                        dcache_req_ready           [HPDCACHE_NREQUESTERS-1];
+  hpdcache_req_t               dcache_req                 [HPDCACHE_NREQUESTERS-1];
+  logic                        dcache_req_abort           [HPDCACHE_NREQUESTERS-1];
+  hpdcache_tag_t               dcache_req_tag             [HPDCACHE_NREQUESTERS-1];
+  hpdcache_pkg::hpdcache_pma_t dcache_req_pma             [HPDCACHE_NREQUESTERS-1];
+  logic                        dcache_rsp_valid           [HPDCACHE_NREQUESTERS-1];
+  hpdcache_rsp_t               dcache_rsp                 [HPDCACHE_NREQUESTERS-1];
 
   logic                        dcache_miss_ready;
   logic                        dcache_miss_valid;
@@ -142,7 +142,7 @@ module hpdcache_lint
   hpdcache_mem_resp_w_t        dcache_uc_write_resp;
 
   hpdcache #(
-      .hpdcacheCfg          (hpdcacheCfg),
+      .HPDcacheCfg          (HPDcacheCfg),
       .wbuf_timecnt_t       (hpdcache_wbuf_timecnt_t),
       .hpdcache_tag_t       (hpdcache_tag_t),
       .hpdcache_data_word_t (hpdcache_data_word_t),

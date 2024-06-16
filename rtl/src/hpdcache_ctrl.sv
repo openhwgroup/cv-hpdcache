@@ -32,7 +32,7 @@ import hpdcache_pkg::*;
     // Parameters
     // {{{
 #(
-    parameter hpdcache_cfg_t hpdcacheCfg = '0,
+    parameter hpdcache_cfg_t HPDcacheCfg = '0,
 
     parameter type hpdcache_nline_t = logic,
     parameter type hpdcache_tag_t = logic,
@@ -217,7 +217,7 @@ import hpdcache_pkg::*;
 
     //  Definition of internal registers
     //  {{{
-    typedef logic [$clog2(hpdcacheCfg.u.rtabEntries)-1:0] rtab_ptr_t;
+    typedef logic [$clog2(HPDcacheCfg.u.rtabEntries)-1:0] rtab_ptr_t;
     //  }}}
 
     //  Definition of internal registers
@@ -493,7 +493,7 @@ import hpdcache_pkg::*;
     //  Replay table
     //  {{{
     hpdcache_rtab #(
-        .hpdcacheCfg                        (hpdcacheCfg),
+        .HPDcacheCfg                        (HPDcacheCfg),
         .hpdcache_nline_t                   (hpdcache_nline_t),
         .hpdcache_req_addr_t                (hpdcache_req_addr_t),
         .rtab_ptr_t                         (rtab_ptr_t),
@@ -604,16 +604,21 @@ import hpdcache_pkg::*;
 
     //  Controller for the HPDcache directory and data memory arrays
     //  {{{
-    assign st0_req_set   = st0_req.addr_offset[hpdcacheCfg.clOffsetWidth +: hpdcacheCfg.setWidth];
-    assign st0_req_word  = st0_req.addr_offset[hpdcacheCfg.wordByteIdxWidth +: hpdcacheCfg.clWordIdxWidth];
-    assign st1_req_set   = st1_req.addr_offset[hpdcacheCfg.clOffsetWidth +: hpdcacheCfg.setWidth];
-    assign st1_req_word  = st1_req.addr_offset[hpdcacheCfg.wordByteIdxWidth +: hpdcacheCfg.clWordIdxWidth];
-    assign st1_req_addr  = {st1_req.addr_tag, st1_req.addr_offset};
-    assign st1_req_nline = st1_req_addr[hpdcacheCfg.clOffsetWidth +: hpdcacheCfg.nlineWidth];
-    assign st2_req_word  = st2_req_addr_q[hpdcacheCfg.wordByteIdxWidth +: hpdcacheCfg.clWordIdxWidth];
+    assign st0_req_set = st0_req.addr_offset[HPDcacheCfg.clOffsetWidth +: HPDcacheCfg.setWidth];
+    assign st0_req_word = st0_req.addr_offset[HPDcacheCfg.wordByteIdxWidth +:
+                                              HPDcacheCfg.clWordIdxWidth];
+
+    assign st1_req_set = st1_req.addr_offset[HPDcacheCfg.clOffsetWidth +: HPDcacheCfg.setWidth];
+    assign st1_req_word = st1_req.addr_offset[HPDcacheCfg.wordByteIdxWidth +:
+                                              HPDcacheCfg.clWordIdxWidth];
+    assign st1_req_addr = {st1_req.addr_tag, st1_req.addr_offset};
+    assign st1_req_nline = st1_req_addr[HPDcacheCfg.clOffsetWidth +: HPDcacheCfg.nlineWidth];
+
+    assign st2_req_word = st2_req_addr_q[HPDcacheCfg.wordByteIdxWidth +:
+                                         HPDcacheCfg.clWordIdxWidth];
 
     hpdcache_memctrl #(
-        .hpdcacheCfg                   (hpdcacheCfg),
+        .HPDcacheCfg                   (HPDcacheCfg),
         .hpdcache_nline_t              (hpdcache_nline_t),
         .hpdcache_tag_t                (hpdcache_tag_t),
         .hpdcache_set_t                (hpdcache_set_t),
@@ -707,13 +712,14 @@ import hpdcache_pkg::*;
 
     //  Miss handler outputs
     //  {{{
-    assign miss_mshr_check_offset_o      = st0_req.addr_offset;
-    assign miss_mshr_check_nline_o       = st1_req_nline;
-    assign miss_mshr_alloc_nline_o       = st2_req_addr_q[hpdcacheCfg.clOffsetWidth +: hpdcacheCfg.nlineWidth];
-    assign miss_mshr_alloc_tid_o         = st2_req_tid_q;
-    assign miss_mshr_alloc_sid_o         = st2_req_sid_q;
-    assign miss_mshr_alloc_word_o        = st2_req_word;
-    assign miss_mshr_alloc_need_rsp_o    = st2_req_need_rsp_q;
+    assign miss_mshr_check_offset_o = st0_req.addr_offset;
+    assign miss_mshr_check_nline_o = st1_req_nline;
+    assign miss_mshr_alloc_nline_o = st2_req_addr_q[HPDcacheCfg.clOffsetWidth +:
+                                                    HPDcacheCfg.nlineWidth];
+    assign miss_mshr_alloc_tid_o = st2_req_tid_q;
+    assign miss_mshr_alloc_sid_o = st2_req_sid_q;
+    assign miss_mshr_alloc_word_o = st2_req_word;
+    assign miss_mshr_alloc_need_rsp_o = st2_req_need_rsp_q;
     assign miss_mshr_alloc_is_prefetch_o = st2_req_is_prefetch_q;
     //  }}}
 
@@ -790,7 +796,7 @@ import hpdcache_pkg::*;
             core_req_valid_i && core_req_ready_o &&
             (core_req_i.op != HPDCACHE_REQ_CMO)
         ) |-> (
-            (2**core_req_i.size) <= hpdcacheCfg.reqDataBytes
+            (2**core_req_i.size) <= HPDcacheCfg.reqDataBytes
         );
     endproperty
 
@@ -801,7 +807,7 @@ import hpdcache_pkg::*;
       input hpdcache_req_offset_t req_offset,
       input hpdcache_req_be_t req_be
     );
-        int offset = int'(req_offset) % hpdcacheCfg.reqDataBytes;
+        int offset = int'(req_offset) % HPDcacheCfg.reqDataBytes;
         return (((req_be >> offset) << offset) == req_be);
     endfunction
 

@@ -30,7 +30,7 @@ import hpdcache_pkg::*;
     //  Parameters
     //  {{{
 #(
-    parameter hpdcache_cfg_t hpdcacheCfg = '0,
+    parameter hpdcache_cfg_t HPDcacheCfg = '0,
 
     parameter type wbuf_timecnt_t = logic,
 
@@ -74,17 +74,17 @@ import hpdcache_pkg::*;
 
     //      Core request interface
     //         1st cycle
-    input  logic                          core_req_valid_i [hpdcacheCfg.u.nRequesters-1:0],
-    output logic                          core_req_ready_o [hpdcacheCfg.u.nRequesters-1:0],
-    input  hpdcache_req_t                 core_req_i       [hpdcacheCfg.u.nRequesters-1:0],
+    input  logic                          core_req_valid_i [HPDcacheCfg.u.nRequesters-1],
+    output logic                          core_req_ready_o [HPDcacheCfg.u.nRequesters-1],
+    input  hpdcache_req_t                 core_req_i       [HPDcacheCfg.u.nRequesters-1],
     //         2nd cycle
-    input  logic                          core_req_abort_i [hpdcacheCfg.u.nRequesters-1:0],
-    input  hpdcache_tag_t                 core_req_tag_i   [hpdcacheCfg.u.nRequesters-1:0],
-    input  hpdcache_pma_t                 core_req_pma_i   [hpdcacheCfg.u.nRequesters-1:0],
+    input  logic                          core_req_abort_i [HPDcacheCfg.u.nRequesters-1],
+    input  hpdcache_tag_t                 core_req_tag_i   [HPDcacheCfg.u.nRequesters-1],
+    input  hpdcache_pma_t                 core_req_pma_i   [HPDcacheCfg.u.nRequesters-1],
 
     //      Core response interface
-    output logic                          core_rsp_valid_o [hpdcacheCfg.u.nRequesters-1:0],
-    output hpdcache_rsp_t                 core_rsp_o       [hpdcacheCfg.u.nRequesters-1:0],
+    output logic                          core_rsp_valid_o [HPDcacheCfg.u.nRequesters-1],
+    output hpdcache_rsp_t                 core_rsp_o       [HPDcacheCfg.u.nRequesters-1],
 
     //      Miss read / invalidation interface
     input  logic                          mem_req_miss_read_ready_i,
@@ -164,12 +164,12 @@ import hpdcache_pkg::*;
 
     //  Declaration of internal types
     //  {{{
-    typedef logic [hpdcacheCfg.u.paWidth-1:0] hpdcache_req_addr_t;
-    typedef logic [hpdcacheCfg.nlineWidth-1:0] hpdcache_nline_t;
-    typedef logic [hpdcacheCfg.setWidth-1:0] hpdcache_set_t;
-    typedef logic [hpdcacheCfg.clOffsetWidth-1:0] hpdcache_offset_t;
-    typedef logic unsigned [hpdcacheCfg.clWordIdxWidth-1:0] hpdcache_word_t;
-    typedef logic unsigned [hpdcacheCfg.u.ways-1:0] hpdcache_way_vector_t;
+    typedef logic [HPDcacheCfg.u.paWidth-1:0] hpdcache_req_addr_t;
+    typedef logic [HPDcacheCfg.nlineWidth-1:0] hpdcache_nline_t;
+    typedef logic [HPDcacheCfg.setWidth-1:0] hpdcache_set_t;
+    typedef logic [HPDcacheCfg.clOffsetWidth-1:0] hpdcache_offset_t;
+    typedef logic unsigned [HPDcacheCfg.clWordIdxWidth-1:0] hpdcache_word_t;
+    typedef logic unsigned [HPDcacheCfg.u.ways-1:0] hpdcache_way_vector_t;
 
     typedef struct packed {
         logic valid;
@@ -177,8 +177,8 @@ import hpdcache_pkg::*;
         logic reserved;
     } hpdcache_dir_entry_t;
 
-    typedef hpdcache_data_word_t [hpdcacheCfg.u.accessWords-1:0] hpdcache_refill_data_t;
-    typedef hpdcache_data_be_t [hpdcacheCfg.u.accessWords-1:0] hpdcache_refill_be_t;
+    typedef hpdcache_data_word_t [HPDcacheCfg.u.accessWords-1:0] hpdcache_refill_data_t;
+    typedef hpdcache_data_be_t [HPDcacheCfg.u.accessWords-1:0] hpdcache_refill_be_t;
 
     typedef hpdcache_req_addr_t wbuf_addr_t;
     typedef hpdcache_req_data_t wbuf_data_t;
@@ -301,16 +301,16 @@ import hpdcache_pkg::*;
     hpdcache_tag_t         arb_tag;
     hpdcache_pma_t         arb_pma;
 
-    localparam logic [hpdcacheCfg.u.memIdWidth-1:0] HPDCACHE_UC_READ_ID =
-        {hpdcacheCfg.u.memIdWidth{1'b1}};
-    localparam logic [hpdcacheCfg.u.memIdWidth-1:0] HPDCACHE_UC_WRITE_ID =
-        {hpdcacheCfg.u.memIdWidth{1'b1}};
+    localparam logic [HPDcacheCfg.u.memIdWidth-1:0] HPDCACHE_UC_READ_ID =
+        {HPDcacheCfg.u.memIdWidth{1'b1}};
+    localparam logic [HPDcacheCfg.u.memIdWidth-1:0] HPDCACHE_UC_WRITE_ID =
+        {HPDcacheCfg.u.memIdWidth{1'b1}};
     //  }}}
 
     //  Requesters arbiter
     //  {{{
     hpdcache_core_arbiter #(
-        .hpdcacheCfg                        (hpdcacheCfg),
+        .HPDcacheCfg                        (HPDcacheCfg),
         .hpdcache_tag_t                     (hpdcache_tag_t),
         .hpdcache_req_t                     (hpdcache_req_t),
         .hpdcache_rsp_t                     (hpdcache_rsp_t)
@@ -342,7 +342,7 @@ import hpdcache_pkg::*;
     //  HPDcache controller
     //  {{{
     hpdcache_ctrl #(
-        .hpdcacheCfg                        (hpdcacheCfg),
+        .HPDcacheCfg                        (HPDcacheCfg),
         .hpdcache_nline_t                   (hpdcache_nline_t),
         .hpdcache_tag_t                     (hpdcache_tag_t),
         .hpdcache_set_t                     (hpdcache_set_t),
@@ -506,7 +506,7 @@ import hpdcache_pkg::*;
     //  HPDcache write-buffer
     //  {{{
     hpdcache_wbuf #(
-        .hpdcacheCfg                        (hpdcacheCfg),
+        .HPDcacheCfg                        (HPDcacheCfg),
         .wbuf_addr_t                        (wbuf_addr_t),
         .wbuf_timecnt_t                     (wbuf_timecnt_t),
         .hpdcache_mem_id_t                  (hpdcache_mem_id_t),
@@ -561,7 +561,7 @@ import hpdcache_pkg::*;
     //  Miss handler
     //  {{{
     hpdcache_miss_handler #(
-        .hpdcacheCfg                        (hpdcacheCfg),
+        .HPDcacheCfg                        (HPDcacheCfg),
         .hpdcache_nline_t                   (hpdcache_nline_t),
         .hpdcache_set_t                     (hpdcache_set_t),
         .hpdcache_tag_t                     (hpdcache_tag_t),
@@ -647,7 +647,7 @@ import hpdcache_pkg::*;
     //  Uncacheable request handler
     //  {{{
     hpdcache_uncached #(
-        .hpdcacheCfg                   (hpdcacheCfg),
+        .HPDcacheCfg                   (HPDcacheCfg),
         .hpdcache_nline_t              (hpdcache_nline_t),
         .hpdcache_tag_t                (hpdcache_tag_t),
         .hpdcache_set_t                (hpdcache_set_t),
@@ -740,7 +740,7 @@ import hpdcache_pkg::*;
     //  CMO Request Handler
     //  {{{
     hpdcache_cmo #(
-      .hpdcacheCfg              (hpdcacheCfg),
+      .HPDcacheCfg              (HPDcacheCfg),
 
       .hpdcache_nline_t         (hpdcache_nline_t),
       .hpdcache_tag_t           (hpdcache_tag_t),
@@ -784,23 +784,23 @@ import hpdcache_pkg::*;
 `ifndef HPDCACHE_ASSERT_OFF
     initial begin
         word_width_assert:
-            assert (hpdcacheCfg.u.wordWidth inside {32, 64}) else
+            assert (HPDcacheCfg.u.wordWidth inside {32, 64}) else
                 $fatal("word width shall be 32 or 64");
         req_access_width_assert:
-            assert (hpdcacheCfg.u.reqWords <= hpdcacheCfg.u.accessWords) else
+            assert (HPDcacheCfg.u.reqWords <= HPDcacheCfg.u.accessWords) else
                 $fatal("req data width shall be l.e. to cache access width");
         refill_access_width_assert:
-            assert (hpdcacheCfg.u.clWords >= hpdcacheCfg.u.accessWords) else
+            assert (HPDcacheCfg.u.clWords >= HPDcacheCfg.u.accessWords) else
                 $fatal("cache access width shall be l.e. to cache-line width");
         mem_width_assert:
-            assert (hpdcacheCfg.u.memDataWidth >= hpdcacheCfg.reqDataWidth) else
+            assert (HPDcacheCfg.u.memDataWidth >= HPDcacheCfg.reqDataWidth) else
                 $fatal("memory interface data width shall be g.e. to req data width");
         miss_mem_id_width_assert:
-            assert (hpdcacheCfg.u.memIdWidth >=
-                ($clog2(hpdcacheCfg.u.mshrWays * hpdcacheCfg.u.mshrSets) + 1)) else
+            assert (HPDcacheCfg.u.memIdWidth >=
+                ($clog2(HPDcacheCfg.u.mshrWays * HPDcacheCfg.u.mshrSets) + 1)) else
                 $fatal("insufficient ID bits on the mem interface to transport misses");
         wbuf_mem_id_width_assert:
-            assert (hpdcacheCfg.u.memIdWidth >= (hpdcacheCfg.wbufDirPtrWidth + 1)) else
+            assert (HPDcacheCfg.u.memIdWidth >= (HPDcacheCfg.wbufDirPtrWidth + 1)) else
                 $fatal("insufficient ID bits on the mem interface to transport writes");
 
         // FIXME Add compatibility checks between parameters and the parameter types

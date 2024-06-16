@@ -34,10 +34,9 @@ module hpdcache_prio_1hot_encoder
     output logic [N-1:0] val_o
 );
 
-    generate
-        assign val_o[0] = val_i[0];
-        for (genvar i = 1; i < int'(N); i++) begin : prio_gen
-            assign val_o[i] = val_i[i] & ~(|val_i[i-1:0]);
-        end
-    endgenerate
+    assign val_o[0] = val_i[0];
+
+    for (genvar i = 1; i < int'(N); i++) begin : gen_prio
+        assign val_o[i] = val_i[i] & ~(|val_i[i-1:0]);
+    end
 endmodule

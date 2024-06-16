@@ -55,7 +55,7 @@ module hpdcache_mux
     //  }}}
 
     //  Selector is one-hot encoded
-    if (ONE_HOT_SEL == 1) begin : onehot_sel_gen
+    if (ONE_HOT_SEL == 1) begin : gen_onehot_sel
         always_comb
         begin : data_out_mux_comb
             data_o = '0;
@@ -65,7 +65,7 @@ module hpdcache_mux
         end
 
     //  Selector is binary encoded
-    end else begin : binary_sel_gen
+    end else begin : gen_binary_sel
         always_comb
         begin : data_out_mux_comb
             data_o = '0;

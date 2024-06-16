@@ -28,7 +28,7 @@ import hpdcache_pkg::*;
 //  Parameters
 //  {{{
 #(
-    parameter hpdcache_cfg_t hpdcacheCfg = '0,
+    parameter hpdcache_cfg_t HPDcacheCfg = '0,
 
     parameter type hpdcache_nline_t = logic,
 
@@ -113,7 +113,7 @@ import hpdcache_pkg::*;
 
 //  Definition of constants, types and functions
 //  {{{
-    localparam int N = hpdcacheCfg.u.rtabEntries;
+    localparam int N = HPDcacheCfg.u.rtabEntries;
 
     function automatic rtab_ptr_t rtab_bv_to_index(
             input logic [N-1:0] bv);
@@ -136,8 +136,8 @@ import hpdcache_pkg::*;
     function automatic bit rtab_mshr_set_equal(
             input hpdcache_nline_t x,
             input hpdcache_nline_t y);
-        if (hpdcacheCfg.u.mshrSets > 1) begin
-            return (x[0 +: hpdcacheCfg.mshrSetWidth] == y[0 +: hpdcacheCfg.mshrSetWidth]);
+        if (HPDcacheCfg.u.mshrSets > 1) begin
+            return (x[0 +: HPDcacheCfg.mshrSetWidth] == y[0 +: HPDcacheCfg.mshrSetWidth]);
         end else begin
             return 1'b1;
         end
@@ -262,7 +262,8 @@ import hpdcache_pkg::*;
     generate
         for (gen_i = 0; gen_i < N; gen_i++) begin : gen_check
             assign              addr[gen_i] = {req_q[gen_i].addr_tag, req_q[gen_i].addr_offset},
-                               nline[gen_i] = addr[gen_i][hpdcacheCfg.clOffsetWidth +: hpdcacheCfg.nlineWidth],
+                               nline[gen_i] = addr[gen_i][HPDcacheCfg.clOffsetWidth +:
+                                                          HPDcacheCfg.nlineWidth],
                    match_check_nline[gen_i] = (check_nline_i == nline[gen_i]);
 
             assign is_read[gen_i] =         is_load(req_q[gen_i].op) |
@@ -528,34 +529,40 @@ import hpdcache_pkg::*;
     //  Pop rollback process
     //  {{{
     //  Set again the head bit of the rolled-back request
-    assign pop_rback_ptr_bv                  = rtab_index_to_bv(pop_rback_ptr_i);
+    assign pop_rback_ptr_bv = rtab_index_to_bv(pop_rback_ptr_i);
 
-    assign pop_rback_head_set                = {N{pop_rback_i}} & pop_rback_ptr_bv;
+    assign pop_rback_head_set = {N{pop_rback_i}} & pop_rback_ptr_bv;
 
-    assign pop_rback_deps_mshr_hit_set       = {N{pop_rback_i}} & pop_rback_ptr_bv & {N{pop_rback_mshr_hit_i}},
-           pop_rback_deps_mshr_full_set      = {N{pop_rback_i}} & pop_rback_ptr_bv & {N{pop_rback_mshr_full_i}},
-           pop_rback_deps_mshr_ready_set     = {N{pop_rback_i}} & pop_rback_ptr_bv & {N{pop_rback_mshr_ready_i}},
-           pop_rback_deps_wbuf_hit_set       = {N{pop_rback_i}} & pop_rback_ptr_bv & {N{pop_rback_wbuf_hit_i}},
-           pop_rback_deps_wbuf_not_ready_set = {N{pop_rback_i}} & pop_rback_ptr_bv & {N{pop_rback_wbuf_not_ready_i}};
+    assign pop_rback_deps_mshr_hit_set = {N{pop_rback_i}} & pop_rback_ptr_bv &
+                                         {N{pop_rback_mshr_hit_i}};
+    assign pop_rback_deps_mshr_full_set = {N{pop_rback_i}} & pop_rback_ptr_bv &
+                                          {N{pop_rback_mshr_full_i}};
+    assign pop_rback_deps_mshr_ready_set = {N{pop_rback_i}} & pop_rback_ptr_bv &
+                                           {N{pop_rback_mshr_ready_i}};
+    assign pop_rback_deps_wbuf_hit_set = {N{pop_rback_i}} & pop_rback_ptr_bv &
+                                         {N{pop_rback_wbuf_hit_i}};
+    assign pop_rback_deps_wbuf_not_ready_set = {N{pop_rback_i}} & pop_rback_ptr_bv &
+                                               {N{pop_rback_wbuf_not_ready_i}};
     //  }}}
 //  }}}
 
 //  Internal state assignment
 //  {{{
-    assign head_set                = alloc_head_set | pop_commit_head_set | pop_rback_head_set,
-           head_rst                = alloc_head_rst | pop_try_head_rst;
+    assign head_set = alloc_head_set | pop_commit_head_set | pop_rback_head_set,
+           head_rst = alloc_head_rst | pop_try_head_rst;
 
-    assign tail_set                = alloc_tail_set,
-           tail_rst                = alloc_tail_rst;
+    assign tail_set = alloc_tail_set,
+           tail_rst = alloc_tail_rst;
 
-    assign valid_set               = alloc_valid_set,
-           valid_rst               = pop_commit_valid_rst;
+    assign valid_set = alloc_valid_set,
+           valid_rst = pop_commit_valid_rst;
 
-    assign deps_mshr_hit_set       = alloc_deps_mshr_hit_set       | pop_rback_deps_mshr_hit_set,
-           deps_mshr_full_set      = alloc_deps_mshr_full_set      | pop_rback_deps_mshr_full_set,
-           deps_mshr_ready_set     = alloc_deps_mshr_ready_set     | pop_rback_deps_mshr_ready_set,
-           deps_wbuf_hit_set       = alloc_deps_wbuf_hit_set       | pop_rback_deps_wbuf_hit_set,
-           deps_wbuf_not_ready_set = alloc_deps_wbuf_not_ready_set | pop_rback_deps_wbuf_not_ready_set;
+    assign deps_mshr_hit_set = alloc_deps_mshr_hit_set | pop_rback_deps_mshr_hit_set,
+           deps_mshr_full_set = alloc_deps_mshr_full_set | pop_rback_deps_mshr_full_set,
+           deps_mshr_ready_set = alloc_deps_mshr_ready_set | pop_rback_deps_mshr_ready_set,
+           deps_wbuf_hit_set = alloc_deps_wbuf_hit_set | pop_rback_deps_wbuf_hit_set,
+           deps_wbuf_not_ready_set = alloc_deps_wbuf_not_ready_set |
+                                     pop_rback_deps_wbuf_not_ready_set;
 
     always_ff @(posedge clk_i or negedge rst_ni)
     begin : rtab_valid_ff
@@ -637,7 +644,7 @@ import hpdcache_pkg::*;
     assert property (@(posedge clk_i) disable iff (!rst_ni)
             alloc_and_link_i |->
                     ({alloc_req_i.addr_tag,
-                      alloc_req_i.addr_offset[hpdcacheCfg.clOffsetWidth +: hpdcacheCfg.setWidth]} ==
+                      alloc_req_i.addr_offset[HPDcacheCfg.clOffsetWidth +: HPDcacheCfg.setWidth]} ==
                           check_nline_i)) else
                     $error("rtab: nline for alloc and link shall match the one being checked");
 
