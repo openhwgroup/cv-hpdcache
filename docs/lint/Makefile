@@ -16,6 +16,7 @@ verilator-lint:
 verible-lint:
 	verible-verilog-lint \
 		--rules_config verible_rules.cfg \
+		--waiver_files verible.waiver \
 		$(HPDCACHE_FILES) \
 		$(HPDCACHE_DIR)/rtl/src/common/macros/behav/*.sv \
 		hpdcache_lint.sv

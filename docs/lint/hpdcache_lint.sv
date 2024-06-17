@@ -92,14 +92,14 @@ module hpdcache_lint
   logic                        wbuf_flush;
   logic                        wbuf_empty;
 
-  logic                        dcache_req_valid           [HPDCACHE_NREQUESTERS-1];
-  logic                        dcache_req_ready           [HPDCACHE_NREQUESTERS-1];
-  hpdcache_req_t               dcache_req                 [HPDCACHE_NREQUESTERS-1];
-  logic                        dcache_req_abort           [HPDCACHE_NREQUESTERS-1];
-  hpdcache_tag_t               dcache_req_tag             [HPDCACHE_NREQUESTERS-1];
-  hpdcache_pkg::hpdcache_pma_t dcache_req_pma             [HPDCACHE_NREQUESTERS-1];
-  logic                        dcache_rsp_valid           [HPDCACHE_NREQUESTERS-1];
-  hpdcache_rsp_t               dcache_rsp                 [HPDCACHE_NREQUESTERS-1];
+  logic                        dcache_req_valid           [HPDCACHE_NREQUESTERS];
+  logic                        dcache_req_ready           [HPDCACHE_NREQUESTERS];
+  hpdcache_req_t               dcache_req                 [HPDCACHE_NREQUESTERS];
+  logic                        dcache_req_abort           [HPDCACHE_NREQUESTERS];
+  hpdcache_tag_t               dcache_req_tag             [HPDCACHE_NREQUESTERS];
+  hpdcache_pkg::hpdcache_pma_t dcache_req_pma             [HPDCACHE_NREQUESTERS];
+  logic                        dcache_rsp_valid           [HPDCACHE_NREQUESTERS];
+  hpdcache_rsp_t               dcache_rsp                 [HPDCACHE_NREQUESTERS];
 
   logic                        dcache_miss_ready;
   logic                        dcache_miss_valid;

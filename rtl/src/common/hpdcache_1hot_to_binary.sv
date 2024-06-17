@@ -25,15 +25,20 @@
  */
 module hpdcache_1hot_to_binary
     //  Parameters
+    //  {{{
 #(
     parameter  int unsigned N = 0,
     localparam int unsigned Log2N = N > 1 ? $clog2(N) : 1
 )
+    //  }}}
+
     //  Ports
+    //  {{{
 (
     input  logic [N-1:0] val_i,
     output logic [Log2N-1:0] val_o
 );
+    //  }}}
 
     always_comb
     begin : decode_comb
@@ -42,8 +47,13 @@ module hpdcache_1hot_to_binary
             if (val_i[i]) val_o = i;
         end
 
+    //  Assertions
+    //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
+        //  synthesis translate_off
         assert final ($onehot0(val_i)) else $error("val_i shall be onehot or zero");
+        //  synthesis translate_on
 `endif
+    //  }}}
     end
 endmodule
