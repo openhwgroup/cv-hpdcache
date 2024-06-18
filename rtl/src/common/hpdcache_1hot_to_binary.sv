@@ -50,9 +50,8 @@ module hpdcache_1hot_to_binary
     //  Assertions
     //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
-        //  synthesis translate_off
-        assert final ($onehot0(val_i)) else $error("val_i shall be onehot or zero");
-        //  synthesis translate_on
+        //  FIXME: The final keyword is not supported by the Spyglass linter
+        //  assert final ($onehot0(val_i)) else $error("val_i shall be onehot or zero");
 `endif
     //  }}}
     end
