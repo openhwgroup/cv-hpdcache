@@ -60,7 +60,7 @@ import hpdcache_pkg::*;
                     axi_pkg::CACHE_BUFFERABLE |
                     axi_pkg::CACHE_MODIFIABLE |
                     axi_pkg::CACHE_RD_ALLOC   |
-                    axi_pkg::CACHE_WR_ALLOC   : '0;
+                    axi_pkg::CACHE_WR_ALLOC   : axi_pkg::CACHE_MODIFIABLE;
 
     always_comb
     begin : resp_decode_comb
