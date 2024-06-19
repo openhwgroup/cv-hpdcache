@@ -23,5 +23,5 @@ jobs:
           verible_version: "v0.0-3684-g23cda0c4"
           suggest_fixes: 'false'
           extra_args: |
-            "--waiver_files=rtl/lint/verible.waiver"
-            "--check-syntax=true"
+            --waiver_files=rtl/lint/verible.waiver
+            --check-syntax=true
