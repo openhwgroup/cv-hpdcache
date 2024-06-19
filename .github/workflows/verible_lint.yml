@@ -24,4 +24,4 @@ jobs:
           suggest_fixes: 'false'
           extra_args: |
             --waiver_files=rtl/lint/verible.waiver
-            --check-syntax=true
+            --check_syntax=true
