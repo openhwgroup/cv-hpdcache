@@ -21,7 +21,7 @@ jobs:
             .svh
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reviewdog_reporter: 'github-pr-check'
-          verible_version: "v0.0-3661-gf915e223"
+          verible_version: "v0.0-3684-g23cda0c4"
           suggest_fixes: 'false'
           extra_args: |
             "--waiver_files=rtl/lint/verible.waiver"
