@@ -8,9 +8,8 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Run Verible linter
-        uses: chipsalliance/verible-linter-action@v2.0
+      - uses: actions/checkout@master
+      - uses: chipsalliance/verible-linter-action@main
         with:
           config_file: ./rtl/lint/verible_rules.cfg
           paths: |
@@ -21,8 +20,8 @@ jobs:
             .svh
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reviewdog_reporter: 'github-pr-check'
-          verible_version: "v0.0-3661-gf915e223"
+          verible_version: "v0.0-3684-g23cda0c4"
           suggest_fixes: 'false'
           extra_args: |
-            "--waiver_files=rtl/lint/verible.waiver"
-            "--check-syntax=true"
+            --waiver_files=rtl/lint/verible.waiver
+            --check-syntax=true
