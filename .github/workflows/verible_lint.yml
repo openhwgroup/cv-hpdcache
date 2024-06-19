@@ -8,9 +8,8 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Run Verible linter
-        uses: chipsalliance/verible-linter-action@v2.0
+      - uses: actions/checkout@master
+        uses: chipsalliance/verible-linter-action@main
         with:
           config_file: ./rtl/lint/verible_rules.cfg
           paths: |
