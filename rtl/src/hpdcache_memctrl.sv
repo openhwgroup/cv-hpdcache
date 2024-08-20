@@ -716,8 +716,8 @@ import hpdcache_pkg::*;
     end
 
     //  Mux the data according to the access word
+    typedef logic [$clog2(HPDCACHE_DATA_REQ_RATIO)-1:0] data_req_word_t;
     if (HPDCACHE_DATA_REQ_RATIO > 1) begin : gen_req_width_lt_ram_width
-        typedef logic [$clog2(HPDCACHE_DATA_REQ_RATIO)-1:0] data_req_word_t;
         data_req_word_t data_read_req_word_index_q;
 
         hpdcache_mux #(
