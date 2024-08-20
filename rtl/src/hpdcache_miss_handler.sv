@@ -347,7 +347,7 @@ import hpdcache_pkg::*;
 
                     //  if the permission is granted, start refilling
                     if (refill_req_ready_i) begin
-                        refill_sel_victim_o = 1'b1;
+                        refill_sel_victim_o = ~refill_fifo_resp_meta_rdata.is_inval;
                         refill_set_o = mshr_ack_cache_set;
 
                         if (refill_fifo_resp_meta_rdata.is_inval) begin
