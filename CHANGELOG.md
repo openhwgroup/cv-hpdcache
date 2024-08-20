@@ -14,6 +14,31 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
+## [4.0.0] 2024-08-20
+
+The major modification in this release is the new scheme to set parameters of the HPDcache
+
+### Added
+
+- Add utility macros to define the types in the interface of the HPDcache.
+- Add scripts for code static check (lint)
+- Add new User Guide document in reStructuredText format
+
+### Removed
+
+### Changed
+
+- Pass configuration parameters through the top module of the HPDcache instead of
+  defining them in a package. This allows different instances of the HPDcache to have
+  different parameters.
+- Add round-robin priority arbiter in the write-buffer to select an entry to send.
+- Add fix-priority arbiter in the write-buffer to select a free entry.
+- Make AXI transactions modifiable by default
+
+### Fixed
+
+- Fix some synthesis warnings
+
 ## [3.1.0] 2024-04-20
 
 ### Added
