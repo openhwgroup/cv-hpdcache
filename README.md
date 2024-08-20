@@ -31,12 +31,10 @@ The HPDcache is an open-source High-Performance, Multi-requester, Out-of-Order L
 
 ## Documentation
 
-The HPDcache specification document can be found in the *docs/hpdcache_spec_document* folder.
-It is written in LaTeX.
-You cand find pre-compiled PDF documents in *docs/hpdcache_spec_document/release*.
+The HPDcache User Guide document can be found in the *docs* folder.
+It is written in reStructuredText format.
 
-If you need to recompile the specification document, a dedicated *Makefile* is in the specification folder.
-This *Makefile* needs the *latexmk* command-line tool (included in most common LaTeX distributions) and the *inkscape* tool to convert SVG images into PDF.
+If you need to compile the User Guide document, a dedicated *Makefile* is in the *docs* folder.
 
 
 ## Licensing
