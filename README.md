@@ -70,6 +70,8 @@ These macros ease the definition of types required by the interface of the HPDca
 
 - Technical Paper: César Fuguet. 2023. HPDcache: Open-Source High-Performance L1 Data Cache for RISC-V Cores. In Proceedings of the 20th ACM International Conference on Computing Frontiers (CF '23). Association for Computing Machinery, New York, NY, USA, 377–378. <https://doi.org/10.1145/3587135.3591413>
 
+- Technical Paper: D. Million, N. Oliete-Escuín and C. Fuguet, "Breaking the Memory Wall with a Flexible Open-Source L1 Data-Cache," 2024 Design, Automation & Test in Europe Conference & Exhibition (DATE), Valencia, Spain, 2024, pp. 1-2, <https://doi.org/10.23919/DATE58400.2024.10546547>
+
 - Video: César Fuguet. 2023. High Performance L1 Dcache for RISC-V Cores. TRISTAN Workshop. RISC-V Summit Europe 2023. <https://www.youtube.com/watch?v=3r5STMiUq9s>
 
 - Video: Christian Fabre, César Fuguet. 2023. One Year of Improvements on OpenHW Group's HPDCache. RISC-V Summit US 2023. <https://www.youtube.com/watch?v=ODHA-wPOmW0>
