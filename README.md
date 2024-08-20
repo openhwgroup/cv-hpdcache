@@ -36,6 +36,8 @@ It is written in reStructuredText format.
 
 If you need to compile the User Guide document, a dedicated *Makefile* is in the *docs* folder.
 
+You can find some pre-compiled User Guide documents (in both HTML or PDF) in [Releases](https://github.com/openhwgroup/cv-hpdcache/releases)
+
 
 ## Licensing
 
