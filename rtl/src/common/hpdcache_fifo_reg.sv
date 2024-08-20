@@ -46,6 +46,11 @@ module hpdcache_fifo_reg
 );
     //  }}}
 
+    //  Declaration of constants, types and functions
+    //  {{{
+    typedef logic unsigned [$clog2(FIFO_DEPTH)-1:0] fifo_addr_t;
+    //  }}}
+
     /*
      *  Single-entry FIFO buffer -> synchronization buffer
      */
@@ -68,11 +73,6 @@ module hpdcache_fifo_reg
      *  Multi-entry FIFO buffer
      */
     end else if (FIFO_DEPTH > 0) begin : gen_fifo
-        //  Declaration of constants, types and functions
-        //  {{{
-        typedef logic unsigned [$clog2(FIFO_DEPTH)-1:0] fifo_addr_t;
-        //  }}}
-
         //  Declaration of internal wires and registers
         //  {{{
         fifo_data_t [FIFO_DEPTH-1:0] fifo_mem_q;

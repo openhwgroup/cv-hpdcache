@@ -278,8 +278,9 @@ import hpdcache_pkg::*;
 
     //  Internal components
     //  {{{
+    typedef logic [HPDCACHE_MSHR_RAM_ENTRY_BITS/8-1:0] mshr_sram_wbyteenable_t;
+    typedef logic [HPDCACHE_MSHR_RAM_ENTRY_BITS-1:0] mshr_sram_wmask_t;
     if (HPDcacheCfg.u.mshrRamByteEnable) begin : gen_mshr_wbyteenable
-        typedef logic [HPDCACHE_MSHR_RAM_ENTRY_BITS/8-1:0] mshr_sram_wbyteenable_t;
         mshr_sram_wbyteenable_t [HPDcacheCfg.u.mshrWays-1:0] mshr_wbyteenable;
 
         always_comb
@@ -321,7 +322,6 @@ import hpdcache_pkg::*;
             );
         end
     end else begin : gen_mshr_wmask
-        typedef logic [HPDCACHE_MSHR_RAM_ENTRY_BITS-1:0] mshr_sram_wmask_t;
         mshr_sram_wmask_t [HPDcacheCfg.u.mshrWays-1:0] mshr_wmask;
 
         always_comb
