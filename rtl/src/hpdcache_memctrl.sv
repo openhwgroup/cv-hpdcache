@@ -397,7 +397,7 @@ import hpdcache_pkg::*;
 
     always_comb
     begin : dir_ctrl_comb
-        case (1'b1)
+        unique case (1'b1)
             //  Cache directory initialization
             ~init_q: begin
                 dir_addr    = init_set_q;
@@ -472,13 +472,16 @@ import hpdcache_pkg::*;
 
             //  Do nothing
             default: begin
-                dir_addr    = '0;
+                dir_addr    = dir_req_set_q;
                 dir_cs      = '0;
                 dir_we      = '0;
                 dir_wentry  = '0;
             end
         endcase
+
+        dir_req_set_d = dir_addr;
     end
+
     //  }}}
 
     //  Directory hit logic
@@ -487,12 +490,6 @@ import hpdcache_pkg::*;
     hpdcache_way_vector_t amo_hit;
     hpdcache_way_vector_t cmo_hit;
     hpdcache_way_vector_t inval_hit;
-
-    assign dir_req_set_d = dir_match_i       ? dir_match_set_i     :
-                           dir_amo_match_i   ? dir_amo_match_set_i :
-                           dir_cmo_check_i   ? dir_cmo_check_set_i :
-                           dir_inval_check_i ? dir_inval_set       :
-                                               dir_req_set_q       ;
 
     for (gen_i = 0; gen_i < int'(HPDcacheCfg.u.ways); gen_i++)
     begin : gen_dir_match_tag
