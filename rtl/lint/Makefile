@@ -1,8 +1,11 @@
 HPDCACHE_DIR = ../..
+RM = rm -f
 
 export HPDCACHE_DIR
 
 HPDCACHE_FILES=$(shell grep '.*.sv' $(HPDCACHE_DIR)/rtl/hpdcache.Flist)
+
+.PHONY: verilator-lint verible-lint all
 
 verilator-lint:
 	verilator --cc \
@@ -20,3 +23,9 @@ verible-lint:
 		$(HPDCACHE_FILES) \
 		$(HPDCACHE_DIR)/rtl/src/common/macros/behav/*.sv \
 		hpdcache_lint.sv
+
+all: verilator-lint verible-lint
+
+.PHONY: clean
+clean:
+	$(RM) -r obj_dir
