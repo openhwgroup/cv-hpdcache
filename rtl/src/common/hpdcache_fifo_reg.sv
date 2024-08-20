@@ -48,13 +48,22 @@ module hpdcache_fifo_reg
 
     //  Declaration of constants, types and functions
     //  {{{
-    typedef logic unsigned [$clog2(FIFO_DEPTH)-1:0] fifo_addr_t;
+    localparam int __FIFO_DEPTH = FIFO_DEPTH > 1 ? FIFO_DEPTH : 2;
+    typedef logic unsigned [$clog2(__FIFO_DEPTH)-1:0] fifo_addr_t;
     //  }}}
 
     /*
-     *  Single-entry FIFO buffer -> synchronization buffer
+     *  Bypass: no buffering
      */
-    if (FIFO_DEPTH == 1) begin : gen_sync_buffer
+    if (FIFO_DEPTH == 0) begin : gen_bypass
+        assign wok_o   = r_i;
+        assign rok_o   = w_i;
+        assign rdata_o = wdata_i;
+
+    /*
+     *  Single-entry buffer -> synchronization buffer
+     */
+    end else if (FIFO_DEPTH == 1) begin : gen_buffer
         hpdcache_sync_buffer #(
             .FEEDTHROUGH     (FEEDTHROUGH),
             .data_t          (fifo_data_t)
@@ -72,7 +81,7 @@ module hpdcache_fifo_reg
     /*
      *  Multi-entry FIFO buffer
      */
-    end else if (FIFO_DEPTH > 0) begin : gen_fifo
+    end else if (FIFO_DEPTH > 1) begin : gen_fifo
         //  Declaration of internal wires and registers
         //  {{{
         fifo_data_t [FIFO_DEPTH-1:0] fifo_mem_q;
