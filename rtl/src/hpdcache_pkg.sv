@@ -83,12 +83,24 @@ package hpdcache_pkg;
     } hpdcache_req_cmo_t;
     //      }}}
 
+    //      Definition of Write Policy Hint
+    //      {{{
+    typedef enum logic[2:0] {
+        HPDCACHE_WR_POLICY_AUTO = 3'b001,
+        HPDCACHE_WR_POLICY_WB   = 3'b010,
+        HPDCACHE_WR_POLICY_WT   = 3'b100
+    } hpdcache_wr_policy_hint_t;
+    //      }}}
+
     //      Definition of PMA flags
     //      {{{
     typedef struct packed
     {
         logic uncacheable;
         logic io; //  FIXME: for future use
+
+        //  Write Policy Hint
+        hpdcache_wr_policy_hint_t wr_policy_hint;
     } hpdcache_pma_t;
     //      }}}
 
