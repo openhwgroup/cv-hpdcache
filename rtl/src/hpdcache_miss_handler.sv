@@ -534,9 +534,11 @@ import hpdcache_pkg::*;
         end
     end
 
-    assign refill_dir_entry_o.valid    = 1'b1;
-    assign refill_dir_entry_o.tag      = refill_tag_q;
-    assign refill_dir_entry_o.reserved = 1'b0;
+    assign refill_dir_entry_o = '{
+        valid   : 1'b1,
+        tag     : refill_tag_q,
+        default :'0 // FIXME
+    };
 
     assign refill_core_rsp.rdata   = refill_core_rsp_rdata;
     assign refill_core_rsp.sid     = refill_core_rsp_sid;

@@ -250,6 +250,8 @@ import hpdcache_pkg::*;
     hpdcache_dir_entry_t [HPDcacheCfg.u.ways-1:0] dir_wentry;
     hpdcache_dir_entry_t [HPDcacheCfg.u.ways-1:0] dir_rentry;
     logic                [HPDcacheCfg.u.ways-1:0] dir_valid;
+    logic                [HPDcacheCfg.u.ways-1:0] dir_wb;
+    logic                [HPDcacheCfg.u.ways-1:0] dir_dirty;
 
     hpdcache_data_addr_t                       data_addr;
     hpdcache_data_enable_t                     data_cs;
@@ -517,6 +519,8 @@ import hpdcache_pkg::*;
 
     for (gen_i = 0; gen_i < HPDcacheCfg.u.ways; gen_i++) begin : gen_dir_valid_bv
         assign dir_valid[gen_i] = dir_rentry[gen_i].valid;
+        assign dir_wb[gen_i]    = dir_rentry[gen_i].wb;
+        assign dir_dirty[gen_i] = dir_rentry[gen_i].dirty;
     end
 
 
@@ -535,6 +539,8 @@ import hpdcache_pkg::*;
         .repl_i                   (dir_refill_i),
         .repl_set_i               (dir_refill_set_i),
         .repl_dir_valid_i         (dir_valid),
+        .repl_dir_wb_i            (dir_wb),
+        .repl_dir_dirty_i         (dir_dirty),
         .repl_updt_i              (dir_refill_updt_plru_i),
 
         .victim_way_o             (dir_victim_way_o)

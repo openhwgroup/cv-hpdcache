@@ -50,6 +50,8 @@ module hpdcache_plru
     input  logic                  repl_i,
     input  set_t                  repl_set_i,
     input  way_vector_t           repl_dir_valid_i,
+    input  way_vector_t           repl_dir_wb_i,
+    input  way_vector_t           repl_dir_dirty_i,
     input  logic                  repl_updt_plru_i,
 
     output way_vector_t           victim_way_o
@@ -61,25 +63,48 @@ module hpdcache_plru
     way_vector_t [SETS-1:0] plru_q, plru_d;
     way_vector_t            updt_plru;
     way_vector_t            repl_plru;
-    way_vector_t            used_victim_way, unused_victim_way;
+    logic                   sel_unused, sel_clean, sel_dirty;
+    way_vector_t            unused_ways, clean_ways, dirty_ways;
+    way_vector_t            unused_victim_way, clean_victim_way, dirty_victim_way;
     //  }}}
 
     //  Victim way selection
     //  {{{
-    hpdcache_prio_1hot_encoder #(.N(WAYS))
-        used_victim_select_i (
-            .val_i     (~plru_q[repl_set_i]),
-            .val_o     (used_victim_way)
-        );
+    assign unused_ways   = ~repl_dir_valid_i;
+    assign clean_ways    =  repl_dir_valid_i & ~repl_dir_dirty_i;
+    assign dirty_ways    =  repl_dir_valid_i &  repl_dir_wb_i & repl_dir_dirty_i;
 
     hpdcache_prio_1hot_encoder #(.N(WAYS))
-        unused_victim_select_i (
-            .val_i     (~repl_dir_valid_i),
+        unused_victim_select_i(
+            .val_i     (unused_ways),
             .val_o     (unused_victim_way)
         );
 
-    //  If there is a free entry in the directory (valid == 0), choose it as victim
-    assign victim_way_o = |unused_victim_way ? unused_victim_way : used_victim_way;
+    hpdcache_prio_1hot_encoder #(.N(WAYS))
+        clean_victim_select_i(
+            .val_i     (~plru_q[repl_set_i] & clean_ways),
+            .val_o     (clean_victim_way)
+        );
+
+    hpdcache_prio_1hot_encoder #(.N(WAYS))
+        dirty_victim_select_i(
+            .val_i     (~plru_q[repl_set_i] & dirty_ways),
+            .val_o     (dirty_victim_way)
+        );
+
+    assign sel_unused = |unused_ways;
+    assign sel_clean  = |clean_ways;
+    assign sel_dirty  = |dirty_ways;
+
+    always_comb
+    begin : victim_way_comb
+        priority case (1'b1)
+            sel_unused: victim_way_o = unused_victim_way;
+            sel_clean:  victim_way_o = clean_victim_way;
+            sel_dirty:  victim_way_o = dirty_victim_way;
+            default:    victim_way_o = '0;
+        endcase
+    end
     //  }}}
 
     //  Pseudo-LRU update process

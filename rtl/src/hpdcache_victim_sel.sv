@@ -50,69 +50,93 @@ import hpdcache_pkg::*;
     input  logic                  repl_i,
     input  hpdcache_set_t         repl_set_i,
     input  hpdcache_way_vector_t  repl_dir_valid_i,
+    input  hpdcache_way_vector_t  repl_dir_wb_i,
+    input  hpdcache_way_vector_t  repl_dir_dirty_i,
     input  logic                  repl_updt_i,
 
     output hpdcache_way_vector_t  victim_way_o
 );
 //  }}}
 
-if (HPDcacheCfg.u.ways == 1) begin : gen_single_way_victim_sel
-    assign victim_way_o = 1'b1;
+    hpdcache_way_vector_t unused_ways;
 
-end else if (HPDcacheCfg.u.victimSel == HPDCACHE_VICTIM_RANDOM) begin : gen_random_victim_sel
-    hpdcache_way_vector_t random_victim_way;
-    hpdcache_way_vector_t unused_victim_way;
-    logic [7:0] lfsr_val;
-    logic sel_random;
+    assign unused_ways = ~repl_dir_valid_i;
 
-    assign sel_random = ~(|unused_victim_way);
-
-    hpdcache_lfsr #(
-        .WIDTH               (8)
-    ) lfsr_i(
-        .clk_i,
-        .rst_ni,
-        .shift_i             (repl_i & sel_random),
-        .val_o               (lfsr_val)
-    );
-
-    always_comb
-    begin : random_way_encoder_comb
-        random_victim_way = '0;
-        for (int i = 0; i < HPDcacheCfg.u.ways; i++) begin
-            random_victim_way[i] = (i == (lfsr_val % HPDcacheCfg.u.ways));
-        end
+    //  -----------------------------------------------------------------------
+    //  Direct mapped cache (one way)
+    if (HPDcacheCfg.u.ways == 1)
+    begin : gen_single_way_victim_sel
+        assign victim_way_o = 1'b1;
     end
 
-    hpdcache_prio_1hot_encoder #(
-        .N                   (HPDcacheCfg.u.ways)
-    ) unused_victim_select_i(
-        .val_i               (~repl_dir_valid_i),
-        .val_o               (unused_victim_way)
-    );
+    //  -----------------------------------------------------------------------
+    //  Set-associative cache with pseudo random victim selection
+    else if (HPDcacheCfg.u.victimSel == HPDCACHE_VICTIM_RANDOM)
+    begin : gen_random_victim_sel
+        hpdcache_way_vector_t unused_victim_way;
+        hpdcache_way_vector_t random_victim_way;
+        logic [7:0] lfsr_val;
+        logic sel_random;
 
-    assign victim_way_o = sel_random ? random_victim_way : unused_victim_way;
+        assign sel_random = ~|unused_ways;
 
-end else if (HPDcacheCfg.u.victimSel == HPDCACHE_VICTIM_PLRU) begin : gen_plru_victim_sel
-    hpdcache_plru #(
-        .SETS                (HPDcacheCfg.u.sets),
-        .WAYS                (HPDcacheCfg.u.ways)
-    ) plru_i(
-        .clk_i,
-        .rst_ni,
+        always_comb
+        begin : random_way_comb
+            for (int i = 0; i < HPDcacheCfg.u.ways; i++) begin
+                random_victim_way[i] = (i == (lfsr_val % HPDcacheCfg.u.ways));
+            end
+        end
 
-        .updt_i,
-        .updt_set_i,
-        .updt_way_i,
+        always_comb
+        begin : victim_way_comb
+            unique case (1'b1)
+                sel_random: victim_way_o = random_victim_way;
+                default:    victim_way_o = unused_victim_way;
+            endcase
+        end
 
-        .repl_i,
-        .repl_set_i,
-        .repl_dir_valid_i,
-        .repl_updt_plru_i    (repl_updt_i),
+        hpdcache_lfsr #(
+            .WIDTH               (8)
+        ) lfsr_i(
+            .clk_i,
+            .rst_ni,
+            .shift_i             (repl_i & sel_random),
+            .val_o               (lfsr_val)
+        );
 
-        .victim_way_o
-    );
-end
+        hpdcache_prio_1hot_encoder #(
+            .N                   (HPDcacheCfg.u.ways)
+        ) unused_victim_select_i(
+            .val_i               (unused_ways),
+            .val_o               (unused_victim_way)
+        );
+    end
+
+    //  -----------------------------------------------------------------------
+    //  Set-associative cache with pseudo least-recently-used victim selection
+    else if (HPDcacheCfg.u.victimSel == HPDCACHE_VICTIM_PLRU)
+    begin : gen_plru_victim_sel
+        hpdcache_plru #(
+            .SETS                (HPDcacheCfg.u.sets),
+            .WAYS                (HPDcacheCfg.u.ways)
+        ) plru_i(
+            .clk_i,
+            .rst_ni,
+
+            .updt_i,
+            .updt_set_i,
+            .updt_way_i,
+
+            .repl_i,
+            .repl_set_i,
+            .repl_dir_valid_i,
+            .repl_dir_wb_i,
+            .repl_dir_dirty_i,
+            .repl_updt_plru_i    (repl_updt_i),
+
+            .victim_way_o
+        );
+    end
 
 `ifndef HPDCACHE_ASSERT_OFF
     initial victim_sel_assert:

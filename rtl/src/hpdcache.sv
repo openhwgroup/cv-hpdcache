@@ -171,11 +171,28 @@ import hpdcache_pkg::*;
     typedef logic unsigned [HPDcacheCfg.clWordIdxWidth-1:0] hpdcache_word_t;
     typedef logic unsigned [HPDcacheCfg.u.ways-1:0] hpdcache_way_vector_t;
 
+    //  Cache Directory entry definition
+    //  {{{
     typedef struct packed {
-        logic valid;
+        //  Cacheline state
+        //  Encoding: {valid, wb, dirty}
+        //            {0,X,X}: Invalid
+        //            {1,0,0}: Write-through
+        //            {1,0,1}: Fetching
+        //            {1,1,0}: Write-back (clean)
+        //            {1,1,1}: Write-back (dirty)
+        //  {{{
+        logic valid; //  valid cacheline
+        logic wb;    //  cacheline in write-back mode
+        logic dirty; //  cacheline is locally modified (memory is obsolete)
+        //  }}}
+
+        //  Cacheline address tag
+        //  {{{
         hpdcache_tag_t tag;
-        logic reserved;
+        //  }}}
     } hpdcache_dir_entry_t;
+    //  }}}
 
     typedef hpdcache_data_word_t [HPDcacheCfg.u.accessWords-1:0] hpdcache_refill_data_t;
     typedef hpdcache_data_be_t [HPDcacheCfg.u.accessWords-1:0] hpdcache_refill_be_t;
