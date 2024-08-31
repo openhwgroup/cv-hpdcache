@@ -20,17 +20,17 @@
 /*
  *  Authors       : Cesar Fuguet
  *  Creation Date : April, 2021
- *  Description   : One-hot to binary decoder
+ *  Description   : Decoder
  *  History       :
  */
-module hpdcache_1hot_to_binary
+module hpdcache_decoder
     //  Parameters
     //  {{{
 #(
     parameter  int unsigned N     = 0,
-    localparam int unsigned Log2N = N > 1 ? $clog2(N) : 1,
+    localparam int unsigned Pow2N = 2**N,
     localparam type in_t  = logic unsigned [N-1:0],
-    localparam type out_t = logic unsigned [Log2N-1:0]
+    localparam type out_t = logic unsigned [Pow2N-1:0]
 )
     //  }}}
 
@@ -43,18 +43,10 @@ module hpdcache_1hot_to_binary
     //  }}}
 
     always_comb
-    begin : decode_comb
+    begin : decoder_comb
         val_o = 0;
-        for (int unsigned i = 0; i < N; i++) begin
-            if (val_i[i]) val_o = out_t'(i);
+        for (int unsigned i = 0; i < Pow2N; i++) begin
+            if (val_i == in_t'(i)) val_o[i] = 1'b1;
         end
-
-    //  Assertions
-    //  {{{
-`ifndef HPDCACHE_ASSERT_OFF
-        //  FIXME: The final keyword is not supported by the Spyglass linter
-        //  assert final ($onehot0(val_i)) else $error("val_i shall be onehot or zero");
-`endif
-    //  }}}
     end
 endmodule

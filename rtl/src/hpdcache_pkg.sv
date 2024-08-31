@@ -441,8 +441,9 @@ package hpdcache_pkg;
         //  Internal parameters
         int unsigned clWidth;
         int unsigned clWordIdxWidth;
-        int unsigned wordByteIdxWidth;
         int unsigned clOffsetWidth;
+        int unsigned wordByteIdxWidth;
+        int unsigned wayIndexWidth;
         int unsigned setWidth;
         int unsigned nlineWidth;
         int unsigned tagWidth;
@@ -467,6 +468,7 @@ package hpdcache_pkg;
         ret.clOffsetWidth = $clog2(ret.clWidth / 8);
         ret.clWordIdxWidth = $clog2(p.clWords);
         ret.wordByteIdxWidth = $clog2(p.wordWidth / 8);
+        ret.wayIndexWidth = (p.ways > 1) ? $clog2(p.ways) : 1;
         ret.setWidth = $clog2(p.sets);
         ret.nlineWidth = p.paWidth - ret.clOffsetWidth;
         ret.tagWidth = ret.nlineWidth - ret.setWidth;

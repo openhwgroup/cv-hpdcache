@@ -170,6 +170,7 @@ import hpdcache_pkg::*;
     typedef logic [HPDcacheCfg.clOffsetWidth-1:0] hpdcache_offset_t;
     typedef logic unsigned [HPDcacheCfg.clWordIdxWidth-1:0] hpdcache_word_t;
     typedef logic unsigned [HPDcacheCfg.u.ways-1:0] hpdcache_way_vector_t;
+    typedef logic unsigned [HPDcacheCfg.wayIndexWidth-1:0] hpdcache_way_t;
 
     //  Cache Directory entry definition
     //  {{{
@@ -207,12 +208,10 @@ import hpdcache_pkg::*;
     logic                  refill_req_valid;
     logic                  refill_req_ready;
     logic                  refill_busy;
-    logic                  refill_sel_victim;
     logic                  refill_updt_plru;
     hpdcache_set_t         refill_set;
+    hpdcache_way_vector_t  refill_way;
     hpdcache_dir_entry_t   refill_dir_entry;
-    hpdcache_way_vector_t  refill_read_victim_way;
-    hpdcache_way_vector_t  refill_write_victim_way;
     logic                  refill_write_dir;
     logic                  refill_write_data;
     hpdcache_word_t        refill_word;
@@ -240,6 +239,7 @@ import hpdcache_pkg::*;
     hpdcache_req_tid_t     miss_mshr_alloc_tid;
     hpdcache_req_sid_t     miss_mshr_alloc_sid;
     hpdcache_word_t        miss_mshr_alloc_word;
+    hpdcache_way_vector_t  miss_mshr_alloc_victim_way;
     logic                  miss_mshr_alloc_need_rsp;
     logic                  miss_mshr_alloc_is_prefetch;
 
@@ -410,6 +410,7 @@ import hpdcache_pkg::*;
         .miss_mshr_alloc_tid_o              (miss_mshr_alloc_tid),
         .miss_mshr_alloc_sid_o              (miss_mshr_alloc_sid),
         .miss_mshr_alloc_word_o             (miss_mshr_alloc_word),
+        .miss_mshr_alloc_victim_way_o       (miss_mshr_alloc_victim_way),
         .miss_mshr_alloc_need_rsp_o         (miss_mshr_alloc_need_rsp),
         .miss_mshr_alloc_is_prefetch_o      (miss_mshr_alloc_is_prefetch),
         .miss_mshr_hit_i                    (miss_mshr_hit),
@@ -417,12 +418,10 @@ import hpdcache_pkg::*;
         .refill_req_valid_i                 (refill_req_valid),
         .refill_req_ready_o                 (refill_req_ready),
         .refill_busy_i                      (refill_busy),
-        .refill_sel_victim_i                (refill_sel_victim),
         .refill_updt_plru_i                 (refill_updt_plru),
         .refill_set_i                       (refill_set),
+        .refill_way_i                       (refill_way),
         .refill_dir_entry_i                 (refill_dir_entry),
-        .refill_victim_way_o                (refill_read_victim_way),
-        .refill_victim_way_i                (refill_write_victim_way),
         .refill_write_dir_i                 (refill_write_dir),
         .refill_write_data_i                (refill_write_data),
         .refill_word_i                      (refill_word),
@@ -584,6 +583,7 @@ import hpdcache_pkg::*;
         .hpdcache_tag_t                     (hpdcache_tag_t),
         .hpdcache_word_t                    (hpdcache_word_t),
         .hpdcache_way_vector_t              (hpdcache_way_vector_t),
+        .hpdcache_way_t                     (hpdcache_way_t),
         .hpdcache_dir_entry_t               (hpdcache_dir_entry_t),
         .hpdcache_refill_data_t             (hpdcache_refill_data_t),
         .hpdcache_req_data_t                (hpdcache_req_data_t),
@@ -612,25 +612,24 @@ import hpdcache_pkg::*;
         .mshr_alloc_ready_o                 (miss_mshr_alloc_ready),
         .mshr_alloc_i                       (miss_mshr_alloc),
         .mshr_alloc_cs_i                    (miss_mshr_alloc_cs),
-        .mshr_alloc_full_o                  (miss_mshr_alloc_full),
         .mshr_alloc_nline_i                 (miss_mshr_alloc_nline),
+        .mshr_alloc_full_o                  (miss_mshr_alloc_full),
         .mshr_alloc_tid_i                   (miss_mshr_alloc_tid),
         .mshr_alloc_sid_i                   (miss_mshr_alloc_sid),
         .mshr_alloc_word_i                  (miss_mshr_alloc_word),
+        .mshr_alloc_victim_way_i            (miss_mshr_alloc_victim_way),
         .mshr_alloc_need_rsp_i              (miss_mshr_alloc_need_rsp),
         .mshr_alloc_is_prefetch_i           (miss_mshr_alloc_is_prefetch),
 
         .refill_req_ready_i                 (refill_req_ready),
         .refill_req_valid_o                 (refill_req_valid),
         .refill_busy_o                      (refill_busy),
-        .refill_sel_victim_o                (refill_sel_victim),
         .refill_updt_plru_o                 (refill_updt_plru),
         .refill_set_o                       (refill_set),
+        .refill_way_o                       (refill_way),
         .refill_dir_entry_o                 (refill_dir_entry),
-        .refill_victim_way_i                (refill_read_victim_way),
         .refill_write_dir_o                 (refill_write_dir),
         .refill_write_data_o                (refill_write_data),
-        .refill_victim_way_o                (refill_write_victim_way),
         .refill_data_o                      (refill_data),
         .refill_word_o                      (refill_word),
         .refill_nline_o                     (refill_nline),

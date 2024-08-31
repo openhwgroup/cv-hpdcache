@@ -98,6 +98,7 @@ import hpdcache_pkg::*;
     output hpdcache_req_tid_t     miss_mshr_alloc_tid_o,
     output hpdcache_req_sid_t     miss_mshr_alloc_sid_o,
     output hpdcache_word_t        miss_mshr_alloc_word_o,
+    output hpdcache_way_vector_t  miss_mshr_alloc_victim_way_o,
     output logic                  miss_mshr_alloc_need_rsp_o,
     output logic                  miss_mshr_alloc_is_prefetch_o,
     input  logic                  miss_mshr_hit_i,
@@ -106,12 +107,10 @@ import hpdcache_pkg::*;
     input  logic                  refill_req_valid_i,
     output logic                  refill_req_ready_o,
     input  logic                  refill_busy_i,
-    input  logic                  refill_sel_victim_i,
     input  logic                  refill_updt_plru_i,
     input  hpdcache_set_t         refill_set_i,
+    input  hpdcache_way_vector_t  refill_way_i,
     input  hpdcache_dir_entry_t   refill_dir_entry_i,
-    output hpdcache_way_vector_t  refill_victim_way_o,
-    input  hpdcache_way_vector_t  refill_victim_way_i,
     input  logic                  refill_write_dir_i,
     input  logic                  refill_write_data_i,
     input  hpdcache_word_t        refill_word_i,
@@ -298,6 +297,7 @@ import hpdcache_pkg::*;
     logic                    st1_rtab_wbuf_not_ready;
     logic                    st1_rtab_check;
     logic                    st1_rtab_check_hit;
+    hpdcache_way_vector_t    st1_victim_way;
 
     logic                    st2_req_we;
     hpdcache_word_t          st2_req_word;
@@ -649,12 +649,13 @@ import hpdcache_pkg::*;
         .dir_amo_update_plru_i         (uc_dir_amo_update_plru_i),
         .dir_amo_hit_way_o             (uc_dir_amo_hit_way_o),
 
-        .dir_refill_sel_victim_i       (refill_sel_victim_i),
         .dir_refill_i                  (refill_write_dir_i),
         .dir_refill_set_i              (refill_set_i),
+        .dir_refill_way_i              (refill_way_i),
         .dir_refill_entry_i            (refill_dir_entry_i),
         .dir_refill_updt_plru_i        (refill_updt_plru_i),
-        .dir_victim_way_o              (refill_victim_way_o),
+
+        .dir_victim_way_o              (st1_victim_way),
 
         .dir_inval_check_i             (inval_check_dir_i),
         .dir_inval_nline_i             (inval_nline_i),
@@ -693,8 +694,8 @@ import hpdcache_pkg::*;
         .data_amo_write_be_i           (uc_data_amo_write_be_i),
 
         .data_refill_i                 (refill_write_data_i),
-        .data_refill_way_i             (refill_victim_way_i),
         .data_refill_set_i             (refill_set_i),
+        .data_refill_way_i             (refill_way_i),
         .data_refill_word_i            (refill_word_i),
         .data_refill_data_i            (refill_data_i)
     );
@@ -719,6 +720,7 @@ import hpdcache_pkg::*;
     assign miss_mshr_alloc_tid_o = st2_req_tid_q;
     assign miss_mshr_alloc_sid_o = st2_req_sid_q;
     assign miss_mshr_alloc_word_o = st2_req_word;
+    assign miss_mshr_alloc_victim_way_o = /*FIXME*/'0;
     assign miss_mshr_alloc_need_rsp_o = st2_req_need_rsp_q;
     assign miss_mshr_alloc_is_prefetch_o = st2_req_is_prefetch_q;
     //  }}}

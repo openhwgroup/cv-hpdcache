@@ -37,6 +37,7 @@ import hpdcache_pkg::*;
     parameter type hpdcache_word_t = logic,
 
     parameter type hpdcache_way_vector_t = logic,
+    parameter type hpdcache_way_t = logic,
 
     parameter type hpdcache_dir_entry_t = logic,
 
@@ -92,6 +93,7 @@ import hpdcache_pkg::*;
     input  hpdcache_req_tid_t     mshr_alloc_tid_i,
     input  hpdcache_req_sid_t     mshr_alloc_sid_i,
     input  hpdcache_word_t        mshr_alloc_word_i,
+    input  hpdcache_way_vector_t  mshr_alloc_victim_way_i,
     input  logic                  mshr_alloc_need_rsp_i,
     input  logic                  mshr_alloc_is_prefetch_i,
 
@@ -99,14 +101,12 @@ import hpdcache_pkg::*;
     input  logic                  refill_req_ready_i,
     output logic                  refill_req_valid_o,
     output logic                  refill_busy_o,
-    output logic                  refill_sel_victim_o,
     output logic                  refill_updt_plru_o,
     output hpdcache_set_t         refill_set_o,
+    output hpdcache_way_vector_t  refill_way_o,
     output hpdcache_dir_entry_t   refill_dir_entry_o,
-    input  hpdcache_way_vector_t  refill_victim_way_i,
     output logic                  refill_write_dir_o,
     output logic                  refill_write_data_o,
-    output hpdcache_way_vector_t  refill_victim_way_o,
     output hpdcache_refill_data_t refill_data_o,
     output hpdcache_word_t        refill_word_o,
     output hpdcache_nline_t       refill_nline_o,
@@ -139,8 +139,8 @@ import hpdcache_pkg::*;
 
     //  Declaration of constants and types
     //  {{{
-    localparam int unsigned REFILL_REQ_RATIO = HPDcacheCfg.u.accessWords /
-                                               HPDcacheCfg.u.reqWords;
+    localparam hpdcache_uint REFILL_REQ_RATIO = HPDcacheCfg.u.accessWords /
+                                                HPDcacheCfg.u.reqWords;
     localparam hpdcache_uint REFILL_LAST_CHUNK_WORD = HPDcacheCfg.u.clWords -
                                                       HPDcacheCfg.u.accessWords;
 
@@ -176,14 +176,14 @@ import hpdcache_pkg::*;
     refill_fsm_e             refill_fsm_q, refill_fsm_d;
     hpdcache_set_t           refill_set_q;
     hpdcache_tag_t           refill_tag_q;
-    hpdcache_way_vector_t    refill_way_q;
+    hpdcache_way_t           refill_way_q;
     hpdcache_req_sid_t       refill_sid_q;
     hpdcache_req_tid_t       refill_tid_q;
     hpdcache_word_t          refill_cnt_q, refill_cnt_d;
     logic                    refill_need_rsp_q;
     logic                    refill_is_prefetch_q;
     hpdcache_word_t          refill_core_rsp_word_q;
-    logic                    refill_way_bypass;
+    hpdcache_way_t           refill_way;
 
     mem_resp_metadata_t      refill_fifo_resp_meta_wdata, refill_fifo_resp_meta_rdata;
     logic                    refill_fifo_resp_meta_w, refill_fifo_resp_meta_wok;
@@ -207,11 +207,13 @@ import hpdcache_pkg::*;
     hpdcache_tag_t           mshr_check_tag;
     logic                    mshr_alloc;
     logic                    mshr_alloc_cs;
+    hpdcache_way_t           mshr_alloc_victim_way;
     logic                    mshr_ack;
     logic                    mshr_ack_cs;
     mshr_set_t               mshr_ack_set;
     mshr_way_t               mshr_ack_way;
     hpdcache_set_t           mshr_ack_cache_set;
+    hpdcache_way_t           mshr_ack_cache_way;
     hpdcache_tag_t           mshr_ack_cache_tag;
     hpdcache_req_sid_t       mshr_ack_src_id;
     hpdcache_req_tid_t       mshr_ack_req_id;
@@ -301,21 +303,15 @@ import hpdcache_pkg::*;
     //      ask permission to the refill arbiter if there is a pending refill
     assign refill_req_valid_o  = refill_fsm_q == REFILL_IDLE ? refill_fifo_resp_meta_rok : 1'b0;
 
-    //      forward the victim way directly from the victim selection logic or
-    //      from the internal register
-    assign refill_victim_way_o = refill_way_bypass ? refill_victim_way_i : refill_way_q;
-
     always_comb
     begin : miss_resp_fsm_comb
-
-        refill_sel_victim_o     = 1'b0;
         refill_updt_plru_o      = 1'b0;
         refill_set_o            = '0;
+        refill_way              = '0;
         refill_write_dir_o      = 1'b0;
         refill_write_data_o     = 1'b0;
         refill_updt_rtab_o      = 1'b0;
         refill_cnt_d            = refill_cnt_q;
-        refill_way_bypass       = 1'b0;
 
         inval_check_dir_o       = 1'b0;
         inval_write_dir_o       = 1'b0;
@@ -341,28 +337,24 @@ import hpdcache_pkg::*;
                 if (refill_fifo_resp_meta_rok) begin
                     //  anticipate the activation of the MSHR independently of the grant signal from
                     //  the refill arbiter. This is to avoid the introduction of unnecessary timing
-                    //  paths (however there could be a minor augmentation of the power
-                    //  consumption).
+                    //  paths (however there could be a minor augmentation of the power consumption)
                     mshr_ack_cs = ~refill_fifo_resp_meta_rdata.is_inval;
 
                     //  if the permission is granted, start refilling
                     if (refill_req_ready_i) begin
-                        refill_sel_victim_o = ~refill_fifo_resp_meta_rdata.is_inval;
                         refill_set_o = mshr_ack_cache_set;
 
                         if (refill_fifo_resp_meta_rdata.is_inval) begin
-                            //  check for a match with the line being invalidated in the cache directory
+                            //  check for a match with the line being invalidated in the cache dir
                             inval_check_dir_o = 1'b1;
 
                             refill_fsm_d = REFILL_INVAL;
                         end else begin
-                            //  read the MSHR and reset the valid bit for the
-                            //  corresponding entry
+                            //  read the MSHR and reset the valid bit for the corresponding entry
                             mshr_ack = ~refill_fifo_resp_meta_rdata.is_inval;
 
                             //  initialize the counter for refill words
                             refill_cnt_d = 0;
-
                             refill_fsm_d = REFILL_WRITE;
                         end
                     end
@@ -409,11 +401,11 @@ import hpdcache_pkg::*;
                 //  Write the the data in the cache data array
                 if (refill_cnt_q == 0) begin
                     refill_set_o = mshr_ack_cache_set;
-                    refill_way_bypass = 1'b1;
+                    refill_way = mshr_ack_cache_way;
                     is_prefetch = mshr_ack_is_prefetch;
                 end else begin
                     refill_set_o = refill_set_q;
-                    refill_way_bypass = 1'b0;
+                    refill_way = refill_way_q;
                     is_prefetch = refill_is_prefetch_q;
                 end
                 refill_write_data_o = ~refill_is_error;
@@ -462,7 +454,7 @@ import hpdcache_pkg::*;
 
                 //  Select the target set and way
                 refill_set_o = refill_set_q;
-                refill_way_bypass = 1'b0;
+                refill_way = refill_way_q;
 
                 //  Write the new entry in the cache directory
                 refill_write_dir_o  = ~refill_is_error;
@@ -475,7 +467,7 @@ import hpdcache_pkg::*;
                                       (~is_prefetch | cfg_prefetch_updt_plru_i);
 
                 //  Update dependency flags in the retry table
-                refill_updt_rtab_o  = 1'b1;
+                refill_updt_rtab_o = 1'b1;
 
                 //  consume the response from the network
                 refill_fifo_resp_meta_r = 1'b1;
@@ -697,8 +689,8 @@ import hpdcache_pkg::*;
     begin : miss_resp_fsm_internal_ff
         if ((refill_fsm_q == REFILL_WRITE) && (refill_cnt_q == 0)) begin
             refill_set_q <= mshr_ack_cache_set;
+            refill_way_q <= mshr_ack_cache_way;
             refill_tag_q <= mshr_ack_cache_tag;
-            refill_way_q <= refill_victim_way_i;
             refill_sid_q <= mshr_ack_src_id;
             refill_tid_q <= mshr_ack_req_id;
             refill_need_rsp_q <= mshr_ack_need_rsp;
@@ -718,6 +710,7 @@ import hpdcache_pkg::*;
         .hpdcache_tag_t           (hpdcache_tag_t),
         .hpdcache_set_t           (hpdcache_set_t),
         .hpdcache_word_t          (hpdcache_word_t),
+        .hpdcache_way_t           (hpdcache_way_t),
 
         .hpdcache_req_tid_t       (hpdcache_req_tid_t),
         .hpdcache_req_sid_t       (hpdcache_req_sid_t),
@@ -741,6 +734,7 @@ import hpdcache_pkg::*;
         .alloc_req_id_i           (mshr_alloc_tid_i),
         .alloc_src_id_i           (mshr_alloc_sid_i),
         .alloc_word_i             (mshr_alloc_word_i),
+        .alloc_victim_way_i       (mshr_alloc_victim_way),
         .alloc_need_rsp_i         (mshr_alloc_need_rsp_i),
         .alloc_is_prefetch_i      (mshr_alloc_is_prefetch_i),
         .alloc_full_o             (mshr_alloc_full_o),
@@ -753,10 +747,21 @@ import hpdcache_pkg::*;
         .ack_req_id_o             (mshr_ack_req_id),
         .ack_src_id_o             (mshr_ack_src_id),
         .ack_cache_set_o          (mshr_ack_cache_set),
+        .ack_cache_way_o          (mshr_ack_cache_way),
         .ack_cache_tag_o          (mshr_ack_cache_tag),
         .ack_word_o               (mshr_ack_word),
         .ack_need_rsp_o           (mshr_ack_need_rsp),
         .ack_is_prefetch_o        (mshr_ack_is_prefetch)
+    );
+
+    hpdcache_1hot_to_binary #(.N(HPDcacheCfg.u.ways)) victim_way_encoder_i(
+        .val_i(mshr_alloc_victim_way_i),
+        .val_o(mshr_alloc_victim_way)
+    );
+
+    hpdcache_decoder #(.N(HPDcacheCfg.wayIndexWidth)) victim_way_decoder_i(
+        .val_i(refill_way),
+        .val_o(refill_way_o)
     );
 
     //    Indicate to the cache controller that there is no pending miss. This

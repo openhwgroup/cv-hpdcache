@@ -35,6 +35,7 @@ ${HPDCACHE_DIR}/rtl/src/common/hpdcache_fifo_reg_initialized.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_fxarb.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_rrarb.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_mux.sv
+${HPDCACHE_DIR}/rtl/src/common/hpdcache_decoder.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_1hot_to_binary.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_prio_1hot_encoder.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_sram.sv

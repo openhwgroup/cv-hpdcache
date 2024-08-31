@@ -33,6 +33,7 @@ import hpdcache_pkg::*;
     parameter type hpdcache_tag_t = logic,
     parameter type hpdcache_set_t = logic,
     parameter type hpdcache_word_t = logic,
+    parameter type hpdcache_way_t = logic,
 
     parameter type hpdcache_req_tid_t = logic,
     parameter type hpdcache_req_sid_t = logic,
@@ -46,41 +47,43 @@ import hpdcache_pkg::*;
     //  {{{
 (
     //  Clock and reset signals
-    input  logic              clk_i,
-    input  logic              rst_ni,
+    input  logic                  clk_i,
+    input  logic                  rst_ni,
 
     //  Global control signals
-    output logic              empty_o,
-    output logic              full_o,
+    output logic                  empty_o,
+    output logic                  full_o,
 
     //  Check and allocation interface
-    input  logic              check_i,
-    input  hpdcache_set_t     check_set_i,
-    input  hpdcache_tag_t     check_tag_i,
-    output logic              hit_o,
-    input  logic              alloc_i,
-    input  logic              alloc_cs_i,
-    input  hpdcache_nline_t   alloc_nline_i,
-    input  hpdcache_req_tid_t alloc_req_id_i,
-    input  hpdcache_req_sid_t alloc_src_id_i,
-    input  hpdcache_word_t    alloc_word_i,
-    input  logic              alloc_need_rsp_i,
-    input  logic              alloc_is_prefetch_i,
-    output logic              alloc_full_o,
-    output mshr_way_t         alloc_way_o,
+    input  logic                  check_i,
+    input  hpdcache_set_t         check_set_i,
+    input  hpdcache_tag_t         check_tag_i,
+    output logic                  hit_o,
+    input  logic                  alloc_i,
+    input  logic                  alloc_cs_i,
+    input  hpdcache_nline_t       alloc_nline_i,
+    input  hpdcache_req_tid_t     alloc_req_id_i,
+    input  hpdcache_req_sid_t     alloc_src_id_i,
+    input  hpdcache_word_t        alloc_word_i,
+    input  hpdcache_way_t         alloc_victim_way_i,
+    input  logic                  alloc_need_rsp_i,
+    input  logic                  alloc_is_prefetch_i,
+    output logic                  alloc_full_o,
+    output mshr_way_t             alloc_way_o,
 
     //  Acknowledge interface
-    input  logic              ack_i,
-    input  logic              ack_cs_i,
-    input  mshr_set_t         ack_set_i,
-    input  mshr_way_t         ack_way_i,
-    output hpdcache_req_tid_t ack_req_id_o,
-    output hpdcache_req_sid_t ack_src_id_o,
-    output hpdcache_set_t     ack_cache_set_o,
-    output hpdcache_tag_t     ack_cache_tag_o,
-    output hpdcache_word_t    ack_word_o,
-    output logic              ack_need_rsp_o,
-    output logic              ack_is_prefetch_o
+    input  logic                  ack_i,
+    input  logic                  ack_cs_i,
+    input  mshr_set_t             ack_set_i,
+    input  mshr_way_t             ack_way_i,
+    output hpdcache_req_tid_t     ack_req_id_o,
+    output hpdcache_req_sid_t     ack_src_id_o,
+    output hpdcache_set_t         ack_cache_set_o,
+    output hpdcache_way_t         ack_cache_way_o,
+    output hpdcache_tag_t         ack_cache_tag_o,
+    output hpdcache_word_t        ack_word_o,
+    output logic                  ack_need_rsp_o,
+    output logic                  ack_is_prefetch_o
 );
     //  }}}
 
@@ -91,6 +94,7 @@ import hpdcache_pkg::*;
         hpdcache_req_tid_t req_id;
         hpdcache_req_sid_t src_id;
         hpdcache_word_t    word_idx;
+        hpdcache_way_t     victim_way_idx;
         logic              need_rsp;
         logic              is_prefetch;
     } mshr_entry_t;
@@ -187,6 +191,7 @@ import hpdcache_pkg::*;
             mshr_wentry[i].req_id = alloc_req_id_i;
             mshr_wentry[i].src_id = alloc_src_id_i;
             mshr_wentry[i].word_idx = alloc_word_i;
+            mshr_wentry[i].victim_way_idx = alloc_victim_way_i;
             mshr_wentry[i].need_rsp = alloc_need_rsp_i;
             mshr_wentry[i].is_prefetch = alloc_is_prefetch_i;
         end
@@ -228,6 +233,7 @@ import hpdcache_pkg::*;
     //  Read interface (ack)
     //  {{{
     assign ack_cache_set_o   = mshr_cache_set_q[mshr_ack_slot];
+    assign ack_cache_way_o   = mshr_rentry[ack_way_q].victim_way_idx;
     assign ack_cache_tag_o   = mshr_rentry[ack_way_q].tag;
     assign ack_req_id_o      = mshr_rentry[ack_way_q].req_id;
     assign ack_src_id_o      = mshr_rentry[ack_way_q].src_id;
