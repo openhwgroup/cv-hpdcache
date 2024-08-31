@@ -529,12 +529,12 @@ import hpdcache_pkg::*;
         .updt_set_i               (dir_req_set_q),
         .updt_way_i               (plru_updt_way),
 
-        .repl_i                   (dir_refill_i),
+        .repl_i                   (dir_refill_i & dir_refill_updt_plru_i),
         .repl_set_i               (dir_refill_set_i),
+        .repl_way_i               (dir_refill_way_i),
         .repl_dir_valid_i         (dir_valid),
         .repl_dir_wb_i            (dir_wb),
         .repl_dir_dirty_i         (dir_dirty),
-        .repl_updt_i              (dir_refill_updt_plru_i),
 
         .victim_way_o             (dir_victim_way_o)
     );

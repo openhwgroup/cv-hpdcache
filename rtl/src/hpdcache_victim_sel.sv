@@ -49,10 +49,10 @@ import hpdcache_pkg::*;
     //      Victim replacement interface
     input  logic                  repl_i,
     input  hpdcache_set_t         repl_set_i,
+    input  hpdcache_way_vector_t  repl_way_i,
     input  hpdcache_way_vector_t  repl_dir_valid_i,
     input  hpdcache_way_vector_t  repl_dir_wb_i,
     input  hpdcache_way_vector_t  repl_dir_dirty_i,
-    input  logic                  repl_updt_i,
 
     output hpdcache_way_vector_t  victim_way_o
 );
@@ -129,10 +129,10 @@ import hpdcache_pkg::*;
 
             .repl_i,
             .repl_set_i,
+            .repl_way_i,
             .repl_dir_valid_i,
             .repl_dir_wb_i,
             .repl_dir_dirty_i,
-            .repl_updt_plru_i    (repl_updt_i),
 
             .victim_way_o
         );

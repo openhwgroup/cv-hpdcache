@@ -49,10 +49,10 @@ module hpdcache_plru
     //      Victim replacement interface
     input  logic                  repl_i,
     input  set_t                  repl_set_i,
+    input  way_vector_t           repl_way_i,
     input  way_vector_t           repl_dir_valid_i,
     input  way_vector_t           repl_dir_wb_i,
     input  way_vector_t           repl_dir_dirty_i,
-    input  logic                  repl_updt_plru_i,
 
     output way_vector_t           victim_way_o
 );
@@ -110,7 +110,7 @@ module hpdcache_plru
     //  Pseudo-LRU update process
     //  {{{
     assign updt_plru = plru_q[updt_set_i] | updt_way_i;
-    assign repl_plru = plru_q[repl_set_i] | victim_way_o;
+    assign repl_plru = plru_q[repl_set_i] | repl_way_i;
 
     always_comb
     begin : plru_update_comb
@@ -119,14 +119,12 @@ module hpdcache_plru
         case (1'b1)
             //  When replacing a cache-line, set the PLRU bit of the new line
             repl_i:
-                if (repl_updt_plru_i) begin
-                    //  If all PLRU bits of a given would be set, reset them all
-                    //  but the currently accessed way
-                    if (&repl_plru) begin
-                        plru_d[repl_set_i] = victim_way_o;
-                    end else begin
-                        plru_d[repl_set_i] = repl_plru;
-                    end
+                //  If all PLRU bits of a given would be set, reset them all
+                //  but the currently accessed way
+                if (&repl_plru) begin
+                    plru_d[repl_set_i] = repl_way_i;
+                end else begin
+                    plru_d[repl_set_i] = repl_plru;
                 end
 
             //  When accessing a cache-line, set the corresponding PLRU bit

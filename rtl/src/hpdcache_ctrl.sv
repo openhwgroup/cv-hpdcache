@@ -232,6 +232,7 @@ import hpdcache_pkg::*;
     hpdcache_req_addr_t      st2_req_addr_q;
     hpdcache_req_sid_t       st2_req_sid_q;
     hpdcache_req_tid_t       st2_req_tid_q;
+    hpdcache_way_vector_t    st2_victim_way_q;
     //  }}}
 
     //  Definition of internal signals
@@ -587,6 +588,7 @@ import hpdcache_pkg::*;
             st2_req_addr_q     <= st1_req_addr;
             st2_req_sid_q      <= st1_req.sid;
             st2_req_tid_q      <= st1_req.tid;
+            st2_victim_way_q   <= st1_victim_way;
         end
     end
 
@@ -720,7 +722,7 @@ import hpdcache_pkg::*;
     assign miss_mshr_alloc_tid_o = st2_req_tid_q;
     assign miss_mshr_alloc_sid_o = st2_req_sid_q;
     assign miss_mshr_alloc_word_o = st2_req_word;
-    assign miss_mshr_alloc_victim_way_o = /*FIXME*/'0;
+    assign miss_mshr_alloc_victim_way_o = st2_victim_way_q;
     assign miss_mshr_alloc_need_rsp_o = st2_req_need_rsp_q;
     assign miss_mshr_alloc_is_prefetch_o = st2_req_is_prefetch_q;
     //  }}}
