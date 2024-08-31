@@ -52,6 +52,7 @@ import hpdcache_pkg::*;
     input  hpdcache_way_vector_t  repl_way_i,
 
     //      Victim selection interface
+    input  logic                  sel_victim_i,
     input  hpdcache_way_vector_t  sel_dir_valid_i,
     input  hpdcache_way_vector_t  sel_dir_wb_i,
     input  hpdcache_way_vector_t  sel_dir_dirty_i,
@@ -101,7 +102,7 @@ import hpdcache_pkg::*;
         ) lfsr_i(
             .clk_i,
             .rst_ni,
-            .shift_i             (repl_i & sel_random),
+            .shift_i             (sel_victim_i & sel_random),
             .val_o               (lfsr_val)
         );
 

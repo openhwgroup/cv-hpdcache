@@ -266,6 +266,7 @@ import hpdcache_pkg::*;
     hpdcache_word_t          st1_req_word;
     hpdcache_nline_t         st1_req_nline;
     hpdcache_req_addr_t      st1_req_addr;
+    logic                    st1_req_sel_victim;
     logic                    st1_req_updt_lru;
     logic                    st1_req_is_uncacheable;
     logic                    st1_req_is_load;
@@ -424,6 +425,7 @@ import hpdcache_pkg::*;
         .st1_req_valid_o                    (st1_req_valid_d),
         .st1_rsp_valid_o                    (st1_rsp_valid),
         .st1_rsp_aborted_o                  (st1_rsp_aborted),
+        .st1_req_cachedir_sel_victim_o      (st1_req_sel_victim),
         .st1_req_cachedir_updt_lru_o        (st1_req_updt_lru),
         .st1_req_cachedata_write_o          (st1_req_cachedata_write),
         .st1_req_cachedata_write_enable_o   (st1_req_cachedata_write_enable),
@@ -642,6 +644,7 @@ import hpdcache_pkg::*;
         .dir_match_i                   (st0_req_cachedir_read),
         .dir_match_set_i               (st0_req_set),
         .dir_match_tag_i               (st1_req.addr_tag),
+        .dir_sel_victim_i              (st1_req_sel_victim),
         .dir_update_lru_i              (st1_req_updt_lru),
         .dir_hit_way_o                 (st1_dir_hit),
 

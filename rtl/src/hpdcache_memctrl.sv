@@ -67,6 +67,7 @@ import hpdcache_pkg::*;
     input  logic                                dir_match_i,
     input  hpdcache_set_t                       dir_match_set_i,
     input  hpdcache_tag_t                       dir_match_tag_i,
+    input  logic                                dir_sel_victim_i,
     input  logic                                dir_update_lru_i,
     output hpdcache_way_vector_t                dir_hit_way_o,
 
@@ -533,6 +534,7 @@ import hpdcache_pkg::*;
         .repl_set_i               (dir_refill_set_i),
         .repl_way_i               (dir_refill_way_i),
 
+        .sel_victim_i             (dir_sel_victim_i),
         .sel_dir_valid_i          (dir_valid),
         .sel_dir_wb_i             (dir_wb),
         .sel_dir_dirty_i          (dir_dirty),

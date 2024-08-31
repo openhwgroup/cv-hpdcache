@@ -70,6 +70,7 @@ module hpdcache_ctrl_pe
     output logic                   st1_req_valid_o,
     output logic                   st1_rsp_valid_o,
     output logic                   st1_rsp_aborted_o,
+    output logic                   st1_req_cachedir_sel_victim_o,
     output logic                   st1_req_cachedir_updt_lru_o,
     output logic                   st1_req_cachedata_write_o,
     output logic                   st1_req_cachedata_write_enable_o,
@@ -229,6 +230,7 @@ module hpdcache_ctrl_pe
         st1_nop                             = 1'b0;
         st1_req_cachedata_write_o           = 1'b0;
         st1_req_cachedata_write_enable_o    = 1'b0;
+        st1_req_cachedir_sel_victim_o       = 1'b0;
         st1_req_cachedir_updt_lru_o         = 1'b0;
         st1_rsp_valid_o                     = 1'b0;
         st1_rsp_aborted_o                   = 1'b0;
@@ -420,6 +422,9 @@ module hpdcache_ctrl_pe
                                 //  If the request comes from the replay table, free the
                                 //  corresponding RTAB entry
                                 st1_rtab_commit_o = st1_req_rtab_i;
+
+                                //  Select a victim cacheline
+                                st1_req_cachedir_sel_victim_o = 1'b1;
 
                                 st2_req_valid_o       = 1'b1;
                                 st2_req_we_o          = 1'b1;
