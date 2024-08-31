@@ -41,32 +41,33 @@ import hpdcache_pkg::*;
     input  logic                  clk_i,
     input  logic                  rst_ni,
 
-    //      Victim selection update interface
+    //      Victim policy update interface
     input  logic                  updt_i,
     input  hpdcache_set_t         updt_set_i,
     input  hpdcache_way_vector_t  updt_way_i,
 
-    //      Victim replacement interface
+    //      Victim policy replacement interface
     input  logic                  repl_i,
     input  hpdcache_set_t         repl_set_i,
     input  hpdcache_way_vector_t  repl_way_i,
-    input  hpdcache_way_vector_t  repl_dir_valid_i,
-    input  hpdcache_way_vector_t  repl_dir_wb_i,
-    input  hpdcache_way_vector_t  repl_dir_dirty_i,
 
-    output hpdcache_way_vector_t  victim_way_o
+    //      Victim selection interface
+    input  hpdcache_way_vector_t  sel_dir_valid_i,
+    input  hpdcache_way_vector_t  sel_dir_wb_i,
+    input  hpdcache_way_vector_t  sel_dir_dirty_i,
+    output hpdcache_way_vector_t  sel_victim_way_o
 );
 //  }}}
 
     hpdcache_way_vector_t unused_ways;
 
-    assign unused_ways = ~repl_dir_valid_i;
+    assign unused_ways = ~sel_dir_valid_i;
 
     //  -----------------------------------------------------------------------
     //  Direct mapped cache (one way)
     if (HPDcacheCfg.u.ways == 1)
     begin : gen_single_way_victim_sel
-        assign victim_way_o = 1'b1;
+        assign sel_victim_way_o = 1'b1;
     end
 
     //  -----------------------------------------------------------------------
@@ -90,8 +91,8 @@ import hpdcache_pkg::*;
         always_comb
         begin : victim_way_comb
             unique case (1'b1)
-                sel_random: victim_way_o = random_victim_way;
-                default:    victim_way_o = unused_victim_way;
+                sel_random: sel_victim_way_o = random_victim_way;
+                default:    sel_victim_way_o = unused_victim_way;
             endcase
         end
 
@@ -130,11 +131,11 @@ import hpdcache_pkg::*;
             .repl_i,
             .repl_set_i,
             .repl_way_i,
-            .repl_dir_valid_i,
-            .repl_dir_wb_i,
-            .repl_dir_dirty_i,
 
-            .victim_way_o
+            .sel_dir_valid_i,
+            .sel_dir_wb_i,
+            .sel_dir_dirty_i,
+            .sel_victim_way_o
         );
     end
 

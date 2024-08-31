@@ -532,11 +532,11 @@ import hpdcache_pkg::*;
         .repl_i                   (dir_refill_i & dir_refill_updt_plru_i),
         .repl_set_i               (dir_refill_set_i),
         .repl_way_i               (dir_refill_way_i),
-        .repl_dir_valid_i         (dir_valid),
-        .repl_dir_wb_i            (dir_wb),
-        .repl_dir_dirty_i         (dir_dirty),
 
-        .victim_way_o             (dir_victim_way_o)
+        .sel_dir_valid_i          (dir_valid),
+        .sel_dir_wb_i             (dir_wb),
+        .sel_dir_dirty_i          (dir_dirty),
+        .sel_victim_way_o         (dir_victim_way_o)
     );
     //  }}}
 

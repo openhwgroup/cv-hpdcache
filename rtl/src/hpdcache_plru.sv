@@ -46,15 +46,16 @@ module hpdcache_plru
     input  set_t                  updt_set_i,
     input  way_vector_t           updt_way_i,
 
-    //      Victim replacement interface
+    //      PLRU replacement interface
     input  logic                  repl_i,
     input  set_t                  repl_set_i,
     input  way_vector_t           repl_way_i,
-    input  way_vector_t           repl_dir_valid_i,
-    input  way_vector_t           repl_dir_wb_i,
-    input  way_vector_t           repl_dir_dirty_i,
 
-    output way_vector_t           victim_way_o
+    //      Victim selection interface
+    input  way_vector_t           sel_dir_valid_i,
+    input  way_vector_t           sel_dir_wb_i,
+    input  way_vector_t           sel_dir_dirty_i,
+    output way_vector_t           sel_victim_way_o
 );
     //  }}}
 
@@ -70,9 +71,9 @@ module hpdcache_plru
 
     //  Victim way selection
     //  {{{
-    assign unused_ways   = ~repl_dir_valid_i;
-    assign clean_ways    =  repl_dir_valid_i & ~repl_dir_dirty_i;
-    assign dirty_ways    =  repl_dir_valid_i &  repl_dir_wb_i & repl_dir_dirty_i;
+    assign unused_ways   = ~sel_dir_valid_i;
+    assign clean_ways    =  sel_dir_valid_i & ~sel_dir_dirty_i;
+    assign dirty_ways    =  sel_dir_valid_i &  sel_dir_wb_i & sel_dir_dirty_i;
 
     hpdcache_prio_1hot_encoder #(.N(WAYS))
         unused_victim_select_i(
@@ -99,10 +100,10 @@ module hpdcache_plru
     always_comb
     begin : victim_way_comb
         priority case (1'b1)
-            sel_unused: victim_way_o = unused_victim_way;
-            sel_clean:  victim_way_o = clean_victim_way;
-            sel_dirty:  victim_way_o = dirty_victim_way;
-            default:    victim_way_o = '0;
+            sel_unused: sel_victim_way_o = unused_victim_way;
+            sel_clean:  sel_victim_way_o = clean_victim_way;
+            sel_dirty:  sel_victim_way_o = dirty_victim_way;
+            default:    sel_victim_way_o = '0;
         endcase
     end
     //  }}}
