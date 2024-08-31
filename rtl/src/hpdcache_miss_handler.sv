@@ -424,7 +424,7 @@ import hpdcache_pkg::*;
                         refill_fsm_d = REFILL_WRITE_DIR;
                     end else begin
                         //  Write the new entry in the cache directory
-                        refill_write_dir_o  = ~refill_is_error;
+                        refill_write_dir_o  = 1'b1;
 
                         //  Update the PLRU bits. Only in the following cases:
                         //  - There is no error in response AND
@@ -526,8 +526,10 @@ import hpdcache_pkg::*;
         end
     end
 
+    //  Write the new entry in the cache directory
+    //  In case of error in the refill response, invalidate pre-allocated cache directory entry
     assign refill_dir_entry_o = '{
-        valid   : 1'b1,
+        valid   : ~refill_is_error,
         tag     : refill_tag_q,
         default :'0 // FIXME
     };

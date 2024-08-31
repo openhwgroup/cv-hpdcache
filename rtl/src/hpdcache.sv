@@ -274,7 +274,7 @@ import hpdcache_pkg::*;
     logic                  uc_dir_amo_match;
     hpdcache_set_t         uc_dir_amo_match_set;
     hpdcache_tag_t         uc_dir_amo_match_tag;
-    logic                  uc_dir_amo_update_plru;
+    logic                  uc_dir_amo_updt_plru;
     hpdcache_way_vector_t  uc_dir_amo_hit_way;
     logic                  uc_data_amo_write;
     logic                  uc_data_amo_write_enable;
@@ -399,21 +399,21 @@ import hpdcache_pkg::*;
 
         .cachedir_hit_o                     (/* unused */),
 
-        .miss_mshr_check_o                  (miss_mshr_check),
-        .miss_mshr_check_offset_o           (miss_mshr_check_offset),
-        .miss_mshr_check_nline_o            (miss_mshr_check_nline),
-        .miss_mshr_alloc_o                  (miss_mshr_alloc),
-        .miss_mshr_alloc_cs_o               (miss_mshr_alloc_cs),
-        .miss_mshr_alloc_ready_i            (miss_mshr_alloc_ready),
-        .miss_mshr_alloc_full_i             (miss_mshr_alloc_full),
-        .miss_mshr_alloc_nline_o            (miss_mshr_alloc_nline),
-        .miss_mshr_alloc_tid_o              (miss_mshr_alloc_tid),
-        .miss_mshr_alloc_sid_o              (miss_mshr_alloc_sid),
-        .miss_mshr_alloc_word_o             (miss_mshr_alloc_word),
-        .miss_mshr_alloc_victim_way_o       (miss_mshr_alloc_victim_way),
-        .miss_mshr_alloc_need_rsp_o         (miss_mshr_alloc_need_rsp),
-        .miss_mshr_alloc_is_prefetch_o      (miss_mshr_alloc_is_prefetch),
-        .miss_mshr_hit_i                    (miss_mshr_hit),
+        .st0_mshr_check_o                   (miss_mshr_check),
+        .st0_mshr_check_offset_o            (miss_mshr_check_offset),
+        .st1_mshr_check_nline_o             (miss_mshr_check_nline),
+        .st1_mshr_hit_i                     (miss_mshr_hit),
+        .st1_mshr_alloc_ready_i             (miss_mshr_alloc_ready),
+        .st1_mshr_alloc_full_i              (miss_mshr_alloc_full),
+        .st2_mshr_alloc_o                   (miss_mshr_alloc),
+        .st2_mshr_alloc_cs_o                (miss_mshr_alloc_cs),
+        .st2_mshr_alloc_nline_o             (miss_mshr_alloc_nline),
+        .st2_mshr_alloc_tid_o               (miss_mshr_alloc_tid),
+        .st2_mshr_alloc_sid_o               (miss_mshr_alloc_sid),
+        .st2_mshr_alloc_word_o              (miss_mshr_alloc_word),
+        .st2_mshr_alloc_victim_way_o        (miss_mshr_alloc_victim_way),
+        .st2_mshr_alloc_need_rsp_o          (miss_mshr_alloc_need_rsp),
+        .st2_mshr_alloc_is_prefetch_o       (miss_mshr_alloc_is_prefetch),
 
         .refill_req_valid_i                 (refill_req_valid),
         .refill_req_ready_o                 (refill_req_ready),
@@ -471,7 +471,7 @@ import hpdcache_pkg::*;
         .uc_dir_amo_match_i                 (uc_dir_amo_match),
         .uc_dir_amo_match_set_i             (uc_dir_amo_match_set),
         .uc_dir_amo_match_tag_i             (uc_dir_amo_match_tag),
-        .uc_dir_amo_update_plru_i           (uc_dir_amo_update_plru),
+        .uc_dir_amo_updt_plru_i             (uc_dir_amo_updt_plru),
         .uc_dir_amo_hit_way_o               (uc_dir_amo_hit_way),
         .uc_data_amo_write_i                (uc_data_amo_write),
         .uc_data_amo_write_enable_i         (uc_data_amo_write_enable),
@@ -708,7 +708,7 @@ import hpdcache_pkg::*;
         .dir_amo_match_o               (uc_dir_amo_match),
         .dir_amo_match_set_o           (uc_dir_amo_match_set),
         .dir_amo_match_tag_o           (uc_dir_amo_match_tag),
-        .dir_amo_update_plru_o         (uc_dir_amo_update_plru),
+        .dir_amo_updt_plru_o           (uc_dir_amo_updt_plru),
         .dir_amo_hit_way_i             (uc_dir_amo_hit_way),
 
         .data_amo_write_o              (uc_data_amo_write),

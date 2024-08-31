@@ -74,17 +74,24 @@ module hpdcache_ctrl_pe
     output logic                   st1_req_cachedir_updt_lru_o,
     output logic                   st1_req_cachedata_write_o,
     output logic                   st1_req_cachedata_write_enable_o,
+    input  logic                   st1_mshr_alloc_ready_i,
+    input  logic                   st1_mshr_hit_i,
+    input  logic                   st1_mshr_full_i,
     //   }}}
 
     //   Pipeline stage 2
     //   {{{
-    input  logic                   st2_req_valid_i,
-    input  logic                   st2_req_is_prefetch_i,
-    output logic                   st2_req_valid_o,
-    output logic                   st2_req_we_o,
-    output logic                   st2_req_is_prefetch_o,
-    output logic                   st2_req_mshr_alloc_o,
-    output logic                   st2_req_mshr_alloc_cs_o,
+    input  logic                   st2_mshr_alloc_i,
+    input  logic                   st2_mshr_alloc_is_prefetch_i,
+    output logic                   st2_mshr_alloc_o,
+    output logic                   st2_mshr_alloc_cs_o,
+
+    input  logic                   st2_dir_updt_i,
+    input  logic                   st2_dir_updt_wb_i,
+    input  logic                   st2_dir_updt_dirty_i,
+    output logic                   st2_dir_updt_o,
+    output logic                   st2_dir_updt_wb_o,
+    output logic                   st2_dir_updt_dirty_o,
     //   }}}
 
     //   Replay
@@ -107,13 +114,6 @@ module hpdcache_ctrl_pe
     //   {{{
     input  logic                   cachedir_hit_i,
     input  logic                   cachedir_init_ready_i,
-    //   }}}
-
-    //   Miss Status Holding Register (MSHR)
-    //   {{{
-    input  logic                   mshr_alloc_ready_i,
-    input  logic                   mshr_hit_i,
-    input  logic                   mshr_full_i,
     //   }}}
 
     //   Refill interface
@@ -235,11 +235,13 @@ module hpdcache_ctrl_pe
         st1_rsp_valid_o                     = 1'b0;
         st1_rsp_aborted_o                   = 1'b0;
 
-        st2_req_valid_o                     = st2_req_valid_i;
-        st2_req_we_o                        = 1'b0;
-        st2_req_is_prefetch_o               = 1'b0;
-        st2_req_mshr_alloc_cs_o             = 1'b0;
-        st2_req_mshr_alloc_o                = 1'b0;
+        st2_mshr_alloc_o                    = st2_mshr_alloc_i;
+        st2_mshr_alloc_cs_o                 = 1'b0;
+
+        st2_dir_updt_o                      = st2_dir_updt_i;
+        st2_dir_updt_wb_o                   = st2_dir_updt_wb_i;
+        st2_dir_updt_dirty_o                = st2_dir_updt_dirty_i;
+
         st2_nop                             = 1'b0;
 
         nop                                 = 1'b0;
@@ -283,20 +285,30 @@ module hpdcache_ctrl_pe
         else begin
             //  Stage 2 request pending
             //  {{{
-            if (st2_req_valid_i) begin
-                st2_req_valid_o         = 1'b0;
+            //  Allocate an entry in the MSHR
+            if (st2_mshr_alloc_i) begin
+                //  Reset mshr alloc request
+                st2_mshr_alloc_o = 1'b0;
 
-                //  Allocate an entry in the MSHR
-                st2_req_mshr_alloc_cs_o = 1'b1;
-                st2_req_mshr_alloc_o    = 1'b1;
+                //  Enable the MSHR
+                st2_mshr_alloc_cs_o = 1'b1;
 
                 //  Introduce a NOP in the next cycle to prevent a hazard on the MSHR
-                st2_nop                 = 1'b1;
+                st2_nop = 1'b1;
 
                 //  Performance event
-                evt_cache_read_miss_o   = ~st2_req_is_prefetch_i;
-                evt_read_req_o          = ~st2_req_is_prefetch_i;
-                evt_prefetch_req_o      =  st2_req_is_prefetch_i;
+                evt_cache_read_miss_o = ~st2_mshr_alloc_is_prefetch_i;
+                evt_read_req_o        = ~st2_mshr_alloc_is_prefetch_i;
+                evt_prefetch_req_o    =  st2_mshr_alloc_is_prefetch_i;
+            end
+
+            //  Update the cache directory
+            if (st2_dir_updt_i) begin
+                //  Reset cache directory update request
+                st2_dir_updt_o = 1'b0;
+
+                //  Introduce a NOP in the next cycle to prevent a hazard on the cache dir
+                st2_nop = 1'b1;
             end
             //  }}}
 
@@ -375,7 +387,7 @@ module hpdcache_ctrl_pe
                             st1_nop = 1'b1;
 
                             //  Pending miss on the same line
-                            if (mshr_hit_i) begin
+                            if (st1_mshr_hit_i) begin
                                 //  Put the request in the replay table
                                 st1_rtab_alloc = 1'b1;
 
@@ -383,7 +395,7 @@ module hpdcache_ctrl_pe
                             end
 
                             //  No available slot in the MSHR
-                            else if (mshr_full_i) begin
+                            else if (st1_mshr_full_i) begin
                                 //  Put the request in the replay table
                                 st1_rtab_alloc = 1'b1;
 
@@ -400,7 +412,7 @@ module hpdcache_ctrl_pe
                             end
 
                             //  Miss Handler is not ready to send
-                            else if (!mshr_alloc_ready_i) begin
+                            else if (!st1_mshr_alloc_ready_i) begin
                                 //  Put the request on hold if the MISS HANDLER is not
                                 //  ready to send a new miss request. This is to prevent
                                 //  a deadlock between the read request channel and the
@@ -426,9 +438,13 @@ module hpdcache_ctrl_pe
                                 //  Select a victim cacheline
                                 st1_req_cachedir_sel_victim_o = 1'b1;
 
-                                st2_req_valid_o       = 1'b1;
-                                st2_req_we_o          = 1'b1;
-                                st2_req_is_prefetch_o = st1_req_is_cmo_prefetch_i;
+                                //  Request a MSHR allocation
+                                st2_mshr_alloc_o = 1'b1;
+
+                                //  Update the cache directory state to FETCHING
+                                st2_dir_updt_o = 1'b1;
+                                st2_dir_updt_wb_o = 1'b0;
+                                st2_dir_updt_dirty_o = 1'b1;
                             end
                         end
                         //  }}}
@@ -467,7 +483,7 @@ module hpdcache_ctrl_pe
                         //  not guaranty the order between transactions on those channels.
                         //  Therefore, the cache must hold a write if there is a pending read on the
                         //  same address.
-                        wbuf_write_valid_o = ~mshr_hit_i;
+                        wbuf_write_valid_o = ~st1_mshr_hit_i;
 
                         //  Add a NOP in the pipeline when:
                         //  - Structural hazard on the cache data if the st0 request is a load
@@ -493,7 +509,7 @@ module hpdcache_ctrl_pe
                         //  Cache miss
                         if (!cachedir_hit_i) begin
                             //  Pending miss on the same line
-                            if (mshr_hit_i) begin
+                            if (st1_mshr_hit_i) begin
                                 //  Put the request in the replay table
                                 st1_rtab_alloc = 1'b1;
 
@@ -598,7 +614,7 @@ module hpdcache_ctrl_pe
             refill_req_ready_o = refill_req_valid_i
                                  & (~cmo_busy_i | cmo_wait_i)
                                  & ~st1_req_valid_i
-                                 & ~st2_req_valid_i;
+                                 & ~(st2_mshr_alloc_i | st2_dir_updt_i);
 
             //      Forward the core/rtab request to stage 1
             st1_req_valid_o = core_req_ready_o | rtab_req_ready_o;
