@@ -67,6 +67,7 @@ import hpdcache_pkg::*;
     input  logic                  alloc_mshr_ready_i,
     input  logic                  alloc_wbuf_hit_i,
     input  logic                  alloc_wbuf_not_ready_i,
+    input  logic                  alloc_dir_unavailable_i,
 
     //  Pop signals
     //     This interface allows to read (and remove) a request from the RTAB
@@ -89,6 +90,7 @@ import hpdcache_pkg::*;
     input  logic                  pop_rback_mshr_ready_i,
     input  logic                  pop_rback_wbuf_hit_i,
     input  logic                  pop_rback_wbuf_not_ready_i,
+    input  logic                  pop_rback_dir_unavailable_i,
 
 
     //  Control signals from/to WBUF
@@ -210,6 +212,12 @@ import hpdcache_pkg::*;
     logic               [N-1:0]  alloc_deps_wbuf_not_ready_set;
     logic               [N-1:0]  pop_rback_deps_wbuf_not_ready_set;
 
+    //  Unavailable entry in the cache
+    logic               [N-1:0]  deps_dir_unavailable_q;
+    logic               [N-1:0]  deps_dir_unavailable_set, deps_dir_unavailable_rst;
+    logic               [N-1:0]  alloc_deps_dir_unavailable_set;
+    logic               [N-1:0]  pop_rback_deps_dir_unavailable_set;
+
     logic               [N-1:0]  nodeps;
     hpdcache_nline_t    [N-1:0]  nline;
     hpdcache_req_addr_t [N-1:0]  addr;
@@ -217,8 +225,9 @@ import hpdcache_pkg::*;
     logic               [N-1:0]  check_hit;
     logic               [N-1:0]  match_check_nline;
     logic               [N-1:0]  match_check_tail;
-    logic               [N-1:0]  match_refill_nline;
     logic               [N-1:0]  match_refill_mshr_set;
+    logic               [N-1:0]  match_refill_nline;
+    logic               [N-1:0]  match_refill_set;
 
     logic               [N-1:0]  free;
     logic               [N-1:0]  free_alloc;
@@ -296,15 +305,23 @@ import hpdcache_pkg::*;
            alloc_tail_rst  = match_check_tail & {N{alloc_and_link_i}};
 
     //  Set the dependency bits for the allocated entry
-    assign alloc_deps_mshr_hit_set       = alloc_valid_set & {N{      alloc_mshr_hit_i}},
-           alloc_deps_mshr_full_set      = alloc_valid_set & {N{     alloc_mshr_full_i}},
-           alloc_deps_mshr_ready_set     = alloc_valid_set & {N{    alloc_mshr_ready_i}},
-           alloc_deps_wbuf_hit_set       = alloc_valid_set & {N{      alloc_wbuf_hit_i}},
-           alloc_deps_wbuf_not_ready_set = alloc_valid_set & {N{alloc_wbuf_not_ready_i}};
+    assign alloc_deps_mshr_hit_set        = alloc_valid_set & {N{       alloc_mshr_hit_i}},
+           alloc_deps_mshr_full_set       = alloc_valid_set & {N{      alloc_mshr_full_i}},
+           alloc_deps_mshr_ready_set      = alloc_valid_set & {N{     alloc_mshr_ready_i}},
+           alloc_deps_wbuf_hit_set        = alloc_valid_set & {N{       alloc_wbuf_hit_i}},
+           alloc_deps_wbuf_not_ready_set  = alloc_valid_set & {N{ alloc_wbuf_not_ready_i}},
+           alloc_deps_dir_unavailable_set = alloc_valid_set & {N{alloc_dir_unavailable_i}};
 //  }}}
 
 //  Update replay table dependencies
 //  {{{
+    for (gen_i = 0; gen_i < N; gen_i++) begin : gen_match_refill
+        assign match_refill_mshr_set[gen_i] = rtab_mshr_set_equal(refill_nline_i, nline[gen_i]);
+        assign match_refill_nline[gen_i] = (refill_nline_i == nline[gen_i]);
+        assign match_refill_set[gen_i] = (refill_nline_i[0 +: HPDcacheCfg.setWidth] ==
+                                          nline[gen_i][0 +: HPDcacheCfg.setWidth]);
+    end
+
     //  Update write buffer hit dependencies
     //  {{{
     //  Build a bit-vector with HEAD requests waiting for a conflict in the wbuf
@@ -389,17 +406,13 @@ import hpdcache_pkg::*;
 
     //  Update refill dependencies
     //  {{{
-    generate
-        for (gen_i = 0; gen_i < N; gen_i++) begin : gen_match_refill
-            assign match_refill_mshr_set[gen_i] =
-                    rtab_mshr_set_equal(refill_nline_i, nline[gen_i]);
-            assign match_refill_nline[gen_i] =
-                    (refill_nline_i == nline[gen_i]);
-        end
-    endgenerate
-
     assign deps_mshr_full_rst = {N{refill_i}} & match_refill_mshr_set;
     assign deps_mshr_hit_rst  = {N{refill_i}} & match_refill_nline;
+    //  }}}
+
+    //  Update cache directory dependencies
+    //  {{{
+    assign deps_dir_unavailable_rst = {N{refill_i}} & match_refill_set;
     //  }}}
 //  }}}
 
@@ -543,6 +556,8 @@ import hpdcache_pkg::*;
                                          {N{pop_rback_wbuf_hit_i}};
     assign pop_rback_deps_wbuf_not_ready_set = {N{pop_rback_i}} & pop_rback_ptr_bv &
                                                {N{pop_rback_wbuf_not_ready_i}};
+    assign pop_rback_deps_dir_unavailable_set = {N{pop_rback_i}} & pop_rback_ptr_bv &
+                                                {N{pop_rback_dir_unavailable_i}};
     //  }}}
 //  }}}
 
@@ -562,7 +577,9 @@ import hpdcache_pkg::*;
            deps_mshr_ready_set = alloc_deps_mshr_ready_set | pop_rback_deps_mshr_ready_set,
            deps_wbuf_hit_set = alloc_deps_wbuf_hit_set | pop_rback_deps_wbuf_hit_set,
            deps_wbuf_not_ready_set = alloc_deps_wbuf_not_ready_set |
-                                     pop_rback_deps_wbuf_not_ready_set;
+                                     pop_rback_deps_wbuf_not_ready_set,
+           deps_dir_unavailable_set = alloc_deps_dir_unavailable_set |
+                                      pop_rback_deps_dir_unavailable_set;
 
     always_ff @(posedge clk_i or negedge rst_ni)
     begin : rtab_valid_ff
@@ -588,16 +605,18 @@ import hpdcache_pkg::*;
                       ( tail_q & ~tail_rst);
 
             //  update dependency flags
-            deps_mshr_hit_q       <= (~deps_mshr_hit_q       &  deps_mshr_hit_set) |
-                                     ( deps_mshr_hit_q       & ~deps_mshr_hit_rst);
-            deps_mshr_full_q      <= (~deps_mshr_full_q      &  deps_mshr_full_set) |
-                                     ( deps_mshr_full_q      & ~deps_mshr_full_rst);
-            deps_mshr_ready_q     <= (~deps_mshr_ready_q     &  deps_mshr_ready_set) |
-                                     ( deps_mshr_ready_q     & ~deps_mshr_ready_rst);
-            deps_wbuf_hit_q       <= (~deps_wbuf_hit_q       &  deps_wbuf_hit_set) |
-                                     ( deps_wbuf_hit_q       & ~deps_wbuf_hit_rst);
-            deps_wbuf_not_ready_q <= (~deps_wbuf_not_ready_q &  deps_wbuf_not_ready_set) |
-                                     ( deps_wbuf_not_ready_q & ~deps_wbuf_not_ready_rst);
+            deps_mshr_hit_q        <= (~deps_mshr_hit_q        &  deps_mshr_hit_set) |
+                                      ( deps_mshr_hit_q        & ~deps_mshr_hit_rst);
+            deps_mshr_full_q       <= (~deps_mshr_full_q       &  deps_mshr_full_set) |
+                                      ( deps_mshr_full_q       & ~deps_mshr_full_rst);
+            deps_mshr_ready_q      <= (~deps_mshr_ready_q      &  deps_mshr_ready_set) |
+                                      ( deps_mshr_ready_q      & ~deps_mshr_ready_rst);
+            deps_wbuf_hit_q        <= (~deps_wbuf_hit_q        &  deps_wbuf_hit_set) |
+                                      ( deps_wbuf_hit_q        & ~deps_wbuf_hit_rst);
+            deps_wbuf_not_ready_q  <= (~deps_wbuf_not_ready_q  &  deps_wbuf_not_ready_set) |
+                                      ( deps_wbuf_not_ready_q  & ~deps_wbuf_not_ready_rst);
+            deps_dir_unavailable_q <= (~deps_dir_unavailable_q &  deps_dir_unavailable_set) |
+                                      ( deps_dir_unavailable_q & ~deps_dir_unavailable_rst);
 
             //  update the next pointers
             for (int i = 0; i < N; i++) begin

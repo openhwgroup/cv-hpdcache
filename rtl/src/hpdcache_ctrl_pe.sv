@@ -67,6 +67,7 @@ module hpdcache_ctrl_pe
     input  logic                   st1_req_is_cmo_inval_i,
     input  logic                   st1_req_is_cmo_fence_i,
     input  logic                   st1_req_is_cmo_prefetch_i,
+    input  logic                   st1_dir_victim_unavailable_i,
     input  logic                   st1_dir_victim_valid_i,
     output logic                   st1_req_valid_o,
     output logic                   st1_rsp_valid_o,
@@ -115,6 +116,7 @@ module hpdcache_ctrl_pe
     output logic                   st1_rtab_mshr_ready_o,
     output logic                   st1_rtab_wbuf_hit_o,
     output logic                   st1_rtab_wbuf_not_ready_o,
+    output logic                   st1_rtab_dir_unavailable_o,
     //   }}}
 
     //   Cache directory
@@ -265,6 +267,7 @@ module hpdcache_ctrl_pe
         st1_rtab_mshr_ready_o               = 1'b0;
         st1_rtab_wbuf_hit_o                 = 1'b0;
         st1_rtab_wbuf_not_ready_o           = 1'b0;
+        st1_rtab_dir_unavailable_o          = 1'b0;
 
         evt_cache_write_miss_o              = 1'b0;
         evt_cache_read_miss_o               = 1'b0;
@@ -393,6 +396,9 @@ module hpdcache_ctrl_pe
                             //  entry right away
                             wbuf_read_flush_hit_o = 1'b1;
 
+                            //  Select a victim cacheline
+                            st1_req_cachedir_sel_victim_o = 1'b1;
+
                             //  Do not consume a request in this cycle in stage 0
                             st1_nop = 1'b1;
 
@@ -410,6 +416,14 @@ module hpdcache_ctrl_pe
                                 st1_rtab_alloc = 1'b1;
 
                                 st1_rtab_mshr_full_o = 1'b1;
+                            end
+
+                            //  All entries in the target set are being fetched
+                            else if (st1_dir_victim_unavailable_i) begin
+                                //  Put the request in the replay table
+                                st1_rtab_alloc = 1'b1;
+
+                                st1_rtab_dir_unavailable_o = 1'b1;
                             end
 
                             //  Hit on an open entry of the write buffer:
@@ -444,9 +458,6 @@ module hpdcache_ctrl_pe
                                 //  If the request comes from the replay table, free the
                                 //  corresponding RTAB entry
                                 st1_rtab_commit_o = st1_req_rtab_i;
-
-                                //  Select a victim cacheline
-                                st1_req_cachedir_sel_victim_o = 1'b1;
 
                                 //  Request a MSHR allocation
                                 st2_mshr_alloc_o       = 1'b1;

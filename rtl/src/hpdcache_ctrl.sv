@@ -277,9 +277,8 @@ import hpdcache_pkg::*;
     hpdcache_word_t          st1_req_word;
     hpdcache_nline_t         st1_req_nline;
     hpdcache_req_addr_t      st1_req_addr;
-    logic                    st1_req_sel_victim;
+    logic                    st1_victim_sel;
     logic                    st1_req_updt_lru;
-    hpdcache_way_vector_t    st1_req_victim_way;
     logic                    st1_req_is_uncacheable;
     logic                    st1_req_is_load;
     logic                    st1_req_is_store;
@@ -301,8 +300,10 @@ import hpdcache_pkg::*;
     logic                    st1_dir_hit;
     hpdcache_way_vector_t    st1_dir_hit_way;
     hpdcache_tag_t           st1_dir_hit_tag;
+    logic                    st1_dir_victim_unavailable;
     logic                    st1_dir_victim_valid;
     hpdcache_tag_t           st1_dir_victim_tag;
+    hpdcache_way_vector_t    st1_dir_victim_way;
     hpdcache_req_data_t      st1_read_data;
     logic                    st1_rtab_alloc;
     logic                    st1_rtab_alloc_and_link;
@@ -313,6 +314,7 @@ import hpdcache_pkg::*;
     logic                    st1_rtab_mshr_ready;
     logic                    st1_rtab_wbuf_hit;
     logic                    st1_rtab_wbuf_not_ready;
+    logic                    st1_rtab_dir_unavailable;
     logic                    st1_rtab_check;
     logic                    st1_rtab_check_hit;
 
@@ -434,11 +436,12 @@ import hpdcache_pkg::*;
         .st1_req_is_cmo_inval_i             (st1_req_is_cmo_inval),
         .st1_req_is_cmo_fence_i             (st1_req_is_cmo_fence),
         .st1_req_is_cmo_prefetch_i          (st1_req_is_cmo_prefetch),
+        .st1_dir_victim_unavailable_i       (st1_dir_victim_unavailable),
         .st1_dir_victim_valid_i             (st1_dir_victim_valid),
         .st1_req_valid_o                    (st1_req_valid_d),
         .st1_rsp_valid_o                    (st1_rsp_valid),
         .st1_rsp_aborted_o                  (st1_rsp_aborted),
-        .st1_req_cachedir_sel_victim_o      (st1_req_sel_victim),
+        .st1_req_cachedir_sel_victim_o      (st1_victim_sel),
         .st1_req_cachedir_updt_lru_o        (st1_req_updt_lru),
         .st1_req_cachedata_write_o          (st1_req_cachedata_write),
         .st1_req_cachedata_write_enable_o   (st1_req_cachedata_write_enable),
@@ -473,6 +476,7 @@ import hpdcache_pkg::*;
         .st1_rtab_mshr_ready_o              (st1_rtab_mshr_ready),
         .st1_rtab_wbuf_hit_o                (st1_rtab_wbuf_hit),
         .st1_rtab_wbuf_not_ready_o          (st1_rtab_wbuf_not_ready),
+        .st1_rtab_dir_unavailable_o         (st1_rtab_dir_unavailable),
 
         .cachedir_hit_i                     (cachedir_hit_o),
         .cachedir_init_ready_i              (hpdcache_init_ready),
@@ -514,6 +518,9 @@ import hpdcache_pkg::*;
     //  pipeline is empty
     assign ctrl_empty_o = ~(st1_req_valid_q | st2_mshr_alloc_q | st2_dir_updt_q);
 
+    //  no available victim cacheline (all pre-allocated for replacement)
+    assign st1_dir_victim_unavailable = ~(|st1_dir_victim_way);
+
     //  }}}
 
     //  Replay table
@@ -543,6 +550,7 @@ import hpdcache_pkg::*;
         .alloc_mshr_ready_i                 (st1_rtab_mshr_ready),
         .alloc_wbuf_hit_i                   (st1_rtab_wbuf_hit),
         .alloc_wbuf_not_ready_i             (st1_rtab_wbuf_not_ready),
+        .alloc_dir_unavailable_i            (st1_rtab_dir_unavailable),
 
         .pop_try_valid_o                    (st0_rtab_pop_try_valid),
         .pop_try_i                          (st0_rtab_pop_try_ready),
@@ -559,6 +567,7 @@ import hpdcache_pkg::*;
         .pop_rback_mshr_ready_i             (st1_rtab_mshr_ready),
         .pop_rback_wbuf_hit_i               (st1_rtab_wbuf_hit),
         .pop_rback_wbuf_not_ready_i         (st1_rtab_wbuf_not_ready),
+        .pop_rback_dir_unavailable_i        (st1_rtab_dir_unavailable),
 
         .wbuf_addr_o                        (wbuf_rtab_addr_o),
         .wbuf_is_read_o                     (wbuf_rtab_is_read_o),
@@ -615,13 +624,13 @@ import hpdcache_pkg::*;
             st2_mshr_alloc_tid_q         <= st1_req.tid;
             st2_mshr_alloc_is_prefetch_q <= st1_req_is_cmo_prefetch;
             st2_mshr_alloc_wback_q       <= st2_mshr_alloc_wback_d;
-            st2_mshr_alloc_victim_way_q  <= st1_req_victim_way;
+            st2_mshr_alloc_victim_way_q  <= st1_dir_victim_way;
         end
 
         if (st2_dir_updt_d) begin
             st2_dir_updt_tag_q    <= st1_dir_hit ? st1_dir_hit_tag : st1_dir_victim_tag;
             st2_dir_updt_set_q    <= st1_req_set;
-            st2_dir_updt_way_q    <= st1_dir_hit ? st1_dir_hit_way : st1_req_victim_way;
+            st2_dir_updt_way_q    <= st1_dir_hit ? st1_dir_hit_way : st1_dir_victim_way;
             st2_dir_updt_valid_q  <= st2_dir_updt_valid_d;
             st2_dir_updt_wback_q  <= st2_dir_updt_wback_d;
             st2_dir_updt_dirty_q  <= st2_dir_updt_dirty_d;
@@ -676,12 +685,9 @@ import hpdcache_pkg::*;
         .dir_match_i                   (st0_req_cachedir_read),
         .dir_match_set_i               (st0_req_set),
         .dir_match_tag_i               (st1_req.addr_tag),
-        .dir_sel_victim_i              (st1_req_sel_victim),
         .dir_updt_lru_i                (st1_req_updt_lru),
         .dir_hit_way_o                 (st1_dir_hit_way),
         .dir_hit_tag_o                 (st1_dir_hit_tag),
-        .dir_victim_valid_o            (st1_dir_victim_valid),
-        .dir_victim_tag_o              (st1_dir_victim_tag),
 
         .dir_updt_i                    (st2_dir_updt_q),
         .dir_updt_set_i                (st2_dir_updt_set_q),
@@ -704,7 +710,10 @@ import hpdcache_pkg::*;
         .dir_refill_entry_i            (refill_dir_entry_i),
         .dir_refill_updt_plru_i        (refill_updt_plru_i),
 
-        .dir_victim_way_o              (st1_req_victim_way),
+        .dir_victim_sel_i              (st1_victim_sel),
+        .dir_victim_valid_o            (st1_dir_victim_valid),
+        .dir_victim_tag_o              (st1_dir_victim_tag),
+        .dir_victim_way_o              (st1_dir_victim_way),
 
         .dir_inval_check_i             (inval_check_dir_i),
         .dir_inval_nline_i             (inval_nline_i),

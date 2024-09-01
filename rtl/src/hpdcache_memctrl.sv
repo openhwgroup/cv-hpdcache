@@ -67,12 +67,9 @@ import hpdcache_pkg::*;
     input  logic                                dir_match_i,
     input  hpdcache_set_t                       dir_match_set_i,
     input  hpdcache_tag_t                       dir_match_tag_i,
-    input  logic                                dir_sel_victim_i,
     input  logic                                dir_updt_lru_i,
     output hpdcache_way_vector_t                dir_hit_way_o,
     output hpdcache_tag_t                       dir_hit_tag_o,
-    output logic                                dir_victim_valid_o,
-    output hpdcache_tag_t                       dir_victim_tag_o,
 
     input  logic                                dir_updt_i,
     input  hpdcache_set_t                       dir_updt_set_i,
@@ -95,6 +92,9 @@ import hpdcache_pkg::*;
     input  hpdcache_dir_entry_t                 dir_refill_entry_i,
     input  logic                                dir_refill_updt_plru_i,
 
+    input  logic                                dir_victim_sel_i,
+    output logic                                dir_victim_valid_o,
+    output hpdcache_tag_t                       dir_victim_tag_o,
     output hpdcache_way_vector_t                dir_victim_way_o,
 
     input  logic                                dir_inval_check_i,
@@ -591,7 +591,7 @@ import hpdcache_pkg::*;
         .repl_set_i               (dir_refill_set_i),
         .repl_way_i               (dir_refill_way_i),
 
-        .sel_victim_i             (dir_sel_victim_i),
+        .sel_victim_i             (dir_victim_sel_i),
         .sel_dir_valid_i          (dir_valid),
         .sel_dir_wback_i          (dir_wback),
         .sel_dir_dirty_i          (dir_dirty),
