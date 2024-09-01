@@ -449,9 +449,6 @@ import hpdcache_pkg::*;
             //  this is when the entire cache-line can be written in a single cycle)
             //  {{{
             REFILL_WRITE_DIR: begin
-                automatic logic is_prefetch;
-                is_prefetch = refill_is_prefetch_q;
-
                 //  Select the target set and way
                 refill_set_o = refill_set_q;
                 refill_way = refill_way_q;
@@ -464,7 +461,7 @@ import hpdcache_pkg::*;
                 //  - It is a prefetch and the cfg_prefetch_updt_plru_i is set OR
                 //  - It is a read miss.
                 refill_updt_plru_o  =  ~refill_is_error &
-                                      (~is_prefetch | cfg_prefetch_updt_plru_i);
+                                      (~refill_is_prefetch_q | cfg_prefetch_updt_plru_i);
 
                 //  Update dependency flags in the retry table
                 refill_updt_rtab_o = 1'b1;
