@@ -247,7 +247,8 @@ import hpdcache_pkg::*;
                             deps_mshr_full_q |
                             deps_mshr_ready_q |
                             deps_wbuf_hit_q |
-                            deps_wbuf_not_ready_q);
+                            deps_wbuf_not_ready_q |
+                            deps_dir_unavailable_q);
 
     assign ready        = valid_q & head_q & nodeps;
 
