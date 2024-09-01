@@ -102,6 +102,7 @@ import hpdcache_pkg::*;
     output hpdcache_way_vector_t  st2_mshr_alloc_victim_way_o,
     output logic                  st2_mshr_alloc_need_rsp_o,
     output logic                  st2_mshr_alloc_is_prefetch_o,
+    output logic                  st2_mshr_alloc_wback_o,
 
     //      Refill interface
     input  logic                  refill_req_valid_i,
@@ -228,6 +229,7 @@ import hpdcache_pkg::*;
 
     logic                    st2_mshr_alloc_q, st2_mshr_alloc_d;
     logic                    st2_mshr_alloc_is_prefetch_q;
+    logic                    st2_mshr_alloc_wback_q, st2_mshr_alloc_wback_d;
     logic                    st2_mshr_alloc_need_rsp_q;
     hpdcache_req_addr_t      st2_mshr_alloc_addr_q;
     hpdcache_req_sid_t       st2_mshr_alloc_sid_q;
@@ -238,8 +240,10 @@ import hpdcache_pkg::*;
     hpdcache_set_t           st2_dir_updt_set_q;
     hpdcache_way_vector_t    st2_dir_updt_way_q;
     hpdcache_tag_t           st2_dir_updt_tag_q;
-    logic                    st2_dir_updt_wb_q, st2_dir_updt_wb_d;
+    logic                    st2_dir_updt_valid_q, st2_dir_updt_valid_d;
+    logic                    st2_dir_updt_wback_q, st2_dir_updt_wback_d;
     logic                    st2_dir_updt_dirty_q, st2_dir_updt_dirty_d;
+    logic                    st2_dir_updt_fetch_q, st2_dir_updt_fetch_d;
     //  }}}
 
     //  Definition of internal signals
@@ -297,6 +301,7 @@ import hpdcache_pkg::*;
     logic                    st1_dir_hit;
     hpdcache_way_vector_t    st1_dir_hit_way;
     hpdcache_tag_t           st1_dir_hit_tag;
+    logic                    st1_dir_victim_valid;
     hpdcache_tag_t           st1_dir_victim_tag;
     hpdcache_req_data_t      st1_read_data;
     logic                    st1_rtab_alloc;
@@ -429,6 +434,7 @@ import hpdcache_pkg::*;
         .st1_req_is_cmo_inval_i             (st1_req_is_cmo_inval),
         .st1_req_is_cmo_fence_i             (st1_req_is_cmo_fence),
         .st1_req_is_cmo_prefetch_i          (st1_req_is_cmo_prefetch),
+        .st1_dir_victim_valid_i             (st1_dir_victim_valid),
         .st1_req_valid_o                    (st1_req_valid_d),
         .st1_rsp_valid_o                    (st1_rsp_valid),
         .st1_rsp_aborted_o                  (st1_rsp_aborted),
@@ -439,15 +445,21 @@ import hpdcache_pkg::*;
 
         .st2_mshr_alloc_i                   (st2_mshr_alloc_q),
         .st2_mshr_alloc_is_prefetch_i       (st2_mshr_alloc_is_prefetch_q),
+        .st2_mshr_alloc_wback_i             (st2_mshr_alloc_wback_q),
         .st2_mshr_alloc_o                   (st2_mshr_alloc_d),
         .st2_mshr_alloc_cs_o                (st2_mshr_alloc_cs_o),
+        .st2_mshr_alloc_wback_o             (st2_mshr_alloc_wback_d),
 
         .st2_dir_updt_i                     (st2_dir_updt_q),
-        .st2_dir_updt_wb_i                  (st2_dir_updt_wb_q),
+        .st2_dir_updt_valid_i               (st2_dir_updt_valid_q),
+        .st2_dir_updt_wback_i               (st2_dir_updt_wback_q),
         .st2_dir_updt_dirty_i               (st2_dir_updt_dirty_q),
+        .st2_dir_updt_fetch_i               (st2_dir_updt_fetch_q),
         .st2_dir_updt_o                     (st2_dir_updt_d),
-        .st2_dir_updt_wb_o                  (st2_dir_updt_wb_d),
+        .st2_dir_updt_valid_o               (st2_dir_updt_valid_d),
+        .st2_dir_updt_wback_o               (st2_dir_updt_wback_d),
         .st2_dir_updt_dirty_o               (st2_dir_updt_dirty_d),
+        .st2_dir_updt_fetch_o               (st2_dir_updt_fetch_d),
 
         .rtab_full_i                        (rtab_full),
         .rtab_check_o                       (st1_rtab_check),
@@ -602,6 +614,7 @@ import hpdcache_pkg::*;
             st2_mshr_alloc_sid_q         <= st1_req.sid;
             st2_mshr_alloc_tid_q         <= st1_req.tid;
             st2_mshr_alloc_is_prefetch_q <= st1_req_is_cmo_prefetch;
+            st2_mshr_alloc_wback_q       <= st2_mshr_alloc_wback_d;
             st2_mshr_alloc_victim_way_q  <= st1_req_victim_way;
         end
 
@@ -609,8 +622,10 @@ import hpdcache_pkg::*;
             st2_dir_updt_tag_q    <= st1_dir_hit ? st1_dir_hit_tag : st1_dir_victim_tag;
             st2_dir_updt_set_q    <= st1_req_set;
             st2_dir_updt_way_q    <= st1_dir_hit ? st1_dir_hit_way : st1_req_victim_way;
-            st2_dir_updt_wb_q     <= st2_dir_updt_wb_d;
+            st2_dir_updt_valid_q  <= st2_dir_updt_valid_d;
+            st2_dir_updt_wback_q  <= st2_dir_updt_wback_d;
             st2_dir_updt_dirty_q  <= st2_dir_updt_dirty_d;
+            st2_dir_updt_fetch_q  <= st2_dir_updt_fetch_d;
         end
     end
 
@@ -665,14 +680,17 @@ import hpdcache_pkg::*;
         .dir_updt_lru_i                (st1_req_updt_lru),
         .dir_hit_way_o                 (st1_dir_hit_way),
         .dir_hit_tag_o                 (st1_dir_hit_tag),
+        .dir_victim_valid_o            (st1_dir_victim_valid),
         .dir_victim_tag_o              (st1_dir_victim_tag),
 
         .dir_updt_i                    (st2_dir_updt_q),
         .dir_updt_set_i                (st2_dir_updt_set_q),
         .dir_updt_way_i                (st2_dir_updt_way_q),
         .dir_updt_tag_i                (st2_dir_updt_tag_q),
-        .dir_updt_wb_i                 (st2_dir_updt_wb_q),
+        .dir_updt_valid_i              (st2_dir_updt_valid_q),
+        .dir_updt_wback_i              (st2_dir_updt_wback_q),
         .dir_updt_dirty_i              (st2_dir_updt_dirty_q),
+        .dir_updt_fetch_i              (st2_dir_updt_fetch_q),
 
         .dir_amo_match_i               (uc_dir_amo_match_i),
         .dir_amo_match_set_i           (uc_dir_amo_match_set_i),
@@ -758,6 +776,7 @@ import hpdcache_pkg::*;
     assign st2_mshr_alloc_victim_way_o  = st2_mshr_alloc_victim_way_q;
     assign st2_mshr_alloc_need_rsp_o    = st2_mshr_alloc_need_rsp_q;
     assign st2_mshr_alloc_is_prefetch_o = st2_mshr_alloc_is_prefetch_q;
+    assign st2_mshr_alloc_wback_o       = st2_mshr_alloc_wback_q;
     //  }}}
 
     //  Uncacheable request handler outputs
@@ -859,6 +878,10 @@ import hpdcache_pkg::*;
 
     assert property (prop_core_req_be_align) else
             $error("ctrl: bad BE alignment for request");
+
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
+        st2_mshr_alloc_q |-> $onehot(st2_mshr_alloc_victim_way_q)) else
+            $error("ctrl: no victim way selected during MSHR allocation");
 `endif
     //  }}}
 endmodule

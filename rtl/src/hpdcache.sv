@@ -176,16 +176,18 @@ import hpdcache_pkg::*;
     //  {{{
     typedef struct packed {
         //  Cacheline state
-        //  Encoding: {valid, wb, dirty}
-        //            {0,X,X}: Invalid
-        //            {1,0,0}: Write-through
-        //            {1,0,1}: Fetching
-        //            {1,1,0}: Write-back (clean)
-        //            {1,1,1}: Write-back (dirty)
+        //  Encoding: {valid, wb, dirty, fetch}
+        //            {0,X,X,0}: Invalid
+        //            {0,X,X,1}: Invalid and Fetching
+        //            {1,X,X,1}: Valid and Fetching (cacheline being replaced is accessible)
+        //            {1,0,0,0}: Write-through
+        //            {1,1,0,0}: Write-back (clean)
+        //            {1,1,1,0}: Write-back (dirty)
         //  {{{
         logic valid; //  valid cacheline
-        logic wb;    //  cacheline in write-back mode
+        logic wback; //  cacheline in write-back mode
         logic dirty; //  cacheline is locally modified (memory is obsolete)
+        logic fetch; //  cacheline is reserved for a new cacheline being fetched
         //  }}}
 
         //  Cacheline address tag
@@ -242,6 +244,7 @@ import hpdcache_pkg::*;
     hpdcache_way_vector_t  miss_mshr_alloc_victim_way;
     logic                  miss_mshr_alloc_need_rsp;
     logic                  miss_mshr_alloc_is_prefetch;
+    logic                  miss_mshr_alloc_wback;
 
     logic                  wbuf_flush_all;
     logic                  wbuf_write;
@@ -414,6 +417,7 @@ import hpdcache_pkg::*;
         .st2_mshr_alloc_victim_way_o        (miss_mshr_alloc_victim_way),
         .st2_mshr_alloc_need_rsp_o          (miss_mshr_alloc_need_rsp),
         .st2_mshr_alloc_is_prefetch_o       (miss_mshr_alloc_is_prefetch),
+        .st2_mshr_alloc_wback_o             (miss_mshr_alloc_wback),
 
         .refill_req_valid_i                 (refill_req_valid),
         .refill_req_ready_o                 (refill_req_ready),
@@ -620,6 +624,7 @@ import hpdcache_pkg::*;
         .mshr_alloc_victim_way_i            (miss_mshr_alloc_victim_way),
         .mshr_alloc_need_rsp_i              (miss_mshr_alloc_need_rsp),
         .mshr_alloc_is_prefetch_i           (miss_mshr_alloc_is_prefetch),
+        .mshr_alloc_wback_i                 (miss_mshr_alloc_wback),
 
         .refill_req_ready_i                 (refill_req_ready),
         .refill_req_valid_o                 (refill_req_valid),

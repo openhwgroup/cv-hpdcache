@@ -54,15 +54,12 @@ import hpdcache_pkg::*;
     //      Victim selection interface
     input  logic                  sel_victim_i,
     input  hpdcache_way_vector_t  sel_dir_valid_i,
-    input  hpdcache_way_vector_t  sel_dir_wb_i,
+    input  hpdcache_way_vector_t  sel_dir_wback_i,
     input  hpdcache_way_vector_t  sel_dir_dirty_i,
+    input  hpdcache_way_vector_t  sel_dir_fetch_i,
     output hpdcache_way_vector_t  sel_victim_way_o
 );
 //  }}}
-
-    hpdcache_way_vector_t unused_ways;
-
-    assign unused_ways = ~sel_dir_valid_i;
 
     //  -----------------------------------------------------------------------
     //  Direct mapped cache (one way)
@@ -77,9 +74,12 @@ import hpdcache_pkg::*;
     begin : gen_random_victim_sel
         hpdcache_way_vector_t unused_victim_way;
         hpdcache_way_vector_t random_victim_way;
+        hpdcache_way_vector_t unused_ways;
+
         logic [7:0] lfsr_val;
         logic sel_random;
 
+        assign unused_ways = ~sel_dir_valid_i;
         assign sel_random = ~|unused_ways;
 
         always_comb
@@ -134,8 +134,9 @@ import hpdcache_pkg::*;
             .repl_way_i,
 
             .sel_dir_valid_i,
-            .sel_dir_wb_i,
+            .sel_dir_wback_i,
             .sel_dir_dirty_i,
+            .sel_dir_fetch_i,
             .sel_victim_way_o
         );
     end

@@ -67,6 +67,7 @@ module hpdcache_ctrl_pe
     input  logic                   st1_req_is_cmo_inval_i,
     input  logic                   st1_req_is_cmo_fence_i,
     input  logic                   st1_req_is_cmo_prefetch_i,
+    input  logic                   st1_dir_victim_valid_i,
     output logic                   st1_req_valid_o,
     output logic                   st1_rsp_valid_o,
     output logic                   st1_rsp_aborted_o,
@@ -83,15 +84,21 @@ module hpdcache_ctrl_pe
     //   {{{
     input  logic                   st2_mshr_alloc_i,
     input  logic                   st2_mshr_alloc_is_prefetch_i,
+    input  logic                   st2_mshr_alloc_wback_i,
     output logic                   st2_mshr_alloc_o,
     output logic                   st2_mshr_alloc_cs_o,
+    output logic                   st2_mshr_alloc_wback_o,
 
     input  logic                   st2_dir_updt_i,
-    input  logic                   st2_dir_updt_wb_i,
+    input  logic                   st2_dir_updt_valid_i,
+    input  logic                   st2_dir_updt_wback_i,
     input  logic                   st2_dir_updt_dirty_i,
+    input  logic                   st2_dir_updt_fetch_i,
     output logic                   st2_dir_updt_o,
-    output logic                   st2_dir_updt_wb_o,
+    output logic                   st2_dir_updt_valid_o,
+    output logic                   st2_dir_updt_wback_o,
     output logic                   st2_dir_updt_dirty_o,
+    output logic                   st2_dir_updt_fetch_o,
     //   }}}
 
     //   Replay
@@ -237,10 +244,13 @@ module hpdcache_ctrl_pe
 
         st2_mshr_alloc_o                    = st2_mshr_alloc_i;
         st2_mshr_alloc_cs_o                 = 1'b0;
+        st2_mshr_alloc_wback_o              = st2_mshr_alloc_wback_i;
 
         st2_dir_updt_o                      = st2_dir_updt_i;
-        st2_dir_updt_wb_o                   = st2_dir_updt_wb_i;
+        st2_dir_updt_valid_o                = st2_dir_updt_valid_i;
+        st2_dir_updt_wback_o                = st2_dir_updt_wback_i;
         st2_dir_updt_dirty_o                = st2_dir_updt_dirty_i;
+        st2_dir_updt_fetch_o                = st2_dir_updt_fetch_i;
 
         st2_nop                             = 1'b0;
 
@@ -439,12 +449,15 @@ module hpdcache_ctrl_pe
                                 st1_req_cachedir_sel_victim_o = 1'b1;
 
                                 //  Request a MSHR allocation
-                                st2_mshr_alloc_o = 1'b1;
+                                st2_mshr_alloc_o       = 1'b1;
+                                st2_mshr_alloc_wback_o = 1'b0; /* FIXME */
 
                                 //  Update the cache directory state to FETCHING
                                 st2_dir_updt_o = 1'b1;
-                                st2_dir_updt_wb_o = 1'b0;
-                                st2_dir_updt_dirty_o = 1'b1;
+                                st2_dir_updt_valid_o = st1_dir_victim_valid_i;
+                                st2_dir_updt_wback_o = 1'b0;
+                                st2_dir_updt_dirty_o = 1'b0;
+                                st2_dir_updt_fetch_o = 1'b1;
                             end
                         end
                         //  }}}
