@@ -585,15 +585,16 @@ import hpdcache_pkg::*;
     always_ff @(posedge clk_i or negedge rst_ni)
     begin : rtab_valid_ff
         if (!rst_ni) begin
-            valid_q               <= '0;
-            head_q                <= '0;
-            tail_q                <= '0;
-            deps_mshr_hit_q       <= '0;
-            deps_mshr_full_q      <= '0;
-            deps_mshr_ready_q     <= '0;
-            deps_wbuf_hit_q       <= '0;
-            deps_wbuf_not_ready_q <= '0;
-            next_q                <= '0;
+            valid_q                <= '0;
+            head_q                 <= '0;
+            tail_q                 <= '0;
+            deps_mshr_hit_q        <= '0;
+            deps_mshr_full_q       <= '0;
+            deps_mshr_ready_q      <= '0;
+            deps_wbuf_hit_q        <= '0;
+            deps_wbuf_not_ready_q  <= '0;
+            deps_dir_unavailable_q <= '0;
+            next_q                 <= '0;
         end else begin
             valid_q <= (~valid_q &  valid_set) |
                        ( valid_q & ~valid_rst);
