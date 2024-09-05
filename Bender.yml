@@ -8,6 +8,8 @@ export_include_dirs:
 
 sources:
   - rtl/src/hpdcache_pkg.sv
+  - rtl/src/utils/hpdcache_mem_req_read_arbiter.sv
+  - rtl/src/utils/hpdcache_mem_req_write_arbiter.sv
   - rtl/src/common/hpdcache_demux.sv
   - rtl/src/common/hpdcache_lfsr.sv
   - rtl/src/common/hpdcache_sync_buffer.sv

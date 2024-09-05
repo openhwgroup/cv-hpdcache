@@ -25,6 +25,8 @@
 //
 +incdir+${HPDCACHE_DIR}/rtl/include
 ${HPDCACHE_DIR}/rtl/src/hpdcache_pkg.sv
+${HPDCACHE_DIR}/rtl/src/utils/hpdcache_mem_req_read_arbiter.sv
+${HPDCACHE_DIR}/rtl/src/utils/hpdcache_mem_req_write_arbiter.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_demux.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_lfsr.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_sync_buffer.sv
