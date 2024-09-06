@@ -71,7 +71,7 @@ import hpdcache_pkg::*;
 
     //      Configuration signals
     //      {{{
-    input  logic                  cfg_prefetch_updt_plru_i,
+    input  logic                  cfg_prefetch_updt_sel_victim_i,
     //      }}}
 
     //      CHECK interface
@@ -102,7 +102,7 @@ import hpdcache_pkg::*;
     input  logic                  refill_req_ready_i,
     output logic                  refill_req_valid_o,
     output logic                  refill_busy_o,
-    output logic                  refill_updt_plru_o,
+    output logic                  refill_updt_sel_victim_o,
     output hpdcache_set_t         refill_set_o,
     output hpdcache_way_vector_t  refill_way_o,
     output hpdcache_dir_entry_t   refill_dir_entry_o,
@@ -308,7 +308,7 @@ import hpdcache_pkg::*;
 
     always_comb
     begin : miss_resp_fsm_comb
-        refill_updt_plru_o      = 1'b0;
+        refill_updt_sel_victim_o = 1'b0;
         refill_set_o            = '0;
         refill_way              = '0;
         refill_write_dir_o      = 1'b0;
@@ -429,12 +429,12 @@ import hpdcache_pkg::*;
                         //  Write the new entry in the cache directory
                         refill_write_dir_o  = 1'b1;
 
-                        //  Update the PLRU bits. Only in the following cases:
+                        //  Update the victim selection. Only in the following cases:
                         //  - There is no error in response AND
-                        //  - It is a prefetch and the cfg_prefetch_updt_plru_i is set OR
+                        //  - It is a prefetch and the cfg_prefetch_updt_sel_victim_i is set OR
                         //  - It is a read miss.
-                        refill_updt_plru_o  =  ~refill_is_error &
-                                              (~is_prefetch | cfg_prefetch_updt_plru_i);
+                        refill_updt_sel_victim_o  =  ~refill_is_error &
+                                                    (~is_prefetch | cfg_prefetch_updt_sel_victim_i);
 
                         //  Update dependency flags in the retry table
                         refill_updt_rtab_o  = 1'b1;
@@ -459,12 +459,12 @@ import hpdcache_pkg::*;
                 //  Write the new entry in the cache directory
                 refill_write_dir_o  = ~refill_is_error;
 
-                //  Update the PLRU bits. Only in the following cases:
+                //  Update the victim selection. Only in the following cases:
                 //  - There is no error in response AND
-                //  - It is a prefetch and the cfg_prefetch_updt_plru_i is set OR
+                //  - It is a prefetch and the cfg_prefetch_updt_sel_victim_i is set OR
                 //  - It is a read miss.
-                refill_updt_plru_o  =  ~refill_is_error &
-                                      (~refill_is_prefetch_q | cfg_prefetch_updt_plru_i);
+                refill_updt_sel_victim_o  = ~refill_is_error &
+                                           (~refill_is_prefetch_q | cfg_prefetch_updt_sel_victim_i);
 
                 //  Update dependency flags in the retry table
                 refill_updt_rtab_o = 1'b1;

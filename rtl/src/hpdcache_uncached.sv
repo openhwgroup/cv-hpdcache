@@ -93,7 +93,7 @@ import hpdcache_pkg::*;
     output logic                  dir_amo_match_o,
     output hpdcache_set_t         dir_amo_match_set_o,
     output hpdcache_tag_t         dir_amo_match_tag_o,
-    output logic                  dir_amo_updt_plru_o,
+    output logic                  dir_amo_updt_sel_victim_o,
     input  hpdcache_way_vector_t  dir_amo_hit_way_i,
 
     output logic                  data_amo_write_o,
@@ -654,7 +654,7 @@ import hpdcache_pkg::*;
     assign dir_amo_match_set_o = req_addr_q[HPDcacheCfg.clOffsetWidth +: HPDcacheCfg.setWidth];
     assign dir_amo_match_tag_o = req_addr_q[(HPDcacheCfg.clOffsetWidth + HPDcacheCfg.setWidth) +:
                                             HPDcacheCfg.tagWidth];
-    assign dir_amo_updt_plru_o = (uc_fsm_q == UC_AMO_WRITE_DATA);
+    assign dir_amo_updt_sel_victim_o = (uc_fsm_q == UC_AMO_WRITE_DATA);
 
     assign data_amo_write_o = (uc_fsm_q == UC_AMO_WRITE_DATA);
     assign data_amo_write_enable_o = |dir_amo_hit_way_i;

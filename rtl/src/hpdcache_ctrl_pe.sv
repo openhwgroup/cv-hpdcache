@@ -67,13 +67,21 @@ module hpdcache_ctrl_pe
     input  logic                   st1_req_is_cmo_inval_i,
     input  logic                   st1_req_is_cmo_fence_i,
     input  logic                   st1_req_is_cmo_prefetch_i,
+    input  logic                   st1_req_wr_wt_i,
+    input  logic                   st1_req_wr_wb_i,
+    input  logic                   st1_req_wr_auto_i,
+    input  logic                   st1_dir_hit_wback_i,
+    input  logic                   st1_dir_hit_dirty_i,
+    input  logic                   st1_dir_hit_clean_i,
+    input  logic                   st1_dir_hit_fetch_i,
     input  logic                   st1_dir_victim_unavailable_i,
+    input  logic                   st1_dir_victim_dirty_i,
     input  logic                   st1_dir_victim_valid_i,
     output logic                   st1_req_valid_o,
     output logic                   st1_rsp_valid_o,
     output logic                   st1_rsp_aborted_o,
     output logic                   st1_req_cachedir_sel_victim_o,
-    output logic                   st1_req_cachedir_updt_lru_o,
+    output logic                   st1_req_cachedir_updt_sel_victim_o,
     output logic                   st1_req_cachedata_write_o,
     output logic                   st1_req_cachedata_write_enable_o,
     input  logic                   st1_mshr_alloc_ready_i,
@@ -117,6 +125,8 @@ module hpdcache_ctrl_pe
     output logic                   st1_rtab_wbuf_hit_o,
     output logic                   st1_rtab_wbuf_not_ready_o,
     output logic                   st1_rtab_dir_unavailable_o,
+    output logic                   st1_rtab_dir_fetch_o,
+    output logic                   st1_rtab_flushing_o,
     //   }}}
 
     //   Cache directory
@@ -152,6 +162,11 @@ module hpdcache_ctrl_pe
     input  logic                   cmo_busy_i,
     input  logic                   cmo_wait_i,
     output logic                   cmo_req_valid_o,
+    //   }}}
+
+    //   Configuration
+    //   {{{
+    input  logic                   cfg_default_wb_i,
     //   }}}
 
     //   Performance events
@@ -217,7 +232,9 @@ module hpdcache_ctrl_pe
     //  {{{
     always_comb
     begin : hpdcache_ctrl_comb
-        automatic logic nop, st1_nop, st2_nop;
+        automatic logic nop;
+        automatic logic st1_nop; //  Do not consume a request in stage 0 because of stage 1 hazard
+        automatic logic st2_nop; //  Do not consume a request in stage 0 because of stage 2 haward
 
         uc_req_valid_o                      = 1'b0;
 
@@ -240,7 +257,7 @@ module hpdcache_ctrl_pe
         st1_req_cachedata_write_o           = 1'b0;
         st1_req_cachedata_write_enable_o    = 1'b0;
         st1_req_cachedir_sel_victim_o       = 1'b0;
-        st1_req_cachedir_updt_lru_o         = 1'b0;
+        st1_req_cachedir_updt_sel_victim_o  = 1'b0;
         st1_rsp_valid_o                     = 1'b0;
         st1_rsp_aborted_o                   = 1'b0;
 
@@ -344,7 +361,6 @@ module hpdcache_ctrl_pe
                 else if (rtab_check_o && rtab_check_hit_i) begin
                     st1_rtab_alloc_and_link = 1'b1;
 
-                    //  Do not consume a request in this cycle in stage 0
                     st1_nop = 1'b1;
                 end
 
@@ -399,7 +415,6 @@ module hpdcache_ctrl_pe
                             //  Select a victim cacheline
                             st1_req_cachedir_sel_victim_o = 1'b1;
 
-                            //  Do not consume a request in this cycle in stage 0
                             st1_nop = 1'b1;
 
                             //  Pending miss on the same line
@@ -484,8 +499,8 @@ module hpdcache_ctrl_pe
                             //  request from the replay table.
                             st1_nop = st1_req_rtab_i & ~rtab_req_valid_i;
 
-                            //  Update the PLRU bit for the accessed set
-                            st1_req_cachedir_updt_lru_o = st1_req_is_load_i;
+                            //  Update victim selection for the accessed set
+                            st1_req_cachedir_updt_sel_victim_o = st1_req_is_load_i;
 
                             //  Respond to the core (if needed)
                             st1_rsp_valid_o = st1_req_need_rsp_i;
@@ -493,6 +508,37 @@ module hpdcache_ctrl_pe
                             //  Performance event
                             evt_read_req_o     = ~st1_req_is_cmo_prefetch_i;
                             evt_prefetch_req_o =  st1_req_is_cmo_prefetch_i;
+
+                            //  If the cacheline is currently pre-allocated to be replaced, we can
+                            //  only forward the data, but no state update is allowed.
+                            if (!st1_dir_hit_fetch_i) begin
+                                //  Hint is write-through but the current state is not. The
+                                //  controller needs to update the state of the cacheline to WT
+                                if (st1_req_wr_wt_i && st1_dir_hit_wback_i) begin
+                                    //  Update the directory state of the cacheline to WT
+                                    st2_dir_updt_o = 1'b1;
+                                    st2_dir_updt_wback_o = 1'b0;
+                                    st2_dir_updt_dirty_o = 1'b0;
+
+                                    st1_nop = 1'b1;
+
+                                    if (st1_dir_hit_dirty_i) begin
+                                        /* FIXME */
+                                        assert final (0) else $display("error: not yet supported");
+                                    end
+                                end
+
+                                //  Hint is write-back but the current state is not. The controller
+                                //  needs to update the state of the cacheline to WB (clean)
+                                if (st1_req_wr_wb_i && !st1_dir_hit_wback_i) begin
+                                    //  Update the directory state of the cacheline to WB (clean)
+                                    st2_dir_updt_o = 1'b1;
+                                    st2_dir_updt_wback_o = 1'b1;
+                                    st2_dir_updt_dirty_o = 1'b0;
+
+                                    st1_nop = 1'b1;
+                                end
+                            end
                         end
                         //  }}}
                     end
@@ -501,14 +547,6 @@ module hpdcache_ctrl_pe
                     //  Store cacheable request
                     //  {{{
                     if (st1_req_is_store_i) begin
-                        //  Write in the write buffer if there is no pending miss in the same line.
-                        //
-                        //  We assume here that the NoC that transports read and write transactions does
-                        //  not guaranty the order between transactions on those channels.
-                        //  Therefore, the cache must hold a write if there is a pending read on the
-                        //  same address.
-                        wbuf_write_valid_o = ~st1_mshr_hit_i;
-
                         //  Add a NOP in the pipeline when:
                         //  - Structural hazard on the cache data if the st0 request is a load
                         //    operation.
@@ -531,6 +569,7 @@ module hpdcache_ctrl_pe
                         st1_req_cachedata_write_o = 1'b1;
 
                         //  Cache miss
+                        //  {{{
                         if (!cachedir_hit_i) begin
                             //  Pending miss on the same line
                             if (st1_mshr_hit_i) begin
@@ -539,67 +578,194 @@ module hpdcache_ctrl_pe
 
                                 st1_rtab_mshr_hit_o = 1'b1;
 
-                                //  Do not consume a request in this cycle in stage 0
                                 st1_nop = 1'b1;
                             end
 
-                            //  No available entry in the write buffer (or conflict on pending entry)
-                            else if (!wbuf_write_ready_i) begin
-                                //  Put the request in the replay table
-                                st1_rtab_alloc = 1'b1;
+                            //  Write is write-back
+                            //  {{{
+                            else if (st1_req_wr_wb_i || (st1_req_wr_auto_i && cfg_default_wb_i)) begin
+                                //  Miss Handler is not ready to send
+                                if (!st1_mshr_alloc_ready_i) begin
+                                    st1_rtab_alloc = 1'b1;
 
-                                st1_rtab_wbuf_not_ready_o = 1'b1;
+                                    st1_rtab_mshr_ready_o = 1'b1;
 
-                                //  Do not consume a request in this cycle in stage 0
-                                st1_nop = 1'b1;
+                                    st1_nop = 1'b1;
+                                end
+
+                                //  No available slot in the MSHR
+                                else if (st1_mshr_full_i) begin
+                                    //  Put the request in the replay table
+                                    st1_rtab_alloc = 1'b1;
+
+                                    st1_rtab_mshr_full_o = 1'b1;
+                                end
+
+                                //  no available victim cacheline (all currently pre-allocated and
+                                //  waiting to be refill)
+                                else if (st1_dir_victim_unavailable_i) begin
+                                    //  Put the request in the replay table
+                                    st1_rtab_alloc = 1'b1;
+                                    st1_rtab_dir_unavailable_o = 1'b1;
+
+                                    st1_nop = 1'b1;
+                                end
+
+                                else begin
+                                    //  When the victim cacheline is dirty, flush its data to the
+                                    //  memory
+                                    if (st1_dir_victim_dirty_i) begin
+                                        /* FIXME */
+                                        assert final (0) else $display("error: not yet supported");
+                                    end
+
+                                    //  Update the directory state of the cacheline to FETCHING
+                                    st2_dir_updt_o = 1'b1;
+                                    st2_dir_updt_fetch_o = 1'b1;
+
+                                    //  Send a miss request to the memory (write-allocate)
+                                    st2_mshr_alloc_o = 1'b1;
+                                    st2_mshr_alloc_wback_o = 1'b1;
+
+                                    //  Put the request in the replay table
+                                    st1_rtab_alloc = 1'b1;
+                                    st1_rtab_dir_fetch_o = 1'b1;
+
+                                    st1_nop = 1'b1;
+
+                                    //  Performance event
+                                    evt_write_req_o = 1'b1;
+                                end
                             end
+                            //  }}}
 
+                            //  Write is write-through
+                            //  {{{
                             else begin
-                                //  If the request comes from the replay table, free the
-                                //  corresponding RTAB entry
-                                st1_rtab_commit_o = st1_req_rtab_i;
+                                //  Request write into the write-buffer
+                                wbuf_write_valid_o = 1'b1;
 
-                                //  Respond to the core (if needed)
-                                st1_rsp_valid_o = st1_req_need_rsp_i;
+                                //  No available entry in the write buffer (or conflict on pending entry)
+                                if (!wbuf_write_ready_i) begin
+                                    //  Put the request in the replay table
+                                    st1_rtab_alloc = 1'b1;
 
-                                //  Performance event
-                                evt_cache_write_miss_o = 1'b1;
-                                evt_write_req_o        = 1'b1;
+                                    st1_rtab_wbuf_not_ready_o = 1'b1;
+
+                                    st1_nop = 1'b1;
+                                end
+
+                                else begin
+                                    //  If the request comes from the replay table, free the
+                                    //  corresponding RTAB entry
+                                    st1_rtab_commit_o = st1_req_rtab_i;
+
+                                    //  Respond to the core (if needed)
+                                    st1_rsp_valid_o = st1_req_need_rsp_i;
+
+                                    //  Performance event
+                                    evt_cache_write_miss_o = 1'b1;
+                                    evt_write_req_o        = 1'b1;
+                                end
                             end
                         end
+                        //  }}}
 
                         //  Cache hit
+                        //  {{{
                         else begin
-                            //  No available entry in the write buffer (or conflict on pending entry)
-                            if (!wbuf_write_ready_i) begin
+                            //  The target cacheline is pre-allocated to be replace. Put this write
+                            //  on-hold
+                            if (!st1_dir_hit_fetch_i) begin
                                 //  Put the request in the replay table
                                 st1_rtab_alloc = 1'b1;
+                                st1_rtab_dir_fetch_o = 1'b1;
 
-                                st1_rtab_wbuf_not_ready_o = 1'b1;
-
-                                //  Do not consume a request in this cycle in stage 0
                                 st1_nop = 1'b1;
                             end
 
-                            //  The store can be performed in the write buffer and in the cache
-                            else begin
-                                //  If the request comes from the replay table, free the
-                                //  corresponding RTAB entry
-                                st1_rtab_commit_o = st1_req_rtab_i;
-
-                                //  Respond to the core
-                                st1_rsp_valid_o = st1_req_need_rsp_i;
-
-                                //  Update the PLRU bit for the accessed set
-                                st1_req_cachedir_updt_lru_o = 1'b1;
-
+                            //  Write is write-back
+                            //  {{{
+                            else if (st1_req_wr_wb_i || (st1_req_wr_auto_i && st1_dir_hit_wback_i)) begin
                                 //  Write in the data RAM
                                 st1_req_cachedata_write_enable_o = 1'b1;
+
+                                // Update the directory state of the cacheline to dirty
+                                if (!st1_dir_hit_wback_i || st1_dir_hit_clean_i) begin
+                                    st2_dir_updt_o       = 1'b1;
+                                    st2_dir_updt_dirty_o = 1'b1;
+
+                                    st1_nop = 1'b1;
+                                end
 
                                 //  Performance event
                                 evt_write_req_o = 1'b1;
                             end
+                            //  }}}
+
+                            //  Write is write-through
+                            //  {{{
+                            else begin
+                                //  Write in the write buffer if there is no pending miss in the
+                                //  same line.
+
+                                //  We assume here that the NoC that transports read and write
+                                //  transactions does not guaranty the order between transactions on
+                                //  those channels. Therefore, the cache must hold a write if there
+                                //  is a pending read on the same address.
+                                wbuf_write_valid_o = ~st1_dir_hit_dirty_i;
+
+                                //  Cacheline is dirty. The controller needs to flush it to the
+                                //  memory before changing its state to WT
+                                if (st1_dir_hit_dirty_i) begin
+                                    /* FIXME handle the flushing to the memory */
+                                    assert final (0) else $display("error: not yet supported");
+
+                                    //  Update the state to WT in the directory
+                                    st2_dir_updt_o = 1'b1;
+                                    st2_dir_updt_wback_o = 1'b1;
+                                    st2_dir_updt_dirty_o = 1'b0;
+
+                                    //  Put the request in the replay table while waiting for the
+                                    //  memory flushing
+                                    st1_rtab_alloc = 1'b1;
+                                    st1_rtab_flushing_o = 1'b1;
+
+                                    st1_nop = 1'b1;
+                                end
+
+                                //  No available entry in the write buffer (or conflict on pending entry)
+                                else if (!wbuf_write_ready_i) begin
+                                    //  Put the request in the replay table
+                                    st1_rtab_alloc = 1'b1;
+
+                                    st1_rtab_wbuf_not_ready_o = 1'b1;
+
+                                    st1_nop = 1'b1;
+                                end
+
+                                //  The store can be performed in the write buffer and in the cache
+                                else begin
+                                    //  If the request comes from the replay table, free the
+                                    //  corresponding RTAB entry
+                                    st1_rtab_commit_o = st1_req_rtab_i;
+
+                                    //  Respond to the core
+                                    st1_rsp_valid_o = st1_req_need_rsp_i;
+
+                                    //  Update victim selection for the accessed set
+                                    st1_req_cachedir_updt_sel_victim_o = 1'b1;
+
+                                    //  Write in the data RAM
+                                    st1_req_cachedata_write_enable_o = 1'b1;
+
+                                    //  Performance event
+                                    evt_write_req_o = 1'b1;
+                                end
+                            end
+                            //  }}}
                         end
+                        //  }}}
                     end
                     //  }}}
                 end

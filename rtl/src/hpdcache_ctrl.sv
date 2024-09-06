@@ -108,7 +108,7 @@ import hpdcache_pkg::*;
     input  logic                  refill_req_valid_i,
     output logic                  refill_req_ready_o,
     input  logic                  refill_busy_i,
-    input  logic                  refill_updt_plru_i,
+    input  logic                  refill_updt_sel_victim_i,
     input  hpdcache_set_t         refill_set_i,
     input  hpdcache_way_vector_t  refill_way_i,
     input  hpdcache_dir_entry_t   refill_dir_entry_i,
@@ -164,7 +164,7 @@ import hpdcache_pkg::*;
     input  logic                  uc_dir_amo_match_i,
     input  hpdcache_set_t         uc_dir_amo_match_set_i,
     input  hpdcache_tag_t         uc_dir_amo_match_tag_i,
-    input  logic                  uc_dir_amo_updt_plru_i,
+    input  logic                  uc_dir_amo_updt_sel_victim_i,
     output hpdcache_way_vector_t  uc_dir_amo_hit_way_o,
     input  logic                  uc_data_amo_write_i,
     input  logic                  uc_data_amo_write_enable_i,
@@ -278,7 +278,7 @@ import hpdcache_pkg::*;
     hpdcache_nline_t         st1_req_nline;
     hpdcache_req_addr_t      st1_req_addr;
     logic                    st1_victim_sel;
-    logic                    st1_req_updt_lru;
+    logic                    st1_req_updt_sel_victim;
     logic                    st1_req_is_uncacheable;
     logic                    st1_req_is_load;
     logic                    st1_req_is_store;
@@ -315,6 +315,7 @@ import hpdcache_pkg::*;
     logic                    st1_rtab_wbuf_hit;
     logic                    st1_rtab_wbuf_not_ready;
     logic                    st1_rtab_dir_unavailable;
+    logic                    st1_rtab_dir_fetch;
     logic                    st1_rtab_check;
     logic                    st1_rtab_check_hit;
 
@@ -442,7 +443,7 @@ import hpdcache_pkg::*;
         .st1_rsp_valid_o                    (st1_rsp_valid),
         .st1_rsp_aborted_o                  (st1_rsp_aborted),
         .st1_req_cachedir_sel_victim_o      (st1_victim_sel),
-        .st1_req_cachedir_updt_lru_o        (st1_req_updt_lru),
+        .st1_req_cachedir_updt_sel_victim_o (st1_req_updt_sel_victim),
         .st1_req_cachedata_write_o          (st1_req_cachedata_write),
         .st1_req_cachedata_write_enable_o   (st1_req_cachedata_write_enable),
 
@@ -477,6 +478,7 @@ import hpdcache_pkg::*;
         .st1_rtab_wbuf_hit_o                (st1_rtab_wbuf_hit),
         .st1_rtab_wbuf_not_ready_o          (st1_rtab_wbuf_not_ready),
         .st1_rtab_dir_unavailable_o         (st1_rtab_dir_unavailable),
+        .st1_rtab_dir_fetch_o               (st1_rtab_dir_fetch), /* FIXME */
 
         .cachedir_hit_i                     (cachedir_hit_o),
         .cachedir_init_ready_i              (hpdcache_init_ready),
@@ -685,7 +687,7 @@ import hpdcache_pkg::*;
         .dir_match_i                   (st0_req_cachedir_read),
         .dir_match_set_i               (st0_req_set),
         .dir_match_tag_i               (st1_req.addr_tag),
-        .dir_updt_lru_i                (st1_req_updt_lru),
+        .dir_updt_sel_victim_i         (st1_req_updt_sel_victim),
         .dir_hit_way_o                 (st1_dir_hit_way),
         .dir_hit_tag_o                 (st1_dir_hit_tag),
 
@@ -701,14 +703,14 @@ import hpdcache_pkg::*;
         .dir_amo_match_i               (uc_dir_amo_match_i),
         .dir_amo_match_set_i           (uc_dir_amo_match_set_i),
         .dir_amo_match_tag_i           (uc_dir_amo_match_tag_i),
-        .dir_amo_updt_plru_i           (uc_dir_amo_updt_plru_i),
+        .dir_amo_updt_sel_victim_i     (uc_dir_amo_updt_sel_victim_i),
         .dir_amo_hit_way_o             (uc_dir_amo_hit_way_o),
 
         .dir_refill_i                  (refill_write_dir_i),
         .dir_refill_set_i              (refill_set_i),
         .dir_refill_way_i              (refill_way_i),
         .dir_refill_entry_i            (refill_dir_entry_i),
-        .dir_refill_updt_plru_i        (refill_updt_plru_i),
+        .dir_refill_updt_sel_victim_i  (refill_updt_sel_victim_i),
 
         .dir_victim_sel_i              (st1_victim_sel),
         .dir_victim_valid_o            (st1_dir_victim_valid),

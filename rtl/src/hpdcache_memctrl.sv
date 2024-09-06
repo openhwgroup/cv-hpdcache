@@ -67,7 +67,7 @@ import hpdcache_pkg::*;
     input  logic                                dir_match_i,
     input  hpdcache_set_t                       dir_match_set_i,
     input  hpdcache_tag_t                       dir_match_tag_i,
-    input  logic                                dir_updt_lru_i,
+    input  logic                                dir_updt_sel_victim_i,
     output hpdcache_way_vector_t                dir_hit_way_o,
     output hpdcache_tag_t                       dir_hit_tag_o,
 
@@ -83,14 +83,14 @@ import hpdcache_pkg::*;
     input  logic                                dir_amo_match_i,
     input  hpdcache_set_t                       dir_amo_match_set_i,
     input  hpdcache_tag_t                       dir_amo_match_tag_i,
-    input  logic                                dir_amo_updt_plru_i,
+    input  logic                                dir_amo_updt_sel_victim_i,
     output hpdcache_way_vector_t                dir_amo_hit_way_o,
 
     input  logic                                dir_refill_i,
     input  hpdcache_set_t                       dir_refill_set_i,
     input  hpdcache_way_vector_t                dir_refill_way_i,
     input  hpdcache_dir_entry_t                 dir_refill_entry_i,
-    input  logic                                dir_refill_updt_plru_i,
+    input  logic                                dir_refill_updt_sel_victim_i,
 
     input  logic                                dir_victim_sel_i,
     output logic                                dir_victim_valid_o,
@@ -561,11 +561,11 @@ import hpdcache_pkg::*;
 
     //  Directory victim select logic
     //  {{{
-    logic                 plru_updt;
-    hpdcache_way_vector_t plru_updt_way;
+    logic                 updt_sel_victim;
+    hpdcache_way_vector_t updt_sel_victim_way;
 
-    assign plru_updt     = dir_updt_lru_i | dir_amo_updt_plru_i,
-           plru_updt_way = dir_updt_lru_i ? dir_hit_way_o : dir_amo_hit_way_o;
+    assign updt_sel_victim     = dir_updt_sel_victim_i | dir_amo_updt_sel_victim_i,
+           updt_sel_victim_way = dir_updt_sel_victim_i ? dir_hit_way_o : dir_amo_hit_way_o;
 
     for (gen_i = 0; gen_i < HPDcacheCfg.u.ways; gen_i++) begin : gen_dir_valid_bv
         assign dir_valid[gen_i] = dir_rentry[gen_i].valid;
@@ -583,11 +583,11 @@ import hpdcache_pkg::*;
         .clk_i,
         .rst_ni,
 
-        .updt_i                   (plru_updt),
+        .updt_i                   (updt_sel_victim),
         .updt_set_i               (dir_req_set_q),
-        .updt_way_i               (plru_updt_way),
+        .updt_way_i               (updt_sel_victim_way),
 
-        .repl_i                   (dir_refill_i & dir_refill_updt_plru_i),
+        .repl_i                   (dir_refill_i & dir_refill_updt_sel_victim_i),
         .repl_set_i               (dir_refill_set_i),
         .repl_way_i               (dir_refill_way_i),
 

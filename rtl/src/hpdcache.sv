@@ -210,7 +210,7 @@ import hpdcache_pkg::*;
     logic                  refill_req_valid;
     logic                  refill_req_ready;
     logic                  refill_busy;
-    logic                  refill_updt_plru;
+    logic                  refill_updt_sel_victim;
     hpdcache_set_t         refill_set;
     hpdcache_way_vector_t  refill_way;
     hpdcache_dir_entry_t   refill_dir_entry;
@@ -277,7 +277,7 @@ import hpdcache_pkg::*;
     logic                  uc_dir_amo_match;
     hpdcache_set_t         uc_dir_amo_match_set;
     hpdcache_tag_t         uc_dir_amo_match_tag;
-    logic                  uc_dir_amo_updt_plru;
+    logic                  uc_dir_amo_updt_sel_victim;
     hpdcache_way_vector_t  uc_dir_amo_hit_way;
     logic                  uc_data_amo_write;
     logic                  uc_data_amo_write_enable;
@@ -422,7 +422,7 @@ import hpdcache_pkg::*;
         .refill_req_valid_i                 (refill_req_valid),
         .refill_req_ready_o                 (refill_req_ready),
         .refill_busy_i                      (refill_busy),
-        .refill_updt_plru_i                 (refill_updt_plru),
+        .refill_updt_sel_victim_i           (refill_updt_sel_victim),
         .refill_set_i                       (refill_set),
         .refill_way_i                       (refill_way),
         .refill_dir_entry_i                 (refill_dir_entry),
@@ -475,7 +475,7 @@ import hpdcache_pkg::*;
         .uc_dir_amo_match_i                 (uc_dir_amo_match),
         .uc_dir_amo_match_set_i             (uc_dir_amo_match_set),
         .uc_dir_amo_match_tag_i             (uc_dir_amo_match_tag),
-        .uc_dir_amo_updt_plru_i             (uc_dir_amo_updt_plru),
+        .uc_dir_amo_updt_sel_victim_i       (uc_dir_amo_updt_sel_victim),
         .uc_dir_amo_hit_way_o               (uc_dir_amo_hit_way),
         .uc_data_amo_write_i                (uc_data_amo_write),
         .uc_data_amo_write_enable_i         (uc_data_amo_write_enable),
@@ -606,7 +606,7 @@ import hpdcache_pkg::*;
         .mshr_empty_o                       (miss_mshr_empty),
         .mshr_full_o                        (/* unused */),
 
-        .cfg_prefetch_updt_plru_i,
+        .cfg_prefetch_updt_sel_victim_i     (cfg_prefetch_updt_plru_i),
 
         .mshr_check_i                       (miss_mshr_check),
         .mshr_check_offset_i                (miss_mshr_check_offset),
@@ -629,7 +629,7 @@ import hpdcache_pkg::*;
         .refill_req_ready_i                 (refill_req_ready),
         .refill_req_valid_o                 (refill_req_valid),
         .refill_busy_o                      (refill_busy),
-        .refill_updt_plru_o                 (refill_updt_plru),
+        .refill_updt_sel_victim_o           (refill_updt_sel_victim),
         .refill_set_o                       (refill_set),
         .refill_way_o                       (refill_way),
         .refill_dir_entry_o                 (refill_dir_entry),
@@ -713,7 +713,7 @@ import hpdcache_pkg::*;
         .dir_amo_match_o               (uc_dir_amo_match),
         .dir_amo_match_set_o           (uc_dir_amo_match_set),
         .dir_amo_match_tag_o           (uc_dir_amo_match_tag),
-        .dir_amo_updt_plru_o           (uc_dir_amo_updt_plru),
+        .dir_amo_updt_sel_victim_o     (uc_dir_amo_updt_sel_victim),
         .dir_amo_hit_way_i             (uc_dir_amo_hit_way),
 
         .data_amo_write_o              (uc_data_amo_write),
