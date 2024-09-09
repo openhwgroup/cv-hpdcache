@@ -70,6 +70,9 @@ import hpdcache_pkg::*;
     input  logic                                dir_updt_sel_victim_i,
     output hpdcache_way_vector_t                dir_hit_way_o,
     output hpdcache_tag_t                       dir_hit_tag_o,
+    output logic                                dir_hit_wback_o,
+    output logic                                dir_hit_dirty_o,
+    output logic                                dir_hit_fetch_o,
 
     input  logic                                dir_updt_i,
     input  hpdcache_set_t                       dir_updt_set_i,
@@ -94,6 +97,7 @@ import hpdcache_pkg::*;
 
     input  logic                                dir_victim_sel_i,
     output logic                                dir_victim_valid_o,
+    output logic                                dir_victim_dirty_o,
     output hpdcache_tag_t                       dir_victim_tag_o,
     output hpdcache_way_vector_t                dir_victim_way_o,
 
@@ -513,7 +517,6 @@ import hpdcache_pkg::*;
     //  Directory hit logic
     //  {{{
     hpdcache_tag_t [HPDcacheCfg.u.ways-1:0] dir_tags;
-    logic          [HPDcacheCfg.u.ways-1:0] dir_valids;
     hpdcache_way_vector_t req_hit;
     hpdcache_way_vector_t amo_hit;
     hpdcache_way_vector_t cmo_hit;
@@ -522,17 +525,16 @@ import hpdcache_pkg::*;
     for (gen_i = 0; gen_i < int'(HPDcacheCfg.u.ways); gen_i++)
     begin : gen_dir_match_tag
         assign dir_tags[gen_i]   = dir_rentry[gen_i].tag;
-        assign dir_valids[gen_i] = dir_rentry[gen_i].valid;
 
         assign req_hit[gen_i]   = (dir_tags[gen_i] == dir_match_tag_i),
                amo_hit[gen_i]   = (dir_tags[gen_i] == dir_amo_match_tag_i),
                cmo_hit[gen_i]   = (dir_tags[gen_i] == dir_cmo_check_tag_i),
                inval_hit[gen_i] = (dir_tags[gen_i] == dir_inval_tag);
 
-        assign dir_hit_way_o[gen_i]           = dir_valids[gen_i] & req_hit[gen_i],
-               dir_amo_hit_way_o[gen_i]       = dir_valids[gen_i] & amo_hit[gen_i],
-               dir_cmo_check_hit_way_o[gen_i] = dir_valids[gen_i] & cmo_hit[gen_i],
-               dir_inval_hit_way[gen_i]       = dir_valids[gen_i] & inval_hit[gen_i];
+        assign dir_hit_way_o[gen_i]           = dir_valid[gen_i] & req_hit[gen_i],
+               dir_amo_hit_way_o[gen_i]       = dir_valid[gen_i] & amo_hit[gen_i],
+               dir_cmo_check_hit_way_o[gen_i] = dir_valid[gen_i] & cmo_hit[gen_i],
+               dir_inval_hit_way[gen_i]       = dir_valid[gen_i] & inval_hit[gen_i];
     end
 
     hpdcache_mux #(
@@ -545,6 +547,10 @@ import hpdcache_pkg::*;
         .data_o      (dir_hit_tag_o)
     );
 
+    assign dir_hit_wback_o = |(dir_hit_way_o & dir_wback);
+    assign dir_hit_dirty_o = |(dir_hit_way_o & dir_dirty);
+    assign dir_hit_fetch_o = |(dir_hit_way_o & dir_fetch);
+
     hpdcache_mux #(
         .NINPUT      (HPDcacheCfg.u.ways),
         .DATA_WIDTH  (HPDcacheCfg.tagWidth),
@@ -555,7 +561,8 @@ import hpdcache_pkg::*;
         .data_o      (dir_victim_tag_o)
     );
 
-    assign dir_victim_valid_o = |(dir_victim_way_o & dir_valids);
+    assign dir_victim_valid_o = |(dir_victim_way_o & dir_valid);
+    assign dir_victim_dirty_o = |(dir_victim_way_o & dir_dirty);
     assign dir_inval_hit_o    = |dir_inval_hit_way;
     //  }}}
 

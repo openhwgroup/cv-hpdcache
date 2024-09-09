@@ -158,7 +158,8 @@ import hpdcache_pkg::*;
     input  logic                          cfg_wbuf_inhibit_write_coalescing_i,
     input  logic                          cfg_prefetch_updt_plru_i,
     input  logic                          cfg_error_on_cacheable_amo_i,
-    input  logic                          cfg_rtab_single_entry_i
+    input  logic                          cfg_rtab_single_entry_i,
+    input  logic                          cfg_default_wb_i
 );
     //  }}}
 
@@ -508,6 +509,7 @@ import hpdcache_pkg::*;
 
         .cfg_enable_i,
         .cfg_rtab_single_entry_i,
+        .cfg_default_wb_i,
 
         .evt_cache_write_miss_o,
         .evt_cache_read_miss_o,

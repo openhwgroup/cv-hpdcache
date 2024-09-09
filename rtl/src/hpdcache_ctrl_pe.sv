@@ -72,11 +72,10 @@ module hpdcache_ctrl_pe
     input  logic                   st1_req_wr_auto_i,
     input  logic                   st1_dir_hit_wback_i,
     input  logic                   st1_dir_hit_dirty_i,
-    input  logic                   st1_dir_hit_clean_i,
     input  logic                   st1_dir_hit_fetch_i,
     input  logic                   st1_dir_victim_unavailable_i,
-    input  logic                   st1_dir_victim_dirty_i,
     input  logic                   st1_dir_victim_valid_i,
+    input  logic                   st1_dir_victim_dirty_i,
     output logic                   st1_req_valid_o,
     output logic                   st1_rsp_valid_o,
     output logic                   st1_rsp_aborted_o,
@@ -285,6 +284,8 @@ module hpdcache_ctrl_pe
         st1_rtab_wbuf_hit_o                 = 1'b0;
         st1_rtab_wbuf_not_ready_o           = 1'b0;
         st1_rtab_dir_unavailable_o          = 1'b0;
+        st1_rtab_dir_fetch_o                = 1'b0;
+        st1_rtab_flushing_o                 = 1'b0;
 
         evt_cache_write_miss_o              = 1'b0;
         evt_cache_read_miss_o               = 1'b0;
@@ -476,7 +477,8 @@ module hpdcache_ctrl_pe
 
                                 //  Request a MSHR allocation
                                 st2_mshr_alloc_o       = 1'b1;
-                                st2_mshr_alloc_wback_o = 1'b0; /* FIXME */
+                                st2_mshr_alloc_wback_o = (st1_req_wr_auto_i & cfg_default_wb_i) |
+                                                          st1_req_wr_wb_i;
 
                                 //  Update the cache directory state to FETCHING
                                 st2_dir_updt_o = 1'b1;
@@ -691,7 +693,7 @@ module hpdcache_ctrl_pe
                                 st1_req_cachedata_write_enable_o = 1'b1;
 
                                 // Update the directory state of the cacheline to dirty
-                                if (!st1_dir_hit_wback_i || st1_dir_hit_clean_i) begin
+                                if (!st1_dir_hit_wback_i || !st1_dir_hit_dirty_i) begin
                                     st2_dir_updt_o       = 1'b1;
                                     st2_dir_updt_dirty_o = 1'b1;
 

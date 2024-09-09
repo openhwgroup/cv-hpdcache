@@ -199,6 +199,7 @@ import hpdcache_pkg::*;
     //   Configuration signals
     input  logic                  cfg_enable_i,
     input  logic                  cfg_rtab_single_entry_i,
+    input  logic                  cfg_default_wb_i,
 
     //   Performance events
     output logic                  evt_cache_write_miss_o,
@@ -297,11 +298,18 @@ import hpdcache_pkg::*;
     logic                    st1_req_is_cmo_inval;
     logic                    st1_req_is_cmo_fence;
     logic                    st1_req_is_cmo_prefetch;
+    logic                    st1_req_wr_wt;
+    logic                    st1_req_wr_wb;
+    logic                    st1_req_wr_auto;
     logic                    st1_dir_hit;
+    logic                    st1_dir_hit_wback;
+    logic                    st1_dir_hit_dirty;
+    logic                    st1_dir_hit_fetch;
     hpdcache_way_vector_t    st1_dir_hit_way;
     hpdcache_tag_t           st1_dir_hit_tag;
     logic                    st1_dir_victim_unavailable;
     logic                    st1_dir_victim_valid;
+    logic                    st1_dir_victim_dirty;
     hpdcache_tag_t           st1_dir_victim_tag;
     hpdcache_way_vector_t    st1_dir_victim_way;
     hpdcache_req_data_t      st1_read_data;
@@ -316,6 +324,7 @@ import hpdcache_pkg::*;
     logic                    st1_rtab_wbuf_not_ready;
     logic                    st1_rtab_dir_unavailable;
     logic                    st1_rtab_dir_fetch;
+    logic                    st1_rtab_flushing;
     logic                    st1_rtab_check;
     logic                    st1_rtab_check_hit;
 
@@ -402,6 +411,11 @@ import hpdcache_pkg::*;
     assign st1_req_is_cmo_inval    =    is_cmo_inval(st1_req.op, st1_req.size);
     assign st1_req_is_cmo_fence    =    is_cmo_fence(st1_req.op, st1_req.size);
     assign st1_req_is_cmo_prefetch = is_cmo_prefetch(st1_req.op, st1_req.size);
+
+    //  Decode write-policy hint
+    assign st1_req_wr_wt           = (st1_req.pma.wr_policy_hint == HPDCACHE_WR_POLICY_WT);
+    assign st1_req_wr_wb           = (st1_req.pma.wr_policy_hint == HPDCACHE_WR_POLICY_WB);
+    assign st1_req_wr_auto         = (st1_req.pma.wr_policy_hint == HPDCACHE_WR_POLICY_AUTO);
     //  }}}
 
     //  Cache controller protocol engine
@@ -437,8 +451,15 @@ import hpdcache_pkg::*;
         .st1_req_is_cmo_inval_i             (st1_req_is_cmo_inval),
         .st1_req_is_cmo_fence_i             (st1_req_is_cmo_fence),
         .st1_req_is_cmo_prefetch_i          (st1_req_is_cmo_prefetch),
+        .st1_req_wr_wt_i                    (st1_req_wr_wt),
+        .st1_req_wr_wb_i                    (st1_req_wr_wb),
+        .st1_req_wr_auto_i                  (st1_req_wr_auto),
+        .st1_dir_hit_wback_i                (st1_dir_hit_wback),
+        .st1_dir_hit_dirty_i                (st1_dir_hit_dirty),
+        .st1_dir_hit_fetch_i                (st1_dir_hit_fetch),
         .st1_dir_victim_unavailable_i       (st1_dir_victim_unavailable),
         .st1_dir_victim_valid_i             (st1_dir_victim_valid),
+        .st1_dir_victim_dirty_i             (st1_dir_victim_dirty),
         .st1_req_valid_o                    (st1_req_valid_d),
         .st1_rsp_valid_o                    (st1_rsp_valid),
         .st1_rsp_aborted_o                  (st1_rsp_aborted),
@@ -479,6 +500,7 @@ import hpdcache_pkg::*;
         .st1_rtab_wbuf_not_ready_o          (st1_rtab_wbuf_not_ready),
         .st1_rtab_dir_unavailable_o         (st1_rtab_dir_unavailable),
         .st1_rtab_dir_fetch_o               (st1_rtab_dir_fetch), /* FIXME */
+        .st1_rtab_flushing_o                (st1_rtab_flushing),
 
         .cachedir_hit_i                     (cachedir_hit_o),
         .cachedir_init_ready_i              (hpdcache_init_ready),
@@ -503,6 +525,8 @@ import hpdcache_pkg::*;
         .cmo_busy_i,
         .cmo_wait_i,
         .cmo_req_valid_o,
+
+        .cfg_default_wb_i,
 
         .evt_cache_write_miss_o,
         .evt_cache_read_miss_o,
@@ -690,6 +714,9 @@ import hpdcache_pkg::*;
         .dir_updt_sel_victim_i         (st1_req_updt_sel_victim),
         .dir_hit_way_o                 (st1_dir_hit_way),
         .dir_hit_tag_o                 (st1_dir_hit_tag),
+        .dir_hit_wback_o               (st1_dir_hit_wback),
+        .dir_hit_dirty_o               (st1_dir_hit_dirty),
+        .dir_hit_fetch_o               (st1_dir_hit_fetch),
 
         .dir_updt_i                    (st2_dir_updt_q),
         .dir_updt_set_i                (st2_dir_updt_set_q),
@@ -714,6 +741,7 @@ import hpdcache_pkg::*;
 
         .dir_victim_sel_i              (st1_victim_sel),
         .dir_victim_valid_o            (st1_dir_victim_valid),
+        .dir_victim_dirty_o            (st1_dir_victim_dirty),
         .dir_victim_tag_o              (st1_dir_victim_tag),
         .dir_victim_way_o              (st1_dir_victim_way),
 
