@@ -676,9 +676,9 @@ module hpdcache_ctrl_pe
                         //  Cache hit
                         //  {{{
                         else begin
-                            //  The target cacheline is pre-allocated to be replace. Put this write
+                            //  The target cacheline is pre-allocated to be replaced. Put this write
                             //  on-hold
-                            if (!st1_dir_hit_fetch_i) begin
+                            if (st1_dir_hit_fetch_i) begin
                                 //  Put the request in the replay table
                                 st1_rtab_alloc = 1'b1;
                                 st1_rtab_dir_fetch_o = 1'b1;
