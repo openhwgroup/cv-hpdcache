@@ -75,6 +75,7 @@ module hpdcache_ctrl_pe
     input  logic                   st1_dir_hit_fetch_i,
     input  logic                   st1_dir_victim_unavailable_i,
     input  logic                   st1_dir_victim_valid_i,
+    input  logic                   st1_dir_victim_wback_i,
     input  logic                   st1_dir_victim_dirty_i,
     output logic                   st1_req_valid_o,
     output logic                   st1_rsp_valid_o,
@@ -95,6 +96,7 @@ module hpdcache_ctrl_pe
     input  logic                   st2_mshr_alloc_wback_i,
     output logic                   st2_mshr_alloc_o,
     output logic                   st2_mshr_alloc_cs_o,
+    output logic                   st2_mshr_alloc_need_rsp_o,
     output logic                   st2_mshr_alloc_wback_o,
 
     input  logic                   st2_dir_updt_i,
@@ -262,6 +264,7 @@ module hpdcache_ctrl_pe
 
         st2_mshr_alloc_o                    = st2_mshr_alloc_i;
         st2_mshr_alloc_cs_o                 = 1'b0;
+        st2_mshr_alloc_need_rsp_o           = 1'b0;
         st2_mshr_alloc_wback_o              = st2_mshr_alloc_wback_i;
 
         st2_dir_updt_o                      = st2_dir_updt_i;
@@ -471,20 +474,28 @@ module hpdcache_ctrl_pe
                             //  Forward the request to the next stage to allocate the
                             //  entry in the MSHR and send the refill request
                             else begin
+                                //  When the victim cacheline is dirty, flush its data to the
+                                //  memory
+                                if (st1_dir_victim_dirty_i) begin
+                                    /* FIXME */
+                                    assert final (0) else $error("error: not yet supported");
+                                end
+
                                 //  If the request comes from the replay table, free the
                                 //  corresponding RTAB entry
                                 st1_rtab_commit_o = st1_req_rtab_i;
 
                                 //  Request a MSHR allocation
-                                st2_mshr_alloc_o       = 1'b1;
+                                st2_mshr_alloc_o = 1'b1;
+                                st2_mshr_alloc_need_rsp_o = st1_req_need_rsp_i;
                                 st2_mshr_alloc_wback_o = (st1_req_wr_auto_i & cfg_default_wb_i) |
                                                           st1_req_wr_wb_i;
 
                                 //  Update the cache directory state to FETCHING
                                 st2_dir_updt_o = 1'b1;
                                 st2_dir_updt_valid_o = st1_dir_victim_valid_i;
-                                st2_dir_updt_wback_o = 1'b0;
-                                st2_dir_updt_dirty_o = 1'b0;
+                                st2_dir_updt_wback_o = st1_dir_victim_wback_i;
+                                st2_dir_updt_dirty_o = st1_dir_victim_dirty_i;
                                 st2_dir_updt_fetch_o = 1'b1;
                             end
                         end
@@ -508,7 +519,7 @@ module hpdcache_ctrl_pe
                             st1_rsp_valid_o = st1_req_need_rsp_i;
 
                             //  Performance event
-                            evt_read_req_o     = ~st1_req_is_cmo_prefetch_i;
+                            evt_read_req_o = ~st1_req_is_cmo_prefetch_i;
                             evt_prefetch_req_o =  st1_req_is_cmo_prefetch_i;
 
                             //  If the cacheline is currently pre-allocated to be replaced, we can
@@ -519,14 +530,16 @@ module hpdcache_ctrl_pe
                                 if (st1_req_wr_wt_i && st1_dir_hit_wback_i) begin
                                     //  Update the directory state of the cacheline to WT
                                     st2_dir_updt_o = 1'b1;
+                                    st2_dir_updt_valid_o = 1'b1;
                                     st2_dir_updt_wback_o = 1'b0;
                                     st2_dir_updt_dirty_o = 1'b0;
+                                    st2_dir_updt_fetch_o = 1'b0;
 
                                     st1_nop = 1'b1;
 
                                     if (st1_dir_hit_dirty_i) begin
                                         /* FIXME */
-                                        assert final (0) else $display("error: not yet supported");
+                                        assert final (0) else $error("error: not yet supported");
                                     end
                                 end
 
@@ -535,8 +548,10 @@ module hpdcache_ctrl_pe
                                 if (st1_req_wr_wb_i && !st1_dir_hit_wback_i) begin
                                     //  Update the directory state of the cacheline to WB (clean)
                                     st2_dir_updt_o = 1'b1;
+                                    st2_dir_updt_valid_o = 1'b1;
                                     st2_dir_updt_wback_o = 1'b1;
                                     st2_dir_updt_dirty_o = 1'b0;
+                                    st2_dir_updt_fetch_o = 1'b0;
 
                                     st1_nop = 1'b1;
                                 end
@@ -586,6 +601,9 @@ module hpdcache_ctrl_pe
                             //  Write is write-back
                             //  {{{
                             else if (st1_req_wr_wb_i || (st1_req_wr_auto_i && cfg_default_wb_i)) begin
+                                //  Select a victim cacheline
+                                st1_req_cachedir_sel_victim_o = 1'b1;
+
                                 //  Miss Handler is not ready to send
                                 if (!st1_mshr_alloc_ready_i) begin
                                     st1_rtab_alloc = 1'b1;
@@ -618,25 +636,31 @@ module hpdcache_ctrl_pe
                                     //  memory
                                     if (st1_dir_victim_dirty_i) begin
                                         /* FIXME */
-                                        assert final (0) else $display("error: not yet supported");
+                                        assert final (0) else $error("error: not yet supported");
                                     end
 
                                     //  Update the directory state of the cacheline to FETCHING
                                     st2_dir_updt_o = 1'b1;
+                                    st2_dir_updt_valid_o = st1_dir_victim_valid_i;
+                                    st2_dir_updt_wback_o = st1_dir_victim_wback_i;
+                                    st2_dir_updt_dirty_o = st1_dir_victim_dirty_i;
                                     st2_dir_updt_fetch_o = 1'b1;
 
                                     //  Send a miss request to the memory (write-allocate)
                                     st2_mshr_alloc_o = 1'b1;
+                                    st2_mshr_alloc_need_rsp_o = 1'b0;
                                     st2_mshr_alloc_wback_o = 1'b1;
+                                    /* FIXME Optimization: ask here the miss handler to set the
+                                     *       dirty bit when the new cacheline is refilled to avoid
+                                     *       the update penalty of the pending write
+                                     */
+                                    // FIXME st2_mshr_alloc_dirty_o = 1'b1
 
                                     //  Put the request in the replay table
                                     st1_rtab_alloc = 1'b1;
-                                    st1_rtab_dir_fetch_o = 1'b1;
+                                    st1_rtab_mshr_hit_o = 1'b1;
 
                                     st1_nop = 1'b1;
-
-                                    //  Performance event
-                                    evt_write_req_o = 1'b1;
                                 end
                             end
                             //  }}}
@@ -689,13 +713,26 @@ module hpdcache_ctrl_pe
                             //  Write is write-back
                             //  {{{
                             else if (st1_req_wr_wb_i || (st1_req_wr_auto_i && st1_dir_hit_wback_i)) begin
+                                //  If the request comes from the replay table, free the
+                                //  corresponding RTAB entry
+                                st1_rtab_commit_o = st1_req_rtab_i;
+
+                                //  Respond to the core
+                                st1_rsp_valid_o = st1_req_need_rsp_i;
+
                                 //  Write in the data RAM
                                 st1_req_cachedata_write_enable_o = 1'b1;
+
+                                //  Update victim selection for the accessed set
+                                st1_req_cachedir_updt_sel_victim_o = 1'b1;
 
                                 // Update the directory state of the cacheline to dirty
                                 if (!st1_dir_hit_wback_i || !st1_dir_hit_dirty_i) begin
                                     st2_dir_updt_o       = 1'b1;
+                                    st2_dir_updt_valid_o = 1'b1;
+                                    st2_dir_updt_wback_o = 1'b1;
                                     st2_dir_updt_dirty_o = 1'b1;
+                                    st2_dir_updt_fetch_o = 1'b0;
 
                                     st1_nop = 1'b1;
                                 end
@@ -721,12 +758,14 @@ module hpdcache_ctrl_pe
                                 //  memory before changing its state to WT
                                 if (st1_dir_hit_dirty_i) begin
                                     /* FIXME handle the flushing to the memory */
-                                    assert final (0) else $display("error: not yet supported");
+                                    assert final (0) else $error("error: not yet supported");
 
                                     //  Update the state to WT in the directory
                                     st2_dir_updt_o = 1'b1;
-                                    st2_dir_updt_wback_o = 1'b1;
+                                    st2_dir_updt_valid_o = 1'b1;
+                                    st2_dir_updt_wback_o = 1'b0;
                                     st2_dir_updt_dirty_o = 1'b0;
+                                    st2_dir_updt_fetch_o = 1'b0;
 
                                     //  Put the request in the replay table while waiting for the
                                     //  memory flushing

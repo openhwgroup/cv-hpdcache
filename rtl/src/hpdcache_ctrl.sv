@@ -231,7 +231,7 @@ import hpdcache_pkg::*;
     logic                    st2_mshr_alloc_q, st2_mshr_alloc_d;
     logic                    st2_mshr_alloc_is_prefetch_q;
     logic                    st2_mshr_alloc_wback_q, st2_mshr_alloc_wback_d;
-    logic                    st2_mshr_alloc_need_rsp_q;
+    logic                    st2_mshr_alloc_need_rsp_q, st2_mshr_alloc_need_rsp_d;
     hpdcache_req_addr_t      st2_mshr_alloc_addr_q;
     hpdcache_req_sid_t       st2_mshr_alloc_sid_q;
     hpdcache_req_tid_t       st2_mshr_alloc_tid_q;
@@ -309,6 +309,7 @@ import hpdcache_pkg::*;
     hpdcache_tag_t           st1_dir_hit_tag;
     logic                    st1_dir_victim_unavailable;
     logic                    st1_dir_victim_valid;
+    logic                    st1_dir_victim_wback;
     logic                    st1_dir_victim_dirty;
     hpdcache_tag_t           st1_dir_victim_tag;
     hpdcache_way_vector_t    st1_dir_victim_way;
@@ -459,6 +460,7 @@ import hpdcache_pkg::*;
         .st1_dir_hit_fetch_i                (st1_dir_hit_fetch),
         .st1_dir_victim_unavailable_i       (st1_dir_victim_unavailable),
         .st1_dir_victim_valid_i             (st1_dir_victim_valid),
+        .st1_dir_victim_wback_i             (st1_dir_victim_wback),
         .st1_dir_victim_dirty_i             (st1_dir_victim_dirty),
         .st1_req_valid_o                    (st1_req_valid_d),
         .st1_rsp_valid_o                    (st1_rsp_valid),
@@ -473,6 +475,7 @@ import hpdcache_pkg::*;
         .st2_mshr_alloc_wback_i             (st2_mshr_alloc_wback_q),
         .st2_mshr_alloc_o                   (st2_mshr_alloc_d),
         .st2_mshr_alloc_cs_o                (st2_mshr_alloc_cs_o),
+        .st2_mshr_alloc_need_rsp_o          (st2_mshr_alloc_need_rsp_d),
         .st2_mshr_alloc_wback_o             (st2_mshr_alloc_wback_d),
 
         .st2_dir_updt_i                     (st2_dir_updt_q),
@@ -644,7 +647,7 @@ import hpdcache_pkg::*;
     always_ff @(posedge clk_i)
     begin : st2_metadata_ff
         if (st2_mshr_alloc_d) begin
-            st2_mshr_alloc_need_rsp_q    <= st1_req.need_rsp;
+            st2_mshr_alloc_need_rsp_q    <= st2_mshr_alloc_need_rsp_d;
             st2_mshr_alloc_addr_q        <= st1_req_addr;
             st2_mshr_alloc_sid_q         <= st1_req.sid;
             st2_mshr_alloc_tid_q         <= st1_req.tid;
@@ -741,6 +744,7 @@ import hpdcache_pkg::*;
 
         .dir_victim_sel_i              (st1_victim_sel),
         .dir_victim_valid_o            (st1_dir_victim_valid),
+        .dir_victim_wback_o            (st1_dir_victim_wback),
         .dir_victim_dirty_o            (st1_dir_victim_dirty),
         .dir_victim_tag_o              (st1_dir_victim_tag),
         .dir_victim_way_o              (st1_dir_victim_way),
