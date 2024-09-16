@@ -771,6 +771,7 @@ import hpdcache_pkg::*;
         .dir_refill_updt_sel_victim_i  (refill_updt_sel_victim_i),
 
         .dir_victim_sel_i              (st1_victim_sel),
+        .dir_victim_set_i              (st1_req_set),
         .dir_victim_valid_o            (st1_dir_victim_valid),
         .dir_victim_wback_o            (st1_dir_victim_wback),
         .dir_victim_dirty_o            (st1_dir_victim_dirty),

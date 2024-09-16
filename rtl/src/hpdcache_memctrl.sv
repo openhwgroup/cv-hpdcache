@@ -96,6 +96,7 @@ import hpdcache_pkg::*;
     input  logic                                dir_refill_updt_sel_victim_i,
 
     input  logic                                dir_victim_sel_i,
+    input  hpdcache_set_t                       dir_victim_set_i,
     output logic                                dir_victim_valid_o,
     output logic                                dir_victim_wback_o,
     output logic                                dir_victim_dirty_o,
@@ -605,6 +606,7 @@ import hpdcache_pkg::*;
         .sel_dir_wback_i          (dir_wback),
         .sel_dir_dirty_i          (dir_dirty),
         .sel_dir_fetch_i          (dir_fetch),
+        .sel_victim_set_i         (dir_victim_set_i),
         .sel_victim_way_o         (dir_victim_way_o)
     );
     //  }}}

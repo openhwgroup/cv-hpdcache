@@ -56,6 +56,7 @@ module hpdcache_plru
     input  way_vector_t           sel_dir_wback_i,
     input  way_vector_t           sel_dir_dirty_i,
     input  way_vector_t           sel_dir_fetch_i,
+    input  set_t                  sel_victim_set_i,
     output way_vector_t           sel_victim_way_o
 );
     //  }}}
@@ -65,17 +66,17 @@ module hpdcache_plru
     way_vector_t [SETS-1:0] plru_q, plru_d;
     way_vector_t            updt_plru;
     way_vector_t            repl_plru;
-    logic                   unused_available, clean_available, dirty_available;
-    logic                   sel_unused, sel_clean, sel_dirty;
-    way_vector_t            unused_ways, clean_ways, dirty_ways;
-    way_vector_t            unused_victim_way, clean_victim_way, dirty_victim_way;
+    logic                   unused_available, plru_available, clean_available, dirty_available;
+    way_vector_t            unused_ways, plru_ways, clean_ways, dirty_ways;
+    way_vector_t            unused_victim_way, plru_victim_way, clean_victim_way, dirty_victim_way;
     //  }}}
 
     //  Victim way selection
     //  {{{
-    assign unused_ways   = ~sel_dir_fetch_i & ~sel_dir_valid_i;
-    assign clean_ways    = ~sel_dir_fetch_i &  sel_dir_valid_i & ~sel_dir_dirty_i;
-    assign dirty_ways    = ~sel_dir_fetch_i &  sel_dir_valid_i &  sel_dir_dirty_i & sel_dir_wback_i;
+    assign unused_ways = ~sel_dir_fetch_i & ~sel_dir_valid_i;
+    assign plru_ways   = ~sel_dir_fetch_i &  sel_dir_valid_i & ~plru_q[sel_victim_set_i];
+    assign clean_ways  = ~sel_dir_fetch_i &  sel_dir_valid_i & ~sel_dir_dirty_i;
+    assign dirty_ways  = ~sel_dir_fetch_i &  sel_dir_valid_i &  sel_dir_dirty_i;
 
     hpdcache_prio_1hot_encoder #(.N(WAYS))
         unused_victim_select_i(
@@ -84,31 +85,36 @@ module hpdcache_plru
         );
 
     hpdcache_prio_1hot_encoder #(.N(WAYS))
+        plru_victim_select_i(
+            .val_i     (plru_ways),
+            .val_o     (plru_victim_way)
+        );
+
+    hpdcache_prio_1hot_encoder #(.N(WAYS))
         clean_victim_select_i(
-            .val_i     (~plru_q[repl_set_i] & clean_ways),
+            .val_i     (clean_ways),
             .val_o     (clean_victim_way)
         );
 
     hpdcache_prio_1hot_encoder #(.N(WAYS))
         dirty_victim_select_i(
-            .val_i     (~plru_q[repl_set_i] & dirty_ways),
+            .val_i     (dirty_ways),
             .val_o     (dirty_victim_way)
         );
 
     assign unused_available = |unused_ways;
+    assign plru_available   = |plru_ways;
     assign clean_available  = |clean_ways;
     assign dirty_available  = |dirty_ways;
-    assign sel_unused       =  unused_available;
-    assign sel_clean        = ~unused_available &  clean_available;
-    assign sel_dirty        = ~unused_available & ~clean_available &  dirty_available;
 
     always_comb
-    begin : victim_way_comb
-        unique case (1'b1)
-            sel_unused: sel_victim_way_o = unused_victim_way;
-            sel_clean:  sel_victim_way_o = clean_victim_way;
-            sel_dirty:  sel_victim_way_o = dirty_victim_way;
-            default:    sel_victim_way_o = '0;
+    begin : victim_way_selection_comb
+        priority case (1'b1)
+            unused_available: sel_victim_way_o = unused_victim_way;
+            plru_available:   sel_victim_way_o = plru_victim_way;
+            clean_available:  sel_victim_way_o = clean_victim_way;
+            dirty_available:  sel_victim_way_o = dirty_victim_way;
+            default:          sel_victim_way_o = '0;
         endcase
     end
     //  }}}
@@ -124,24 +130,14 @@ module hpdcache_plru
 
         case (1'b1)
             //  When replacing a cache-line, set the PLRU bit of the new line
-            repl_i:
-                //  If all PLRU bits of a given would be set, reset them all
-                //  but the currently accessed way
-                if (&repl_plru) begin
-                    plru_d[repl_set_i] = repl_way_i;
-                end else begin
-                    plru_d[repl_set_i] = repl_plru;
-                end
+            //  If all PLRU bits of a given would be set, reset them all
+            //  but the currently accessed way
+            repl_i: plru_d[repl_set_i] = &repl_plru ? repl_way_i : repl_plru;
 
             //  When accessing a cache-line, set the corresponding PLRU bit
-            updt_i:
-                //  If all PLRU bits of a given would be set, reset them all
-                //  but the currently accessed way
-                if (&updt_plru) begin
-                    plru_d[updt_set_i] = updt_way_i;
-                end else begin
-                    plru_d[updt_set_i] = updt_plru;
-                end
+            //  If all PLRU bits of a given would be set, reset them all
+            //  but the currently accessed way
+            updt_i: plru_d[updt_set_i] = &updt_plru ? updt_way_i : updt_plru;
 
             default: begin
                 //  do nothing
