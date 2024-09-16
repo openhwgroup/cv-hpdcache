@@ -372,6 +372,7 @@ import hpdcache_pkg::*;
         .hpdcache_data_be_t                 (hpdcache_data_be_t),
         .hpdcache_dir_entry_t               (hpdcache_dir_entry_t),
         .hpdcache_way_vector_t              (hpdcache_way_vector_t),
+        .hpdcache_way_t                     (hpdcache_way_t),
         .wbuf_addr_t                        (wbuf_addr_t),
         .wbuf_data_t                        (wbuf_data_t),
         .wbuf_be_t                          (wbuf_be_t),

@@ -650,11 +650,10 @@ module hpdcache_ctrl_pe
                                     st2_mshr_alloc_o = 1'b1;
                                     st2_mshr_alloc_need_rsp_o = 1'b0;
                                     st2_mshr_alloc_wback_o = 1'b1;
-                                    /* FIXME Optimization: ask here the miss handler to set the
-                                     *       dirty bit when the new cacheline is refilled to avoid
-                                     *       the update penalty of the pending write
-                                     */
-                                    // FIXME st2_mshr_alloc_dirty_o = 1'b1
+                                    // FIXME Optimization: ask here the miss handler to set the
+                                    //       dirty bit when the new cacheline is refilled to avoid
+                                    //       the update penalty of the pending write
+                                    // st2_mshr_alloc_dirty_o = 1'b1
 
                                     //  Put the request in the replay table
                                     st1_rtab_alloc = 1'b1;

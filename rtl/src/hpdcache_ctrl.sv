@@ -42,6 +42,7 @@ import hpdcache_pkg::*;
     parameter type hpdcache_data_be_t = logic,
     parameter type hpdcache_dir_entry_t = logic,
     parameter type hpdcache_way_vector_t = logic,
+    parameter type hpdcache_way_t = logic,
 
     parameter type wbuf_addr_t = logic,
     parameter type wbuf_data_t = logic,
@@ -219,6 +220,11 @@ import hpdcache_pkg::*;
     //  Definition of internal registers
     //  {{{
     typedef logic [$clog2(HPDcacheCfg.u.rtabEntries)-1:0] rtab_ptr_t;
+
+    typedef struct packed {
+        hpdcache_req_t req;
+        hpdcache_way_t way_fetch;
+    } rtab_entry_t;
     //  }}}
 
     //  Definition of internal registers
@@ -263,7 +269,7 @@ import hpdcache_pkg::*;
     hpdcache_word_t          st0_req_word;
     logic                    st0_rtab_pop_try_valid;
     logic                    st0_rtab_pop_try_ready;
-    hpdcache_req_t           st0_rtab_pop_try_req;
+    rtab_entry_t             st0_rtab_pop_try_req;
     rtab_ptr_t               st0_rtab_pop_try_ptr;
 
     logic                    st1_rsp_valid;
@@ -306,6 +312,7 @@ import hpdcache_pkg::*;
     logic                    st1_dir_hit_dirty;
     logic                    st1_dir_hit_fetch;
     hpdcache_way_vector_t    st1_dir_hit_way;
+    hpdcache_way_t           st1_dir_hit_way_index;
     hpdcache_tag_t           st1_dir_hit_tag;
     logic                    st1_dir_victim_unavailable;
     logic                    st1_dir_victim_valid;
@@ -329,6 +336,8 @@ import hpdcache_pkg::*;
     logic                    st1_rtab_check;
     logic                    st1_rtab_check_hit;
 
+    hpdcache_way_t           refill_way_index;
+
     logic                    rtab_full;
 
     logic                    hpdcache_init_ready;
@@ -337,27 +346,27 @@ import hpdcache_pkg::*;
     //  Decoding of the request
     //  {{{
     //     Select between request in the replay table or a new core requests
-    assign st0_req.addr_offset  = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.addr_offset
+    assign st0_req.addr_offset  = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.req.addr_offset
                                                          : core_req_i.addr_offset;
-    assign st0_req.addr_tag     = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.addr_tag
+    assign st0_req.addr_tag     = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.req.addr_tag
                                                          : core_req_i.addr_tag;
-    assign st0_req.wdata        = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.wdata
+    assign st0_req.wdata        = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.req.wdata
                                                          : core_req_i.wdata;
-    assign st0_req.op           = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.op
+    assign st0_req.op           = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.req.op
                                                          : core_req_i.op;
-    assign st0_req.be           = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.be
+    assign st0_req.be           = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.req.be
                                                          : core_req_i.be;
-    assign st0_req.size         = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.size
+    assign st0_req.size         = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.req.size
                                                          : core_req_i.size;
-    assign st0_req.sid          = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.sid
+    assign st0_req.sid          = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.req.sid
                                                          : core_req_i.sid;
-    assign st0_req.tid          = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.tid
+    assign st0_req.tid          = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.req.tid
                                                          : core_req_i.tid;
-    assign st0_req.need_rsp     = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.need_rsp
+    assign st0_req.need_rsp     = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.req.need_rsp
                                                          : core_req_i.need_rsp;
     assign st0_req.phys_indexed = st0_rtab_pop_try_valid ? 1'b1 :
                                                            core_req_i.phys_indexed;
-    assign st0_req.pma          = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.pma
+    assign st0_req.pma          = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.req.pma
                                                          : core_req_i.pma;
 
     //     Decode operation in stage 0
@@ -502,7 +511,7 @@ import hpdcache_pkg::*;
         .st1_rtab_wbuf_hit_o                (st1_rtab_wbuf_hit),
         .st1_rtab_wbuf_not_ready_o          (st1_rtab_wbuf_not_ready),
         .st1_rtab_dir_unavailable_o         (st1_rtab_dir_unavailable),
-        .st1_rtab_dir_fetch_o               (st1_rtab_dir_fetch), /* FIXME */
+        .st1_rtab_dir_fetch_o               (st1_rtab_dir_fetch),
         .st1_rtab_flushing_o                (st1_rtab_flushing),
 
         .cachedir_hit_i                     (cachedir_hit_o),
@@ -554,12 +563,34 @@ import hpdcache_pkg::*;
 
     //  Replay table
     //  {{{
+    rtab_entry_t st1_alloc_rtab;
+
+    assign st1_alloc_rtab = '{
+        req       : st1_req,
+        way_fetch : st1_dir_hit_fetch
+    };
+
+    hpdcache_1hot_to_binary #(
+        .N     (HPDcacheCfg.u.ways)
+    ) dir_hit_way_encoder_i(
+        .val_i (st1_dir_hit_way),
+        .val_o (st1_dir_hit_way_index)
+    );
+
+    hpdcache_1hot_to_binary #(
+        .N     (HPDcacheCfg.u.ways)
+    ) refill_way_encoder_i(
+        .val_i (refill_way_i),
+        .val_o (refill_way_index)
+    );
+
     hpdcache_rtab #(
         .HPDcacheCfg                        (HPDcacheCfg),
         .hpdcache_nline_t                   (hpdcache_nline_t),
+        .hpdcache_way_t                     (hpdcache_way_t),
         .hpdcache_req_addr_t                (hpdcache_req_addr_t),
         .rtab_ptr_t                         (rtab_ptr_t),
-        .rtab_entry_t                       (hpdcache_req_t)
+        .rtab_entry_t                       (rtab_entry_t)
     ) hpdcache_rtab_i(
         .clk_i,
         .rst_ni,
@@ -573,13 +604,15 @@ import hpdcache_pkg::*;
 
         .alloc_i                            (st1_rtab_alloc),
         .alloc_and_link_i                   (st1_rtab_alloc_and_link),
-        .alloc_req_i                        (st1_req),
+        .alloc_req_i                        (st1_alloc_rtab),
         .alloc_mshr_hit_i                   (st1_rtab_mshr_hit),
         .alloc_mshr_full_i                  (st1_rtab_mshr_full),
         .alloc_mshr_ready_i                 (st1_rtab_mshr_ready),
         .alloc_wbuf_hit_i                   (st1_rtab_wbuf_hit),
         .alloc_wbuf_not_ready_i             (st1_rtab_wbuf_not_ready),
         .alloc_dir_unavailable_i            (st1_rtab_dir_unavailable),
+        .alloc_dir_fetch_i                  (st1_rtab_dir_fetch),
+        .alloc_dir_fetch_way_index_i        (st1_dir_hit_way_index),
 
         .pop_try_valid_o                    (st0_rtab_pop_try_valid),
         .pop_try_i                          (st0_rtab_pop_try_ready),
@@ -591,12 +624,6 @@ import hpdcache_pkg::*;
 
         .pop_rback_i                        (st1_rtab_pop_try_rback),
         .pop_rback_ptr_i                    (st1_rtab_pop_try_ptr_q),
-        .pop_rback_mshr_hit_i               (st1_rtab_mshr_hit),
-        .pop_rback_mshr_full_i              (st1_rtab_mshr_full),
-        .pop_rback_mshr_ready_i             (st1_rtab_mshr_ready),
-        .pop_rback_wbuf_hit_i               (st1_rtab_wbuf_hit),
-        .pop_rback_wbuf_not_ready_i         (st1_rtab_wbuf_not_ready),
-        .pop_rback_dir_unavailable_i        (st1_rtab_dir_unavailable),
 
         .wbuf_addr_o                        (wbuf_rtab_addr_o),
         .wbuf_is_read_o                     (wbuf_rtab_is_read_o),
@@ -609,6 +636,7 @@ import hpdcache_pkg::*;
 
         .refill_i                           (refill_updt_rtab_i),
         .refill_nline_i,
+        .refill_way_index_i                 (refill_way_index),
 
         .cfg_single_entry_i                 (cfg_rtab_single_entry_i)
     );
@@ -792,7 +820,7 @@ import hpdcache_pkg::*;
         .data_refill_data_i            (refill_data_i)
     );
 
-    assign st1_dir_hit    = |st1_dir_hit_way;
+    assign st1_dir_hit           = |st1_dir_hit_way;
 
     assign cachedir_hit_o = st1_dir_hit;
     //  }}}
