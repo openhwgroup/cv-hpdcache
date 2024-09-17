@@ -106,6 +106,14 @@ package hpdcache_pkg;
 
     //      Definition of functions
     //      {{{
+    function automatic int unsigned hpdcache_max(int unsigned x, int unsigned y);
+        return (x < y) ? y : x;
+    endfunction
+
+    function automatic int unsigned hpdcache_min(int unsigned x, int unsigned y);
+        return (x < y) ? x : y;
+    endfunction
+
     function automatic logic is_load(input hpdcache_req_op_t op);
         case (op)
             HPDCACHE_REQ_LOAD: return 1'b1;
@@ -426,6 +434,8 @@ package hpdcache_pkg;
         bit wbufSendFeedThrough;
         //  Number of entries in the replay table
         int rtabEntries;
+        //  Number of entries in the flush directory
+        int flushEntries;
         //  Width of the address in the memory interface
         int unsigned memAddrWidth;
         //  Width of the ID in the memory interface
