@@ -282,7 +282,7 @@ import hpdcache_pkg::*;
         mem_req_addr: {flush_alloc_nline_i, {HPDcacheCfg.offsetWidth{1'b0}}},
         mem_req_len: hpdcache_max(HPDcacheCfg.u.clWidth / HPDCacheCfg.u.memDataWidth, 1),
         mem_req_size: get_hpdcache_mem_size(HPDcacheCfg.u.memDataWidth/8),
-        mem_req_id: flush_dir_free_ptr,
+        mem_req_id: hpdcache_mem_id_t'(flush_dir_free_ptr),
         mem_req_command: HPDCACHE_MEM_WRITE,
         mem_req_atomic: HPDCACHE_MEM_ATOMIC_ADD, /* NOP */
         mem_req_cacheable: 1'b1
