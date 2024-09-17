@@ -600,7 +600,8 @@ module hpdcache_ctrl_pe
 
                             //  Write is write-back
                             //  {{{
-                            else if (st1_req_wr_wb_i || (st1_req_wr_auto_i && cfg_default_wb_i)) begin
+                            else if (st1_req_wr_wb_i || (st1_req_wr_auto_i && cfg_default_wb_i))
+                            begin
                                 //  Select a victim cacheline
                                 st1_req_cachedir_sel_victim_o = 1'b1;
 
@@ -711,7 +712,8 @@ module hpdcache_ctrl_pe
 
                             //  Write is write-back
                             //  {{{
-                            else if (st1_req_wr_wb_i || (st1_req_wr_auto_i && st1_dir_hit_wback_i)) begin
+                            else if (st1_req_wr_wb_i || (st1_req_wr_auto_i && st1_dir_hit_wback_i))
+                            begin
                                 //  If the request comes from the replay table, free the
                                 //  corresponding RTAB entry
                                 st1_rtab_commit_o = st1_req_rtab_i;

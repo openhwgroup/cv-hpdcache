@@ -565,11 +565,6 @@ import hpdcache_pkg::*;
     //  {{{
     rtab_entry_t st1_alloc_rtab;
 
-    assign st1_alloc_rtab = '{
-        req       : st1_req,
-        way_fetch : st1_dir_hit_fetch
-    };
-
     hpdcache_1hot_to_binary #(
         .N     (HPDcacheCfg.u.ways)
     ) dir_hit_way_encoder_i(
@@ -583,6 +578,11 @@ import hpdcache_pkg::*;
         .val_i (refill_way_i),
         .val_o (refill_way_index)
     );
+
+    assign st1_alloc_rtab = '{
+        req       : st1_req,
+        way_fetch : st1_dir_hit_way_index
+    };
 
     hpdcache_rtab #(
         .HPDcacheCfg                        (HPDcacheCfg),
