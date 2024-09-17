@@ -59,6 +59,7 @@ module hpdcache_lint
       wbufTimecntWidth: 3,
       wbufSendFeedThrough: 1'b0,
       rtabEntries: 4,
+      flushEntries: 4,
       memAddrWidth: 56,
       memIdWidth: 6,
       memDataWidth: 512
@@ -101,45 +102,25 @@ module hpdcache_lint
   logic                        dcache_rsp_valid           [HPDCACHE_NREQUESTERS];
   hpdcache_rsp_t               dcache_rsp                 [HPDCACHE_NREQUESTERS];
 
-  logic                        dcache_miss_ready;
-  logic                        dcache_miss_valid;
-  hpdcache_mem_req_t           dcache_miss;
+  logic                        dcache_read_ready;
+  logic                        dcache_read_valid;
+  hpdcache_mem_req_t           dcache_read;
 
-  logic                        dcache_miss_resp_ready;
-  logic                        dcache_miss_resp_valid;
-  hpdcache_mem_resp_r_t        dcache_miss_resp;
+  logic                        dcache_read_resp_ready;
+  logic                        dcache_read_resp_valid;
+  hpdcache_mem_resp_r_t        dcache_read_resp;
 
-  logic                        dcache_wbuf_ready;
-  logic                        dcache_wbuf_valid;
-  hpdcache_mem_req_t           dcache_wbuf;
+  logic                        dcache_write_ready;
+  logic                        dcache_write_valid;
+  hpdcache_mem_req_t           dcache_write;
 
-  logic                        dcache_wbuf_data_ready;
-  logic                        dcache_wbuf_data_valid;
-  hpdcache_mem_req_w_t         dcache_wbuf_data;
+  logic                        dcache_write_data_ready;
+  logic                        dcache_write_data_valid;
+  hpdcache_mem_req_w_t         dcache_write_data;
 
-  logic                        dcache_wbuf_resp_ready;
-  logic                        dcache_wbuf_resp_valid;
-  hpdcache_mem_resp_w_t        dcache_wbuf_resp;
-
-  logic                        dcache_uc_read_ready;
-  logic                        dcache_uc_read_valid;
-  hpdcache_mem_req_t           dcache_uc_read;
-
-  logic                        dcache_uc_read_resp_ready;
-  logic                        dcache_uc_read_resp_valid;
-  hpdcache_mem_resp_r_t        dcache_uc_read_resp;
-
-  logic                        dcache_uc_write_ready;
-  logic                        dcache_uc_write_valid;
-  hpdcache_mem_req_t           dcache_uc_write;
-
-  logic                        dcache_uc_write_data_ready;
-  logic                        dcache_uc_write_data_valid;
-  hpdcache_mem_req_w_t         dcache_uc_write_data;
-
-  logic                        dcache_uc_write_resp_ready;
-  logic                        dcache_uc_write_resp_valid;
-  hpdcache_mem_resp_w_t        dcache_uc_write_resp;
+  logic                        dcache_write_resp_ready;
+  logic                        dcache_write_resp_valid;
+  hpdcache_mem_resp_w_t        dcache_write_resp;
 
   hpdcache #(
       .HPDcacheCfg          (HPDcacheCfg),
@@ -178,45 +159,25 @@ module hpdcache_lint
       .core_rsp_valid_o(dcache_rsp_valid),
       .core_rsp_o      (dcache_rsp),
 
-      .mem_req_miss_read_ready_i(dcache_miss_ready),
-      .mem_req_miss_read_valid_o(dcache_miss_valid),
-      .mem_req_miss_read_o      (dcache_miss),
+      .mem_req_read_ready_i(dcache_read_ready),
+      .mem_req_read_valid_o(dcache_read_valid),
+      .mem_req_read_o      (dcache_read),
 
-      .mem_resp_miss_read_ready_o(dcache_miss_resp_ready),
-      .mem_resp_miss_read_valid_i(dcache_miss_resp_valid),
-      .mem_resp_miss_read_i      (dcache_miss_resp),
+      .mem_resp_read_ready_o(dcache_read_resp_ready),
+      .mem_resp_read_valid_i(dcache_read_resp_valid),
+      .mem_resp_read_i      (dcache_read_resp),
 
-      .mem_req_wbuf_write_ready_i(dcache_wbuf_ready),
-      .mem_req_wbuf_write_valid_o(dcache_wbuf_valid),
-      .mem_req_wbuf_write_o      (dcache_wbuf),
+      .mem_req_write_ready_i(dcache_write_ready),
+      .mem_req_write_valid_o(dcache_write_valid),
+      .mem_req_write_o      (dcache_write),
 
-      .mem_req_wbuf_write_data_ready_i(dcache_wbuf_data_ready),
-      .mem_req_wbuf_write_data_valid_o(dcache_wbuf_data_valid),
-      .mem_req_wbuf_write_data_o      (dcache_wbuf_data),
+      .mem_req_write_data_ready_i(dcache_write_data_ready),
+      .mem_req_write_data_valid_o(dcache_write_data_valid),
+      .mem_req_write_data_o      (dcache_write_data),
 
-      .mem_resp_wbuf_write_ready_o(dcache_wbuf_resp_ready),
-      .mem_resp_wbuf_write_valid_i(dcache_wbuf_resp_valid),
-      .mem_resp_wbuf_write_i      (dcache_wbuf_resp),
-
-      .mem_req_uc_read_ready_i(dcache_uc_read_ready),
-      .mem_req_uc_read_valid_o(dcache_uc_read_valid),
-      .mem_req_uc_read_o      (dcache_uc_read),
-
-      .mem_resp_uc_read_ready_o(dcache_uc_read_resp_ready),
-      .mem_resp_uc_read_valid_i(dcache_uc_read_resp_valid),
-      .mem_resp_uc_read_i      (dcache_uc_read_resp),
-
-      .mem_req_uc_write_ready_i(dcache_uc_write_ready),
-      .mem_req_uc_write_valid_o(dcache_uc_write_valid),
-      .mem_req_uc_write_o      (dcache_uc_write),
-
-      .mem_req_uc_write_data_ready_i(dcache_uc_write_data_ready),
-      .mem_req_uc_write_data_valid_o(dcache_uc_write_data_valid),
-      .mem_req_uc_write_data_o      (dcache_uc_write_data),
-
-      .mem_resp_uc_write_ready_o(dcache_uc_write_resp_ready),
-      .mem_resp_uc_write_valid_i(dcache_uc_write_resp_valid),
-      .mem_resp_uc_write_i      (dcache_uc_write_resp),
+      .mem_resp_write_ready_o(dcache_write_resp_ready),
+      .mem_resp_write_valid_i(dcache_write_resp_valid),
+      .mem_resp_write_i      (dcache_write_resp),
 
       .evt_cache_write_miss_o(  /* unused */),
       .evt_cache_read_miss_o (  /* unused */),
@@ -239,7 +200,8 @@ module hpdcache_lint
       .cfg_wbuf_inhibit_write_coalescing_i(1'b0),
       .cfg_prefetch_updt_plru_i           (1'b1),
       .cfg_error_on_cacheable_amo_i       (1'b0),
-      .cfg_rtab_single_entry_i            (1'b0)
+      .cfg_rtab_single_entry_i            (1'b0),
+      .cfg_default_wb_i                   (1'b0)
   );
 
 endmodule  /* hpdcache_lint */
