@@ -38,9 +38,9 @@ module hpdcache_mem_req_read_arbiter
     input  logic                  clk_i,
     input  logic                  rst_ni,
 
-    output logic                  mem_req_read_ready_o [N-1:0],
-    input  logic                  mem_req_read_valid_i [N-1:0],
-    input  hpdcache_mem_req_t     mem_req_read_i       [N-1:0],
+    output logic                  mem_req_read_ready_o [N],
+    input  logic                  mem_req_read_valid_i [N],
+    input  hpdcache_mem_req_t     mem_req_read_i       [N],
 
     input  logic                  mem_req_read_ready_i,
     output logic                  mem_req_read_valid_o,
@@ -58,12 +58,10 @@ module hpdcache_mem_req_read_arbiter
 
 
     //  Pack inputs
-    generate
-        for (gen_i = 0; gen_i < int'(N); gen_i++) begin : pack_inputs_gen
-            assign mem_read_arb_req_valid[gen_i] = mem_req_read_valid_i[gen_i],
-                   mem_read_arb_req      [gen_i] = mem_req_read_i[gen_i];
-        end
-    endgenerate
+    for (gen_i = 0; gen_i < int'(N); gen_i++) begin : gen_pack_inputs
+        assign mem_read_arb_req_valid[gen_i] = mem_req_read_valid_i[gen_i];
+        assign mem_read_arb_req[gen_i] = mem_req_read_i[gen_i];
+    end
 
     assign req_valid = |(mem_read_arb_req_gnt & mem_read_arb_req_valid);
 
@@ -79,12 +77,10 @@ module hpdcache_mem_req_read_arbiter
     );
 
     //  Demultiplexor for the ready signal
-    generate
-        for (gen_i = 0; gen_i < int'(N); gen_i++) begin : req_ready_gen
-            assign mem_req_read_ready_o[gen_i] = mem_req_read_ready_i &
-                        mem_read_arb_req_gnt[gen_i] & mem_read_arb_req_valid[gen_i];
-        end
-    endgenerate
+    for (gen_i = 0; gen_i < int'(N); gen_i++) begin : gen_req_ready
+        assign mem_req_read_ready_o[gen_i] = mem_req_read_ready_i & mem_read_arb_req_gnt[gen_i] &
+                                             mem_read_arb_req_valid[gen_i];
+    end
 
     assign mem_req_read_valid_o = req_valid;
 

@@ -32,20 +32,19 @@ module hpdcache_mem_req_write_arbiter
     parameter type hpdcache_mem_req_w_t = logic
 )
 //  }}}
-
 //  Ports
 //  {{{
 (
-    input  logic                  clk_i,
-    input  logic                  rst_ni,
+    input  logic                 clk_i,
+    input  logic                 rst_ni,
 
-    output logic                 mem_req_write_ready_o      [N-1:0],
-    input  logic                 mem_req_write_valid_i      [N-1:0],
-    input  hpdcache_mem_req_t    mem_req_write_i            [N-1:0],
+    output logic                 mem_req_write_ready_o      [N],
+    input  logic                 mem_req_write_valid_i      [N],
+    input  hpdcache_mem_req_t    mem_req_write_i            [N],
 
-    output logic                 mem_req_write_data_ready_o [N-1:0],
-    input  logic                 mem_req_write_data_valid_i [N-1:0],
-    input  hpdcache_mem_req_w_t  mem_req_write_data_i       [N-1:0],
+    output logic                 mem_req_write_data_ready_o [N],
+    input  logic                 mem_req_write_data_valid_i [N],
+    input  hpdcache_mem_req_w_t  mem_req_write_data_i       [N],
 
     input  logic                 mem_req_write_ready_i,
     output logic                 mem_req_write_valid_o,
@@ -76,19 +75,16 @@ module hpdcache_mem_req_write_arbiter
 
     genvar                       gen_i;
 
-
-    generate
-        for (gen_i = 0; gen_i < int'(N); gen_i++) begin : pack_inputs_gen
-            assign mem_write_arb_req_valid     [gen_i] = mem_req_write_valid_i[gen_i],
-                   mem_write_arb_req           [gen_i] = mem_req_write_i[gen_i],
-                   mem_write_arb_req_data_valid[gen_i] = mem_req_write_data_valid_i[gen_i],
-                   mem_write_arb_req_data      [gen_i] = mem_req_write_data_i[gen_i];
-        end
-    endgenerate
+    for (gen_i = 0; gen_i < int'(N); gen_i++) begin : gen_pack_inputs
+        assign mem_write_arb_req_valid[gen_i] = mem_req_write_valid_i[gen_i];
+        assign mem_write_arb_req[gen_i] = mem_req_write_i[gen_i];
+        assign mem_write_arb_req_data_valid[gen_i] = mem_req_write_data_valid_i[gen_i];
+        assign mem_write_arb_req_data[gen_i] = mem_req_write_data_i[gen_i];
+    end
 
     //      Fixed-priority arbiter
     hpdcache_fxarb #(
-        .N                   (2)
+        .N                   (N)
     ) hpdcache_fxarb_mem_req_write_i (
         .clk_i,
         .rst_ni,
@@ -112,7 +108,7 @@ module hpdcache_mem_req_write_arbiter
     begin : req_send_fsm_comb
         req_send_fsm_d = req_send_fsm_q;
         mem_write_arb_req_ready = 1'b0;
-        case (req_send_fsm_q)
+        unique case (req_send_fsm_q)
             REQ_IDLE:
                 if (req_valid && mem_req_write_ready_i) begin
                     if (req_data_valid) begin
@@ -151,17 +147,15 @@ module hpdcache_mem_req_write_arbiter
     end
     //  }}}
 
-    generate
-        for (gen_i = 0; gen_i < int'(N); gen_i++) begin : req_ready_gen
-            assign mem_req_write_ready_o[gen_i] =
-                        (mem_write_arb_req_gnt[gen_i] & mem_req_write_ready_i) &
-                        (req_send_fsm_q != REQ_META_SENT);
+    for (gen_i = 0; gen_i < int'(N); gen_i++) begin : gen_req_ready
+        assign mem_req_write_ready_o[gen_i] =
+                    (mem_write_arb_req_gnt[gen_i] & mem_req_write_ready_i) &
+                    (req_send_fsm_q != REQ_META_SENT);
 
-            assign mem_req_write_data_ready_o[gen_i] =
-                        (mem_write_arb_req_gnt[gen_i] & mem_req_write_data_ready_i) &
-                        (req_send_fsm_q != REQ_DATA_SENT);
-        end
-    endgenerate
+        assign mem_req_write_data_ready_o[gen_i] =
+                    (mem_write_arb_req_gnt[gen_i] & mem_req_write_data_ready_i) &
+                    (req_send_fsm_q != REQ_DATA_SENT);
+    end
 
     //  Output assignments
     //  {{{
