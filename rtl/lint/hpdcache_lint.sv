@@ -60,6 +60,7 @@ module hpdcache_lint
       wbufSendFeedThrough: 1'b0,
       rtabEntries: 4,
       flushEntries: 4,
+      flushFifoDepth: 2,
       memAddrWidth: 56,
       memIdWidth: 6,
       memDataWidth: 512

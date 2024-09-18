@@ -86,53 +86,31 @@ import hpdcache_pkg::*;
     output logic                          core_rsp_valid_o [HPDcacheCfg.u.nRequesters],
     output hpdcache_rsp_t                 core_rsp_o       [HPDcacheCfg.u.nRequesters],
 
-    //      Miss read / invalidation interface
-    input  logic                          mem_req_miss_read_ready_i,
-    output logic                          mem_req_miss_read_valid_o,
-    output hpdcache_mem_req_t             mem_req_miss_read_o,
+    //      Miss / Invalidation / Uncached read interface
+    input  logic                          mem_req_read_ready_i,
+    output logic                          mem_req_read_valid_o,
+    output hpdcache_mem_req_t             mem_req_read_o,
 
-    output logic                          mem_resp_miss_read_ready_o,
-    input  logic                          mem_resp_miss_read_valid_i,
-    input  hpdcache_mem_resp_r_t          mem_resp_miss_read_i,
+    output logic                          mem_resp_read_ready_o,
+    input  logic                          mem_resp_read_valid_i,
+    input  hpdcache_mem_resp_r_t          mem_resp_read_i,
 `ifdef HPDCACHE_OPENPITON
-    input  logic                          mem_resp_miss_read_inval_i,
-    input  hpdcache_nline_t               mem_resp_miss_read_inval_nline_i,
+    input  logic                          mem_resp_read_inval_i,
+    input  hpdcache_nline_t               mem_resp_read_inval_nline_i,
 `endif
 
-    //      Write-buffer write interface
-    input  logic                          mem_req_wbuf_write_ready_i,
-    output logic                          mem_req_wbuf_write_valid_o,
-    output hpdcache_mem_req_t             mem_req_wbuf_write_o,
+    //      Write-buffer / Uncached write interface
+    input  logic                          mem_req_write_ready_i,
+    output logic                          mem_req_write_valid_o,
+    output hpdcache_mem_req_t             mem_req_write_o,
 
-    input  logic                          mem_req_wbuf_write_data_ready_i,
-    output logic                          mem_req_wbuf_write_data_valid_o,
-    output hpdcache_mem_req_w_t           mem_req_wbuf_write_data_o,
+    input  logic                          mem_req_write_data_ready_i,
+    output logic                          mem_req_write_data_valid_o,
+    output hpdcache_mem_req_w_t           mem_req_write_data_o,
 
-    output logic                          mem_resp_wbuf_write_ready_o,
-    input  logic                          mem_resp_wbuf_write_valid_i,
-    input  hpdcache_mem_resp_w_t          mem_resp_wbuf_write_i,
-
-    //      Uncached read interface
-    input  logic                          mem_req_uc_read_ready_i,
-    output logic                          mem_req_uc_read_valid_o,
-    output hpdcache_mem_req_t             mem_req_uc_read_o,
-
-    output logic                          mem_resp_uc_read_ready_o,
-    input  logic                          mem_resp_uc_read_valid_i,
-    input  hpdcache_mem_resp_r_t          mem_resp_uc_read_i,
-
-    //      Uncached write interface
-    input  logic                          mem_req_uc_write_ready_i,
-    output logic                          mem_req_uc_write_valid_o,
-    output hpdcache_mem_req_t             mem_req_uc_write_o,
-
-    input  logic                          mem_req_uc_write_data_ready_i,
-    output logic                          mem_req_uc_write_data_valid_o,
-    output hpdcache_mem_req_w_t           mem_req_uc_write_data_o,
-
-    output logic                          mem_resp_uc_write_ready_o,
-    input  logic                          mem_resp_uc_write_valid_i,
-    input  hpdcache_mem_resp_w_t          mem_resp_uc_write_i,
+    output logic                          mem_resp_write_ready_o,
+    input  logic                          mem_resp_write_valid_i,
+    input  hpdcache_mem_resp_w_t          mem_resp_write_i,
 
     //      Performance events
     output logic                          evt_cache_write_miss_o,
@@ -198,8 +176,8 @@ import hpdcache_pkg::*;
     } hpdcache_dir_entry_t;
     //  }}}
 
-    typedef hpdcache_data_word_t [HPDcacheCfg.u.accessWords-1:0] hpdcache_refill_data_t;
-    typedef hpdcache_data_be_t [HPDcacheCfg.u.accessWords-1:0] hpdcache_refill_be_t;
+    typedef hpdcache_data_word_t [HPDcacheCfg.u.accessWords-1:0] hpdcache_access_data_t;
+    typedef hpdcache_data_be_t [HPDcacheCfg.u.accessWords-1:0] hpdcache_access_be_t;
 
     typedef hpdcache_req_addr_t wbuf_addr_t;
     typedef hpdcache_req_data_t wbuf_data_t;
@@ -218,7 +196,7 @@ import hpdcache_pkg::*;
     logic                  refill_write_dir;
     logic                  refill_write_data;
     hpdcache_word_t        refill_word;
-    hpdcache_refill_data_t refill_data;
+    hpdcache_access_data_t refill_data;
     logic                  refill_core_rsp_valid;
     hpdcache_rsp_t         refill_core_rsp;
     hpdcache_nline_t       refill_nline;
@@ -309,6 +287,21 @@ import hpdcache_pkg::*;
     hpdcache_way_vector_t  cmo_dir_inval_way;
     logic                  cmo_wait;
 
+    logic                  flush_empty;
+    logic                  flush_full;
+    logic                  flush_busy;
+    hpdcache_nline_t       flush_check_nline;
+    logic                  flush_check_hit;
+    logic                  flush_alloc;
+    logic                  flush_alloc_ready;
+    hpdcache_nline_t       flush_alloc_nline;
+    hpdcache_way_vector_t  flush_alloc_way;
+    logic                  flush_data_read;
+    hpdcache_set_t         flush_data_read_set;
+    hpdcache_word_t        flush_data_read_word;
+    hpdcache_way_vector_t  flush_data_read_way;
+    hpdcache_access_data_t flush_data_read_data;
+
     logic                  rtab_empty;
     logic                  ctrl_empty;
 
@@ -321,6 +314,60 @@ import hpdcache_pkg::*;
     logic                  arb_abort;
     hpdcache_tag_t         arb_tag;
     hpdcache_pma_t         arb_pma;
+
+    logic                  mem_req_read_miss_ready;
+    logic                  mem_req_read_miss_valid;
+    hpdcache_mem_req_t     mem_req_read_miss;
+
+    logic                  mem_resp_read_miss_ready;
+    logic                  mem_resp_read_miss_valid;
+    hpdcache_mem_resp_r_t  mem_resp_read_miss;
+    logic                  mem_resp_read_miss_inval;
+    hpdcache_nline_t       mem_resp_read_miss_inval_nline;
+
+    logic                  mem_req_read_uc_ready;
+    logic                  mem_req_read_uc_valid;
+    hpdcache_mem_req_t     mem_req_read_uc;
+
+    logic                  mem_resp_read_uc_ready;
+    logic                  mem_resp_read_uc_valid;
+    hpdcache_mem_resp_r_t  mem_resp_read_uc;
+
+    logic                  mem_req_write_wbuf_ready;
+    logic                  mem_req_write_wbuf_valid;
+    hpdcache_mem_req_t     mem_req_write_wbuf;
+
+    logic                  mem_req_write_wbuf_data_ready;
+    logic                  mem_req_write_wbuf_data_valid;
+    hpdcache_mem_req_w_t   mem_req_write_wbuf_data;
+
+    logic                  mem_resp_write_wbuf_ready;
+    logic                  mem_resp_write_wbuf_valid;
+    hpdcache_mem_resp_w_t  mem_resp_write_wbuf;
+
+    logic                  mem_req_write_flush_ready;
+    logic                  mem_req_write_flush_valid;
+    hpdcache_mem_req_t     mem_req_write_flush;
+
+    logic                  mem_req_write_flush_data_ready;
+    logic                  mem_req_write_flush_data_valid;
+    hpdcache_mem_req_w_t   mem_req_write_flush_data;
+
+    logic                  mem_resp_write_flush_ready;
+    logic                  mem_resp_write_flush_valid;
+    hpdcache_mem_resp_w_t  mem_resp_write_flush;
+
+    logic                  mem_req_write_uc_ready;
+    logic                  mem_req_write_uc_valid;
+    hpdcache_mem_req_t     mem_req_write_uc;
+
+    logic                  mem_req_write_uc_data_ready;
+    logic                  mem_req_write_uc_data_valid;
+    hpdcache_mem_req_w_t   mem_req_write_uc_data;
+
+    logic                  mem_resp_write_uc_ready;
+    logic                  mem_resp_write_uc_valid;
+    hpdcache_mem_resp_w_t  mem_resp_write_uc;
 
     localparam logic [HPDcacheCfg.u.memIdWidth-1:0] HPDCACHE_UC_READ_ID =
         {HPDcacheCfg.u.memIdWidth{1'b1}};
@@ -376,8 +423,8 @@ import hpdcache_pkg::*;
         .wbuf_addr_t                        (wbuf_addr_t),
         .wbuf_data_t                        (wbuf_data_t),
         .wbuf_be_t                          (wbuf_be_t),
-        .hpdcache_refill_data_t             (hpdcache_refill_data_t),
-        .hpdcache_refill_be_t               (hpdcache_refill_be_t),
+        .hpdcache_access_data_t             (hpdcache_access_data_t),
+        .hpdcache_access_be_t               (hpdcache_access_be_t),
         .hpdcache_req_addr_t                (hpdcache_req_addr_t),
         .hpdcache_req_offset_t              (hpdcache_req_offset_t),
         .hpdcache_req_tid_t                 (hpdcache_req_tid_t),
@@ -436,6 +483,12 @@ import hpdcache_pkg::*;
         .refill_core_rsp_i                  (refill_core_rsp),
         .refill_nline_i                     (refill_nline),
         .refill_updt_rtab_i                 (refill_updt_rtab),
+
+        .flush_data_read_i                  (flush_data_read),
+        .flush_data_read_set_i              (flush_data_read_set),
+        .flush_data_read_word_i             (flush_data_read_word),
+        .flush_data_read_way_i              (flush_data_read_way),
+        .flush_data_read_data_o             (flush_data_read_data),
 
         .inval_check_dir_i                  (inval_check_dir),
         .inval_write_dir_i                  (inval_write_dir),
@@ -567,17 +620,17 @@ import hpdcache_pkg::*;
         .replay_sent_hit_o                  (wbuf_rtab_hit_sent),
         .replay_not_ready_o                 (wbuf_rtab_not_ready),
 
-        .mem_req_write_ready_i              (mem_req_wbuf_write_ready_i),
-        .mem_req_write_valid_o              (mem_req_wbuf_write_valid_o),
-        .mem_req_write_o                    (mem_req_wbuf_write_o),
+        .mem_req_write_ready_i              (mem_req_write_wbuf_ready),
+        .mem_req_write_valid_o              (mem_req_write_wbuf_valid),
+        .mem_req_write_o                    (mem_req_write_wbuf),
 
-        .mem_req_write_data_ready_i         (mem_req_wbuf_write_data_ready_i),
-        .mem_req_write_data_valid_o         (mem_req_wbuf_write_data_valid_o),
-        .mem_req_write_data_o               (mem_req_wbuf_write_data_o),
+        .mem_req_write_data_ready_i         (mem_req_write_wbuf_data_ready),
+        .mem_req_write_data_valid_o         (mem_req_write_wbuf_data_valid),
+        .mem_req_write_data_o               (mem_req_write_wbuf_data),
 
-        .mem_resp_write_ready_o             (mem_resp_wbuf_write_ready_o),
-        .mem_resp_write_valid_i             (mem_resp_wbuf_write_valid_i),
-        .mem_resp_write_i                   (mem_resp_wbuf_write_i)
+        .mem_resp_write_ready_o             (mem_resp_write_wbuf_ready),
+        .mem_resp_write_valid_i             (mem_resp_write_wbuf_valid),
+        .mem_resp_write_i                   (mem_resp_write_wbuf)
     );
     //  }}}
 
@@ -592,7 +645,7 @@ import hpdcache_pkg::*;
         .hpdcache_way_vector_t              (hpdcache_way_vector_t),
         .hpdcache_way_t                     (hpdcache_way_t),
         .hpdcache_dir_entry_t               (hpdcache_dir_entry_t),
-        .hpdcache_refill_data_t             (hpdcache_refill_data_t),
+        .hpdcache_refill_data_t             (hpdcache_access_data_t),
         .hpdcache_req_data_t                (hpdcache_req_data_t),
         .hpdcache_req_offset_t              (hpdcache_req_offset_t),
         .hpdcache_req_sid_t                 (hpdcache_req_sid_t),
@@ -651,20 +704,15 @@ import hpdcache_pkg::*;
         .refill_core_rsp_valid_o            (refill_core_rsp_valid),
         .refill_core_rsp_o                  (refill_core_rsp),
 
-        .mem_req_ready_i                    (mem_req_miss_read_ready_i),
-        .mem_req_valid_o                    (mem_req_miss_read_valid_o),
-        .mem_req_o                          (mem_req_miss_read_o),
+        .mem_req_ready_i                    (mem_req_read_miss_ready),
+        .mem_req_valid_o                    (mem_req_read_miss_valid),
+        .mem_req_o                          (mem_req_read_miss),
 
-        .mem_resp_ready_o                   (mem_resp_miss_read_ready_o),
-        .mem_resp_valid_i                   (mem_resp_miss_read_valid_i),
-        .mem_resp_i                         (mem_resp_miss_read_i),
-`ifdef HPDCACHE_OPENPITON
-        .mem_resp_inval_i                   (mem_resp_miss_read_inval_i),
-        .mem_resp_inval_nline_i             (mem_resp_miss_read_inval_nline_i)
-`else
-        .mem_resp_inval_i                   (1'b0),
-        .mem_resp_inval_nline_i             ('0)
-`endif
+        .mem_resp_ready_o                   (mem_resp_read_miss_ready),
+        .mem_resp_valid_i                   (mem_resp_read_miss_valid),
+        .mem_resp_i                         (mem_resp_read_miss),
+        .mem_resp_inval_i                   (mem_resp_read_miss_inval),
+        .mem_resp_inval_nline_i             (mem_resp_read_miss_inval_nline)
     );
     //  }}}
 
@@ -738,25 +786,25 @@ import hpdcache_pkg::*;
         .mem_read_id_i                 (HPDCACHE_UC_READ_ID),
         .mem_write_id_i                (HPDCACHE_UC_WRITE_ID),
 
-        .mem_req_read_ready_i          (mem_req_uc_read_ready_i),
-        .mem_req_read_valid_o          (mem_req_uc_read_valid_o),
-        .mem_req_read_o                (mem_req_uc_read_o),
+        .mem_req_read_ready_i          (mem_req_read_uc_ready),
+        .mem_req_read_valid_o          (mem_req_read_uc_valid),
+        .mem_req_read_o                (mem_req_read_uc),
 
-        .mem_resp_read_ready_o         (mem_resp_uc_read_ready_o),
-        .mem_resp_read_valid_i         (mem_resp_uc_read_valid_i),
-        .mem_resp_read_i               (mem_resp_uc_read_i),
+        .mem_resp_read_ready_o         (mem_resp_read_uc_ready),
+        .mem_resp_read_valid_i         (mem_resp_read_uc_valid),
+        .mem_resp_read_i               (mem_resp_read_uc),
 
-        .mem_req_write_ready_i         (mem_req_uc_write_ready_i),
-        .mem_req_write_valid_o         (mem_req_uc_write_valid_o),
-        .mem_req_write_o               (mem_req_uc_write_o),
+        .mem_req_write_ready_i         (mem_req_write_uc_ready),
+        .mem_req_write_valid_o         (mem_req_write_uc_valid),
+        .mem_req_write_o               (mem_req_write_uc),
 
-        .mem_req_write_data_ready_i    (mem_req_uc_write_data_ready_i),
-        .mem_req_write_data_valid_o    (mem_req_uc_write_data_valid_o),
-        .mem_req_write_data_o          (mem_req_uc_write_data_o),
+        .mem_req_write_data_ready_i    (mem_req_write_uc_data_ready),
+        .mem_req_write_data_valid_o    (mem_req_write_uc_data_valid),
+        .mem_req_write_data_o          (mem_req_write_uc_data),
 
-        .mem_resp_write_ready_o        (mem_resp_uc_write_ready_o),
-        .mem_resp_write_valid_i        (mem_resp_uc_write_valid_i),
-        .mem_resp_write_i              (mem_resp_uc_write_i),
+        .mem_resp_write_ready_o        (mem_resp_write_uc_ready),
+        .mem_resp_write_valid_i        (mem_resp_write_uc_valid),
+        .mem_resp_write_i              (mem_resp_write_uc),
 
         .cfg_error_on_cacheable_amo_i
     );
@@ -801,6 +849,208 @@ import hpdcache_pkg::*;
         .dir_inval_set_o        (cmo_dir_inval_set),
         .dir_inval_way_o        (cmo_dir_inval_way)
     );
+    //  }}}
+
+    //  Flush controller
+    //  {{{
+    hpdcache_flush #(
+        .HPDcacheCfg                   (HPDcacheCfg),
+
+        .hpdcache_nline_t              (hpdcache_nline_t),
+        .hpdcache_set_t                (hpdcache_set_t),
+        .hpdcache_word_t               (hpdcache_word_t),
+        .hpdcache_way_vector_t         (hpdcache_way_vector_t),
+        .hpdcache_access_data_t        (hpdcache_access_data_t),
+
+        .hpdcache_mem_id_t             (hpdcache_mem_id_t),
+        .hpdcache_mem_data_t           (hpdcache_mem_data_t),
+        .hpdcache_mem_req_t            (hpdcache_mem_req_t),
+        .hpdcache_mem_req_w_t          (hpdcache_mem_req_w_t),
+        .hpdcache_mem_resp_w_t         (hpdcache_mem_resp_w_t)
+    ) flush_i(
+        .clk_i,
+        .rst_ni,
+
+        .flush_empty_o                 (flush_empty),
+        .flush_full_o                  (flush_full),
+        .flush_busy_o                  (flush_busy),
+
+        .flush_check_nline_i           (flush_check_nline),
+        .flush_check_hit_o             (flush_check_hit),
+
+        .flush_alloc_i                 (flush_alloc),
+        .flush_alloc_ready_o           (flush_alloc_ready),
+        .flush_alloc_nline_i           (flush_alloc_nline),
+        .flush_alloc_way_i             (flush_alloc_way),
+
+        .flush_data_read_o             (flush_data_read),
+        .flush_data_read_set_o         (flush_data_read_set),
+        .flush_data_read_word_o        (flush_data_read_word),
+        .flush_data_read_way_o         (flush_data_read_way),
+        .flush_data_read_data_i        (flush_data_read_data),
+
+        .mem_req_write_ready_i         (mem_req_write_flush_ready),
+        .mem_req_write_valid_o         (mem_req_write_flush_valid),
+        .mem_req_write_o               (mem_req_write_flush),
+
+        .mem_req_write_data_ready_i    (mem_req_write_flush_data_ready),
+        .mem_req_write_data_valid_o    (mem_req_write_flush_data_valid),
+        .mem_req_write_data_o          (mem_req_write_flush_data),
+
+        .mem_resp_write_ready_o        (mem_resp_write_flush_ready),
+        .mem_resp_write_valid_i        (mem_resp_write_flush_valid),
+        .mem_resp_write_i              (mem_resp_write_flush)
+    );
+    //  }}}
+
+    //  Read and Write Arbiters for Memory interfaces
+    //  {{{
+
+    //      Read request interface
+    //
+    //      There is a fixed-priority arbiter between:
+    //      - the miss_handler (higher priority);
+    //      - the uncacheable request handler (lower priority)
+    logic              arb_mem_req_read_ready [2];
+    logic              arb_mem_req_read_valid [2];
+    hpdcache_mem_req_t arb_mem_req_read       [2];
+
+    assign mem_req_read_miss_ready = arb_mem_req_read_ready[0];
+    assign arb_mem_req_read_valid[0] = mem_req_read_miss_valid;
+    assign arb_mem_req_read[0] = mem_req_read_miss;
+
+    assign mem_req_read_uc_ready = arb_mem_req_read_ready[1];
+    assign arb_mem_req_read_valid[1] = mem_req_read_uc_valid;
+    assign arb_mem_req_read[1] = mem_req_read_uc;
+
+    hpdcache_mem_req_read_arbiter #(
+        .N                     (2),
+        .hpdcache_mem_req_t    (hpdcache_mem_req_t)
+    ) hpdcache_mem_req_read_arbiter_i (
+        .clk_i,
+        .rst_ni,
+
+        .mem_req_read_ready_o  (arb_mem_req_read_ready),
+        .mem_req_read_valid_i  (arb_mem_req_read_valid),
+        .mem_req_read_i        (arb_mem_req_read),
+
+        .mem_req_read_ready_i,
+        .mem_req_read_valid_o,
+        .mem_req_read_o        (mem_req_read_o)
+    );
+
+    //      Read response interface
+    always_comb
+    begin : mem_resp_read_demux_comb
+        mem_resp_read_uc_valid = 1'b0;
+        mem_resp_read_miss_valid = 1'b0;
+        mem_resp_read_ready_o = 1'b0;
+        if (mem_resp_read_valid_i) begin
+            if (mem_resp_read_i.mem_resp_r_id == {HPDcacheCfg.u.memIdWidth{1'b1}}) begin
+                mem_resp_read_uc_valid = 1'b1;
+                mem_resp_read_ready_o = mem_resp_read_uc_ready;
+            end else begin
+                mem_resp_read_miss_valid = 1'b1;
+                mem_resp_read_ready_o = mem_resp_read_miss_ready;
+            end
+        end
+    end
+
+    assign mem_resp_read_uc               = mem_resp_read_i;
+    assign mem_resp_read_miss             = mem_resp_read_i;
+`ifdef HPDCACHE_OPENPITON
+    assign mem_resp_read_miss_inval       = mem_resp_read_inval_i;
+    assign mem_resp_read_miss_inval_nline = mem_resp_read_inval_nline_i;
+`else
+    assign mem_resp_read_miss_inval       = 1'b0;
+    assign mem_resp_read_miss_inval_nline = '0;
+`endif
+
+    //      Write request interface
+    //
+    //      There is a fixed-priority arbiter between:
+    //      - the flush controller (higher priority)
+    //      - the write buffer
+    //      - the uncacheable request handler (lower priority)
+    logic                arb_mem_req_write_ready      [3];
+    logic                arb_mem_req_write_valid      [3];
+    hpdcache_mem_req_t   arb_mem_req_write            [3];
+
+    logic                arb_mem_req_write_data_valid [3];
+    logic                arb_mem_req_write_data_ready [3];
+    hpdcache_mem_req_w_t arb_mem_req_write_data       [3];
+
+    assign mem_req_write_wbuf_ready        = arb_mem_req_write_ready[0];
+    assign arb_mem_req_write_valid[0]      = mem_req_write_wbuf_valid;
+    assign arb_mem_req_write[0]            = mem_req_write_wbuf;
+
+    assign mem_req_write_wbuf_data_ready   = arb_mem_req_write_data_ready[0];
+    assign arb_mem_req_write_data_valid[0] = mem_req_write_wbuf_data_valid;
+    assign arb_mem_req_write_data[0]       = mem_req_write_wbuf_data;
+
+    assign mem_req_write_flush_ready       = arb_mem_req_write_ready[1];
+    assign arb_mem_req_write_valid[1]      = mem_req_write_flush_valid;
+    assign arb_mem_req_write[1]            = mem_req_write_flush;
+
+    assign mem_req_write_flush_data_ready  = arb_mem_req_write_data_ready[1];
+    assign arb_mem_req_write_data_valid[1] = mem_req_write_flush_data_valid;
+    assign arb_mem_req_write_data[1]       = mem_req_write_flush_data;
+
+    assign mem_req_write_uc_ready          = arb_mem_req_write_ready[2];
+    assign arb_mem_req_write_valid[2]      = mem_req_write_uc_valid;
+    assign arb_mem_req_write[2]            = mem_req_write_uc;
+
+    assign mem_req_write_uc_data_ready     = arb_mem_req_write_data_ready[2];
+    assign arb_mem_req_write_data_valid[2] = mem_req_write_uc_data_valid;
+    assign arb_mem_req_write_data[2]       = mem_req_write_uc_data;
+
+    hpdcache_mem_req_write_arbiter #(
+        .N                             (3),
+        .hpdcache_mem_req_t            (hpdcache_mem_req_t),
+        .hpdcache_mem_req_w_t          (hpdcache_mem_req_w_t)
+    ) hpdcache_mem_req_write_arbiter_i (
+        .clk_i,
+        .rst_ni,
+
+        .mem_req_write_ready_o         (arb_mem_req_write_ready),
+        .mem_req_write_valid_i         (arb_mem_req_write_valid),
+        .mem_req_write_i               (arb_mem_req_write),
+
+        .mem_req_write_data_ready_o    (arb_mem_req_write_data_ready),
+        .mem_req_write_data_valid_i    (arb_mem_req_write_data_valid),
+        .mem_req_write_data_i          (arb_mem_req_write_data),
+
+        .mem_req_write_ready_i,
+        .mem_req_write_valid_o,
+        .mem_req_write_o               (mem_req_write_o),
+
+        .mem_req_write_data_ready_i,
+        .mem_req_write_data_valid_o,
+        .mem_req_write_data_o          (mem_req_write_data_o)
+    );
+
+    //      Write response interface
+    always_comb
+    begin : mem_resp_write_demux_comb
+        mem_resp_write_flush_valid = 1'b0;
+        mem_resp_write_wbuf_valid = 1'b0;
+        mem_resp_write_uc_valid = 1'b0;
+        mem_resp_write_ready_o = 1'b0;
+        if (mem_resp_write_valid_i) begin
+            /* FIXME route responses to the flush controller */
+            if (mem_resp_write_i.mem_resp_w_id == {HPDcacheCfg.u.memIdWidth{1'b1}}) begin
+                mem_resp_write_uc_valid = 1'b1;
+                mem_resp_write_ready_o = mem_resp_write_uc_ready;
+            end else begin
+                mem_resp_write_wbuf_valid = 1'b1;
+                mem_resp_write_ready_o = mem_resp_write_wbuf_ready;
+            end
+        end
+    end
+
+    assign mem_resp_write_flush = mem_resp_write_i;
+    assign mem_resp_write_wbuf = mem_resp_write_i;
+    assign mem_resp_write_uc = mem_resp_write_i;
     //  }}}
 
     //  Assertions

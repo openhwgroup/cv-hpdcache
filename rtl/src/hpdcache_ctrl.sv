@@ -48,8 +48,8 @@ import hpdcache_pkg::*;
     parameter type wbuf_data_t = logic,
     parameter type wbuf_be_t = logic,
 
-    parameter type hpdcache_refill_data_t = logic,
-    parameter type hpdcache_refill_be_t = logic,
+    parameter type hpdcache_access_data_t = logic,
+    parameter type hpdcache_access_be_t = logic,
 
     parameter type hpdcache_req_addr_t = logic,
     parameter type hpdcache_req_offset_t = logic,
@@ -116,11 +116,18 @@ import hpdcache_pkg::*;
     input  logic                  refill_write_dir_i,
     input  logic                  refill_write_data_i,
     input  hpdcache_word_t        refill_word_i,
-    input  hpdcache_refill_data_t refill_data_i,
+    input  hpdcache_access_data_t refill_data_i,
     input  logic                  refill_core_rsp_valid_i,
     input  hpdcache_rsp_t         refill_core_rsp_i,
     input  hpdcache_nline_t       refill_nline_i,
     input  logic                  refill_updt_rtab_i,
+
+    //      Flush interface
+    input  logic                  flush_data_read_i,
+    input  hpdcache_set_t         flush_data_read_set_i,
+    input  hpdcache_word_t        flush_data_read_word_i,
+    input  hpdcache_way_vector_t  flush_data_read_way_i,
+    output hpdcache_access_data_t flush_data_read_data_o,
 
     //      Invalidate interface
     input  logic                  inval_check_dir_i,
@@ -731,8 +738,8 @@ import hpdcache_pkg::*;
         .hpdcache_data_be_t            (hpdcache_data_be_t),
         .hpdcache_req_data_t           (hpdcache_req_data_t),
         .hpdcache_req_be_t             (hpdcache_req_be_t),
-        .hpdcache_refill_data_t        (hpdcache_refill_data_t),
-        .hpdcache_refill_be_t          (hpdcache_refill_be_t)
+        .hpdcache_access_data_t        (hpdcache_access_data_t),
+        .hpdcache_access_be_t          (hpdcache_access_be_t)
     ) hpdcache_memctrl_i(
         .clk_i,
         .rst_ni,
@@ -813,6 +820,12 @@ import hpdcache_pkg::*;
         .data_amo_write_word_i         (uc_data_amo_write_word_i),
         .data_amo_write_data_i         (uc_data_amo_write_data_i),
         .data_amo_write_be_i           (uc_data_amo_write_be_i),
+
+        .data_flush_read_i             (flush_data_read_i),
+        .data_flush_read_set_i         (flush_data_read_set_i),
+        .data_flush_read_way_i         (flush_data_read_way_i),
+        .data_flush_read_word_i        (flush_data_read_word_i),
+        .data_flush_read_data_o        (flush_data_read_data_o),
 
         .data_refill_i                 (refill_write_data_i),
         .data_refill_set_i             (refill_set_i),

@@ -39,6 +39,7 @@ import hpdcache_pkg::*;
     parameter type hpdcache_access_data_t = logic,
 
     parameter type hpdcache_mem_id_t = logic,
+    parameter type hpdcache_mem_data_t = logic,
     parameter type hpdcache_mem_req_t = logic,
     parameter type hpdcache_mem_req_w_t = logic,
     parameter type hpdcache_mem_resp_w_t = logic
@@ -78,7 +79,7 @@ import hpdcache_pkg::*;
     output hpdcache_set_t         flush_data_read_set_o,
     output hpdcache_word_t        flush_data_read_word_o,
     output hpdcache_way_vector_t  flush_data_read_way_o,
-    input  hpdcache_access_data_t flush_data_rdata_i,
+    input  hpdcache_access_data_t flush_data_read_data_i,
     //      }}}
 
     //      MEMORY interface
@@ -106,7 +107,7 @@ import hpdcache_pkg::*;
         hpdcache_nline_t nline;
     } flush_entry_t;
 
-    typedef flush_entry_t [N-1:0] flush_dir_t;
+    typedef flush_entry_t [FlushEntries-1:0] flush_dir_t;
     typedef logic [FlushIndexWidth-1:0] flush_dir_index_t;
 
     typedef enum logic {
@@ -122,6 +123,7 @@ import hpdcache_pkg::*;
     logic [FlushEntries-1:0] flush_dir_free_ptr_bv;
     flush_dir_index_t        flush_dir_free_ptr;
     flush_dir_index_t        flush_dir_ack_ptr;
+    hpdcache_set_t           flush_set_q;
     hpdcache_way_vector_t    flush_way_q;
     hpdcache_word_t          flush_word_q, flush_word_d;
     flush_fsm_e              flush_fsm_q, flush_fsm_d;
@@ -129,11 +131,14 @@ import hpdcache_pkg::*;
     logic                    flush_eol;
     logic                    flush_alloc;
     hpdcache_set_t           flush_alloc_set;
+    logic                    flush_ack;
     logic                    flush_resizer_w, flush_resizer_wok;
     logic                    flush_resizer_wlast;
 
     logic                    flush_mem_req_w, flush_mem_req_wok;
-    hpdcache_mem_req_t       flush_mem_req_wdata;
+    hpdcache_mem_req_t       flush_mem_req_wmeta;
+    hpdcache_mem_data_t      flush_mem_req_rdata;
+    logic                    flush_mem_req_rlast;
 
     logic [FlushEntries-1:0] flush_check_hit;
 
@@ -183,7 +188,7 @@ import hpdcache_pkg::*;
                 if (flush_alloc_i && flush_alloc_ready_o) begin
                     flush_data_read_o = 1'b1;
                     flush_alloc = 1'b1;
-                    flush_word_d = HPDcacheCfg.u.accessWords;
+                    flush_word_d = hpdcache_word_t'(HPDcacheCfg.u.accessWords);
                     flush_fsm_d = FLUSH_SEND;
                 end
             end
@@ -196,7 +201,8 @@ import hpdcache_pkg::*;
                 flush_data_read_way_o = flush_way_q;
                 if (flush_resizer_wok) begin
                     flush_data_read_o = ~flush_eol;
-                    flush_word_d = flush_word_q + HPDcacheCfg.u.accessWords;
+                    flush_word_d = flush_word_q +
+                        hpdcache_word_t'(HPDcacheCfg.u.accessWords);
                     if (flush_eol) begin
                         flush_fsm_d = FLUSH_IDLE;
                     end
@@ -213,7 +219,7 @@ import hpdcache_pkg::*;
 
     //  Check logic
     //  {{{
-    for (gen_i = 0; gen_i < DEPTH; gen_i++) begin : gen_check
+    for (gen_i = 0; gen_i < FlushEntries; gen_i++) begin : gen_check
         assign flush_check_hit[gen_i] = (flush_check_nline_i == flush_dir_q[gen_i].nline);
     end
     assign flush_check_hit_o = |flush_check_hit;
@@ -236,7 +242,7 @@ import hpdcache_pkg::*;
 
     //  Directory valid
     always_ff @(posedge clk_i or negedge rst_ni)
-    begin : flush_dir_ff
+    begin : flush_dir_valid_ff
         if (!rst_ni) begin
             flush_dir_valid_q <= '0;
         end else begin
@@ -278,9 +284,12 @@ import hpdcache_pkg::*;
 
     //  FIFO for memory request metadata
     //
-    assign flush_mem_req_wdata = '{
-        mem_req_addr: {flush_alloc_nline_i, {HPDcacheCfg.offsetWidth{1'b0}}},
-        mem_req_len: hpdcache_max(HPDcacheCfg.u.clWidth / HPDCacheCfg.u.memDataWidth, 1),
+    localparam int unsigned MemReqFlits =
+        hpdcache_max(HPDcacheCfg.clWidth / HPDcacheCfg.u.memDataWidth, 1);
+
+    assign flush_mem_req_wmeta = '{
+        mem_req_addr: {flush_alloc_nline_i, {HPDcacheCfg.clOffsetWidth{1'b0}}},
+        mem_req_len: hpdcache_mem_len_t'(MemReqFlits),
         mem_req_size: get_hpdcache_mem_size(HPDcacheCfg.u.memDataWidth/8),
         mem_req_id: hpdcache_mem_id_t'(flush_dir_free_ptr),
         mem_req_command: HPDCACHE_MEM_WRITE,
@@ -296,7 +305,7 @@ import hpdcache_pkg::*;
         .rst_ni,
         .w_i            (flush_mem_req_w),
         .wok_o          (flush_mem_req_wok),
-        .wdata_i        (flush_mem_req_wdata),
+        .wdata_i        (flush_mem_req_wmeta),
         .r_i            (mem_req_write_ready_i),
         .rok_o          (mem_req_write_valid_o),
         .rdata_o        (mem_req_write_o)
@@ -305,24 +314,29 @@ import hpdcache_pkg::*;
     //  Resize data width from the cache controller to the NoC data width
     //
     hpdcache_data_resize #(
-        .WR_WIDTH       (HPDcacheCfg.u.accessWords*HPDcacheCfg.u.wordWidth),
+        .WR_WIDTH       (HPDcacheCfg.accessWidth),
         .RD_WIDTH       (HPDcacheCfg.u.memDataWidth),
-
-        /* FIXME Add new parameter to the HPDcacheCfg struct */
-        .DEPTH          (2*(HPDcacheCfg.clWidth/HPDcacheCfg.u.memDataWidth))
+        .DEPTH          (HPDcacheCfg.u.flushFifoDepth)
     ) flush_data_resizer_i(
         .clk_i,
         .rst_ni,
 
         .w_i            (flush_resizer_w),
-        .wlast_i        (flush_resizer_wlast),
         .wok_o          (flush_resizer_wok),
-        .wdata_i        (flush_data_rdata_i),
+        .wdata_i        (flush_data_read_data_i),
+        .wlast_i        (flush_resizer_wlast),
 
         .r_i            (mem_req_write_data_ready_i),
         .rok_o          (mem_req_write_data_valid_o),
-        .rdata_o        (mem_req_write_data_o)
+        .rdata_o        (flush_mem_req_rdata),
+        .rlast_o        (flush_mem_req_rlast)
     );
+
+    assign mem_req_write_data_o = '{
+        mem_req_w_data: flush_mem_req_rdata,
+        mem_req_w_be: '1,
+        mem_req_w_last: flush_mem_req_rlast
+    };
     //  }}}
 
 endmodule

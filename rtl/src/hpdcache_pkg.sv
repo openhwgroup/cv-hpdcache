@@ -436,6 +436,8 @@ package hpdcache_pkg;
         int rtabEntries;
         //  Number of entries in the flush directory
         int flushEntries;
+        //  Depth of the flush FIFO
+        int flushFifoDepth;
         //  Width of the address in the memory interface
         int unsigned memAddrWidth;
         //  Width of the ID in the memory interface
