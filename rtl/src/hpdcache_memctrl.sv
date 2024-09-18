@@ -863,6 +863,7 @@ import hpdcache_pkg::*;
         data_flush_ways_data;
 
     hpdcache_data_ram_row_idx_t data_flush_row_index_q;
+    logic [HPDcacheCfg.u.dataWaysPerRamWord-1:0] data_flush_read_way;
 
     always_ff @(posedge clk_i)
     begin : data_flush_row_index_ff
@@ -878,17 +879,32 @@ import hpdcache_pkg::*;
         .sel_i       (data_flush_row_index_q),
         .data_o      (data_flush_row_data)
     );
-    for (gen_i = 0; gen_i < HPDcacheCfg.u.dataWaysPerRamWord; gen_i++) begin : gen_data_flush_way_i
-        for (gen_j = 0; gen_j < HPDcacheCfg.u.accessWords; gen_j++) begin : gen_data_flush_way_j
+
+    for (gen_i = 0; gen_i < HPDcacheCfg.u.dataWaysPerRamWord; gen_i++)
+    begin : gen_data_flush_way_i
+        for (gen_j = 0; gen_j < HPDcacheCfg.u.accessWords; gen_j++)
+        begin : gen_data_flush_way_j
             assign data_flush_ways_data[gen_i][gen_j] = data_flush_row_data[gen_j][gen_i];
         end
     end
+
+    always_comb
+    begin : decode_flush_read_way_comb
+        data_flush_read_way = '0;
+        for (int i = 0; i < HPDcacheCfg.u.dataWaysPerRamWord; i++) begin
+            for (int j = 0; j < HPDcacheCfg.u.ways; j += HPDcacheCfg.u.dataWaysPerRamWord) begin
+                data_flush_read_way[i] |= data_flush_read_way_i[i + j];
+            end
+        end
+    end
+
     hpdcache_mux #(
         .NINPUT      (HPDcacheCfg.u.dataWaysPerRamWord),
-        .DATA_WIDTH  (HPDcacheCfg.accessWidth)
+        .DATA_WIDTH  (HPDcacheCfg.accessWidth),
+        .ONE_HOT_SEL (1'b1)
     ) data_read_flush_mux_way_i(
         .data_i      (data_flush_ways_data),
-        .sel_i       (data_flush_read_way_i),
+        .sel_i       (data_flush_read_way),
         .data_o      (data_flush_read_data_o)
     );
     //  }}}
