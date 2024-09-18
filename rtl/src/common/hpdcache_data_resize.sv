@@ -44,13 +44,14 @@ import hpdcache_pkg::*;
     input  logic   rst_ni,
 
     input  logic   w_i,
-    input  logic   wlast_i,
     output logic   wok_o,
     input  wdata_t wdata_i,
+    input  logic   wlast_i,
 
     input  logic   r_i,
     output logic   rok_o,
-    output rdata_t rdata_o
+    output rdata_t rdata_o,
+    output logic   rlast_o
 );
 //  }}}
 
@@ -74,6 +75,8 @@ if (WR_WIDTH < RD_WIDTH) begin : gen_upsize
         .rok_o,
         .rdata_o
     );
+
+    assign rlast_o = 1'b1;
 end
 //  }}}
 //  Downsizer
@@ -93,7 +96,8 @@ else if (WR_WIDTH > RD_WIDTH) begin : gen_downsize
 
         .r_i,
         .rok_o,
-        .rdata_o
+        .rdata_o,
+        .rlast_o
     );
 end
 //  }}}
@@ -116,6 +120,8 @@ else begin : gen_noresize
         .rok_o,
         .rdata_o
     );
+
+    assign rlast_o = 1'b1;
 end
 //  }}}
 

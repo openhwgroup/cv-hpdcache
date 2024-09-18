@@ -49,7 +49,8 @@ import hpdcache_pkg::*;
 
     input  logic   r_i,
     output logic   rok_o,
-    output rdata_t rdata_o
+    output rdata_t rdata_o,
+    output logic   rlast_o
 );
 //  }}}
 //  Architecture
@@ -66,21 +67,21 @@ import hpdcache_pkg::*;
 
     //  Internal registers and signals
     //  {{{
-    rdata_t [DEPTH-1:0][RD_WORDS-1:0]  buf_q;
-    bufptr_t  wrptr_q, wrptr_d;
-    bufptr_t  rdptr_q, rdptr_d;
-    occupancy_t  used_q, used_d;
-    wordptr_t [DEPTH-1:0]  words_q, words_d;
+    rdata_t [DEPTH-1:0][RD_WORDS-1:0] buf_q;
+    bufptr_t wrptr_q, wrptr_d;
+    bufptr_t rdptr_q, rdptr_d;
+    occupancy_t used_q, used_d;
+    wordptr_t [DEPTH-1:0] words_q, words_d;
     logic words_set;
     logic  full, empty;
     //  }}}
 
     //  Control-Path
     //  {{{
-    assign full = (hpdcache_uint'(used_q) == DEPTH),
-           empty = (used_q == 0),
-           wok_o = ~full,
-           rok_o = ~empty;
+    assign full = (hpdcache_uint'(used_q) == DEPTH);
+    assign empty = (used_q == 0);
+    assign wok_o = ~full;
+    assign rok_o = ~empty;
 
     always_comb
     begin : ctrl_comb
@@ -130,6 +131,8 @@ import hpdcache_pkg::*;
             words_d[rdptr_q] = words_q[rdptr_q] - 1;
         end
     end
+
+    assign rlast_o = rok_o & (words_q[rdptr_q] == 0);
 
     always_ff @(posedge clk_i or negedge rst_ni)
     begin : ctrl_ff

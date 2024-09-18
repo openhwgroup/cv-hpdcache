@@ -44,9 +44,9 @@ import hpdcache_pkg::*;
     input  logic   rst_ni,
 
     input  logic   w_i,
-    input  logic   wlast_i,
     output logic   wok_o,
     input  wdata_t wdata_i,
+    input  logic   wlast_i,
 
     input  logic   r_i,
     output logic   rok_o,

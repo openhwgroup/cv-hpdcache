@@ -600,61 +600,24 @@ import hpdcache_pkg::*;
         .rdata_o(refill_fifo_resp_meta_rdata)
     );
 
-    if (HPDcacheCfg.u.memDataWidth < HPDcacheCfg.accessWidth)
-    begin : gen_upsize_mem_data
-        hpdcache_data_upsize #(
-            .WR_WIDTH(HPDcacheCfg.u.memDataWidth),
-            .RD_WIDTH(HPDcacheCfg.accessWidth),
-            .DEPTH(HPDcacheCfg.u.refillFifoDepth*(HPDcacheCfg.clWidth/HPDcacheCfg.accessWidth))
-        ) i_rdata_upsize (
-            .clk_i,
-            .rst_ni,
+    hpdcache_data_resize #(
+        .WR_WIDTH (HPDcacheCfg.u.memDataWidth),
+        .RD_WIDTH (HPDcacheCfg.accessWidth),
+        .DEPTH    (HPDcacheCfg.u.refillFifoDepth)
+    ) i_data_resize(
+        .clk_i,
+        .rst_ni,
 
-            .w_i      (refill_fifo_resp_data_w),
-            .wlast_i  (mem_resp_i.mem_resp_r_last),
-            .wok_o    (refill_fifo_resp_data_wok),
-            .wdata_i  (mem_resp_i.mem_resp_r_data),
+        .w_i    (refill_fifo_resp_data_w),
+        .wok_o  (refill_fifo_resp_data_wok),
+        .wdata_i(mem_resp_i.mem_resp_r_data),
+        .wlast_i(mem_resp_i.mem_resp_r_last),
 
-            .r_i      (refill_fifo_resp_data_r),
-            .rok_o    (/* unused */),
-            .rdata_o  (refill_fifo_resp_data_rdata)
-        );
-    end else if (HPDcacheCfg.u.memDataWidth > HPDcacheCfg.accessWidth)
-    begin : gen_downsize_mem_data
-        hpdcache_data_downsize #(
-            .WR_WIDTH(HPDcacheCfg.u.memDataWidth),
-            .RD_WIDTH(HPDcacheCfg.accessWidth),
-            .DEPTH(HPDcacheCfg.u.refillFifoDepth*(HPDcacheCfg.clWidth/HPDcacheCfg.u.memDataWidth))
-        ) i_rdata_downsize (
-            .clk_i,
-            .rst_ni,
-
-            .w_i      (refill_fifo_resp_data_w),
-            .wok_o    (refill_fifo_resp_data_wok),
-            .wdata_i  (mem_resp_i.mem_resp_r_data),
-
-            .r_i      (refill_fifo_resp_data_r),
-            .rok_o    (/* unused */),
-            .rdata_o  (refill_fifo_resp_data_rdata)
-        );
-    end else
-    begin : gen_eqsize_mem_data
-        hpdcache_fifo_reg #(
-            .FIFO_DEPTH  (HPDcacheCfg.u.refillFifoDepth),
-            .fifo_data_t (hpdcache_refill_data_t)
-        ) i_rdata_fifo (
-            .clk_i,
-            .rst_ni,
-
-            .w_i      (refill_fifo_resp_data_w),
-            .wok_o    (refill_fifo_resp_data_wok),
-            .wdata_i  (mem_resp_i.mem_resp_r_data),
-
-            .r_i      (refill_fifo_resp_data_r),
-            .rok_o    (/* unused */),
-            .rdata_o  (refill_fifo_resp_data_rdata)
-        );
-    end
+        .r_i    (refill_fifo_resp_data_r),
+        .rok_o  (/* unused */),
+        .rdata_o(refill_fifo_resp_data_rdata),
+        .rlast_o(/* unused */)
+    );
 
     assign refill_data_o = refill_fifo_resp_data_rdata;
 
