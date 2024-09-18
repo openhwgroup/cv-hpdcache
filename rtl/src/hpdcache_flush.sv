@@ -222,7 +222,7 @@ import hpdcache_pkg::*;
     for (gen_i = 0; gen_i < FlushEntries; gen_i++) begin : gen_check
         assign flush_check_hit[gen_i] = (flush_check_nline_i == flush_dir_q[gen_i].nline);
     end
-    assign flush_check_hit_o = |flush_check_hit;
+    assign flush_check_hit_o = |(flush_dir_valid_q & flush_check_hit);
     //  }}}
 
     //  Internal state

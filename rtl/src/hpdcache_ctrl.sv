@@ -123,6 +123,13 @@ import hpdcache_pkg::*;
     input  logic                  refill_updt_rtab_i,
 
     //      Flush interface
+    input  logic                  flush_busy_i,
+    output hpdcache_nline_t       flush_check_nline_o,
+    input  logic                  flush_check_hit_i,
+    output logic                  flush_alloc_o,
+    input  logic                  flush_alloc_ready_i,
+    output hpdcache_nline_t       flush_alloc_nline_o,
+    output hpdcache_way_vector_t  flush_alloc_way_o,
     input  logic                  flush_data_read_i,
     input  hpdcache_set_t         flush_data_read_set_i,
     input  hpdcache_word_t        flush_data_read_word_i,
@@ -504,6 +511,11 @@ import hpdcache_pkg::*;
         .st2_dir_updt_wback_o               (st2_dir_updt_wback_d),
         .st2_dir_updt_dirty_o               (st2_dir_updt_dirty_d),
         .st2_dir_updt_fetch_o               (st2_dir_updt_fetch_d),
+
+        .flush_busy_i,
+        .st1_flush_check_hit_i              (flush_check_hit_i),
+        .st1_flush_alloc_o                  (flush_alloc_o),
+        .st1_flush_alloc_ready_i            (flush_alloc_ready_i),
 
         .rtab_full_i                        (rtab_full),
         .rtab_check_o                       (st1_rtab_check),
@@ -894,35 +906,38 @@ import hpdcache_pkg::*;
 
     //  CMO request handler outputs
     //  {{{
-    assign cmo_req_addr_o                 = st1_req_addr,
-           cmo_req_wdata_o                = st1_req.wdata,
-           cmo_req_op_o.is_fence          = st1_req_is_cmo_fence,
-           cmo_req_op_o.is_inval_by_nline = st1_req_is_cmo_inval &
-                                            is_cmo_inval_by_nline(st1_req.size),
-           cmo_req_op_o.is_inval_by_set   = st1_req_is_cmo_inval &
-                                            is_cmo_inval_by_set(st1_req.size),
-           cmo_req_op_o.is_inval_all      = st1_req_is_cmo_inval &
+    assign cmo_req_addr_o                 = st1_req_addr;
+    assign cmo_req_wdata_o                = st1_req.wdata;
+    assign cmo_req_op_o.is_fence          = st1_req_is_cmo_fence;
+    assign cmo_req_op_o.is_inval_by_nline = st1_req_is_cmo_inval &
+                                            is_cmo_inval_by_nline(st1_req.size);
+    assign cmo_req_op_o.is_inval_by_set   = st1_req_is_cmo_inval &
+                                            is_cmo_inval_by_set(st1_req.size);
+    assign cmo_req_op_o.is_inval_all      = st1_req_is_cmo_inval &
                                             is_cmo_inval_all(st1_req.size);
+    //  }}}
+
+    //  Flush controller outputs
+    //  {{{
+    assign flush_check_nline_o = st1_req_nline;
+    assign flush_alloc_nline_o = {st1_dir_victim_tag, st1_req_set};
+    assign flush_alloc_way_o   = st1_dir_victim_way;
     //  }}}
 
     //  Control of the response to the core
     //  {{{
-    assign core_rsp_valid_o   = refill_core_rsp_valid_i                     |
+    assign core_rsp_valid_o   = refill_core_rsp_valid_i |
                                 (uc_core_rsp_valid_i & uc_core_rsp_ready_o) |
-                                st1_rsp_valid,
-           core_rsp_o.rdata   = (refill_core_rsp_valid_i ? refill_core_rsp_i.rdata :
-                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.rdata     :
-                                st1_read_data)),
-           core_rsp_o.sid     = (refill_core_rsp_valid_i ? refill_core_rsp_i.sid   :
-                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.sid       :
-                                st1_req.sid)),
-           core_rsp_o.tid     = (refill_core_rsp_valid_i ? refill_core_rsp_i.tid   :
-                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.tid       :
-                                st1_req.tid)),
-           core_rsp_o.error   = (refill_core_rsp_valid_i ? refill_core_rsp_i.error :
-                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.error     :
-                                1'b0)),
-           core_rsp_o.aborted = st1_rsp_aborted;
+                                st1_rsp_valid;
+    assign core_rsp_o.rdata   = (refill_core_rsp_valid_i ? refill_core_rsp_i.rdata :
+                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.rdata : st1_read_data));
+    assign core_rsp_o.sid     = (refill_core_rsp_valid_i ? refill_core_rsp_i.sid :
+                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.sid : st1_req.sid));
+    assign core_rsp_o.tid     = (refill_core_rsp_valid_i ? refill_core_rsp_i.tid :
+                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.tid : st1_req.tid));
+    assign core_rsp_o.error   = (refill_core_rsp_valid_i ? refill_core_rsp_i.error :
+                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.error : 1'b0));
+    assign core_rsp_o.aborted = st1_rsp_aborted;
     //  }}}
 
     //  Assertions

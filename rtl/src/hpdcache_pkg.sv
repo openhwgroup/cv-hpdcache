@@ -433,11 +433,11 @@ package hpdcache_pkg;
         //  Use feedthrough FIFOs from the write-buffer to the NoC
         bit wbufSendFeedThrough;
         //  Number of entries in the replay table
-        int rtabEntries;
+        int unsigned rtabEntries;
         //  Number of entries in the flush directory
-        int flushEntries;
+        int unsigned flushEntries;
         //  Depth of the flush FIFO
-        int flushFifoDepth;
+        int unsigned flushFifoDepth;
         //  Width of the address in the memory interface
         int unsigned memAddrWidth;
         //  Width of the ID in the memory interface

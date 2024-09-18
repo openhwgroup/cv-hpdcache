@@ -484,6 +484,13 @@ import hpdcache_pkg::*;
         .refill_nline_i                     (refill_nline),
         .refill_updt_rtab_i                 (refill_updt_rtab),
 
+        .flush_busy_i                       (flush_busy),
+        .flush_check_nline_o                (flush_check_nline),
+        .flush_check_hit_i                  (flush_check_hit),
+        .flush_alloc_o                      (flush_alloc),
+        .flush_alloc_ready_i                (flush_alloc_ready),
+        .flush_alloc_nline_o                (flush_alloc_nline),
+        .flush_alloc_way_o                  (flush_alloc_way),
         .flush_data_read_i                  (flush_data_read),
         .flush_data_read_set_i              (flush_data_read_set),
         .flush_data_read_word_i             (flush_data_read_word),
@@ -808,6 +815,7 @@ import hpdcache_pkg::*;
 
         .cfg_error_on_cacheable_amo_i
     );
+    //  }}}
 
     //  CMO Request Handler
     //  {{{
@@ -980,9 +988,35 @@ import hpdcache_pkg::*;
     logic                arb_mem_req_write_data_ready [3];
     hpdcache_mem_req_w_t arb_mem_req_write_data       [3];
 
+    //      Split the ID space into 3 segments:
+    //      1111...1111  -> Uncached writes
+    //      1xxx...xxxx  -> Flush writes (where at least one x is 0)
+    //      0xxx...xxxx  -> Write buffer writes
+    function automatic hpdcache_mem_req_t hpdcache_req_write_sel_id(hpdcache_mem_req_t req, int kind);
+        //  Request from the write buffer
+        if      (kind == 0) req.mem_req_id = {1'b0, req.mem_req_id[0 +: HPDcacheCfg.u.memIdWidth-1]};
+        //  Request from the flush controller
+        else if (kind == 1) req.mem_req_id = {1'b1, req.mem_req_id[0 +: HPDcacheCfg.u.memIdWidth-1]};
+        //  Request from the uncached controller
+        else if (kind == 2) req.mem_req_id = '1;
+
+        return req;
+    endfunction
+
+    function automatic hpdcache_mem_resp_w_t hpdcache_resp_write_sel_id(hpdcache_mem_resp_w_t resp, int kind);
+        //  Response to the write buffer
+        if      (kind == 0) resp.mem_resp_w_id = {1'b0, resp.mem_resp_w_id[0 +: HPDcacheCfg.u.memIdWidth-1]};
+        //  Response to the flush controller
+        else if (kind == 1) resp.mem_resp_w_id = {1'b0, resp.mem_resp_w_id[0 +: HPDcacheCfg.u.memIdWidth-1]};
+        //  Response to the uncached controller
+        else if (kind == 2) resp.mem_resp_w_id = '1;
+
+        return resp;
+    endfunction
+
     assign mem_req_write_wbuf_ready        = arb_mem_req_write_ready[0];
     assign arb_mem_req_write_valid[0]      = mem_req_write_wbuf_valid;
-    assign arb_mem_req_write[0]            = mem_req_write_wbuf;
+    assign arb_mem_req_write[0]            = hpdcache_req_write_sel_id(mem_req_write_wbuf, 0);
 
     assign mem_req_write_wbuf_data_ready   = arb_mem_req_write_data_ready[0];
     assign arb_mem_req_write_data_valid[0] = mem_req_write_wbuf_data_valid;
@@ -990,7 +1024,7 @@ import hpdcache_pkg::*;
 
     assign mem_req_write_flush_ready       = arb_mem_req_write_ready[1];
     assign arb_mem_req_write_valid[1]      = mem_req_write_flush_valid;
-    assign arb_mem_req_write[1]            = mem_req_write_flush;
+    assign arb_mem_req_write[1]            = hpdcache_req_write_sel_id(mem_req_write_flush, 1);
 
     assign mem_req_write_flush_data_ready  = arb_mem_req_write_data_ready[1];
     assign arb_mem_req_write_data_valid[1] = mem_req_write_flush_data_valid;
@@ -998,7 +1032,7 @@ import hpdcache_pkg::*;
 
     assign mem_req_write_uc_ready          = arb_mem_req_write_ready[2];
     assign arb_mem_req_write_valid[2]      = mem_req_write_uc_valid;
-    assign arb_mem_req_write[2]            = mem_req_write_uc;
+    assign arb_mem_req_write[2]            = hpdcache_req_write_sel_id(mem_req_write_uc, 2);
 
     assign mem_req_write_uc_data_ready     = arb_mem_req_write_data_ready[2];
     assign arb_mem_req_write_data_valid[2] = mem_req_write_uc_data_valid;
@@ -1037,10 +1071,12 @@ import hpdcache_pkg::*;
         mem_resp_write_uc_valid = 1'b0;
         mem_resp_write_ready_o = 1'b0;
         if (mem_resp_write_valid_i) begin
-            /* FIXME route responses to the flush controller */
             if (mem_resp_write_i.mem_resp_w_id == {HPDcacheCfg.u.memIdWidth{1'b1}}) begin
                 mem_resp_write_uc_valid = 1'b1;
                 mem_resp_write_ready_o = mem_resp_write_uc_ready;
+            end else if (mem_resp_write_i.mem_resp_w_id[HPDcacheCfg.u.memIdWidth-1]) begin
+                mem_resp_write_flush_valid = 1'b1;
+                mem_resp_write_ready_o = mem_resp_write_flush_ready;
             end else begin
                 mem_resp_write_wbuf_valid = 1'b1;
                 mem_resp_write_ready_o = mem_resp_write_wbuf_ready;
@@ -1048,9 +1084,9 @@ import hpdcache_pkg::*;
         end
     end
 
-    assign mem_resp_write_flush = mem_resp_write_i;
-    assign mem_resp_write_wbuf = mem_resp_write_i;
-    assign mem_resp_write_uc = mem_resp_write_i;
+    assign mem_resp_write_wbuf = hpdcache_resp_write_sel_id(mem_resp_write_i, 0);
+    assign mem_resp_write_flush = hpdcache_resp_write_sel_id(mem_resp_write_i, 1);
+    assign mem_resp_write_uc = hpdcache_resp_write_sel_id(mem_resp_write_i, 2);
     //  }}}
 
     //  Assertions

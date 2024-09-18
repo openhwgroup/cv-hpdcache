@@ -151,6 +151,12 @@ module hpdcache_ctrl_pe
     output logic                   wbuf_read_flush_hit_o,
     //   }}}
 
+    //   Flush controller
+    input  logic                   flush_busy_i,
+    input  logic                   st1_flush_check_hit_i,
+    output logic                   st1_flush_alloc_o,
+    input  logic                   st1_flush_alloc_ready_i,
+
     //   Uncacheable request handler
     //   {{{
     input  logic                   uc_busy_i,
@@ -290,6 +296,8 @@ module hpdcache_ctrl_pe
         st1_rtab_dir_fetch_o                = 1'b0;
         st1_rtab_flushing_o                 = 1'b0;
 
+        st1_flush_alloc_o                   = 1'b0;
+
         evt_cache_write_miss_o              = 1'b0;
         evt_cache_read_miss_o               = 1'b0;
         evt_uncached_req_o                  = 1'b0;
@@ -309,8 +317,15 @@ module hpdcache_ctrl_pe
         //  Refilling the cache
         //  {{{
         else if (refill_busy_i) begin
-            //  miss handler has the control of the cache
+            //  miss handler has the control of the cache pipeline
             evt_stall_refill_o = core_req_valid_i;
+        end
+        //  }}}
+
+        //  Flush controller reading the cache
+        //  {{{
+        else if (flush_busy_i) begin
+            //  flush controller has the control of the cache pipeline
         end
         //  }}}
 
@@ -425,7 +440,6 @@ module hpdcache_ctrl_pe
                             if (st1_mshr_hit_i) begin
                                 //  Put the request in the replay table
                                 st1_rtab_alloc = 1'b1;
-
                                 st1_rtab_mshr_hit_o = 1'b1;
                             end
 
@@ -433,7 +447,6 @@ module hpdcache_ctrl_pe
                             else if (st1_mshr_full_i) begin
                                 //  Put the request in the replay table
                                 st1_rtab_alloc = 1'b1;
-
                                 st1_rtab_mshr_full_o = 1'b1;
                             end
 
@@ -441,7 +454,6 @@ module hpdcache_ctrl_pe
                             else if (st1_dir_victim_unavailable_i) begin
                                 //  Put the request in the replay table
                                 st1_rtab_alloc = 1'b1;
-
                                 st1_rtab_dir_unavailable_o = 1'b1;
                             end
 
@@ -450,7 +462,6 @@ module hpdcache_ctrl_pe
                             else if (wbuf_read_hit_i) begin
                                 //  Put the request in the replay table
                                 st1_rtab_alloc = 1'b1;
-
                                 st1_rtab_wbuf_hit_o = 1'b1;
                             end
 
@@ -467,8 +478,19 @@ module hpdcache_ctrl_pe
                                 //  hold to allow a possible refill read response to be
                                 //  accomplished.
                                 st1_rtab_alloc = 1'b1;
-
                                 st1_rtab_mshr_ready_o = 1'b1;
+                            end
+
+                            //  Flush pending on the miss cacheline
+                            else if (st1_flush_check_hit_i) begin
+                                st1_rtab_alloc = 1'b1;
+                                // FIXME st1_rtab_flush_hit_o = 1'b1;
+                            end
+
+                            //  Flush needed but the controller is not ready
+                            else if (st1_dir_victim_dirty_i && !st1_flush_alloc_ready_i) begin
+                                st1_rtab_alloc = 1'b1;
+                                // FIXME st1_rtab_flush_ready_o = 1'b1;
                             end
 
                             //  Forward the request to the next stage to allocate the
@@ -476,10 +498,7 @@ module hpdcache_ctrl_pe
                             else begin
                                 //  When the victim cacheline is dirty, flush its data to the
                                 //  memory
-                                if (st1_dir_victim_dirty_i) begin
-                                    /* FIXME */
-                                    assert final (0) else $error("error: not yet supported");
-                                end
+                                st1_flush_alloc_o = st1_dir_victim_dirty_i;
 
                                 //  If the request comes from the replay table, free the
                                 //  corresponding RTAB entry
@@ -539,7 +558,7 @@ module hpdcache_ctrl_pe
 
                                     if (st1_dir_hit_dirty_i) begin
                                         /* FIXME */
-                                        assert final (0) else $error("error: not yet supported");
+                                        assert final (1) $error("error: not yet supported");
                                     end
                                 end
 
@@ -592,7 +611,6 @@ module hpdcache_ctrl_pe
                             if (st1_mshr_hit_i) begin
                                 //  Put the request in the replay table
                                 st1_rtab_alloc = 1'b1;
-
                                 st1_rtab_mshr_hit_o = 1'b1;
 
                                 st1_nop = 1'b1;
@@ -605,20 +623,20 @@ module hpdcache_ctrl_pe
                                 //  Select a victim cacheline
                                 st1_req_cachedir_sel_victim_o = 1'b1;
 
+                                //  Add a nop as the next cycle the controller needs to write in the
+                                //  MSHR and the directory
+                                st1_nop = 1'b1;
+
                                 //  Miss Handler is not ready to send
                                 if (!st1_mshr_alloc_ready_i) begin
                                     st1_rtab_alloc = 1'b1;
-
                                     st1_rtab_mshr_ready_o = 1'b1;
-
-                                    st1_nop = 1'b1;
                                 end
 
                                 //  No available slot in the MSHR
                                 else if (st1_mshr_full_i) begin
                                     //  Put the request in the replay table
                                     st1_rtab_alloc = 1'b1;
-
                                     st1_rtab_mshr_full_o = 1'b1;
                                 end
 
@@ -628,17 +646,25 @@ module hpdcache_ctrl_pe
                                     //  Put the request in the replay table
                                     st1_rtab_alloc = 1'b1;
                                     st1_rtab_dir_unavailable_o = 1'b1;
+                                end
 
-                                    st1_nop = 1'b1;
+                                //  hit in the flush controller
+                                else if (st1_flush_check_hit_i) begin
+                                    //  Put the request in the replay table
+                                    st1_rtab_alloc = 1'b1;
+                                    /* FIXME */
+                                end
+
+                                //  Flush needed but the controller is not ready
+                                else if (st1_dir_victim_dirty_i && !st1_flush_alloc_ready_i) begin
+                                    st1_rtab_alloc = 1'b1;
+                                    /* FIXME */
                                 end
 
                                 else begin
                                     //  When the victim cacheline is dirty, flush its data to the
                                     //  memory
-                                    if (st1_dir_victim_dirty_i) begin
-                                        /* FIXME */
-                                        assert final (0) else $error("error: not yet supported");
-                                    end
+                                    st1_flush_alloc_o = st1_dir_victim_dirty_i;
 
                                     //  Update the directory state of the cacheline to FETCHING
                                     st2_dir_updt_o = 1'b1;
@@ -659,8 +685,6 @@ module hpdcache_ctrl_pe
                                     //  Put the request in the replay table
                                     st1_rtab_alloc = 1'b1;
                                     st1_rtab_mshr_hit_o = 1'b1;
-
-                                    st1_nop = 1'b1;
                                 end
                             end
                             //  }}}
@@ -675,7 +699,6 @@ module hpdcache_ctrl_pe
                                 if (!wbuf_write_ready_i) begin
                                     //  Put the request in the replay table
                                     st1_rtab_alloc = 1'b1;
-
                                     st1_rtab_wbuf_not_ready_o = 1'b1;
 
                                     st1_nop = 1'b1;
@@ -694,6 +717,7 @@ module hpdcache_ctrl_pe
                                     evt_write_req_o        = 1'b1;
                                 end
                             end
+                            //  }}}
                         end
                         //  }}}
 
@@ -759,7 +783,7 @@ module hpdcache_ctrl_pe
                                 //  memory before changing its state to WT
                                 if (st1_dir_hit_dirty_i) begin
                                     /* FIXME handle the flushing to the memory */
-                                    assert final (0) else $error("error: not yet supported");
+                                    assert final (1) $error("error: not yet supported");
 
                                     //  Update the state to WT in the directory
                                     st2_dir_updt_o = 1'b1;
@@ -780,7 +804,6 @@ module hpdcache_ctrl_pe
                                 else if (!wbuf_write_ready_i) begin
                                     //  Put the request in the replay table
                                     st1_rtab_alloc = 1'b1;
-
                                     st1_rtab_wbuf_not_ready_o = 1'b1;
 
                                     st1_nop = 1'b1;
