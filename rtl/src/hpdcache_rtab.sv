@@ -70,7 +70,6 @@ import hpdcache_pkg::*;
     input  logic                  alloc_wbuf_not_ready_i,
     input  logic                  alloc_dir_unavailable_i,
     input  logic                  alloc_dir_fetch_i,
-    input  hpdcache_way_t         alloc_dir_fetch_way_index_i,
     input  logic                  alloc_flush_hit_i,
     input  logic                  alloc_flush_not_ready_i,
 

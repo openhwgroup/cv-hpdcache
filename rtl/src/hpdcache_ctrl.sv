@@ -641,7 +641,6 @@ import hpdcache_pkg::*;
         .alloc_wbuf_not_ready_i             (st1_rtab_wbuf_not_ready),
         .alloc_dir_unavailable_i            (st1_rtab_dir_unavailable),
         .alloc_dir_fetch_i                  (st1_rtab_dir_fetch),
-        .alloc_dir_fetch_way_index_i        (st1_dir_hit_way_index),
         .alloc_flush_hit_i                  (st1_rtab_flush_hit),
         .alloc_flush_not_ready_i            (st1_rtab_flush_not_ready),
 
