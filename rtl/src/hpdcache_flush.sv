@@ -112,8 +112,7 @@ import hpdcache_pkg::*;
 
     typedef enum {
         FLUSH_IDLE,
-        FLUSH_START,
-        FLUSH_NEXT
+        FLUSH_SEND
     } flush_fsm_e;
     //  }}}
 
@@ -181,19 +180,18 @@ import hpdcache_pkg::*;
             FLUSH_IDLE: begin
                 flush_alloc_ready_o = flush_resizer_wok & ~flush_full_o & flush_mem_req_wok;
                 flush_mem_req_w = flush_resizer_wok & ~flush_full_o & flush_alloc_i;
-
                 if (flush_alloc_i && flush_alloc_ready_o) begin
+                    flush_data_read_o = 1'b1;
+                    flush_data_read_set_o = flush_alloc_set;
+                    flush_data_read_way_o = flush_alloc_way_i;
+                    flush_data_read_word_o = 0;
+
                     flush_alloc = 1'b1;
-                    flush_word_d = 0;
-                    flush_fsm_d = FLUSH_START;
+                    flush_word_d = flush_word_q + hpdcache_word_t'(HPDcacheCfg.u.accessWords);
+                    flush_fsm_d = FLUSH_SEND;
                 end
             end
-            FLUSH_START: begin
-                flush_data_read_o = 1'b1;
-                flush_word_d = flush_word_q + hpdcache_word_t'(HPDcacheCfg.u.accessWords);
-                flush_fsm_d = FLUSH_NEXT;
-            end
-            FLUSH_NEXT: begin
+            FLUSH_SEND: begin
                 flush_resizer_w = 1'b1;
                 flush_resizer_wlast = flush_eol;
                 if (flush_resizer_wok) begin
@@ -270,7 +268,7 @@ import hpdcache_pkg::*;
     hpdcache_fxarb #(.N(FlushEntries)) flush_dir_free_arb_i(
         .clk_i,
         .rst_ni,
-        .req_i          (flush_dir_valid_q),
+        .req_i          (~flush_dir_valid_q),
         .gnt_o          (flush_dir_free_ptr_bv),
         .ready_i        (flush_alloc)
     );

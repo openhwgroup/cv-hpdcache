@@ -257,6 +257,10 @@ import hpdcache_pkg::*;
     hpdcache_req_tid_t       st2_mshr_alloc_tid_q;
     hpdcache_way_vector_t    st2_mshr_alloc_victim_way_q;
 
+    logic                    st2_flush_alloc_q, st2_flush_alloc_d;
+    hpdcache_nline_t         st2_flush_alloc_nline_q;
+    hpdcache_way_vector_t    st2_flush_alloc_way_q;
+
     logic                    st2_dir_updt_q, st2_dir_updt_d;
     hpdcache_set_t           st2_dir_updt_set_q;
     hpdcache_way_vector_t    st2_dir_updt_way_q;
@@ -514,8 +518,9 @@ import hpdcache_pkg::*;
 
         .flush_busy_i,
         .st1_flush_check_hit_i              (flush_check_hit_i),
-        .st1_flush_alloc_o                  (flush_alloc_o),
         .st1_flush_alloc_ready_i            (flush_alloc_ready_i),
+        .st2_flush_alloc_i                  (st2_flush_alloc_q),
+        .st2_flush_alloc_o                  (st2_flush_alloc_d),
 
         .rtab_full_i                        (rtab_full),
         .rtab_check_o                       (st1_rtab_check),
@@ -703,6 +708,11 @@ import hpdcache_pkg::*;
             st2_mshr_alloc_victim_way_q  <= st1_dir_victim_way;
         end
 
+        if (st2_flush_alloc_d) begin
+            st2_flush_alloc_nline_q <= {st1_dir_victim_tag, st1_req_set};
+            st2_flush_alloc_way_q <= st1_dir_victim_way;
+        end
+
         if (st2_dir_updt_d) begin
             st2_dir_updt_tag_q    <= st1_dir_hit ? st1_dir_hit_tag : st1_dir_victim_tag;
             st2_dir_updt_set_q    <= st1_req_set;
@@ -717,11 +727,13 @@ import hpdcache_pkg::*;
     always_ff @(posedge clk_i or negedge rst_ni)
     begin : st2_valid_ff
         if (!rst_ni) begin
-            st2_mshr_alloc_q <= 1'b0;
-            st2_dir_updt_q   <= 1'b0;
+            st2_mshr_alloc_q  <= 1'b0;
+            st2_flush_alloc_q <= 1'b0;
+            st2_dir_updt_q    <= 1'b0;
         end else begin
-            st2_mshr_alloc_q <= st2_mshr_alloc_d;
-            st2_dir_updt_q   <= st2_dir_updt_d;
+            st2_mshr_alloc_q  <= st2_mshr_alloc_d;
+            st2_flush_alloc_q <= st2_flush_alloc_d;
+            st2_dir_updt_q    <= st2_dir_updt_d;
         end
     end
     //  }}}
@@ -920,8 +932,9 @@ import hpdcache_pkg::*;
     //  Flush controller outputs
     //  {{{
     assign flush_check_nline_o = st1_req_nline;
-    assign flush_alloc_nline_o = {st1_dir_victim_tag, st1_req_set};
-    assign flush_alloc_way_o   = st1_dir_victim_way;
+    assign flush_alloc_o       = st2_flush_alloc_q;
+    assign flush_alloc_nline_o = st2_flush_alloc_nline_q;
+    assign flush_alloc_way_o   = st2_flush_alloc_way_q;
     //  }}}
 
     //  Control of the response to the core

@@ -154,8 +154,9 @@ module hpdcache_ctrl_pe
     //   Flush controller
     input  logic                   flush_busy_i,
     input  logic                   st1_flush_check_hit_i,
-    output logic                   st1_flush_alloc_o,
     input  logic                   st1_flush_alloc_ready_i,
+    input  logic                   st2_flush_alloc_i,
+    output logic                   st2_flush_alloc_o,
 
     //   Uncacheable request handler
     //   {{{
@@ -273,6 +274,8 @@ module hpdcache_ctrl_pe
         st2_mshr_alloc_need_rsp_o           = 1'b0;
         st2_mshr_alloc_wback_o              = st2_mshr_alloc_wback_i;
 
+        st2_flush_alloc_o                   = st2_flush_alloc_i;
+
         st2_dir_updt_o                      = st2_dir_updt_i;
         st2_dir_updt_valid_o                = st2_dir_updt_valid_i;
         st2_dir_updt_wback_o                = st2_dir_updt_wback_i;
@@ -295,8 +298,6 @@ module hpdcache_ctrl_pe
         st1_rtab_dir_unavailable_o          = 1'b0;
         st1_rtab_dir_fetch_o                = 1'b0;
         st1_rtab_flushing_o                 = 1'b0;
-
-        st1_flush_alloc_o                   = 1'b0;
 
         evt_cache_write_miss_o              = 1'b0;
         evt_cache_read_miss_o               = 1'b0;
@@ -349,6 +350,15 @@ module hpdcache_ctrl_pe
                 evt_cache_read_miss_o = ~st2_mshr_alloc_is_prefetch_i;
                 evt_read_req_o        = ~st2_mshr_alloc_is_prefetch_i;
                 evt_prefetch_req_o    =  st2_mshr_alloc_is_prefetch_i;
+            end
+
+            //  Flush a cacheline
+            if (st2_flush_alloc_i) begin
+                //  Reset cache directory update request
+                st2_flush_alloc_o = 1'b0;
+
+                //  Introduce a NOP in the next cycle to prevent a hazard on the cache data
+                st2_nop = 1'b1;
             end
 
             //  Update the cache directory
@@ -498,7 +508,7 @@ module hpdcache_ctrl_pe
                             else begin
                                 //  When the victim cacheline is dirty, flush its data to the
                                 //  memory
-                                st1_flush_alloc_o = st1_dir_victim_dirty_i;
+                                st2_flush_alloc_o = st1_dir_victim_dirty_i;
 
                                 //  If the request comes from the replay table, free the
                                 //  corresponding RTAB entry
@@ -664,7 +674,7 @@ module hpdcache_ctrl_pe
                                 else begin
                                     //  When the victim cacheline is dirty, flush its data to the
                                     //  memory
-                                    st1_flush_alloc_o = st1_dir_victim_dirty_i;
+                                    st2_flush_alloc_o = st1_dir_victim_dirty_i;
 
                                     //  Update the directory state of the cacheline to FETCHING
                                     st2_dir_updt_o = 1'b1;
