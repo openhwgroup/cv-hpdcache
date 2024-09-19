@@ -110,9 +110,10 @@ import hpdcache_pkg::*;
     typedef flush_entry_t [FlushEntries-1:0] flush_dir_t;
     typedef logic [FlushIndexWidth-1:0] flush_dir_index_t;
 
-    typedef enum logic {
-        FLUSH_IDLE = 1'b0,
-        FLUSH_SEND = 1'b1
+    typedef enum {
+        FLUSH_IDLE,
+        FLUSH_START,
+        FLUSH_NEXT
     } flush_fsm_e;
     //  }}}
 
@@ -167,9 +168,9 @@ import hpdcache_pkg::*;
         flush_alloc = 1'b0;
 
         flush_data_read_o = 1'b0;
-        flush_data_read_set_o = '0;
-        flush_data_read_word_o = 0;
-        flush_data_read_way_o = '0;
+        flush_data_read_set_o = flush_set_q;
+        flush_data_read_word_o = flush_word_q;
+        flush_data_read_way_o = flush_way_q;
 
         flush_mem_req_w = 1'b0;
 
@@ -181,30 +182,26 @@ import hpdcache_pkg::*;
                 flush_alloc_ready_o = flush_resizer_wok & ~flush_full_o & flush_mem_req_wok;
                 flush_mem_req_w = flush_resizer_wok & ~flush_full_o & flush_alloc_i;
 
-                flush_data_read_set_o = flush_alloc_set;
-                flush_data_read_word_o = 0;
-                flush_data_read_way_o = flush_alloc_way_i;
-
                 if (flush_alloc_i && flush_alloc_ready_o) begin
-                    flush_data_read_o = 1'b1;
                     flush_alloc = 1'b1;
-                    flush_word_d = hpdcache_word_t'(HPDcacheCfg.u.accessWords);
-                    flush_fsm_d = FLUSH_SEND;
+                    flush_word_d = 0;
+                    flush_fsm_d = FLUSH_START;
                 end
             end
-            FLUSH_SEND: begin
+            FLUSH_START: begin
+                flush_data_read_o = 1'b1;
+                flush_word_d = flush_word_q + hpdcache_word_t'(HPDcacheCfg.u.accessWords);
+                flush_fsm_d = FLUSH_NEXT;
+            end
+            FLUSH_NEXT: begin
                 flush_resizer_w = 1'b1;
                 flush_resizer_wlast = flush_eol;
-
-                flush_data_read_set_o = flush_set_q;
-                flush_data_read_word_o = flush_word_q;
-                flush_data_read_way_o = flush_way_q;
                 if (flush_resizer_wok) begin
                     flush_data_read_o = ~flush_eol;
-                    flush_word_d = flush_word_q +
-                        hpdcache_word_t'(HPDcacheCfg.u.accessWords);
                     if (flush_eol) begin
                         flush_fsm_d = FLUSH_IDLE;
+                    end else begin
+                        flush_word_d = flush_word_q + hpdcache_word_t'(HPDcacheCfg.u.accessWords);
                     end
                 end
             end
