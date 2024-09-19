@@ -666,7 +666,7 @@ import hpdcache_pkg::*;
     //  Multiplex between data write requests
     always_comb
     begin : data_write_comb
-        case (1'b1)
+        unique case (1'b1)
             data_refill_i: begin
                 data_write        = 1'b1;
                 data_write_enable = 1'b1;
@@ -727,7 +727,7 @@ import hpdcache_pkg::*;
         data_wbyteenable = '0;
         data_wentry      = '0;
 
-        case (1'b1)
+        unique case (1'b1)
             //  Select data read inputs
             data_req_read_i: begin
                 data_addr = {HPDCACHE_ALL_CUTS{
@@ -753,7 +753,7 @@ import hpdcache_pkg::*;
             //  Select data write inputs
             data_write: begin
                 data_addr = {HPDCACHE_ALL_CUTS{hpdcache_set_to_data_ram_addr(data_write_set,
-                                                                           data_write_word)}};
+                                                                             data_write_word)}};
 
                 for (int unsigned i = 0; i < HPDCACHE_DATA_RAM_Y_CUTS; i++) begin
                     for (int unsigned j = 0; j < HPDCACHE_DATA_RAM_X_CUTS; j++) begin
