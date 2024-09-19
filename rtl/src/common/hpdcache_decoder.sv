@@ -37,6 +37,7 @@ module hpdcache_decoder
     //  Ports
     //  {{{
 (
+    input  logic   en_i,
     input  in_t    val_i,
     output out_t   val_o
 );
@@ -46,7 +47,7 @@ module hpdcache_decoder
     begin : decoder_comb
         val_o = 0;
         for (int unsigned i = 0; i < Pow2N; i++) begin
-            if (val_i == in_t'(i)) val_o[i] = 1'b1;
+            if (val_i == in_t'(i)) val_o[i] = en_i;
         end
     end
 endmodule

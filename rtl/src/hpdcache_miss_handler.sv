@@ -731,6 +731,7 @@ import hpdcache_pkg::*;
     );
 
     hpdcache_decoder #(.N(HPDcacheCfg.wayIndexWidth)) victim_way_decoder_i(
+        .en_i (refill_busy_o),
         .val_i(refill_way),
         .val_o(refill_way_o)
     );

@@ -126,9 +126,11 @@ import hpdcache_pkg::*;
     //  {{{
     logic [FlushEntries-1:0] flush_dir_valid_q;
     flush_dir_t              flush_dir_q;
-    logic [FlushEntries-1:0] flush_dir_free_ptr_bv;
     flush_dir_index_t        flush_dir_free_ptr;
+    logic [FlushEntries-1:0] flush_dir_free_bv;
+    logic [FlushEntries-1:0] flush_dir_alloc_bv;
     flush_dir_index_t        flush_dir_ack_ptr;
+    logic [FlushEntries-1:0] flush_dir_ack_bv;
     hpdcache_set_t           flush_set_q;
     hpdcache_way_vector_t    flush_way_q;
     hpdcache_word_t          flush_word_q, flush_word_d;
@@ -226,7 +228,7 @@ import hpdcache_pkg::*;
     for (gen_i = 0; gen_i < FlushEntries; gen_i++) begin : gen_check
         assign flush_check_hit[gen_i] = (flush_check_nline_i == flush_dir_q[gen_i].nline);
     end
-    assign flush_check_hit_o = |(flush_dir_valid_q & flush_check_hit);
+    assign flush_check_hit_o = |(flush_dir_valid_q & ~flush_dir_ack_bv & flush_check_hit);
     //  }}}
 
     //  Internal state
@@ -245,13 +247,15 @@ import hpdcache_pkg::*;
     end
 
     //  Directory valid
+    assign flush_dir_alloc_bv = flush_dir_free_bv & {FlushEntries{flush_alloc}};
+
     always_ff @(posedge clk_i or negedge rst_ni)
     begin : flush_dir_valid_ff
         if (!rst_ni) begin
             flush_dir_valid_q <= '0;
         end else begin
-            if (flush_alloc) flush_dir_valid_q[flush_dir_free_ptr] <= 1'b1;
-            if (flush_ack)   flush_dir_valid_q[flush_dir_ack_ptr]  <= 1'b0;
+            flush_dir_valid_q <= (~flush_dir_valid_q &  flush_dir_alloc_bv) |
+                                 ( flush_dir_valid_q & ~flush_dir_ack_bv  );
         end
     end
     //  }}}
@@ -271,6 +275,11 @@ import hpdcache_pkg::*;
 
     //  Internal components
     //  {{{
+    hpdcache_decoder #(.N(FlushIndexWidth)) flush_ack_decoder_i(
+        .en_i           (flush_ack),
+        .val_i          (flush_dir_ack_ptr),
+        .val_o          (flush_dir_ack_bv)
+    );
 
     //  Select a free entry in the flush directory
     //
@@ -278,11 +287,11 @@ import hpdcache_pkg::*;
         .clk_i,
         .rst_ni,
         .req_i          (~flush_dir_valid_q),
-        .gnt_o          (flush_dir_free_ptr_bv),
+        .gnt_o          (flush_dir_free_bv),
         .ready_i        (flush_alloc)
     );
     hpdcache_1hot_to_binary #(.N (FlushEntries)) flush_dir_free_ptr_bin_i(
-        .val_i          (flush_dir_free_ptr_bv),
+        .val_i          (flush_dir_free_bv),
         .val_o          (flush_dir_free_ptr)
     );
 
