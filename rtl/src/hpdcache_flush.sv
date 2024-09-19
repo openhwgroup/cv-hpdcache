@@ -82,6 +82,12 @@ import hpdcache_pkg::*;
     input  hpdcache_access_data_t flush_data_read_data_i,
     //      }}}
 
+    //      ACK monitoring interface
+    //      {{{
+    output logic                  flush_ack_o,
+    output hpdcache_nline_t       flush_ack_nline_o,
+    //      }}}
+
     //      MEMORY interface
     //      {{{
     input  logic                  mem_req_write_ready_i,
@@ -210,6 +216,9 @@ import hpdcache_pkg::*;
     assign flush_ack = mem_resp_write_valid_i;
     assign flush_dir_ack_ptr = flush_dir_index_t'(mem_resp_write_i.mem_resp_w_id);
     assign mem_resp_write_ready_o = 1'b1;
+
+    assign flush_ack_o = flush_ack;
+    assign flush_ack_nline_o = flush_dir_q[flush_dir_ack_ptr].nline;
     //  }}}
 
     //  Check logic

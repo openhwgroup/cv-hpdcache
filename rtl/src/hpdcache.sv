@@ -301,6 +301,8 @@ import hpdcache_pkg::*;
     hpdcache_word_t        flush_data_read_word;
     hpdcache_way_vector_t  flush_data_read_way;
     hpdcache_access_data_t flush_data_read_data;
+    logic                  flush_ack;
+    hpdcache_nline_t       flush_ack_nline;
 
     logic                  rtab_empty;
     logic                  ctrl_empty;
@@ -496,6 +498,8 @@ import hpdcache_pkg::*;
         .flush_data_read_word_i             (flush_data_read_word),
         .flush_data_read_way_i              (flush_data_read_way),
         .flush_data_read_data_o             (flush_data_read_data),
+        .flush_ack_i                        (flush_ack),
+        .flush_ack_nline_i                  (flush_ack_nline),
 
         .inval_check_dir_i                  (inval_check_dir),
         .inval_write_dir_i                  (inval_write_dir),
@@ -896,6 +900,9 @@ import hpdcache_pkg::*;
         .flush_data_read_word_o        (flush_data_read_word),
         .flush_data_read_way_o         (flush_data_read_way),
         .flush_data_read_data_i        (flush_data_read_data),
+
+        .flush_ack_o                   (flush_ack),
+        .flush_ack_nline_o             (flush_ack_nline),
 
         .mem_req_write_ready_i         (mem_req_write_flush_ready),
         .mem_req_write_valid_o         (mem_req_write_flush_valid),

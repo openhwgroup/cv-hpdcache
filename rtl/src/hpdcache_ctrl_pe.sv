@@ -127,7 +127,8 @@ module hpdcache_ctrl_pe
     output logic                   st1_rtab_wbuf_not_ready_o,
     output logic                   st1_rtab_dir_unavailable_o,
     output logic                   st1_rtab_dir_fetch_o,
-    output logic                   st1_rtab_flushing_o,
+    output logic                   st1_rtab_flush_hit_o,
+    output logic                   st1_rtab_flush_not_ready_o,
     //   }}}
 
     //   Cache directory
@@ -297,7 +298,8 @@ module hpdcache_ctrl_pe
         st1_rtab_wbuf_not_ready_o           = 1'b0;
         st1_rtab_dir_unavailable_o          = 1'b0;
         st1_rtab_dir_fetch_o                = 1'b0;
-        st1_rtab_flushing_o                 = 1'b0;
+        st1_rtab_flush_hit_o                = 1'b0;
+        st1_rtab_flush_not_ready_o          = 1'b0;
 
         evt_cache_write_miss_o              = 1'b0;
         evt_cache_read_miss_o               = 1'b0;
@@ -494,13 +496,13 @@ module hpdcache_ctrl_pe
                             //  Flush pending on the miss cacheline
                             else if (st1_flush_check_hit_i) begin
                                 st1_rtab_alloc = 1'b1;
-                                // FIXME st1_rtab_flush_hit_o = 1'b1;
+                                st1_rtab_flush_hit_o = 1'b1;
                             end
 
                             //  Flush needed but the controller is not ready
                             else if (st1_dir_victim_dirty_i && !st1_flush_alloc_ready_i) begin
                                 st1_rtab_alloc = 1'b1;
-                                // FIXME st1_rtab_flush_ready_o = 1'b1;
+                                st1_rtab_flush_not_ready_o = 1'b1;
                             end
 
                             //  Forward the request to the next stage to allocate the
@@ -662,13 +664,13 @@ module hpdcache_ctrl_pe
                                 else if (st1_flush_check_hit_i) begin
                                     //  Put the request in the replay table
                                     st1_rtab_alloc = 1'b1;
-                                    /* FIXME */
+                                    st1_rtab_flush_hit_o = 1'b1;
                                 end
 
                                 //  Flush needed but the controller is not ready
                                 else if (st1_dir_victim_dirty_i && !st1_flush_alloc_ready_i) begin
                                     st1_rtab_alloc = 1'b1;
-                                    /* FIXME */
+                                    st1_rtab_flush_not_ready_o = 1'b1;
                                 end
 
                                 else begin
@@ -695,6 +697,9 @@ module hpdcache_ctrl_pe
                                     //  Put the request in the replay table
                                     st1_rtab_alloc = 1'b1;
                                     st1_rtab_mshr_hit_o = 1'b1;
+
+                                    //  Performance event
+                                    evt_cache_write_miss_o = 1'b1;
                                 end
                             end
                             //  }}}
@@ -805,7 +810,7 @@ module hpdcache_ctrl_pe
                                     //  Put the request in the replay table while waiting for the
                                     //  memory flushing
                                     st1_rtab_alloc = 1'b1;
-                                    st1_rtab_flushing_o = 1'b1;
+                                    st1_rtab_flush_hit_o = 1'b1;
 
                                     st1_nop = 1'b1;
                                 end

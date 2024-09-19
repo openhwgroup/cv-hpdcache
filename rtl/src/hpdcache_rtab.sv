@@ -71,6 +71,8 @@ import hpdcache_pkg::*;
     input  logic                  alloc_dir_unavailable_i,
     input  logic                  alloc_dir_fetch_i,
     input  hpdcache_way_t         alloc_dir_fetch_way_index_i,
+    input  logic                  alloc_flush_hit_i,
+    input  logic                  alloc_flush_not_ready_i,
 
     //  Pop signals
     //     This interface allows to read (and remove) a request from the RTAB
@@ -105,6 +107,11 @@ import hpdcache_pkg::*;
     input  logic                  refill_i,           // Active refill
     input  hpdcache_nline_t       refill_nline_i,     // Cache-line index being refilled
     input  hpdcache_way_t         refill_way_index_i, // Way index being refilled
+
+    //  Control signals from the Flush Controller
+    input  logic                  flush_ack_i,        // Flush acknowledged
+    input  hpdcache_nline_t       flush_ack_nline_i,  // Cache-line flush being acknowledged
+    input  logic                  flush_ready_i,      // Flush controller is available
 
     //  Configuration parameters
     input  logic                  cfg_single_entry_i // Enable only one entry of the table
@@ -222,6 +229,18 @@ import hpdcache_pkg::*;
     logic               [N-1:0]  alloc_deps_dir_fetch_set;
     logic               [N-1:0]  pop_rback_deps_dir_fetch_set;
 
+    //  Flush hit
+    logic               [N-1:0]  deps_flush_hit_q;
+    logic               [N-1:0]  deps_flush_hit_set, deps_flush_hit_rst;
+    logic               [N-1:0]  alloc_deps_flush_hit_set;
+    logic               [N-1:0]  pop_rback_deps_flush_hit_set;
+
+    //  Flush not ready
+    logic               [N-1:0]  deps_flush_not_ready_q;
+    logic               [N-1:0]  deps_flush_not_ready_set, deps_flush_not_ready_rst;
+    logic               [N-1:0]  alloc_deps_flush_not_ready_set;
+    logic               [N-1:0]  pop_rback_deps_flush_not_ready_set;
+
     logic               [N-1:0]  nodeps;
     hpdcache_nline_t    [N-1:0]  nline;
     hpdcache_req_addr_t [N-1:0]  addr;
@@ -233,6 +252,7 @@ import hpdcache_pkg::*;
     logic               [N-1:0]  match_refill_nline;
     logic               [N-1:0]  match_refill_set;
     logic               [N-1:0]  match_refill_way;
+    logic               [N-1:0]  match_flush_nline;
 
     logic               [N-1:0]  free;
     logic               [N-1:0]  free_alloc;
@@ -253,7 +273,10 @@ import hpdcache_pkg::*;
                             deps_mshr_ready_q |
                             deps_wbuf_hit_q |
                             deps_wbuf_not_ready_q |
-                            deps_dir_unavailable_q);
+                            deps_dir_unavailable_q |
+                            deps_dir_fetch_q |
+                            deps_flush_hit_q |
+                            deps_flush_not_ready_q);
 
     assign ready        = valid_q & head_q & nodeps;
 
@@ -316,6 +339,8 @@ import hpdcache_pkg::*;
     assign alloc_deps_wbuf_not_ready_set  = alloc_valid_set & {N{ alloc_wbuf_not_ready_i}};
     assign alloc_deps_dir_unavailable_set = alloc_valid_set & {N{alloc_dir_unavailable_i}};
     assign alloc_deps_dir_fetch_set       = alloc_valid_set & {N{      alloc_dir_fetch_i}};
+    assign alloc_deps_flush_hit_set       = alloc_valid_set & {N{      alloc_flush_hit_i}};
+    assign alloc_deps_flush_not_ready_set = alloc_valid_set & {N{alloc_flush_not_ready_i}};
 //  }}}
 
 //  Update replay table dependencies
@@ -328,6 +353,10 @@ import hpdcache_pkg::*;
         assign match_refill_way[gen_i] = (refill_way_index_i == req_q[gen_i].way_fetch);
     end
 
+    for (gen_i = 0; gen_i < N; gen_i++) begin : gen_match_flush
+        assign match_flush_nline[gen_i] = (flush_ack_nline_i == nline[gen_i]);
+    end
+
     //  Update write buffer hit dependencies
     //  {{{
     //  Build a bit-vector with HEAD requests waiting for a conflict in the wbuf
@@ -338,8 +367,8 @@ import hpdcache_pkg::*;
     logic          wbuf_ready;
     logic [N-1:0]  wbuf_sel;
 
-    assign wbuf_rd_pending = valid_q & head_q & deps_wbuf_hit_q,
-           wbuf_wr_pending = valid_q & head_q & deps_wbuf_not_ready_q;
+    assign wbuf_rd_pending = valid_q & head_q & deps_wbuf_hit_q;
+    assign wbuf_wr_pending = valid_q & head_q & deps_wbuf_not_ready_q;
 
     //  Choose in a round-robin manner a ready transaction waiting for a conflict in the wbuf
     hpdcache_rrarb #(
@@ -418,6 +447,12 @@ import hpdcache_pkg::*;
     //  {{{
     assign deps_dir_unavailable_rst = {N{refill_i}} & match_refill_set;
     assign deps_dir_fetch_rst       = {N{refill_i}} & match_refill_set & match_refill_way;
+    //  }}}
+
+    //  Update flush dependencies
+    //  {{{
+    assign deps_flush_hit_rst = {N{flush_ack_i}} & match_flush_nline;
+    assign deps_flush_not_ready_rst = {N{flush_ready_i}};
     //  }}}
 //  }}}
 
@@ -565,6 +600,10 @@ import hpdcache_pkg::*;
                                                 {N{alloc_dir_unavailable_i}};
     assign pop_rback_deps_dir_fetch_set       = {N{pop_rback_i}} & pop_rback_ptr_bv &
                                                 {N{alloc_dir_fetch_i}};
+    assign pop_rback_deps_flush_hit_set       = {N{pop_rback_i}} & pop_rback_ptr_bv &
+                                                {N{alloc_flush_hit_i}};
+    assign pop_rback_deps_flush_not_ready_set = {N{pop_rback_i}} & pop_rback_ptr_bv &
+                                                {N{alloc_flush_not_ready_i}};
     //  }}}
 //  }}}
 
@@ -589,6 +628,10 @@ import hpdcache_pkg::*;
                                       pop_rback_deps_dir_unavailable_set;
     assign deps_dir_fetch_set       = alloc_deps_dir_fetch_set |
                                       pop_rback_deps_dir_fetch_set;
+    assign deps_flush_hit_set       = alloc_deps_flush_hit_set |
+                                      pop_rback_deps_flush_hit_set;
+    assign deps_flush_not_ready_set = alloc_deps_flush_not_ready_set |
+                                      pop_rback_deps_flush_not_ready_set;
 
     always_ff @(posedge clk_i or negedge rst_ni)
     begin : rtab_valid_ff
@@ -603,6 +646,8 @@ import hpdcache_pkg::*;
             deps_wbuf_not_ready_q  <= '0;
             deps_dir_unavailable_q <= '0;
             deps_dir_fetch_q       <= '0;
+            deps_flush_hit_q       <= '0;
+            deps_flush_not_ready_q <= '0;
             next_q                 <= '0;
         end else begin
             valid_q <= (~valid_q & valid_set) | (valid_q & ~valid_rst);
@@ -626,6 +671,12 @@ import hpdcache_pkg::*;
                                       ( deps_dir_unavailable_q & ~deps_dir_unavailable_rst);
             deps_dir_fetch_q       <= (~deps_dir_fetch_q       &  deps_dir_fetch_set) |
                                       ( deps_dir_fetch_q       & ~deps_dir_fetch_rst);
+
+            deps_flush_hit_q       <= (~deps_flush_hit_q       &  deps_flush_hit_set) |
+                                      ( deps_flush_hit_q       & ~deps_flush_hit_rst);
+
+            deps_flush_not_ready_q <= (~deps_flush_not_ready_q &  deps_flush_not_ready_set) |
+                                      ( deps_flush_not_ready_q & ~deps_flush_not_ready_rst);
 
             //  update the next pointers
             for (int i = 0; i < N; i++) begin

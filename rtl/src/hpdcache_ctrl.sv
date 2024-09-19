@@ -135,6 +135,8 @@ import hpdcache_pkg::*;
     input  hpdcache_word_t        flush_data_read_word_i,
     input  hpdcache_way_vector_t  flush_data_read_way_i,
     output hpdcache_access_data_t flush_data_read_data_o,
+    input  logic                  flush_ack_i,
+    input  hpdcache_nline_t       flush_ack_nline_i,
 
     //      Invalidate interface
     input  logic                  inval_check_dir_i,
@@ -350,7 +352,8 @@ import hpdcache_pkg::*;
     logic                    st1_rtab_wbuf_not_ready;
     logic                    st1_rtab_dir_unavailable;
     logic                    st1_rtab_dir_fetch;
-    logic                    st1_rtab_flushing;
+    logic                    st1_rtab_flush_hit;
+    logic                    st1_rtab_flush_not_ready;
     logic                    st1_rtab_check;
     logic                    st1_rtab_check_hit;
 
@@ -536,7 +539,8 @@ import hpdcache_pkg::*;
         .st1_rtab_wbuf_not_ready_o          (st1_rtab_wbuf_not_ready),
         .st1_rtab_dir_unavailable_o         (st1_rtab_dir_unavailable),
         .st1_rtab_dir_fetch_o               (st1_rtab_dir_fetch),
-        .st1_rtab_flushing_o                (st1_rtab_flushing),
+        .st1_rtab_flush_hit_o               (st1_rtab_flush_hit),
+        .st1_rtab_flush_not_ready_o         (st1_rtab_flush_not_ready),
 
         .cachedir_hit_i                     (cachedir_hit_o),
         .cachedir_init_ready_i              (hpdcache_init_ready),
@@ -637,6 +641,8 @@ import hpdcache_pkg::*;
         .alloc_dir_unavailable_i            (st1_rtab_dir_unavailable),
         .alloc_dir_fetch_i                  (st1_rtab_dir_fetch),
         .alloc_dir_fetch_way_index_i        (st1_dir_hit_way_index),
+        .alloc_flush_hit_i                  (st1_rtab_flush_hit),
+        .alloc_flush_not_ready_i            (st1_rtab_flush_not_ready),
 
         .pop_try_valid_o                    (st0_rtab_pop_try_valid),
         .pop_try_i                          (st0_rtab_pop_try_ready),
@@ -661,6 +667,10 @@ import hpdcache_pkg::*;
         .refill_i                           (refill_updt_rtab_i),
         .refill_nline_i,
         .refill_way_index_i                 (refill_way_index),
+
+        .flush_ack_i                        (flush_ack_i),
+        .flush_ack_nline_i                  (flush_ack_nline_i),
+        .flush_ready_i                      (flush_alloc_ready_i),
 
         .cfg_single_entry_i                 (cfg_rtab_single_entry_i)
     );
