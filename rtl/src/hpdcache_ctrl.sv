@@ -340,6 +340,7 @@ import hpdcache_pkg::*;
     logic                    st1_dir_victim_dirty;
     hpdcache_tag_t           st1_dir_victim_tag;
     hpdcache_way_vector_t    st1_dir_victim_way;
+    hpdcache_nline_t         st1_victim_nline;
     hpdcache_req_data_t      st1_read_data;
     logic                    st1_rtab_alloc;
     logic                    st1_rtab_alloc_and_link;
@@ -719,8 +720,8 @@ import hpdcache_pkg::*;
         end
 
         if (st2_flush_alloc_d) begin
-            st2_flush_alloc_nline_q <= {st1_dir_victim_tag, st1_req_set};
-            st2_flush_alloc_way_q <= st1_dir_victim_way;
+            st2_flush_alloc_nline_q <= st1_dir_hit ? st1_req_nline   : st1_victim_nline;
+            st2_flush_alloc_way_q   <= st1_dir_hit ? st1_dir_hit_way : st1_dir_victim_way;
         end
 
         if (st2_dir_updt_d) begin
@@ -759,6 +760,8 @@ import hpdcache_pkg::*;
                                               HPDcacheCfg.clWordIdxWidth];
     assign st1_req_addr = {st1_req.addr_tag, st1_req.addr_offset};
     assign st1_req_nline = st1_req_addr[HPDcacheCfg.clOffsetWidth +: HPDcacheCfg.nlineWidth];
+
+    assign st1_victim_nline = {st1_dir_victim_tag, st1_req_set};
 
     hpdcache_memctrl #(
         .HPDcacheCfg                   (HPDcacheCfg),

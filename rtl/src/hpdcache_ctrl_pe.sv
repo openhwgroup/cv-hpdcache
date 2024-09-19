@@ -566,12 +566,11 @@ module hpdcache_ctrl_pe
                                     st2_dir_updt_dirty_o = 1'b0;
                                     st2_dir_updt_fetch_o = 1'b0;
 
+                                    //  Cacheline is dirty, flush its data to the memory
+                                    st2_flush_alloc_o = st1_dir_hit_dirty_i;
+
                                     st1_nop = 1'b1;
 
-                                    if (st1_dir_hit_dirty_i) begin
-                                        /* FIXME */
-                                        assert final (1) $error("error: not yet supported");
-                                    end
                                 end
 
                                 //  Hint is write-back but the current state is not. The controller
@@ -797,8 +796,8 @@ module hpdcache_ctrl_pe
                                 //  Cacheline is dirty. The controller needs to flush it to the
                                 //  memory before changing its state to WT
                                 if (st1_dir_hit_dirty_i) begin
-                                    /* FIXME handle the flushing to the memory */
-                                    assert final (1) $error("error: not yet supported");
+                                    //  Flush cacheline data to the memory
+                                    st2_flush_alloc_o = 1'b1;
 
                                     //  Update the state to WT in the directory
                                     st2_dir_updt_o = 1'b1;
