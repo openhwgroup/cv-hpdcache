@@ -30,7 +30,7 @@ import hpdcache_pkg::*;
     //  Parameters
     //  {{{
 #(
-    parameter hpdcache_cfg_t HPDcacheCfg = '0,
+    parameter hpdcache_cfg_t HPDcacheCfg,
 
     parameter type wbuf_timecnt_t = logic,
 
@@ -158,7 +158,9 @@ import hpdcache_pkg::*;
     input  logic                          cfg_wbuf_inhibit_write_coalescing_i,
     input  logic                          cfg_prefetch_updt_plru_i,
     input  logic                          cfg_error_on_cacheable_amo_i,
-    input  logic                          cfg_rtab_single_entry_i
+    input  logic                          cfg_rtab_single_entry_i,
+    input  logic [HPDcacheCfg.u.memIdWidth-1:0] HPDCACHE_UC_READ_ID,
+    input  logic [HPDcacheCfg.u.memIdWidth-1:0] HPDCACHE_UC_WRITE_ID
 );
     //  }}}
 
@@ -301,10 +303,6 @@ import hpdcache_pkg::*;
     hpdcache_tag_t         arb_tag;
     hpdcache_pma_t         arb_pma;
 
-    localparam logic [HPDcacheCfg.u.memIdWidth-1:0] HPDCACHE_UC_READ_ID =
-        {HPDcacheCfg.u.memIdWidth{1'b1}};
-    localparam logic [HPDcacheCfg.u.memIdWidth-1:0] HPDCACHE_UC_WRITE_ID =
-        {HPDcacheCfg.u.memIdWidth{1'b1}};
     //  }}}
 
     //  Requesters arbiter
