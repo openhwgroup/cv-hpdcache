@@ -90,8 +90,9 @@ import hpdcache_pkg::*;
     output hpdcache_way_vector_t  dir_inval_way_o,
     // }}}
 
-    //  Cache Directory Interface
+    //  Flush Controller Interface
     //  {{{
+    input  logic                  flush_empty_i,
     output logic                  flush_alloc_o,
     input  logic                  flush_alloc_ready_i,
     output hpdcache_nline_t       flush_alloc_nline_o,
@@ -111,6 +112,7 @@ import hpdcache_pkg::*;
         CMOH_INVAL_SET,
         CMOH_FLUSH_ALL_FIRST,
         CMOH_FLUSH_ALL_NEXT,
+        CMOH_FLUSH_ALL_LAST,
         CMOH_FLUSH_NLINE_FIRST,
         CMOH_FLUSH_NLINE_NEXT
     } hpdcache_cmoh_fsm_t;
@@ -248,10 +250,21 @@ import hpdcache_pkg::*;
             end
             CMOH_WAIT_MSHR_RTAB_EMPTY: begin
                 if (mshr_empty_i && rtab_empty_i && ctrl_empty_i) begin
-                    if (cmoh_op_q.is_inval_by_nline) begin
+                    unique if (cmoh_op_q.is_inval_by_nline) begin
                         cmoh_fsm_d = CMOH_INVAL_CHECK_NLINE;
-                    end else begin
+                    end else if (cmoh_op_q.is_inval_all) begin
                         cmoh_fsm_d = CMOH_INVAL_SET;
+                    end else if (cmoh_op_q.is_flush_by_nline) begin
+                        cmoh_fsm_d = CMOH_FLUSH_NLINE_FIRST;
+                    end else if (cmoh_op_q.is_flush_all) begin
+                        cmoh_flush_req_inval_d = 1'b0;
+                        cmoh_fsm_d = CMOH_FLUSH_ALL_FIRST;
+                    end else if (cmoh_op_q.is_flush_inval_by_nline) begin
+                        cmoh_flush_req_inval_d = 1'b1;
+                        cmoh_fsm_d = CMOH_FLUSH_NLINE_FIRST;
+                    end else if (cmoh_op_q.is_flush_inval_all) begin
+                        cmoh_flush_req_inval_d = 1'b1;
+                        cmoh_fsm_d = CMOH_FLUSH_ALL_FIRST;
                     end
                 end
             end
@@ -298,6 +311,8 @@ import hpdcache_pkg::*;
                     cmoh_flush_req_tag = dir_check_entry_tag_i;
                     cmoh_flush_req_inval = cmoh_flush_req_inval_q;
                 end
+
+                cmoh_flush_req_valid_d = cmoh_flush_req_wok;
                 if (cmoh_flush_req_wok) begin
                     dir_check_entry_o = 1'b1;
                     cmoh_set_incr = cmoh_way_last;
@@ -308,23 +323,44 @@ import hpdcache_pkg::*;
                     cmoh_flush_req_way_d = cmoh_way_q;
 
                     if (cmoh_set_last && cmoh_way_last) begin
-                        cmoh_fsm_d = CMOH_IDLE;
+                        cmoh_fsm_d = CMOH_FLUSH_ALL_LAST;
                     end
-                end else begin
-                    cmoh_flush_req_valid_d = 1'b0;
+                end
+            end
+            CMOH_FLUSH_ALL_LAST: begin
+                cmoh_flush_req_valid_d = 1'b0;
+                if (cmoh_flush_req_valid_q) begin
+                    cmoh_flush_req_w = dir_check_entry_valid_i & dir_check_entry_dirty_i;
+                    cmoh_flush_req_set = cmoh_flush_req_set_q;
+                    cmoh_flush_req_way = cmoh_flush_req_way_q;
+                    cmoh_flush_req_tag = dir_check_entry_tag_i;
+                    cmoh_flush_req_inval = cmoh_flush_req_inval_q;
+                end
+
+                //  Make sure that all requests have been processed
+                if (flush_empty_i && !flush_alloc_o) begin
+                    cmoh_fsm_d = CMOH_IDLE;
                 end
             end
             CMOH_FLUSH_NLINE_FIRST: begin
+                cmoh_flush_req_valid_d = 1'b1;
                 dir_check_nline_o = 1'b1;
                 cmoh_fsm_d = CMOH_FLUSH_NLINE_NEXT;
             end
             CMOH_FLUSH_NLINE_NEXT: begin
-                cmoh_flush_req_w = cmoh_dir_check_nline_hit & dir_check_nline_dirty_i;
-                cmoh_flush_req_set = cmoh_set;
-                cmoh_flush_req_tag = cmoh_tag;
-                cmoh_flush_req_way = dir_check_nline_hit_way_i;
-                cmoh_flush_req_inval = cmoh_flush_req_inval_q;
-                cmoh_fsm_d = CMOH_IDLE;
+                cmoh_flush_req_valid_d = 1'b0;
+                if (cmoh_flush_req_valid_q) begin
+                    cmoh_flush_req_w = cmoh_dir_check_nline_hit & dir_check_nline_dirty_i;
+                    cmoh_flush_req_set = cmoh_set;
+                    cmoh_flush_req_tag = cmoh_tag;
+                    cmoh_flush_req_way = dir_check_nline_hit_way_i;
+                    cmoh_flush_req_inval = cmoh_flush_req_inval_q;
+                end
+
+                //  Make sure that all requests have been processed
+                if (flush_empty_i && !flush_alloc_o) begin
+                    cmoh_fsm_d = CMOH_IDLE;
+                end
             end
         endcase
     end
@@ -337,12 +373,7 @@ import hpdcache_pkg::*;
         if (cmoh_set_reset) begin
             cmoh_set_d = '0;
         end else if (cmoh_set_incr) begin
-            if (cmoh_set_last) begin
-                cmoh_set_d = '0;
-            end else begin
-                cmoh_set_d = cmoh_set_q + 1;
-            end
-        end else begin
+            cmoh_set_d = cmoh_set_last ? '0 : cmoh_set_q + 1;
         end
     end
 
@@ -354,11 +385,8 @@ import hpdcache_pkg::*;
         if (cmoh_way_reset) begin
             cmoh_way_d = hpdcache_way_vector_t'(1);
         end else if (cmoh_way_incr) begin
-            if (cmoh_way_last) begin
-                cmoh_way_d = hpdcache_way_vector_t'(1);
-            end else begin
-                cmoh_way_d = {cmoh_way_q[0 +: HPDcacheCfg.u.ways-1], 1'b0};
-            end
+            cmoh_way_d = cmoh_way_last ?
+                hpdcache_way_vector_t'(1) : {cmoh_way_q[0 +: HPDcacheCfg.u.ways-1], 1'b0};
         end
     end
 //  }}}

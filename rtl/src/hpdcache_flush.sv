@@ -71,6 +71,7 @@ import hpdcache_pkg::*;
     output logic                  flush_alloc_ready_o,
     input  hpdcache_nline_t       flush_alloc_nline_i,
     input  hpdcache_way_vector_t  flush_alloc_way_i,
+    input  logic                  flush_alloc_inval_i,
     //      }}}
     //
     //      ALLOC DATA interface
@@ -166,12 +167,16 @@ import hpdcache_pkg::*;
     //    Here we make the assumption that the number of cacheline words is a power of 2.
     assign flush_eol = (flush_word_q == 0);
 
+    assign flush_alloc_ready_o = (flush_fsm_q == FLUSH_IDLE)
+                               & flush_resizer_wok
+                               & flush_mem_req_wok
+                               & ~flush_full_o;
+
     always_comb
     begin : flush_fsm_comb
         flush_fsm_d = flush_fsm_q;
         flush_word_d = flush_word_q;
 
-        flush_alloc_ready_o = 1'b0;
         flush_alloc = 1'b0;
 
         flush_data_read_o = 1'b0;
@@ -186,7 +191,6 @@ import hpdcache_pkg::*;
 
         unique case (flush_fsm_q)
             FLUSH_IDLE: begin
-                flush_alloc_ready_o = flush_resizer_wok & ~flush_full_o & flush_mem_req_wok;
                 flush_mem_req_w = flush_resizer_wok & ~flush_full_o & flush_alloc_i;
                 if (flush_alloc_i && flush_alloc_ready_o) begin
                     flush_data_read_o = 1'b1;

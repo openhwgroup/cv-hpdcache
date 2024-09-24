@@ -399,7 +399,10 @@ module hpdcache_ctrl_pe
 
                 //  CMO fence or invalidate
                 //  {{{
-                else if (st1_req_is_cmo_fence_i || st1_req_is_cmo_inval_i) begin
+                else if (st1_req_is_cmo_inval_i ||
+                         st1_req_is_cmo_flush_i ||
+                         st1_req_is_cmo_fence_i)
+                begin
                     cmo_req_valid_o = 1'b1;
                     st1_nop         = 1'b1;
 

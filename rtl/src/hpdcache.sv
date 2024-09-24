@@ -294,7 +294,6 @@ import hpdcache_pkg::*;
     hpdcache_way_vector_t  cmo_dir_inval_way;
     logic                  cmo_wait;
     logic                  cmo_flush_alloc;
-    logic                  cmo_flush_alloc_ready;
     hpdcache_nline_t       cmo_flush_alloc_nline;
     hpdcache_way_vector_t  cmo_flush_alloc_way;
     logic                  cmo_flush_alloc_inval;
@@ -308,6 +307,7 @@ import hpdcache_pkg::*;
     logic                  flush_alloc_ready;
     hpdcache_nline_t       flush_alloc_nline;
     hpdcache_way_vector_t  flush_alloc_way;
+    logic                  flush_alloc_inval;
     logic                  flush_data_read;
     hpdcache_set_t         flush_data_read_set;
     hpdcache_word_t        flush_data_read_word;
@@ -315,6 +315,10 @@ import hpdcache_pkg::*;
     hpdcache_access_data_t flush_data_read_data;
     logic                  flush_ack;
     hpdcache_nline_t       flush_ack_nline;
+
+    logic                  ctrl_flush_alloc;
+    hpdcache_nline_t       ctrl_flush_alloc_nline;
+    hpdcache_way_vector_t  ctrl_flush_alloc_way;
 
     logic                  rtab_empty;
     logic                  ctrl_empty;
@@ -501,10 +505,10 @@ import hpdcache_pkg::*;
         .flush_busy_i                       (flush_busy),
         .flush_check_nline_o                (flush_check_nline),
         .flush_check_hit_i                  (flush_check_hit),
-        .flush_alloc_o                      (flush_alloc),
+        .flush_alloc_o                      (ctrl_flush_alloc),
         .flush_alloc_ready_i                (flush_alloc_ready),
-        .flush_alloc_nline_o                (flush_alloc_nline),
-        .flush_alloc_way_o                  (flush_alloc_way),
+        .flush_alloc_nline_o                (ctrl_flush_alloc_nline),
+        .flush_alloc_way_o                  (ctrl_flush_alloc_way),
         .flush_data_read_i                  (flush_data_read),
         .flush_data_read_set_i              (flush_data_read_set),
         .flush_data_read_word_i             (flush_data_read_word),
@@ -888,8 +892,9 @@ import hpdcache_pkg::*;
         .dir_inval_set_o               (cmo_dir_inval_set),
         .dir_inval_way_o               (cmo_dir_inval_way),
 
+        .flush_empty_i                 (flush_empty),
         .flush_alloc_o                 (cmo_flush_alloc),
-        .flush_alloc_ready_i           (cmo_flush_alloc_ready),
+        .flush_alloc_ready_i           (flush_alloc_ready),
         .flush_alloc_nline_o           (cmo_flush_alloc_nline),
         .flush_alloc_way_o             (cmo_flush_alloc_way),
         .flush_alloc_inval_o           (cmo_flush_alloc_inval)
@@ -898,6 +903,11 @@ import hpdcache_pkg::*;
 
     //  Flush controller
     //  {{{
+    assign flush_alloc       =  ctrl_flush_alloc | cmo_flush_alloc;
+    assign flush_alloc_nline =  ctrl_flush_alloc ? ctrl_flush_alloc_nline : cmo_flush_alloc_nline;
+    assign flush_alloc_way   =  ctrl_flush_alloc ? ctrl_flush_alloc_way   : cmo_flush_alloc_way;
+    assign flush_alloc_inval = ~ctrl_flush_alloc & cmo_flush_alloc_inval;
+
     hpdcache_flush #(
         .HPDcacheCfg                   (HPDcacheCfg),
 
@@ -927,6 +937,7 @@ import hpdcache_pkg::*;
         .flush_alloc_ready_o           (flush_alloc_ready),
         .flush_alloc_nline_i           (flush_alloc_nline),
         .flush_alloc_way_i             (flush_alloc_way),
+        .flush_alloc_inval_i           (flush_alloc_inval),
 
         .flush_data_read_o             (flush_data_read),
         .flush_data_read_set_o         (flush_data_read_set),
@@ -1146,6 +1157,10 @@ import hpdcache_pkg::*;
     //  Assertions
     //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
+        ctrl_flush_alloc |-> !cmo_flush_alloc) else
+            $error("Unsupported concurrent flush from ctrl and cmo");
+
     initial begin
         word_width_assert:
             assert (HPDcacheCfg.u.wordWidth inside {32, 64}) else
