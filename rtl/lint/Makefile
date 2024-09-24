@@ -9,6 +9,8 @@ HPDCACHE_FILES=$(shell grep '.*.sv' $(HPDCACHE_DIR)/rtl/hpdcache.Flist)
 
 verilator-lint:
 	verilator --cc \
+		-Wall \
+		-Wno-pinconnectempty \
 		-Wno-fatal \
 		-error-limit 100 \
 		--top hpdcache_lint \
