@@ -186,7 +186,7 @@ import hpdcache_pkg::*;
 
         wbuf_flush_all_o = 1'b0;
 
-        cmoh_flush_req_w = 1'b0;
+        cmoh_flush_req_w   = 1'b0;
         cmoh_flush_req_set = '0;
         cmoh_flush_req_tag = '0;
 
