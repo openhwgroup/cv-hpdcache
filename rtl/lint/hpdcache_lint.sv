@@ -27,8 +27,8 @@
 
 module hpdcache_lint
   import hpdcache_pkg::*;
-();
-  localparam int unsigned HPDCACHE_NREQUESTERS = 1;
+#(
+  localparam int unsigned HPDCACHE_NREQUESTERS = 1,
 
   localparam hpdcache_pkg::hpdcache_user_cfg_t HPDcacheUserCfg = '{
       nRequesters: HPDCACHE_NREQUESTERS,
@@ -64,64 +64,84 @@ module hpdcache_lint
       memAddrWidth: 56,
       memIdWidth: 6,
       memDataWidth: 512
-  };
+  },
 
   localparam hpdcache_pkg::hpdcache_cfg_t HPDcacheCfg = hpdcache_pkg::hpdcacheBuildConfig(
       HPDcacheUserCfg
-  );
+  ),
 
-  `HPDCACHE_TYPEDEF_MEM_ATTR_T(hpdcache_mem_addr_t, hpdcache_mem_id_t, hpdcache_mem_data_t,
-                               hpdcache_mem_be_t, HPDcacheCfg);
-  `HPDCACHE_TYPEDEF_MEM_REQ_T(hpdcache_mem_req_t, hpdcache_mem_addr_t, hpdcache_mem_id_t);
-  `HPDCACHE_TYPEDEF_MEM_RESP_R_T(hpdcache_mem_resp_r_t, hpdcache_mem_id_t, hpdcache_mem_data_t);
-  `HPDCACHE_TYPEDEF_MEM_REQ_W_T(hpdcache_mem_req_w_t, hpdcache_mem_data_t, hpdcache_mem_be_t);
-  `HPDCACHE_TYPEDEF_MEM_RESP_W_T(hpdcache_mem_resp_w_t, hpdcache_mem_id_t);
+  localparam type hpdcache_mem_addr_t = logic [HPDcacheCfg.u.memAddrWidth-1:0],
+  localparam type hpdcache_mem_id_t = logic [HPDcacheCfg.u.memIdWidth-1:0],
+  localparam type hpdcache_mem_data_t = logic [HPDcacheCfg.u.memDataWidth-1:0],
+  localparam type hpdcache_mem_be_t = logic [HPDcacheCfg.u.memDataWidth/8-1:0],
+  localparam type hpdcache_mem_req_t =
+      `HPDCACHE_DECL_MEM_REQ_T(hpdcache_mem_addr_t, hpdcache_mem_id_t),
+  localparam type hpdcache_mem_resp_r_t =
+      `HPDCACHE_DECL_MEM_RESP_R_T(hpdcache_mem_id_t, hpdcache_mem_data_t),
+  localparam type hpdcache_mem_req_w_t =
+      `HPDCACHE_DECL_MEM_REQ_W_T(hpdcache_mem_data_t, hpdcache_mem_be_t),
+  localparam type hpdcache_mem_resp_w_t =
+      `HPDCACHE_DECL_MEM_RESP_W_T(hpdcache_mem_id_t),
 
-  `HPDCACHE_TYPEDEF_REQ_ATTR_T(hpdcache_req_offset_t, hpdcache_data_word_t, hpdcache_data_be_t,
-                               hpdcache_req_data_t, hpdcache_req_be_t, hpdcache_req_sid_t,
-                               hpdcache_req_tid_t, hpdcache_tag_t, HPDcacheCfg);
-  `HPDCACHE_TYPEDEF_REQ_T(hpdcache_req_t, hpdcache_req_offset_t, hpdcache_req_data_t,
-                          hpdcache_req_be_t, hpdcache_req_sid_t, hpdcache_req_tid_t,
-                          hpdcache_tag_t);
-  `HPDCACHE_TYPEDEF_RSP_T(hpdcache_rsp_t, hpdcache_req_data_t, hpdcache_req_sid_t,
-                          hpdcache_req_tid_t);
+  localparam type hpdcache_tag_t = logic [HPDcacheCfg.tagWidth-1:0],
+  localparam type hpdcache_data_word_t = logic [HPDcacheCfg.u.wordWidth-1:0],
+  localparam type hpdcache_data_be_t = logic [HPDcacheCfg.u.wordWidth/8-1:0],
+  localparam type hpdcache_req_offset_t = logic [HPDcacheCfg.reqOffsetWidth-1:0],
+  localparam type hpdcache_req_data_t = hpdcache_data_word_t [HPDcacheCfg.u.reqWords-1:0],
+  localparam type hpdcache_req_be_t = hpdcache_data_be_t [HPDcacheCfg.u.reqWords-1:0],
+  localparam type hpdcache_req_sid_t = logic [HPDcacheCfg.u.reqSrcIdWidth-1:0],
+  localparam type hpdcache_req_tid_t = logic [HPDcacheCfg.u.reqTransIdWidth-1:0],
+  localparam type hpdcache_req_t =
+      `HPDCACHE_DECL_REQ_T(hpdcache_req_offset_t,
+                           hpdcache_req_data_t,
+                           hpdcache_req_be_t,
+                           hpdcache_req_sid_t,
+                           hpdcache_req_tid_t,
+                           hpdcache_tag_t),
+  localparam type hpdcache_rsp_t =
+      `HPDCACHE_DECL_RSP_T(hpdcache_req_data_t,
+                           hpdcache_req_sid_t,
+                           hpdcache_req_tid_t),
 
-  typedef logic [HPDcacheCfg.u.wbufTimecntWidth-1:0] hpdcache_wbuf_timecnt_t;
+  localparam type hpdcache_wbuf_timecnt_t = logic [HPDcacheCfg.u.wbufTimecntWidth-1:0]
+)
 
-  logic                        clk;
-  logic                        rst_n;
+(
+  input  logic                        clk_i,
+  input  logic                        rst_ni,
 
-  logic                        wbuf_flush;
-  logic                        wbuf_empty;
+  input  logic                        wbuf_flush_i,
+  output logic                        wbuf_empty_o,
 
-  logic                        dcache_req_valid           [HPDCACHE_NREQUESTERS];
-  logic                        dcache_req_ready           [HPDCACHE_NREQUESTERS];
-  hpdcache_req_t               dcache_req                 [HPDCACHE_NREQUESTERS];
-  logic                        dcache_req_abort           [HPDCACHE_NREQUESTERS];
-  hpdcache_tag_t               dcache_req_tag             [HPDCACHE_NREQUESTERS];
-  hpdcache_pkg::hpdcache_pma_t dcache_req_pma             [HPDCACHE_NREQUESTERS];
-  logic                        dcache_rsp_valid           [HPDCACHE_NREQUESTERS];
-  hpdcache_rsp_t               dcache_rsp                 [HPDCACHE_NREQUESTERS];
+  input  logic                        core_req_valid_i         [HPDCACHE_NREQUESTERS],
+  output logic                        core_req_ready_o         [HPDCACHE_NREQUESTERS],
+  input  hpdcache_req_t               core_req_i               [HPDCACHE_NREQUESTERS],
+  input  logic                        core_req_abort_i         [HPDCACHE_NREQUESTERS],
+  input  hpdcache_tag_t               core_req_tag_i           [HPDCACHE_NREQUESTERS],
+  input  hpdcache_pkg::hpdcache_pma_t core_req_pma_i           [HPDCACHE_NREQUESTERS],
+  output logic                        core_rsp_valid_o         [HPDCACHE_NREQUESTERS],
+  output hpdcache_rsp_t               core_rsp_o               [HPDCACHE_NREQUESTERS],
 
-  logic                        dcache_read_ready;
-  logic                        dcache_read_valid;
-  hpdcache_mem_req_t           dcache_read;
+  input  logic                        mem_req_read_ready_i,
+  output logic                        mem_req_read_valid_o,
+  output hpdcache_mem_req_t           mem_req_read_o,
 
-  logic                        dcache_read_resp_ready;
-  logic                        dcache_read_resp_valid;
-  hpdcache_mem_resp_r_t        dcache_read_resp;
+  output logic                        mem_resp_read_ready_o,
+  input  logic                        mem_resp_read_valid_i,
+  input  hpdcache_mem_resp_r_t        mem_resp_read_i,
 
-  logic                        dcache_write_ready;
-  logic                        dcache_write_valid;
-  hpdcache_mem_req_t           dcache_write;
+  input  logic                        mem_req_write_ready_i,
+  output logic                        mem_req_write_valid_o,
+  output hpdcache_mem_req_t           mem_req_write_o,
 
-  logic                        dcache_write_data_ready;
-  logic                        dcache_write_data_valid;
-  hpdcache_mem_req_w_t         dcache_write_data;
+  input  logic                        mem_req_write_data_ready_i,
+  output logic                        mem_req_write_data_valid_o,
+  output hpdcache_mem_req_w_t         mem_req_write_data_o,
 
-  logic                        dcache_write_resp_ready;
-  logic                        dcache_write_resp_valid;
-  hpdcache_mem_resp_w_t        dcache_write_resp;
+  output logic                        mem_resp_write_ready_o,
+  input  logic                        mem_resp_write_valid_i,
+  input  hpdcache_mem_resp_w_t        mem_resp_write_i
+);
 
   hpdcache #(
       .HPDcacheCfg          (HPDcacheCfg),
@@ -145,40 +165,40 @@ module hpdcache_lint
       .hpdcache_mem_resp_r_t(hpdcache_mem_resp_r_t),
       .hpdcache_mem_resp_w_t(hpdcache_mem_resp_w_t)
   ) i_hpdcache (
-      .clk_i (clk),
-      .rst_ni(rst_n),
+      .clk_i,
+      .rst_ni,
 
-      .wbuf_flush_i(wbuf_flush),
+      .wbuf_flush_i,
 
-      .core_req_valid_i(dcache_req_valid),
-      .core_req_ready_o(dcache_req_ready),
-      .core_req_i      (dcache_req),
-      .core_req_abort_i(dcache_req_abort),
-      .core_req_tag_i  (dcache_req_tag),
-      .core_req_pma_i  (dcache_req_pma),
+      .core_req_valid_i,
+      .core_req_ready_o,
+      .core_req_i,
+      .core_req_abort_i,
+      .core_req_tag_i,
+      .core_req_pma_i,
 
-      .core_rsp_valid_o(dcache_rsp_valid),
-      .core_rsp_o      (dcache_rsp),
+      .core_rsp_valid_o,
+      .core_rsp_o,
 
-      .mem_req_read_ready_i(dcache_read_ready),
-      .mem_req_read_valid_o(dcache_read_valid),
-      .mem_req_read_o      (dcache_read),
+      .mem_req_read_ready_i,
+      .mem_req_read_valid_o,
+      .mem_req_read_o,
 
-      .mem_resp_read_ready_o(dcache_read_resp_ready),
-      .mem_resp_read_valid_i(dcache_read_resp_valid),
-      .mem_resp_read_i      (dcache_read_resp),
+      .mem_resp_read_ready_o,
+      .mem_resp_read_valid_i,
+      .mem_resp_read_i,
 
-      .mem_req_write_ready_i(dcache_write_ready),
-      .mem_req_write_valid_o(dcache_write_valid),
-      .mem_req_write_o      (dcache_write),
+      .mem_req_write_ready_i,
+      .mem_req_write_valid_o,
+      .mem_req_write_o,
 
-      .mem_req_write_data_ready_i(dcache_write_data_ready),
-      .mem_req_write_data_valid_o(dcache_write_data_valid),
-      .mem_req_write_data_o      (dcache_write_data),
+      .mem_req_write_data_ready_i,
+      .mem_req_write_data_valid_o,
+      .mem_req_write_data_o,
 
-      .mem_resp_write_ready_o(dcache_write_resp_ready),
-      .mem_resp_write_valid_i(dcache_write_resp_valid),
-      .mem_resp_write_i      (dcache_write_resp),
+      .mem_resp_write_ready_o,
+      .mem_resp_write_valid_i,
+      .mem_resp_write_i,
 
       .evt_cache_write_miss_o(  /* unused */),
       .evt_cache_read_miss_o (  /* unused */),
@@ -192,7 +212,7 @@ module hpdcache_lint
       .evt_stall_refill_o    (  /* unused */),
       .evt_stall_o           (  /* unused */),
 
-      .wbuf_empty_o(wbuf_empty),
+      .wbuf_empty_o,
 
       .cfg_enable_i                       (1'b1),
       .cfg_wbuf_threshold_i               (3'd2),
