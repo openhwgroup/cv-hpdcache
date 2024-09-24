@@ -108,10 +108,18 @@ import hpdcache_pkg::*;
     input  logic                                dir_inval_write_i,
     output logic                                dir_inval_hit_o,
 
-    input  logic                                dir_cmo_check_i,
-    input  hpdcache_set_t                       dir_cmo_check_set_i,
-    input  hpdcache_tag_t                       dir_cmo_check_tag_i,
-    output hpdcache_way_vector_t                dir_cmo_check_hit_way_o,
+    input  logic                                dir_cmo_check_nline_i,
+    input  hpdcache_set_t                       dir_cmo_check_nline_set_i,
+    input  hpdcache_tag_t                       dir_cmo_check_nline_tag_i,
+    output hpdcache_way_vector_t                dir_cmo_check_nline_hit_way_o,
+    output logic                                dir_cmo_check_nline_dirty_o,
+
+    input  logic                                dir_cmo_check_entry_i,
+    input  hpdcache_set_t                       dir_cmo_check_entry_set_i,
+    input  hpdcache_way_vector_t                dir_cmo_check_entry_way_i,
+    output logic                                dir_cmo_check_entry_valid_o,
+    output logic                                dir_cmo_check_entry_dirty_o,
+    output hpdcache_tag_t                       dir_cmo_check_entry_tag_o,
 
     input  logic                                dir_cmo_inval_i,
     input  hpdcache_set_t                       dir_cmo_inval_set_i,
@@ -272,7 +280,8 @@ import hpdcache_pkg::*;
     hpdcache_way_vector_t                      init_dir_cs;
 
     //      Directory valid bit vector (one bit per set and way)
-    hpdcache_set_t                                dir_req_set_q, dir_req_set_d;
+    hpdcache_set_t                                dir_req_set_q;
+    hpdcache_way_vector_t                         dir_req_way_q;
     hpdcache_dir_addr_t                           dir_addr;
     hpdcache_way_vector_t                         dir_cs;
     hpdcache_way_vector_t                         dir_we;
@@ -479,9 +488,17 @@ import hpdcache_pkg::*;
             end
 
             //  Cache directory CMO match tag
-            dir_cmo_check_i: begin
-                dir_addr    = dir_cmo_check_set_i;
+            dir_cmo_check_nline_i: begin
+                dir_addr    = dir_cmo_check_nline_set_i;
                 dir_cs      = '1;
+                dir_we      = '0;
+                dir_wentry  = '0;
+            end
+
+            //  Cache directory CMO match tag
+            dir_cmo_check_entry_i: begin
+                dir_addr    = dir_cmo_check_entry_set_i;
+                dir_cs      = dir_cmo_check_entry_way_i;
                 dir_we      = '0;
                 dir_wentry  = '0;
             end
@@ -519,8 +536,6 @@ import hpdcache_pkg::*;
                 dir_wentry  = '0;
             end
         endcase
-
-        dir_req_set_d = dir_addr;
     end
 
     //  }}}
@@ -535,17 +550,17 @@ import hpdcache_pkg::*;
 
     for (gen_i = 0; gen_i < int'(HPDcacheCfg.u.ways); gen_i++)
     begin : gen_dir_match_tag
-        assign dir_tags[gen_i]   = dir_rentry[gen_i].tag;
+        assign dir_tags[gen_i] = dir_rentry[gen_i].tag;
 
-        assign req_hit[gen_i]   = (dir_tags[gen_i] == dir_match_tag_i),
-               amo_hit[gen_i]   = (dir_tags[gen_i] == dir_amo_match_tag_i),
-               cmo_hit[gen_i]   = (dir_tags[gen_i] == dir_cmo_check_tag_i),
-               inval_hit[gen_i] = (dir_tags[gen_i] == dir_inval_tag);
+        assign req_hit[gen_i]   = (dir_tags[gen_i] == dir_match_tag_i);
+        assign amo_hit[gen_i]   = (dir_tags[gen_i] == dir_amo_match_tag_i);
+        assign cmo_hit[gen_i]   = (dir_tags[gen_i] == dir_cmo_check_nline_tag_i);
+        assign inval_hit[gen_i] = (dir_tags[gen_i] == dir_inval_tag);
 
-        assign dir_hit_way_o[gen_i]           = dir_valid[gen_i] & req_hit[gen_i],
-               dir_amo_hit_way_o[gen_i]       = dir_valid[gen_i] & amo_hit[gen_i],
-               dir_cmo_check_hit_way_o[gen_i] = dir_valid[gen_i] & cmo_hit[gen_i],
-               dir_inval_hit_way[gen_i]       = dir_valid[gen_i] & inval_hit[gen_i];
+        assign dir_hit_way_o[gen_i]                 = dir_valid[gen_i] & req_hit[gen_i];
+        assign dir_amo_hit_way_o[gen_i]             = dir_valid[gen_i] & amo_hit[gen_i];
+        assign dir_cmo_check_nline_hit_way_o[gen_i] = dir_valid[gen_i] & cmo_hit[gen_i];
+        assign dir_inval_hit_way[gen_i]             = dir_valid[gen_i] & inval_hit[gen_i];
     end
 
     hpdcache_mux #(
@@ -562,6 +577,22 @@ import hpdcache_pkg::*;
     assign dir_hit_dirty_o = |(dir_hit_way_o & dir_dirty);
     assign dir_hit_fetch_o = |(dir_hit_way_o & dir_fetch);
 
+    assign dir_cmo_check_nline_dirty_o = |(dir_cmo_check_nline_hit_way_o & dir_dirty);
+    assign dir_cmo_check_entry_valid_o = |(dir_req_way_q & dir_valid);
+    assign dir_cmo_check_entry_dirty_o = |(dir_req_way_q & dir_dirty);
+    hpdcache_mux #(
+        .NINPUT      (HPDcacheCfg.u.ways),
+        .DATA_WIDTH  (HPDcacheCfg.tagWidth),
+        .ONE_HOT_SEL (1'b1)
+    ) flush_tag_mux_i(
+        .data_i      (dir_tags),
+        .sel_i       (dir_req_way_q),
+        .data_o      (dir_cmo_check_entry_tag_o)
+    );
+
+    assign dir_victim_valid_o = |(dir_victim_way_o & dir_valid);
+    assign dir_victim_wback_o = |(dir_victim_way_o & dir_wback);
+    assign dir_victim_dirty_o = |(dir_victim_way_o & dir_dirty);
     hpdcache_mux #(
         .NINPUT      (HPDcacheCfg.u.ways),
         .DATA_WIDTH  (HPDcacheCfg.tagWidth),
@@ -572,10 +603,7 @@ import hpdcache_pkg::*;
         .data_o      (dir_victim_tag_o)
     );
 
-    assign dir_victim_valid_o = |(dir_victim_way_o & dir_valid);
-    assign dir_victim_wback_o = |(dir_victim_way_o & dir_wback);
-    assign dir_victim_dirty_o = |(dir_victim_way_o & dir_dirty);
-    assign dir_inval_hit_o    = |dir_inval_hit_way;
+    assign dir_inval_hit_o = |dir_inval_hit_way;
     //  }}}
 
     //  Directory victim select logic
@@ -845,8 +873,11 @@ import hpdcache_pkg::*;
     //  next cycle (hit logic)
     always_ff @(posedge clk_i)
     begin : req_read_ff
-        if (dir_match_i || dir_amo_match_i || dir_cmo_check_i || dir_inval_check_i) begin
-            dir_req_set_q <= dir_req_set_d;
+        if (dir_match_i || dir_amo_match_i || dir_cmo_check_nline_i || dir_inval_check_i) begin
+            dir_req_set_q <= dir_addr;
+        end
+        if (dir_cmo_check_entry_i) begin
+            dir_req_way_q <= dir_cmo_check_entry_way_i;
         end
     end
     //  }}}
@@ -918,7 +949,7 @@ import hpdcache_pkg::*;
                       dir_refill_i,
                       dir_inval_check_i,
                       dir_inval_write_i,
-                      dir_cmo_check_i,
+                      dir_cmo_check_nline_i,
                       dir_cmo_inval_i})) else
             $error("hpdcache_memctrl: more than one process is accessing the cache directory");
 

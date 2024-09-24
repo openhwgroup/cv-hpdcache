@@ -302,7 +302,7 @@ import hpdcache_pkg::*;
             assign nline[gen_i] = addr[gen_i][HPDcacheCfg.clOffsetWidth +: HPDcacheCfg.nlineWidth];
             assign match_check_nline[gen_i] = (check_nline_i == nline[gen_i]);
             assign is_read[gen_i] = is_load(req_q[gen_i].req.op) |
-                                    is_cmo_prefetch(req_q[gen_i].req.op, req_q[gen_i].req.size);
+                                    is_cmo_prefetch(req_q[gen_i].req.op);
         end
     endgenerate
 

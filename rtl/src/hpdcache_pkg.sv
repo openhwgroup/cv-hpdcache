@@ -51,36 +51,32 @@ package hpdcache_pkg;
 
     //      Definition of operation codes
     //      {{{
-    typedef enum logic [3:0] {
-        HPDCACHE_REQ_LOAD                 = 4'h0,
-        HPDCACHE_REQ_STORE                = 4'h1,
-        // RESERVED                     = 4'h2,
-        // RESERVED                     = 4'h3,
-        HPDCACHE_REQ_AMO_LR               = 4'h4,
-        HPDCACHE_REQ_AMO_SC               = 4'h5,
-        HPDCACHE_REQ_AMO_SWAP             = 4'h6,
-        HPDCACHE_REQ_AMO_ADD              = 4'h7,
-        HPDCACHE_REQ_AMO_AND              = 4'h8,
-        HPDCACHE_REQ_AMO_OR               = 4'h9,
-        HPDCACHE_REQ_AMO_XOR              = 4'ha,
-        HPDCACHE_REQ_AMO_MAX              = 4'hb,
-        HPDCACHE_REQ_AMO_MAXU             = 4'hc,
-        HPDCACHE_REQ_AMO_MIN              = 4'hd,
-        HPDCACHE_REQ_AMO_MINU             = 4'he,
-        HPDCACHE_REQ_CMO                  = 4'hf
+    typedef enum logic [4:0] {
+        HPDCACHE_REQ_LOAD                  = 5'h00,
+        HPDCACHE_REQ_STORE                 = 5'h01,
+        // RESERVED                        = 5'h02,
+        // RESERVED                        = 5'h03,
+        HPDCACHE_REQ_AMO_LR                = 5'h04,
+        HPDCACHE_REQ_AMO_SC                = 5'h05,
+        HPDCACHE_REQ_AMO_SWAP              = 5'h06,
+        HPDCACHE_REQ_AMO_ADD               = 5'h07,
+        HPDCACHE_REQ_AMO_AND               = 5'h08,
+        HPDCACHE_REQ_AMO_OR                = 5'h09,
+        HPDCACHE_REQ_AMO_XOR               = 5'h0a,
+        HPDCACHE_REQ_AMO_MAX               = 5'h0b,
+        HPDCACHE_REQ_AMO_MAXU              = 5'h0c,
+        HPDCACHE_REQ_AMO_MIN               = 5'h0d,
+        HPDCACHE_REQ_AMO_MINU              = 5'h0e,
+        // RESERVED                        = 5'h0f,
+        HPDCACHE_REQ_CMO_FENCE             = 5'h10,
+        HPDCACHE_REQ_CMO_PREFETCH          = 5'h11,
+        HPDCACHE_REQ_CMO_INVAL_NLINE       = 5'h12,
+        HPDCACHE_REQ_CMO_INVAL_ALL         = 5'h13,
+        HPDCACHE_REQ_CMO_FLUSH_NLINE       = 5'h14,
+        HPDCACHE_REQ_CMO_FLUSH_ALL         = 5'h15,
+        HPDCACHE_REQ_CMO_FLUSH_INVAL_NLINE = 5'h16,
+        HPDCACHE_REQ_CMO_FLUSH_INVAL_ALL   = 5'h17
     } hpdcache_req_op_t;
-    //      }}}
-
-    //      Definition of CMO codes
-    //      {{{
-    typedef enum hpdcache_req_size_t {
-        HPDCACHE_REQ_CMO_FENCE            = 3'h0,
-        // RESERVED                     = 3'h1,
-        HPDCACHE_REQ_CMO_INVAL_NLINE      = 3'h2,
-        HPDCACHE_REQ_CMO_INVAL_SET_WAY    = 3'h3,
-        HPDCACHE_REQ_CMO_INVAL_ALL        = 3'h4,
-        HPDCACHE_REQ_CMO_PREFETCH         = 3'h5
-    } hpdcache_req_cmo_t;
     //      }}}
 
     //      Definition of Write Policy Hint
@@ -224,63 +220,45 @@ package hpdcache_pkg;
         endcase
     endfunction
 
-    function automatic logic is_cmo_inval(
-            input hpdcache_req_op_t op,
-            input hpdcache_req_size_t sz);
-        case (op)
-            HPDCACHE_REQ_CMO:
-                case (sz)
-                  HPDCACHE_REQ_CMO_INVAL_NLINE,
-                  HPDCACHE_REQ_CMO_INVAL_SET_WAY,
-                  HPDCACHE_REQ_CMO_INVAL_ALL: begin
-                    return 1'b1;
-                  end
-                  default: begin
-                    return 1'b0;
-                  end
-                endcase
-            default: begin
-              return 1'b0;
-            end
-        endcase
+    function automatic logic is_cmo(input hpdcache_req_op_t op);
+        return (op inside { HPDCACHE_REQ_CMO_INVAL_NLINE
+                          , HPDCACHE_REQ_CMO_INVAL_ALL
+                          , HPDCACHE_REQ_CMO_FLUSH_NLINE
+                          , HPDCACHE_REQ_CMO_FLUSH_ALL
+                          , HPDCACHE_REQ_CMO_FENCE
+                          , HPDCACHE_REQ_CMO_PREFETCH});
     endfunction
 
-    function automatic logic is_cmo_inval_by_nline(input hpdcache_req_size_t sz);
-        return (sz == HPDCACHE_REQ_CMO_INVAL_NLINE);
+    function automatic logic is_cmo_inval(input hpdcache_req_op_t op);
+        return (op inside {HPDCACHE_REQ_CMO_INVAL_NLINE, HPDCACHE_REQ_CMO_INVAL_ALL});
     endfunction
 
-    function automatic logic is_cmo_inval_by_set(input hpdcache_req_size_t sz);
-        return (sz == HPDCACHE_REQ_CMO_INVAL_SET_WAY);
+    function automatic logic is_cmo_flush(input hpdcache_req_op_t op);
+        return (op inside {HPDCACHE_REQ_CMO_FLUSH_NLINE, HPDCACHE_REQ_CMO_FLUSH_ALL});
     endfunction
 
-    function automatic logic is_cmo_inval_all(input hpdcache_req_size_t sz);
-        return (sz == HPDCACHE_REQ_CMO_INVAL_ALL);
+    function automatic logic is_cmo_fence(input hpdcache_req_op_t op);
+        return (op == HPDCACHE_REQ_CMO_FENCE);
     endfunction
 
-    function automatic logic is_cmo_fence(
-            input hpdcache_req_op_t op,
-            input hpdcache_req_size_t sz);
-        case (op)
-            HPDCACHE_REQ_CMO: begin
-                return (sz == HPDCACHE_REQ_CMO_FENCE);
-            end
-            default: begin
-                return 1'b0;
-            end
-        endcase
+    function automatic logic is_cmo_prefetch(input hpdcache_req_op_t op);
+        return (op == HPDCACHE_REQ_CMO_PREFETCH);
     endfunction
 
-    function automatic logic is_cmo_prefetch(
-            input hpdcache_req_op_t op,
-            input hpdcache_req_size_t sz);
-        case (op)
-            HPDCACHE_REQ_CMO: begin
-                return (sz == HPDCACHE_REQ_CMO_PREFETCH);
-            end
-            default: begin
-                return 1'b0;
-            end
-        endcase
+    function automatic logic is_cmo_inval_by_nline(input hpdcache_req_op_t op);
+        return (op == HPDCACHE_REQ_CMO_INVAL_NLINE);
+    endfunction
+
+    function automatic logic is_cmo_inval_all(input hpdcache_req_op_t op);
+        return (op == HPDCACHE_REQ_CMO_INVAL_ALL);
+    endfunction
+
+    function automatic logic is_cmo_flush_by_nline(input hpdcache_req_op_t op);
+        return (op == HPDCACHE_REQ_CMO_FLUSH_NLINE);
+    endfunction
+
+    function automatic logic is_cmo_flush_all(input hpdcache_req_op_t op);
+        return (op == HPDCACHE_REQ_CMO_FLUSH_ALL);
     endfunction
     //      }}}
     //  }}}
@@ -361,8 +339,11 @@ package hpdcache_pkg;
     //  Definition of constants and types for the CMO request handler (CMOH)
     //  {{{
     typedef struct packed {
+        logic is_flush_inval_by_nline;
+        logic is_flush_inval_all;
+        logic is_flush_by_nline;
+        logic is_flush_all;
         logic is_inval_by_nline;
-        logic is_inval_by_set;
         logic is_inval_all;
         logic is_fence;
     } hpdcache_cmoh_op_t;

@@ -65,6 +65,7 @@ module hpdcache_ctrl_pe
     input  logic                   st1_req_is_store_i,
     input  logic                   st1_req_is_amo_i,
     input  logic                   st1_req_is_cmo_inval_i,
+    input  logic                   st1_req_is_cmo_flush_i,
     input  logic                   st1_req_is_cmo_fence_i,
     input  logic                   st1_req_is_cmo_prefetch_i,
     input  logic                   st1_req_wr_wt_i,
@@ -214,6 +215,7 @@ module hpdcache_ctrl_pe
     assign st1_fence = st1_req_is_uncacheable_i |
                        st1_req_is_cmo_fence_i   |
                        st1_req_is_cmo_inval_i   |
+                       st1_req_is_cmo_flush_i   |
                        st1_req_is_amo_i;
 
     //      Trigger an event signal when a new request cannot consumed
