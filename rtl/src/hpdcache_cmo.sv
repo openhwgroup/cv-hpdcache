@@ -327,10 +327,12 @@ import hpdcache_pkg::*;
         endcase
     end
 
+    assign cmoh_set_last = (cmoh_set_q == hpdcache_set_t'(HPDcacheCfg.u.sets - 1));
+
     always_comb
     begin : set_incr_comb
-        cmoh_set_last = (cmoh_set_q == hpdcache_set_t'(HPDcacheCfg.u.sets - 1));
-        unique if (cmoh_set_reset) begin
+        cmoh_set_d = cmoh_set_q;
+        if (cmoh_set_reset) begin
             cmoh_set_d = '0;
         end else if (cmoh_set_incr) begin
             if (cmoh_set_last) begin
@@ -338,13 +340,16 @@ import hpdcache_pkg::*;
             end else begin
                 cmoh_set_d = cmoh_set_q + 1;
             end
+        end else begin
         end
     end
 
+    assign cmoh_way_last = cmoh_way_q[HPDcacheCfg.u.ways - 1];
+
     always_comb
     begin : way_incr_comb
-        cmoh_way_last = cmoh_way_q[HPDcacheCfg.u.ways - 1];
-        unique if (cmoh_way_reset) begin
+        cmoh_way_d = cmoh_way_q;
+        if (cmoh_way_reset) begin
             cmoh_way_d = hpdcache_way_vector_t'(1);
         end else if (cmoh_way_incr) begin
             if (cmoh_way_last) begin
