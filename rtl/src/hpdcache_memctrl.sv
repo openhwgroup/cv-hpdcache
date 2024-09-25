@@ -611,8 +611,8 @@ import hpdcache_pkg::*;
     logic                 updt_sel_victim;
     hpdcache_way_vector_t updt_sel_victim_way;
 
-    assign updt_sel_victim     = dir_updt_sel_victim_i | dir_amo_updt_sel_victim_i,
-           updt_sel_victim_way = dir_updt_sel_victim_i ? dir_hit_way_o : dir_amo_hit_way_o;
+    assign updt_sel_victim     = dir_updt_sel_victim_i | dir_amo_updt_sel_victim_i;
+    assign updt_sel_victim_way = dir_updt_sel_victim_i ? dir_hit_way_o : dir_amo_hit_way_o;
 
     for (gen_i = 0; gen_i < HPDcacheCfg.u.ways; gen_i++) begin : gen_dir_valid_bv
         assign dir_valid[gen_i] = dir_rentry[gen_i].valid;
@@ -943,6 +943,10 @@ import hpdcache_pkg::*;
     //  Assertions
     //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
+    check_dirty_state: assert property (@(posedge clk_i) disable iff (!rst_ni)
+        (dir_dirty & dir_valid) == dir_dirty) else
+            $error("hpdcache_memctrl: wrong directory state - dirty but not valid");
+
     concurrent_dir_access_assert: assert property (@(posedge clk_i) disable iff (!rst_ni)
             $onehot0({dir_match_i,
                       dir_amo_match_i,
