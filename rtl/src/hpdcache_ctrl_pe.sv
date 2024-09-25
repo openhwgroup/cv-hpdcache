@@ -620,21 +620,30 @@ module hpdcache_ctrl_pe
                         //  RAM and the data RAM chip-select.
                         st1_req_cachedata_write_o = 1'b1;
 
+                        //  Pending miss on the same line
+                        if (st1_mshr_hit_i) begin
+                            //  Put the request in the replay table
+                            st1_rtab_alloc = 1'b1;
+                            st1_rtab_mshr_hit_o = 1'b1;
+
+                            st1_nop = 1'b1;
+                        end
+
+                        //  Hit in the flush controller
+                        else if (st1_flush_check_hit_i) begin
+                            //  Put the request in the replay table
+                            st1_rtab_alloc = 1'b1;
+                            st1_rtab_flush_hit_o = 1'b1;
+
+                            st1_nop = 1'b1;
+                        end
+
                         //  Cache miss
                         //  {{{
-                        if (!cachedir_hit_i) begin
-                            //  Pending miss on the same line
-                            if (st1_mshr_hit_i) begin
-                                //  Put the request in the replay table
-                                st1_rtab_alloc = 1'b1;
-                                st1_rtab_mshr_hit_o = 1'b1;
-
-                                st1_nop = 1'b1;
-                            end
-
+                        else if (!cachedir_hit_i) begin
                             //  Write is write-back
                             //  {{{
-                            else if (st1_req_wr_wb_i || (st1_req_wr_auto_i && cfg_default_wb_i))
+                            if (st1_req_wr_wb_i || (st1_req_wr_auto_i && cfg_default_wb_i))
                             begin
                                 //  Select a victim cacheline
                                 st1_req_cachedir_sel_victim_o = 1'b1;
@@ -657,18 +666,11 @@ module hpdcache_ctrl_pe
                                 end
 
                                 //  no available victim cacheline (all currently pre-allocated and
-                                //  waiting to be refill)
+                                //  waiting to be refilled)
                                 else if (st1_dir_victim_unavailable_i) begin
                                     //  Put the request in the replay table
                                     st1_rtab_alloc = 1'b1;
                                     st1_rtab_dir_unavailable_o = 1'b1;
-                                end
-
-                                //  hit in the flush controller
-                                else if (st1_flush_check_hit_i) begin
-                                    //  Put the request in the replay table
-                                    st1_rtab_alloc = 1'b1;
-                                    st1_rtab_flush_hit_o = 1'b1;
                                 end
 
                                 //  Flush needed but the controller is not ready
