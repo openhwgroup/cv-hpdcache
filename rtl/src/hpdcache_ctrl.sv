@@ -948,17 +948,21 @@ import hpdcache_pkg::*;
 
     //  CMO request handler outputs
     //  {{{
-    assign cmo_req_addr_o                 = st1_req_addr;
-    assign cmo_req_wdata_o                = st1_req.wdata;
-    assign cmo_req_op_o.is_fence          = st1_req_is_cmo_fence;
-    assign cmo_req_op_o.is_inval_by_nline = st1_req_is_cmo_inval &
-                                            is_cmo_inval_by_nline(st1_req.op);
-    assign cmo_req_op_o.is_inval_all      = st1_req_is_cmo_inval &
-                                            is_cmo_inval_all(st1_req.op);
-    assign cmo_req_op_o.is_flush_by_nline = st1_req_is_cmo_flush &
-                                            is_cmo_flush_by_nline(st1_req.op);
-    assign cmo_req_op_o.is_flush_all      = st1_req_is_cmo_flush &
-                                            is_cmo_flush_all(st1_req.op);
+    assign cmo_req_addr_o                       = st1_req_addr;
+    assign cmo_req_wdata_o                      = st1_req.wdata;
+    assign cmo_req_op_o.is_fence                = st1_req_is_cmo_fence;
+    assign cmo_req_op_o.is_inval_by_nline       = st1_req_is_cmo_inval &
+                                                  is_cmo_inval_by_nline(st1_req.op);
+    assign cmo_req_op_o.is_inval_all            = st1_req_is_cmo_inval &
+                                                  is_cmo_inval_all(st1_req.op);
+    assign cmo_req_op_o.is_flush_by_nline       = st1_req_is_cmo_flush &
+                                                  is_cmo_flush_by_nline(st1_req.op);
+    assign cmo_req_op_o.is_flush_all            = st1_req_is_cmo_flush &
+                                                  is_cmo_flush_all(st1_req.op);
+    assign cmo_req_op_o.is_flush_inval_by_nline = st1_req_is_cmo_flush &
+                                                  is_cmo_flush_inval_by_nline(st1_req.op);
+    assign cmo_req_op_o.is_flush_inval_all      = st1_req_is_cmo_flush &
+                                                  is_cmo_flush_inval_all(st1_req.op);
     //  }}}
 
     //  Flush controller outputs

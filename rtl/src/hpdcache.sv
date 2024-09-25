@@ -296,10 +296,8 @@ import hpdcache_pkg::*;
     logic                  cmo_flush_alloc;
     hpdcache_nline_t       cmo_flush_alloc_nline;
     hpdcache_way_vector_t  cmo_flush_alloc_way;
-    logic                  cmo_flush_alloc_inval;
 
     logic                  flush_empty;
-    logic                  flush_full;
     logic                  flush_busy;
     hpdcache_nline_t       flush_check_nline;
     logic                  flush_check_hit;
@@ -307,7 +305,6 @@ import hpdcache_pkg::*;
     logic                  flush_alloc_ready;
     hpdcache_nline_t       flush_alloc_nline;
     hpdcache_way_vector_t  flush_alloc_way;
-    logic                  flush_alloc_inval;
     logic                  flush_data_read;
     hpdcache_set_t         flush_data_read_set;
     hpdcache_word_t        flush_data_read_word;
@@ -896,8 +893,7 @@ import hpdcache_pkg::*;
         .flush_alloc_o                 (cmo_flush_alloc),
         .flush_alloc_ready_i           (flush_alloc_ready),
         .flush_alloc_nline_o           (cmo_flush_alloc_nline),
-        .flush_alloc_way_o             (cmo_flush_alloc_way),
-        .flush_alloc_inval_o           (cmo_flush_alloc_inval)
+        .flush_alloc_way_o             (cmo_flush_alloc_way)
     );
     //  }}}
 
@@ -906,7 +902,6 @@ import hpdcache_pkg::*;
     assign flush_alloc       =  ctrl_flush_alloc | cmo_flush_alloc;
     assign flush_alloc_nline =  ctrl_flush_alloc ? ctrl_flush_alloc_nline : cmo_flush_alloc_nline;
     assign flush_alloc_way   =  ctrl_flush_alloc ? ctrl_flush_alloc_way   : cmo_flush_alloc_way;
-    assign flush_alloc_inval = ~ctrl_flush_alloc & cmo_flush_alloc_inval;
 
     hpdcache_flush #(
         .HPDcacheCfg                   (HPDcacheCfg),
@@ -927,7 +922,7 @@ import hpdcache_pkg::*;
         .rst_ni,
 
         .flush_empty_o                 (flush_empty),
-        .flush_full_o                  (flush_full),
+        .flush_full_o                  (/* open */),
         .flush_busy_o                  (flush_busy),
 
         .flush_check_nline_i           (flush_check_nline),
@@ -937,7 +932,6 @@ import hpdcache_pkg::*;
         .flush_alloc_ready_o           (flush_alloc_ready),
         .flush_alloc_nline_i           (flush_alloc_nline),
         .flush_alloc_way_i             (flush_alloc_way),
-        .flush_alloc_inval_i           (flush_alloc_inval),
 
         .flush_data_read_o             (flush_data_read),
         .flush_data_read_set_o         (flush_data_read_set),

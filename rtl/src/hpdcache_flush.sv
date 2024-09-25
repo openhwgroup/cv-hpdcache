@@ -71,10 +71,9 @@ import hpdcache_pkg::*;
     output logic                  flush_alloc_ready_o,
     input  hpdcache_nline_t       flush_alloc_nline_i,
     input  hpdcache_way_vector_t  flush_alloc_way_i,
-    input  logic                  flush_alloc_inval_i,
     //      }}}
-    //
-    //      ALLOC DATA interface
+
+    //      CACHE DATA interface
     //      {{{
     output logic                  flush_data_read_o,
     output hpdcache_set_t         flush_data_read_set_o,
@@ -242,11 +241,11 @@ import hpdcache_pkg::*;
     always_ff @(posedge clk_i or negedge rst_ni)
     begin : flush_fsm_ff
         if (!rst_ni) begin
-            flush_fsm_q  <= FLUSH_IDLE;
-            flush_word_q <= '0;
+            flush_fsm_q   <= FLUSH_IDLE;
+            flush_word_q  <= '0;
         end else begin
-            flush_fsm_q  <= flush_fsm_d;
-            flush_word_q <= flush_word_d;
+            flush_fsm_q   <= flush_fsm_d;
+            flush_word_q  <= flush_word_d;
         end
     end
 

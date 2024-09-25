@@ -950,7 +950,9 @@ import hpdcache_pkg::*;
                       dir_inval_check_i,
                       dir_inval_write_i,
                       dir_cmo_check_nline_i,
-                      dir_cmo_inval_i})) else
+                      dir_cmo_check_entry_i,
+                      dir_cmo_inval_i,
+                      dir_updt_i})) else
             $error("hpdcache_memctrl: more than one process is accessing the cache directory");
 
     concurrent_data_access_assert: assert property (@(posedge clk_i) disable iff (!rst_ni)

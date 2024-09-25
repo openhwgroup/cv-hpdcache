@@ -234,7 +234,10 @@ package hpdcache_pkg;
     endfunction
 
     function automatic logic is_cmo_flush(input hpdcache_req_op_t op);
-        return (op inside {HPDCACHE_REQ_CMO_FLUSH_NLINE, HPDCACHE_REQ_CMO_FLUSH_ALL});
+        return (op inside {HPDCACHE_REQ_CMO_FLUSH_NLINE,
+                           HPDCACHE_REQ_CMO_FLUSH_ALL,
+                           HPDCACHE_REQ_CMO_FLUSH_INVAL_NLINE,
+                           HPDCACHE_REQ_CMO_FLUSH_INVAL_ALL});
     endfunction
 
     function automatic logic is_cmo_fence(input hpdcache_req_op_t op);
@@ -259,6 +262,14 @@ package hpdcache_pkg;
 
     function automatic logic is_cmo_flush_all(input hpdcache_req_op_t op);
         return (op == HPDCACHE_REQ_CMO_FLUSH_ALL);
+    endfunction
+
+    function automatic logic is_cmo_flush_inval_by_nline(input hpdcache_req_op_t op);
+        return (op == HPDCACHE_REQ_CMO_FLUSH_INVAL_NLINE);
+    endfunction
+
+    function automatic logic is_cmo_flush_inval_all(input hpdcache_req_op_t op);
+        return (op == HPDCACHE_REQ_CMO_FLUSH_INVAL_ALL);
     endfunction
     //      }}}
     //  }}}
