@@ -540,56 +540,70 @@ module hpdcache_ctrl_pe
                         //  Cache hit
                         //  {{{
                         else begin
-                            //  If the request comes from the replay table, free the
-                            //  corresponding RTAB entry
-                            st1_rtab_commit_o = st1_req_rtab_i;
+                            //  Flush needed (hint is WT but the cacheline is WB and dirty) but the
+                            //  controller is not ready
+                            if ( st1_req_wr_wt_i && st1_dir_hit_wback_i && st1_dir_hit_dirty_i &&
+                                !st1_flush_alloc_ready_i)
+                            begin
+                                st1_rtab_alloc = 1'b1;
+                                st1_rtab_flush_not_ready_o = 1'b1;
+                                st1_nop = 1'b1;
+                            end
 
-                            //  Add a NOP when replaying a request, and there is no available
-                            //  request from the replay table.
-                            st1_nop = st1_req_rtab_i & ~rtab_req_valid_i;
+                            //  Process the load
+                            else begin
+                                //  If the request comes from the replay table, free the
+                                //  corresponding RTAB entry
+                                st1_rtab_commit_o = st1_req_rtab_i;
 
-                            //  Update victim selection for the accessed set
-                            st1_req_cachedir_updt_sel_victim_o = st1_req_is_load_i;
+                                //  Add a NOP when replaying a request, and there is no available
+                                //  request from the replay table.
+                                st1_nop = st1_req_rtab_i & ~rtab_req_valid_i;
 
-                            //  Respond to the core (if needed)
-                            st1_rsp_valid_o = st1_req_need_rsp_i;
+                                //  Update victim selection for the accessed set
+                                st1_req_cachedir_updt_sel_victim_o = st1_req_is_load_i;
 
-                            //  Performance event
-                            evt_read_req_o = ~st1_req_is_cmo_prefetch_i;
-                            evt_prefetch_req_o =  st1_req_is_cmo_prefetch_i;
+                                //  Respond to the core (if needed)
+                                st1_rsp_valid_o = st1_req_need_rsp_i;
 
-                            //  If the cacheline is currently pre-allocated to be replaced, we can
-                            //  only forward the data, but no state update is allowed.
-                            if (!st1_dir_hit_fetch_i) begin
-                                //  Hint is write-through but the current state is not. The
-                                //  controller needs to update the state of the cacheline to WT
-                                if (st1_req_wr_wt_i && st1_dir_hit_wback_i) begin
-                                    //  Update the directory state of the cacheline to WT
-                                    st2_dir_updt_o = 1'b1;
-                                    st2_dir_updt_valid_o = 1'b1;
-                                    st2_dir_updt_wback_o = 1'b0;
-                                    st2_dir_updt_dirty_o = 1'b0;
-                                    st2_dir_updt_fetch_o = 1'b0;
+                                //  Performance event
+                                evt_read_req_o = ~st1_req_is_cmo_prefetch_i;
+                                evt_prefetch_req_o = st1_req_is_cmo_prefetch_i;
 
-                                    //  Cacheline is dirty, flush its data to the memory
-                                    st2_flush_alloc_o = st1_dir_hit_dirty_i;
+                                //  If the cacheline is currently pre-allocated to be replaced, we can
+                                //  only forward the data, but no state update is allowed.
+                                if (!st1_dir_hit_fetch_i) begin
+                                    //  Hint is write-through but the current state is not. The
+                                    //  controller needs to update the state of the cacheline to WT
+                                    if (st1_req_wr_wt_i && st1_dir_hit_wback_i) begin
+                                        //  Update the directory state of the cacheline to WT
+                                        st2_dir_updt_o = 1'b1;
+                                        st2_dir_updt_valid_o = 1'b1;
+                                        st2_dir_updt_wback_o = 1'b0;
+                                        st2_dir_updt_dirty_o = 1'b0;
+                                        st2_dir_updt_fetch_o = 1'b0;
 
-                                    st1_nop = 1'b1;
+                                        //  Cacheline is dirty, flush its data to the memory
+                                        st2_flush_alloc_o = st1_dir_hit_dirty_i;
+
+                                        st1_nop = 1'b1;
+                                    end
+
+                                    //  Hint is write-back but the current state is not. The controller
+                                    //  needs to update the state of the cacheline to WB (clean)
+                                    if (st1_req_wr_wb_i && !st1_dir_hit_wback_i) begin
+                                        //  Update the directory state of the cacheline to WB (clean)
+                                        st2_dir_updt_o = 1'b1;
+                                        st2_dir_updt_valid_o = 1'b1;
+                                        st2_dir_updt_wback_o = 1'b1;
+                                        st2_dir_updt_dirty_o = 1'b0;
+                                        st2_dir_updt_fetch_o = 1'b0;
+
+                                        st1_nop = 1'b1;
+                                    end
 
                                 end
 
-                                //  Hint is write-back but the current state is not. The controller
-                                //  needs to update the state of the cacheline to WB (clean)
-                                if (st1_req_wr_wb_i && !st1_dir_hit_wback_i) begin
-                                    //  Update the directory state of the cacheline to WB (clean)
-                                    st2_dir_updt_o = 1'b1;
-                                    st2_dir_updt_valid_o = 1'b1;
-                                    st2_dir_updt_wback_o = 1'b1;
-                                    st2_dir_updt_dirty_o = 1'b0;
-                                    st2_dir_updt_fetch_o = 1'b0;
-
-                                    st1_nop = 1'b1;
-                                end
                             end
                         end
                         //  }}}
@@ -791,18 +805,21 @@ module hpdcache_ctrl_pe
                             //  Write is write-through
                             //  {{{
                             else begin
-                                //  Write in the write buffer if there is no pending miss in the
-                                //  same line.
-
-                                //  We assume here that the NoC that transports read and write
-                                //  transactions does not guaranty the order between transactions on
-                                //  those channels. Therefore, the cache must hold a write if there
-                                //  is a pending read on the same address.
+                                //  Write in the write buffer unless we need to flush the cacheline
+                                //  first
                                 wbuf_write_valid_o = ~st1_dir_hit_dirty_i;
 
-                                //  Cacheline is dirty. The controller needs to flush it to the
-                                //  memory before changing its state to WT
-                                if (st1_dir_hit_dirty_i) begin
+                                //  The cache needs to flush the cacheline but the flush controller
+                                //  is not ready
+                                if (st1_dir_hit_dirty_i && !st1_flush_alloc_ready_i) begin
+                                    st1_rtab_alloc = 1'b1;
+                                    st1_rtab_flush_not_ready_o = 1'b1;
+
+                                    st1_nop = 1'b1;
+                                end
+
+                                //  Flush the cacheline but keep it in the cache
+                                else if (st1_dir_hit_dirty_i) begin
                                     //  Flush cacheline data to the memory
                                     st2_flush_alloc_o = 1'b1;
 
