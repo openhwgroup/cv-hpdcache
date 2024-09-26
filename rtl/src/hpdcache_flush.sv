@@ -300,8 +300,8 @@ import hpdcache_pkg::*;
 
     //  FIFO for memory request metadata
     //
-    localparam int unsigned MemReqFlits =
-        hpdcache_max(HPDcacheCfg.clWidth / HPDcacheCfg.u.memDataWidth, 1);
+    localparam int unsigned MemReqFlits = HPDcacheCfg.u.memDataWidth < HPDcacheCfg.clWidth ?
+        (HPDcacheCfg.clWidth / HPDcacheCfg.u.memDataWidth) - 1 : 0;
 
     assign flush_mem_req_wmeta = '{
         mem_req_addr: {flush_alloc_nline_i, {HPDcacheCfg.clOffsetWidth{1'b0}}},
