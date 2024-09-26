@@ -111,13 +111,11 @@ module hpdcache_mem_req_write_arbiter
         unique case (req_send_fsm_q)
             REQ_IDLE:
                 if (req_valid && mem_req_write_ready_i) begin
-                    if (req_data_valid) begin
-                        if (mem_req_write_data_ready_i) begin
-                            mem_write_arb_req_ready = 1'b1;
-                            req_send_fsm_d = REQ_IDLE;
-                        end else begin
-                            req_send_fsm_d = REQ_META_SENT;
-                        end
+                    if (req_data_valid && mem_req_write_data_ready_i) begin
+                        mem_write_arb_req_ready = 1'b1;
+                        req_send_fsm_d = REQ_IDLE;
+                    end else begin
+                        req_send_fsm_d = REQ_META_SENT;
                     end
                 end else if (req_data_valid && mem_req_write_data_ready_i) begin
                     req_send_fsm_d = REQ_DATA_SENT;
