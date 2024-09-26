@@ -86,7 +86,7 @@ import hpdcache_pkg::*;
     output logic                          core_rsp_valid_o [HPDcacheCfg.u.nRequesters],
     output hpdcache_rsp_t                 core_rsp_o       [HPDcacheCfg.u.nRequesters],
 
-    //      Miss / Invalidation / Uncached read interface
+    //      Read / Invalidation memory interface
     input  logic                          mem_req_read_ready_i,
     output logic                          mem_req_read_valid_o,
     output hpdcache_mem_req_t             mem_req_read_o,
@@ -99,7 +99,7 @@ import hpdcache_pkg::*;
     input  hpdcache_nline_t               mem_resp_read_inval_nline_i,
 `endif
 
-    //      Write-buffer / Uncached write interface
+    //      Write memory interface
     input  logic                          mem_req_write_ready_i,
     output logic                          mem_req_write_valid_o,
     output hpdcache_mem_req_t             mem_req_write_o,
