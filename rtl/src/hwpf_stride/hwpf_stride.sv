@@ -138,9 +138,9 @@ import hpdcache_pkg::*;
 
     assign hpdcache_req_o.addr_offset     = { hpdcache_req_set, {HPDcacheCfg.clOffsetWidth{1'b0}} },
            hpdcache_req_o.wdata           = '0,
-           hpdcache_req_o.op              = HPDCACHE_REQ_CMO,
+           hpdcache_req_o.op              = HPDCACHE_REQ_CMO_PREFETCH,
            hpdcache_req_o.be              = '1,
-           hpdcache_req_o.size            = HPDCACHE_REQ_CMO_PREFETCH,
+           hpdcache_req_o.size            = '0,
            hpdcache_req_o.sid             = '0, // this is set when connecting to the dcache
            hpdcache_req_o.tid             = '0, // this is set by the wrapper of the prefetcher
            hpdcache_req_o.need_rsp        = 1'b1,
