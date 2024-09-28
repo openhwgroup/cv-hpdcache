@@ -304,7 +304,7 @@ import hpdcache_pkg::*;
         (HPDcacheCfg.clWidth / HPDcacheCfg.u.memDataWidth) - 1 : 0;
 
     assign flush_mem_req_wmeta = '{
-        mem_req_addr: {flush_alloc_nline_i, {HPDcacheCfg.clOffsetWidth{1'b0}}},
+        mem_req_addr: {flush_alloc_nline_i, {HPDcacheCfg.clOffsetWidth{1'b0}} },
         mem_req_len: hpdcache_mem_len_t'(MemReqFlits),
         mem_req_size: get_hpdcache_mem_size(HPDcacheCfg.u.memDataWidth/8),
         mem_req_id: hpdcache_mem_id_t'(flush_dir_free_ptr),
@@ -345,9 +345,33 @@ import hpdcache_pkg::*;
         .r_i            (mem_req_write_data_ready_i),
         .rok_o          (mem_req_write_data_valid_o),
         .rdata_o        (flush_mem_req_rdata),
-        .rlast_o        (flush_mem_req_rlast)
+        .rlast_o        (/* open */)
     );
 
+
+    //  Logic to detect the end of a packet
+    //
+    hpdcache_mem_len_t write_flits_cnt_q;
+
+    assign flush_mem_req_rlast = (write_flits_cnt_q == MemReqFlits);
+
+    always_ff @(posedge clk_i or negedge rst_ni)
+    begin
+        if (!rst_ni) begin
+            write_flits_cnt_q <= 0;
+        end else begin
+            if (mem_req_write_data_valid_o && mem_req_write_data_ready_i) begin
+                if (flush_mem_req_rlast) begin
+                    write_flits_cnt_q <= 0;
+                end else begin
+                    write_flits_cnt_q <= write_flits_cnt_q + 1;
+                end
+            end
+        end
+    end
+
+    //  Forward data flit to the NoC
+    //
     assign mem_req_write_data_o = '{
         mem_req_w_data: flush_mem_req_rdata,
         mem_req_w_be: '1,
