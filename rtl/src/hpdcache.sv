@@ -964,9 +964,9 @@ import hpdcache_pkg::*;
     //      There is a fixed-priority arbiter between:
     //      - the miss_handler (higher priority);
     //      - the uncacheable request handler (lower priority)
-    logic              arb_mem_req_read_ready [2];
-    logic              arb_mem_req_read_valid [2];
-    hpdcache_mem_req_t arb_mem_req_read       [2];
+    logic              [1:0] arb_mem_req_read_ready;
+    logic              [1:0] arb_mem_req_read_valid;
+    hpdcache_mem_req_t [1:0] arb_mem_req_read;
 
     assign mem_req_read_miss_ready = arb_mem_req_read_ready[0];
     assign arb_mem_req_read_valid[0] = mem_req_read_miss_valid;
@@ -979,7 +979,7 @@ import hpdcache_pkg::*;
     hpdcache_mem_req_read_arbiter #(
         .N                     (2),
         .hpdcache_mem_req_t    (hpdcache_mem_req_t)
-    ) hpdcache_mem_req_read_arbiter_i (
+    ) hpdcache_mem_req_read_arbiter_i(
         .clk_i,
         .rst_ni,
 
