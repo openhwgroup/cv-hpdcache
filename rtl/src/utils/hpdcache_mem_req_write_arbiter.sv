@@ -62,11 +62,7 @@ module hpdcache_mem_req_write_arbiter
 
     logic                        req_valid, req_data_valid, req_data_last;
 
-    arb_gnt_t                    mem_write_arb_req_valid;
-    hpdcache_mem_req_t   [N-1:0] mem_write_arb_req;
-    arb_gnt_t                    mem_write_arb_req_data_valid;
     arb_gnt_t                    mem_write_arb_req_data_last;
-    hpdcache_mem_req_w_t [N-1:0] mem_write_arb_req_data;
     arb_gnt_t                    mem_write_arb_req_gnt, mem_write_arb_req_gnt_q;
 
     logic                        mem_write_arb_req_r, mem_write_arb_req_w;
@@ -79,11 +75,7 @@ module hpdcache_mem_req_write_arbiter
     //  Combinational logic
     //  {{{
     for (gen_i = 0; gen_i < int'(N); gen_i++) begin : gen_bitvectors
-        assign mem_write_arb_req_valid[gen_i] = mem_req_write_valid_i[gen_i];
-        assign mem_write_arb_req[gen_i] = mem_req_write_i[gen_i];
-        assign mem_write_arb_req_data_valid[gen_i] = mem_req_write_data_valid_i[gen_i];
         assign mem_write_arb_req_data_last[gen_i] = mem_req_write_data_i[gen_i].mem_req_w_last;
-        assign mem_write_arb_req_data[gen_i] = mem_req_write_data_i[gen_i];
 
         assign mem_req_write_ready_o[gen_i] = mem_write_arb_req_gnt[gen_i] &
                                               mem_write_arb_req_ready;
@@ -93,23 +85,26 @@ module hpdcache_mem_req_write_arbiter
                                                    mem_req_write_data_ready_i;
     end
 
-    assign req_valid      = |(mem_write_arb_req_gnt   & mem_write_arb_req_valid);
-    assign req_data_valid = |(mem_write_arb_req_gnt_q & mem_write_arb_req_data_valid);
+    assign req_valid      = |(mem_write_arb_req_gnt   & mem_req_write_valid_i);
+    assign req_data_valid = |(mem_write_arb_req_gnt_q & mem_req_write_data_valid_i);
     assign req_data_last  = |(mem_write_arb_req_gnt_q & mem_write_arb_req_data_last);
 
     //  Accept a new request when the grant FIFO is not full and the NoC can accept the request
     assign mem_write_arb_req_ready = mem_write_arb_req_wok & mem_req_write_ready_i;
 
     //  Write a grant decision into the FIFO
-    assign mem_write_arb_req_w     = mem_req_write_ready_i & req_valid;
+    assign mem_write_arb_req_w = mem_req_write_ready_i & req_valid;
 
     //  Read grant FIFO when the NoC is able to receive the data and it is the last flit of data
-    assign mem_write_arb_req_r     = mem_req_write_data_ready_i &
-                                     mem_write_arb_req_rok &
-                                     req_data_valid &
-                                     req_data_last;
+    assign mem_write_arb_req_r = mem_req_write_data_ready_i &
+                                 mem_write_arb_req_rok &
+                                 req_data_valid &
+                                 req_data_last;
 
-    assign mem_req_write_valid_o      = req_valid;
+    //  Forward the request to the NoC if there is any and the grant FIFO is not full
+    assign mem_req_write_valid_o = req_valid & mem_write_arb_req_wok;
+
+    //  Forward the data to the NoC if there is any and there is a grant decision in the FIFO
     assign mem_req_write_data_valid_o = req_data_valid & mem_write_arb_req_rok;
     //  }}}
 
@@ -120,7 +115,7 @@ module hpdcache_mem_req_write_arbiter
     ) hpdcache_fxarb_mem_req_write_i(
         .clk_i,
         .rst_ni,
-        .req_i         (mem_write_arb_req_valid),
+        .req_i         (mem_req_write_valid_i),
         .gnt_o         (mem_write_arb_req_gnt),
         .ready_i       (mem_write_arb_req_ready)
     );
@@ -151,8 +146,8 @@ module hpdcache_mem_req_write_arbiter
         .DATA_WIDTH    ($bits(hpdcache_mem_req_t)),
         .ONE_HOT_SEL   (1'b1)
     ) req_mux_i(
-        .data_i        (mem_write_arb_req),
-        .sel_i         (mem_write_arb_req_gnt_q),
+        .data_i        (mem_req_write_i),
+        .sel_i         (mem_write_arb_req_gnt),
         .data_o        (mem_req_write_o)
     );
     //  }}}
@@ -164,7 +159,7 @@ module hpdcache_mem_req_write_arbiter
         .DATA_WIDTH    ($bits(hpdcache_mem_req_w_t)),
         .ONE_HOT_SEL   (1'b1)
     ) data_mux_i(
-        .data_i        (mem_write_arb_req_data),
+        .data_i        (mem_req_write_data_i),
         .sel_i         (mem_write_arb_req_gnt_q),
         .data_o        (mem_req_write_data_o)
     );
