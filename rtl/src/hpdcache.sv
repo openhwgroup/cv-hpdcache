@@ -1025,13 +1025,13 @@ import hpdcache_pkg::*;
     //      - the flush controller (higher priority)
     //      - the write buffer
     //      - the uncacheable request handler (lower priority)
-    logic                arb_mem_req_write_ready      [3];
-    logic                arb_mem_req_write_valid      [3];
-    hpdcache_mem_req_t   arb_mem_req_write            [3];
+    logic                [2:0] arb_mem_req_write_ready;
+    logic                [2:0] arb_mem_req_write_valid;
+    hpdcache_mem_req_t   [2:0] arb_mem_req_write;
 
-    logic                arb_mem_req_write_data_valid [3];
-    logic                arb_mem_req_write_data_ready [3];
-    hpdcache_mem_req_w_t arb_mem_req_write_data       [3];
+    logic                [2:0] arb_mem_req_write_data_valid;
+    logic                [2:0] arb_mem_req_write_data_ready;
+    hpdcache_mem_req_w_t [2:0] arb_mem_req_write_data;
 
     //      Split the ID space into 3 segments:
     //      1111...1111  -> Uncached writes

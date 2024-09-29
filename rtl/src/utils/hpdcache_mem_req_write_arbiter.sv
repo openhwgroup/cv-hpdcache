@@ -35,149 +35,138 @@ module hpdcache_mem_req_write_arbiter
 //  Ports
 //  {{{
 (
-    input  logic                 clk_i,
-    input  logic                 rst_ni,
+    input  logic                        clk_i,
+    input  logic                        rst_ni,
 
-    output logic                 mem_req_write_ready_o      [N],
-    input  logic                 mem_req_write_valid_i      [N],
-    input  hpdcache_mem_req_t    mem_req_write_i            [N],
+    output logic                [N-1:0] mem_req_write_ready_o,
+    input  logic                [N-1:0] mem_req_write_valid_i,
+    input  hpdcache_mem_req_t   [N-1:0] mem_req_write_i,
 
-    output logic                 mem_req_write_data_ready_o [N],
-    input  logic                 mem_req_write_data_valid_i [N],
-    input  hpdcache_mem_req_w_t  mem_req_write_data_i       [N],
+    output logic                [N-1:0] mem_req_write_data_ready_o,
+    input  logic                [N-1:0] mem_req_write_data_valid_i,
+    input  hpdcache_mem_req_w_t [N-1:0] mem_req_write_data_i,
 
-    input  logic                 mem_req_write_ready_i,
-    output logic                 mem_req_write_valid_o,
-    output hpdcache_mem_req_t    mem_req_write_o,
+    input  logic                        mem_req_write_ready_i,
+    output logic                        mem_req_write_valid_o,
+    output hpdcache_mem_req_t           mem_req_write_o,
 
-    input  logic                 mem_req_write_data_ready_i,
-    output logic                 mem_req_write_data_valid_o,
-    output hpdcache_mem_req_w_t  mem_req_write_data_o
+    input  logic                        mem_req_write_data_ready_i,
+    output logic                        mem_req_write_data_valid_o,
+    output hpdcache_mem_req_w_t         mem_req_write_data_o
 );
 //  }}}
 
-    typedef enum {
-        REQ_IDLE,
-        REQ_META_SENT,
-        REQ_DATA_SENT
-    } req_send_fsm_t;
+    //  Types and wires
+    //  {{{
+    typedef logic [N-1:0] arb_gnt_t;
 
-    req_send_fsm_t               req_send_fsm_q, req_send_fsm_d;
-    logic                        req_valid;
-    logic                        req_data_valid;
+    logic                        req_valid, req_data_valid, req_data_last;
 
-    logic                [N-1:0] mem_write_arb_req_valid;
+    arb_gnt_t                    mem_write_arb_req_valid;
     hpdcache_mem_req_t   [N-1:0] mem_write_arb_req;
-    logic                [N-1:0] mem_write_arb_req_data_valid;
+    arb_gnt_t                    mem_write_arb_req_data_valid;
+    arb_gnt_t                    mem_write_arb_req_data_last;
     hpdcache_mem_req_w_t [N-1:0] mem_write_arb_req_data;
-    logic                [N-1:0] mem_write_arb_req_gnt;
+    arb_gnt_t                    mem_write_arb_req_gnt, mem_write_arb_req_gnt_q;
+
+    logic                        mem_write_arb_req_r, mem_write_arb_req_w;
+    logic                        mem_write_arb_req_rok, mem_write_arb_req_wok;
     logic                        mem_write_arb_req_ready;
 
     genvar                       gen_i;
+    //  }}}
 
-    for (gen_i = 0; gen_i < int'(N); gen_i++) begin : gen_pack_inputs
+    //  Combinational logic
+    //  {{{
+    for (gen_i = 0; gen_i < int'(N); gen_i++) begin : gen_bitvectors
         assign mem_write_arb_req_valid[gen_i] = mem_req_write_valid_i[gen_i];
         assign mem_write_arb_req[gen_i] = mem_req_write_i[gen_i];
         assign mem_write_arb_req_data_valid[gen_i] = mem_req_write_data_valid_i[gen_i];
+        assign mem_write_arb_req_data_last[gen_i] = mem_req_write_data_i[gen_i].mem_req_w_last;
         assign mem_write_arb_req_data[gen_i] = mem_req_write_data_i[gen_i];
+
+        assign mem_req_write_ready_o[gen_i] = mem_write_arb_req_gnt[gen_i] &
+                                              mem_write_arb_req_ready;
+
+        assign mem_req_write_data_ready_o[gen_i] = mem_write_arb_req_gnt_q[gen_i] &
+                                                   mem_write_arb_req_rok &
+                                                   mem_req_write_data_ready_i;
     end
 
-    //      Fixed-priority arbiter
-    hpdcache_fxarb #(
-        .N                   (N)
-    ) hpdcache_fxarb_mem_req_write_i (
-        .clk_i,
-        .rst_ni,
-        .req_i               (mem_write_arb_req_valid),
-        .gnt_o               (mem_write_arb_req_gnt),
-        .ready_i             (mem_write_arb_req_ready)
-    );
+    assign req_valid      = |(mem_write_arb_req_gnt   & mem_write_arb_req_valid);
+    assign req_data_valid = |(mem_write_arb_req_gnt_q & mem_write_arb_req_data_valid);
+    assign req_data_last  = |(mem_write_arb_req_gnt_q & mem_write_arb_req_data_last);
 
-    assign req_valid      = |(mem_write_arb_req_gnt & mem_write_arb_req_valid);
-    assign req_data_valid = |(mem_write_arb_req_gnt & mem_write_arb_req_data_valid);
+    //  Accept a new request when the grant FIFO is not full and the NoC can accept the request
+    assign mem_write_arb_req_ready = mem_write_arb_req_wok & mem_req_write_ready_i;
 
-    //  Request sent FSM
-    //
-    //  This FSM allows to make sure that the request and its corresponding
-    //  data are sent in order. This is, when a requester sends a request, this
-    //  FSM keeps the grant signal on this requester until it has sent the
-    //  corresponding data.
-    //
-    //  {{{
-    always_comb
-    begin : req_send_fsm_comb
-        req_send_fsm_d = req_send_fsm_q;
-        mem_write_arb_req_ready = 1'b0;
-        unique case (req_send_fsm_q)
-            REQ_IDLE:
-                if (req_valid && mem_req_write_ready_i) begin
-                    if (req_data_valid && mem_req_write_data_ready_i) begin
-                        mem_write_arb_req_ready = 1'b1;
-                        req_send_fsm_d = REQ_IDLE;
-                    end else begin
-                        req_send_fsm_d = REQ_META_SENT;
-                    end
-                end else if (req_data_valid && mem_req_write_data_ready_i) begin
-                    req_send_fsm_d = REQ_DATA_SENT;
-                end
+    //  Write a grant decision into the FIFO
+    assign mem_write_arb_req_w     = mem_req_write_ready_i & req_valid;
 
-            REQ_META_SENT:
-                if (req_data_valid && mem_req_write_data_ready_i) begin
-                    mem_write_arb_req_ready = 1'b1;
-                    req_send_fsm_d = REQ_IDLE;
-                end
+    //  Read grant FIFO when the NoC is able to receive the data and it is the last flit of data
+    assign mem_write_arb_req_r     = mem_req_write_data_ready_i &
+                                     mem_write_arb_req_rok &
+                                     req_data_valid &
+                                     req_data_last;
 
-            REQ_DATA_SENT:
-                if (req_valid && mem_req_write_ready_i) begin
-                    mem_write_arb_req_ready = 1'b1;
-                    req_send_fsm_d = REQ_IDLE;
-                end
-        endcase
-    end
-
-    always_ff @(posedge clk_i or negedge rst_ni)
-    begin : req_send_fsm_ff
-        if (!rst_ni) begin
-            req_send_fsm_q <= REQ_IDLE;
-        end else begin
-            req_send_fsm_q <= req_send_fsm_d;
-        end
-    end
+    assign mem_req_write_valid_o      = req_valid;
+    assign mem_req_write_data_valid_o = req_data_valid & mem_write_arb_req_rok;
     //  }}}
 
-    for (gen_i = 0; gen_i < int'(N); gen_i++) begin : gen_req_ready
-        assign mem_req_write_ready_o[gen_i] =
-                    (mem_write_arb_req_gnt[gen_i] & mem_req_write_ready_i) &
-                    (req_send_fsm_q != REQ_META_SENT);
-
-        assign mem_req_write_data_ready_o[gen_i] =
-                    (mem_write_arb_req_gnt[gen_i] & mem_req_write_data_ready_i) &
-                    (req_send_fsm_q != REQ_DATA_SENT);
-    end
-
-    //  Output assignments
+    //  Fixed-priority arbiter
     //  {{{
-    assign mem_req_write_valid_o      = req_valid      & (req_send_fsm_q != REQ_META_SENT);
-    assign mem_req_write_data_valid_o = req_data_valid & (req_send_fsm_q != REQ_DATA_SENT);
-
-    hpdcache_mux #(
-        .NINPUT              (N),
-        .DATA_WIDTH          ($bits(hpdcache_mem_req_t)),
-        .ONE_HOT_SEL         (1'b1)
-    ) mem_write_req_mux_i (
-        .data_i              (mem_write_arb_req),
-        .sel_i               (mem_write_arb_req_gnt),
-        .data_o              (mem_req_write_o)
+    hpdcache_fxarb #(
+        .N             (N)
+    ) hpdcache_fxarb_mem_req_write_i(
+        .clk_i,
+        .rst_ni,
+        .req_i         (mem_write_arb_req_valid),
+        .gnt_o         (mem_write_arb_req_gnt),
+        .ready_i       (mem_write_arb_req_ready)
     );
+    //  }}}
 
+    //  Grant signal FIFO
+    //  {{{
+    hpdcache_fifo_reg #(
+        .FIFO_DEPTH    (2),
+        .FEEDTHROUGH   (1'b1),
+        .fifo_data_t   (arb_gnt_t)
+    ) req_gnt_fifo_i(
+        .clk_i,
+        .rst_ni,
+        .w_i           (mem_write_arb_req_w),
+        .wok_o         (mem_write_arb_req_wok),
+        .wdata_i       (mem_write_arb_req_gnt),
+        .r_i           (mem_write_arb_req_r),
+        .rok_o         (mem_write_arb_req_rok),
+        .rdata_o       (mem_write_arb_req_gnt_q)
+    );
+    //  }}}
+
+    //  Mux requests
+    //  {{{
     hpdcache_mux #(
-        .NINPUT              (N),
-        .DATA_WIDTH          ($bits(hpdcache_mem_req_w_t)),
-        .ONE_HOT_SEL         (1'b1)
-    ) mem_write_data_req_mux_i (
-        .data_i              (mem_write_arb_req_data),
-        .sel_i               (mem_write_arb_req_gnt),
-        .data_o              (mem_req_write_data_o)
+        .NINPUT        (N),
+        .DATA_WIDTH    ($bits(hpdcache_mem_req_t)),
+        .ONE_HOT_SEL   (1'b1)
+    ) req_mux_i(
+        .data_i        (mem_write_arb_req),
+        .sel_i         (mem_write_arb_req_gnt_q),
+        .data_o        (mem_req_write_o)
+    );
+    //  }}}
+
+    //  Mux data
+    //  {{{
+    hpdcache_mux #(
+        .NINPUT        (N),
+        .DATA_WIDTH    ($bits(hpdcache_mem_req_w_t)),
+        .ONE_HOT_SEL   (1'b1)
+    ) data_mux_i(
+        .data_i        (mem_write_arb_req_data),
+        .sel_i         (mem_write_arb_req_gnt_q),
+        .data_o        (mem_req_write_data_o)
     );
     //  }}}
 
