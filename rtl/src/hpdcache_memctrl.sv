@@ -610,9 +610,18 @@ import hpdcache_pkg::*;
     //  {{{
     logic                 updt_sel_victim;
     hpdcache_way_vector_t updt_sel_victim_way;
+    hpdcache_set_t        updt_sel_victim_set;
 
-    assign updt_sel_victim     = dir_updt_sel_victim_i | dir_amo_updt_sel_victim_i;
-    assign updt_sel_victim_way = dir_updt_sel_victim_i ? dir_hit_way_o : dir_amo_hit_way_o;
+    assign updt_sel_victim = dir_updt_sel_victim_i |
+                             dir_refill_updt_sel_victim_i |
+                             dir_amo_updt_sel_victim_i;
+
+    assign updt_sel_victim_way = dir_updt_sel_victim_i        ? dir_hit_way_o :
+                                 dir_refill_updt_sel_victim_i ? dir_refill_way_i :
+                                 dir_amo_hit_way_o;
+
+    assign updt_sel_victim_set = dir_refill_updt_sel_victim_i ? dir_refill_set_i :
+                                 dir_req_set_q;
 
     for (gen_i = 0; gen_i < HPDcacheCfg.u.ways; gen_i++) begin : gen_dir_valid_bv
         assign dir_valid[gen_i] = dir_rentry[gen_i].valid;
@@ -631,12 +640,8 @@ import hpdcache_pkg::*;
         .rst_ni,
 
         .updt_i                   (updt_sel_victim),
-        .updt_set_i               (dir_req_set_q),
+        .updt_set_i               (updt_sel_victim_set),
         .updt_way_i               (updt_sel_victim_way),
-
-        .repl_i                   (dir_refill_i & dir_refill_updt_sel_victim_i),
-        .repl_set_i               (dir_refill_set_i),
-        .repl_way_i               (dir_refill_way_i),
 
         .sel_victim_i             (dir_victim_sel_i),
         .sel_dir_valid_i          (dir_valid),

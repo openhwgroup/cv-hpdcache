@@ -59,9 +59,10 @@ ${HPDCACHE_DIR}/rtl/src/hpdcache_ctrl_pe.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_memctrl.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_miss_handler.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_mshr.sv
-${HPDCACHE_DIR}/rtl/src/hpdcache_plru.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_rtab.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_uncached.sv
+${HPDCACHE_DIR}/rtl/src/hpdcache_victim_plru.sv
+${HPDCACHE_DIR}/rtl/src/hpdcache_victim_random.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_victim_sel.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_wbuf.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_flush.sv

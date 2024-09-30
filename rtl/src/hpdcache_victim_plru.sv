@@ -23,15 +23,15 @@
  *  Description   : HPDcache Pseudo-LRU replacement policy
  *  History       :
  */
-module hpdcache_plru
+module hpdcache_victim_plru
+import hpdcache_pkg::*;
     //  Parameters
     //  {{{
 #(
-    parameter int unsigned SETS = 0,
-    parameter int unsigned WAYS = 0,
+    parameter hpdcache_cfg_t HPDcacheCfg = '0,
 
-    localparam type set_t        = logic [$clog2(SETS)-1:0],
-    localparam type way_vector_t = logic [WAYS-1:0]
+    localparam type set_t        = logic [$clog2(HPDcacheCfg.u.sets)-1:0],
+    localparam type way_vector_t = logic [HPDcacheCfg.u.ways-1:0]
 )
     //  }}}
 
@@ -46,12 +46,8 @@ module hpdcache_plru
     input  set_t                  updt_set_i,
     input  way_vector_t           updt_way_i,
 
-    //      PLRU replacement interface
-    input  logic                  repl_i,
-    input  set_t                  repl_set_i,
-    input  way_vector_t           repl_way_i,
-
     //      Victim selection interface
+    input  logic                  sel_victim_i, /* unused */
     input  way_vector_t           sel_dir_valid_i,
     input  way_vector_t           sel_dir_wback_i,
     input  way_vector_t           sel_dir_dirty_i,
@@ -63,12 +59,12 @@ module hpdcache_plru
 
     //  Internal signals and registers
     //  {{{
-    way_vector_t [SETS-1:0] plru_q, plru_d;
-    way_vector_t            updt_plru;
-    way_vector_t            repl_plru;
-    logic                   unused_available, plru_available, clean_available, dirty_available;
-    way_vector_t            unused_ways, plru_ways, clean_ways, dirty_ways;
-    way_vector_t            unused_victim_way, plru_victim_way, clean_victim_way, dirty_victim_way;
+    way_vector_t [HPDcacheCfg.u.sets-1:0] plru_q, plru_d;
+
+    way_vector_t updt_plru;
+    logic        unused_available, plru_available, clean_available, dirty_available;
+    way_vector_t unused_ways, plru_ways, clean_ways, dirty_ways;
+    way_vector_t unused_victim_way, plru_victim_way, clean_victim_way, dirty_victim_way;
     //  }}}
 
     //  Victim way selection
@@ -78,25 +74,25 @@ module hpdcache_plru
     assign clean_ways  = ~sel_dir_fetch_i &  sel_dir_valid_i & ~sel_dir_dirty_i;
     assign dirty_ways  = ~sel_dir_fetch_i &  sel_dir_valid_i &  sel_dir_dirty_i;
 
-    hpdcache_prio_1hot_encoder #(.N(WAYS))
+    hpdcache_prio_1hot_encoder #(.N(HPDcacheCfg.u.ways))
         unused_victim_select_i(
             .val_i     (unused_ways),
             .val_o     (unused_victim_way)
         );
 
-    hpdcache_prio_1hot_encoder #(.N(WAYS))
+    hpdcache_prio_1hot_encoder #(.N(HPDcacheCfg.u.ways))
         plru_victim_select_i(
             .val_i     (plru_ways),
             .val_o     (plru_victim_way)
         );
 
-    hpdcache_prio_1hot_encoder #(.N(WAYS))
+    hpdcache_prio_1hot_encoder #(.N(HPDcacheCfg.u.ways))
         clean_victim_select_i(
             .val_i     (clean_ways),
             .val_o     (clean_victim_way)
         );
 
-    hpdcache_prio_1hot_encoder #(.N(WAYS))
+    hpdcache_prio_1hot_encoder #(.N(HPDcacheCfg.u.ways))
         dirty_victim_select_i(
             .val_i     (dirty_ways),
             .val_o     (dirty_victim_way)
@@ -122,27 +118,15 @@ module hpdcache_plru
     //  Pseudo-LRU update process
     //  {{{
     assign updt_plru = plru_q[updt_set_i] | updt_way_i;
-    assign repl_plru = plru_q[repl_set_i] | repl_way_i;
 
     always_comb
     begin : plru_update_comb
         plru_d = plru_q;
 
-        case (1'b1)
-            //  When replacing a cache-line, set the PLRU bit of the new line
-            //  If all PLRU bits of a given would be set, reset them all
-            //  but the currently accessed way
-            repl_i: plru_d[repl_set_i] = &repl_plru ? repl_way_i : repl_plru;
-
-            //  When accessing a cache-line, set the corresponding PLRU bit
-            //  If all PLRU bits of a given would be set, reset them all
-            //  but the currently accessed way
-            updt_i: plru_d[updt_set_i] = &updt_plru ? updt_way_i : updt_plru;
-
-            default: begin
-                //  do nothing
-            end
-        endcase
+        //  When accessing a cache-line, set the corresponding PLRU bit
+        //  If all PLRU bits of a given set are equal to 1, reset them all
+        //  but the currently accessed way
+        if (updt_i) plru_d[updt_set_i] = &updt_plru ? updt_way_i : updt_plru;
     end
     //  }}}
 
@@ -153,9 +137,7 @@ module hpdcache_plru
         if (!rst_ni) begin
            plru_q <= '0;
         end else begin
-           if (updt_i || repl_i) begin
-              plru_q <= plru_d;
-           end
+           if (updt_i) plru_q <= plru_d;
         end
     end
     //  }}}

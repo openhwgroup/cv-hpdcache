@@ -41,8 +41,9 @@ sources:
   - rtl/src/hpdcache_memctrl.sv
   - rtl/src/hpdcache_miss_handler.sv
   - rtl/src/hpdcache_mshr.sv
-  - rtl/src/hpdcache_plru.sv
   - rtl/src/hpdcache_rtab.sv
   - rtl/src/hpdcache_uncached.sv
+  - rtl/src/hpdcache_victim_plru.sv
+  - rtl/src/hpdcache_victim_random.sv
   - rtl/src/hpdcache_victim_sel.sv
   - rtl/src/hpdcache_wbuf.sv
