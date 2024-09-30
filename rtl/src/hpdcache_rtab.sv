@@ -90,7 +90,6 @@ import hpdcache_pkg::*;
     input  logic                  pop_rback_i,
     input  rtab_ptr_t             pop_rback_ptr_i,
 
-
     //  Control signals from/to WBUF
     output hpdcache_req_addr_t    wbuf_addr_o,      // address to check against ongoing writes
     output logic                  wbuf_is_read_o,   // monitored request is read
@@ -172,6 +171,7 @@ import hpdcache_pkg::*;
     logic               [N-1:0]  valid_set, valid_rst;
     logic               [N-1:0]  alloc_valid_set;
     logic               [N-1:0]  pop_commit_valid_rst;
+    logic               [N-1:0]  pop_rback_bv;
 
     //  Bits indicating  if the corresponding entry is the head of a linked list
     logic               [N-1:0]  head_q;
@@ -583,7 +583,9 @@ import hpdcache_pkg::*;
     //  Set again the head bit of the rolled-back request
     assign pop_rback_ptr_bv = rtab_index_to_bv(pop_rback_ptr_i);
 
-    assign pop_rback_head_set                 = {N{pop_rback_i}} & pop_rback_ptr_bv;
+    assign pop_rback_bv                       = {N{pop_rback_i}} & pop_rback_ptr_bv;
+
+    assign pop_rback_head_set                 = pop_rback_bv;
 
     assign pop_rback_deps_mshr_hit_set        = {N{pop_rback_i}} & pop_rback_ptr_bv &
                                                 {N{alloc_mshr_hit_i}};
@@ -700,8 +702,11 @@ import hpdcache_pkg::*;
     always_ff @(posedge clk_i)
     begin : rtab_ff
         for (int i = 0; i < N; i++) begin
-            //  update the request array
-            if (valid_set[i]) begin
+            //  Update the request array
+            //    A RTAB request is stored at allocation time, but can be modified during
+            //    a roll-back. Some fields such as the way_fetch are part of the RTAB request, and
+            //    may need to be modified when rolling it back
+            if (valid_set[i] | pop_rback_bv[i]) begin
                 req_q[i] <= alloc_req_i;
             end
         end
