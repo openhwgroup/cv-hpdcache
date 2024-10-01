@@ -436,6 +436,10 @@ package hpdcache_pkg;
         int unsigned memIdWidth;
         //  Width of the data in the memory interface
         int unsigned memDataWidth;
+        //  Enable support for the write-through policy
+        bit wtEn;
+        //  Enable support for the write-back policy
+        bit wbEn;
     } hpdcache_user_cfg_t;
 
     typedef struct packed {

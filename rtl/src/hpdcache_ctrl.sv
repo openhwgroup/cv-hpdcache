@@ -283,6 +283,7 @@ import hpdcache_pkg::*;
     //  Definition of internal signals
     //  {{{
     hpdcache_req_t           st0_req;
+    hpdcache_pma_t           st0_req_pma;
     logic                    st0_req_is_uncacheable;
     logic                    st0_req_is_load;
     logic                    st0_req_is_store;
@@ -373,8 +374,26 @@ import hpdcache_pkg::*;
     logic                    hpdcache_init_ready;
     //  }}}
 
-    //  Decoding of the request
+    //  Decoding of the request in stage 0
     //  {{{
+    always_comb
+    begin : st0_req_pma_comb
+        st0_req_pma = core_req_i.pma;
+
+        //  force uncacheable requests if the cache is disabled
+        if (!cfg_enable_i) begin
+            st0_req_pma.uncacheable = 1'b1;
+        end
+
+        //  if either WB or WT is not supported, force write-policy
+        if (!HPDcacheCfg.u.wtEn) begin
+            st0_req_pma.wr_policy_hint = HPDCACHE_WR_POLICY_WB;
+        end
+        if (!HPDcacheCfg.u.wbEn) begin
+            st0_req_pma.wr_policy_hint = HPDCACHE_WR_POLICY_WT;
+        end
+    end
+
     //     Select between request in the replay table or a new core requests
     assign st0_req.addr_offset  = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.req.addr_offset
                                                          : core_req_i.addr_offset;
@@ -397,25 +416,42 @@ import hpdcache_pkg::*;
     assign st0_req.phys_indexed = st0_rtab_pop_try_valid ? 1'b1 :
                                                            core_req_i.phys_indexed;
     assign st0_req.pma          = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.req.pma
-                                                         : core_req_i.pma;
+                                                         : st0_req_pma;
 
     //     Decode operation in stage 0
-    assign st0_req_is_uncacheable  = ~cfg_enable_i | ( st0_req.phys_indexed
-                                                     & st0_req.pma.uncacheable);
+    assign st0_req_is_uncacheable  =     st0_req.pma.uncacheable;
     assign st0_req_is_load         =         is_load(st0_req.op);
     assign st0_req_is_store        =        is_store(st0_req.op);
     assign st0_req_is_amo          =          is_amo(st0_req.op);
     assign st0_req_is_cmo_fence    =    is_cmo_fence(st0_req.op);
     assign st0_req_is_cmo_inval    =    is_cmo_inval(st0_req.op);
     assign st0_req_is_cmo_prefetch = is_cmo_prefetch(st0_req.op);
+    //  }}}
 
-    //     Decode operation in stage 1
+    //  Decode operation in stage 1
+    //  {{{
+    always_comb
+    begin : st1_req_pma_comb
+        st1_req_pma = st1_req_q.phys_indexed ? st1_req_q.pma : core_req_pma_i;
+
+        //  force uncacheable requests if the cache is disabled
+        if (!cfg_enable_i) begin
+            st1_req_pma.uncacheable = 1'b1;
+        end
+
+        //  if either WB or WT is not supported, force write-policy
+        if (!HPDcacheCfg.u.wtEn) begin
+            st1_req_pma.wr_policy_hint = HPDCACHE_WR_POLICY_WB;
+        end
+        if (!HPDcacheCfg.u.wbEn) begin
+            st1_req_pma.wr_policy_hint = HPDCACHE_WR_POLICY_WT;
+        end
+    end
 
     //         In case of replay or physically-indexed cache, the tag and PMA come
     //         from stage 0. Otherwise, this information come directly from the
     //         requester in stage 1
-    assign st1_req_tag             = st1_req_q.phys_indexed ? st1_req_q.addr_tag : core_req_tag_i;
-    assign st1_req_pma             = st1_req_q.phys_indexed ? st1_req_q.pma      : core_req_pma_i;
+    assign st1_req_tag = st1_req_q.phys_indexed ? st1_req_q.addr_tag : core_req_tag_i;
 
     assign st1_req.addr_offset     = st1_req_q.addr_offset;
     assign st1_req.addr_tag        = st1_req_rtab_q ? st1_req_q.addr_tag : st1_req_tag;

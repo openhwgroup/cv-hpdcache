@@ -63,7 +63,9 @@ module hpdcache_lint
       flushFifoDepth: 2,
       memAddrWidth: 56,
       memIdWidth: 6,
-      memDataWidth: 512
+      memDataWidth: 512,
+      wtEn: 1'b1,
+      wbEn: 1'b1
   },
 
   localparam hpdcache_pkg::hpdcache_cfg_t HPDcacheCfg = hpdcache_pkg::hpdcacheBuildConfig(
