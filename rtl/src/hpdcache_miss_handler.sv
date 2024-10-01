@@ -101,6 +101,7 @@ import hpdcache_pkg::*;
     //          REFILL MISS / Invalidation interface
     input  logic                  refill_req_ready_i,
     output logic                  refill_req_valid_o,
+    output logic                  refill_is_error_o,
     output logic                  refill_busy_o,
     output logic                  refill_updt_sel_victim_o,
     output hpdcache_set_t         refill_set_o,
@@ -202,8 +203,6 @@ import hpdcache_pkg::*;
     logic                    refill_core_rsp_error;
     hpdcache_word_t          refill_core_rsp_word;
     hpdcache_rsp_t           refill_core_rsp;
-
-    logic                    refill_is_error;
 
     hpdcache_set_t           mshr_check_set;
     hpdcache_tag_t           mshr_check_tag;
@@ -381,7 +380,7 @@ import hpdcache_pkg::*;
 
                     refill_core_rsp_sid = mshr_ack_src_id;
                     refill_core_rsp_tid = mshr_ack_req_id;
-                    refill_core_rsp_error = refill_is_error;
+                    refill_core_rsp_error = refill_is_error_o;
                     refill_core_rsp_word = hpdcache_word_t'(
                         hpdcache_uint'(mshr_ack_word)/HPDcacheCfg.u.reqWords);
                 end else begin
@@ -396,7 +395,7 @@ import hpdcache_pkg::*;
 
                     refill_core_rsp_sid = refill_sid_q;
                     refill_core_rsp_tid = refill_tid_q;
-                    refill_core_rsp_error = refill_is_error;
+                    refill_core_rsp_error = refill_is_error_o;
                     refill_core_rsp_word = hpdcache_word_t'(
                         hpdcache_uint'(refill_core_rsp_word_q)/HPDcacheCfg.u.reqWords);
                 end
@@ -411,7 +410,7 @@ import hpdcache_pkg::*;
                     refill_way = refill_way_q;
                     is_prefetch = refill_is_prefetch_q;
                 end
-                refill_write_data_o = ~refill_is_error;
+                refill_write_data_o = ~refill_is_error_o;
 
                 //  Consume chunk of data from the FIFO buffer in the memory interface
                 refill_fifo_resp_data_r = 1'b1;
@@ -433,7 +432,7 @@ import hpdcache_pkg::*;
                         //  - There is no error in response AND
                         //  - It is a prefetch and the cfg_prefetch_updt_sel_victim_i is set OR
                         //  - It is a read miss.
-                        refill_updt_sel_victim_o  =  ~refill_is_error &
+                        refill_updt_sel_victim_o  =  ~refill_is_error_o &
                                                     (~is_prefetch | cfg_prefetch_updt_sel_victim_i);
 
                         //  Update dependency flags in the retry table
@@ -457,13 +456,13 @@ import hpdcache_pkg::*;
                 refill_way = refill_way_q;
 
                 //  Write the new entry in the cache directory
-                refill_write_dir_o  = ~refill_is_error;
+                refill_write_dir_o  = ~refill_is_error_o;
 
                 //  Update the victim selection. Only in the following cases:
                 //  - There is no error in response AND
                 //  - It is a prefetch and the cfg_prefetch_updt_sel_victim_i is set OR
                 //  - It is a read miss.
-                refill_updt_sel_victim_o  = ~refill_is_error &
+                refill_updt_sel_victim_o  = ~refill_is_error_o &
                                            (~refill_is_prefetch_q | cfg_prefetch_updt_sel_victim_i);
 
                 //  Update dependency flags in the retry table
@@ -496,11 +495,11 @@ import hpdcache_pkg::*;
         endcase
     end
 
-    assign refill_is_error = (refill_fifo_resp_meta_rdata.r_error == HPDCACHE_MEM_RESP_NOK);
+    assign refill_is_error_o = (refill_fifo_resp_meta_rdata.r_error == HPDCACHE_MEM_RESP_NOK);
 
-    assign refill_busy_o  = (refill_fsm_q != REFILL_IDLE),
-           refill_nline_o = {refill_tag_q, refill_set_q},
-           refill_word_o  = refill_cnt_q;
+    assign refill_busy_o  = (refill_fsm_q != REFILL_IDLE);
+    assign refill_nline_o = {refill_tag_q, refill_set_q};
+    assign refill_word_o  = refill_cnt_q;
 
     assign inval_nline_o = refill_fifo_resp_meta_rdata.inval_nline;
 
@@ -529,8 +528,8 @@ import hpdcache_pkg::*;
     //  Write the new entry in the cache directory
     //  In case of error in the refill response, invalidate pre-allocated cache directory entry
     assign refill_dir_entry_o = '{
-        valid   : ~refill_is_error,
-        wback   : ~refill_is_error & refill_wback_q,
+        valid   : ~refill_is_error_o,
+        wback   : ~refill_is_error_o & refill_wback_q,
         dirty   : 1'b0,
         fetch   : 1'b0,
         tag     : refill_tag_q,

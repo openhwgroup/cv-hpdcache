@@ -188,6 +188,7 @@ import hpdcache_pkg::*;
     //  {{{
     logic                  refill_req_valid;
     logic                  refill_req_ready;
+    logic                  refill_is_error;
     logic                  refill_busy;
     logic                  refill_updt_sel_victim;
     hpdcache_set_t         refill_set;
@@ -495,6 +496,7 @@ import hpdcache_pkg::*;
 
         .refill_req_valid_i                 (refill_req_valid),
         .refill_req_ready_o                 (refill_req_ready),
+        .refill_is_error_i                  (refill_is_error),
         .refill_busy_i                      (refill_busy),
         .refill_updt_sel_victim_i           (refill_updt_sel_victim),
         .refill_set_i                       (refill_set),
@@ -745,6 +747,7 @@ import hpdcache_pkg::*;
 
         .refill_req_ready_i                 (refill_req_ready),
         .refill_req_valid_o                 (refill_req_valid),
+        .refill_is_error_o                  (refill_is_error),
         .refill_busy_o                      (refill_busy),
         .refill_updt_sel_victim_o           (refill_updt_sel_victim),
         .refill_set_o                       (refill_set),

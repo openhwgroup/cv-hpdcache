@@ -108,6 +108,7 @@ import hpdcache_pkg::*;
     //      Refill interface
     input  logic                  refill_req_valid_i,
     output logic                  refill_req_ready_o,
+    input  logic                  refill_is_error_i,
     input  logic                  refill_busy_i,
     input  logic                  refill_updt_sel_victim_i,
     input  hpdcache_set_t         refill_set_i,
@@ -253,6 +254,7 @@ import hpdcache_pkg::*;
     //  Definition of internal registers
     //  {{{
     logic                    st1_req_valid_q, st1_req_valid_d;
+    logic                    st1_req_is_error_q, st1_req_is_error_d;
     hpdcache_req_t           st1_req_q;
     logic                    st1_req_rtab_q;
     rtab_ptr_t               st1_rtab_pop_try_ptr_q;
@@ -284,6 +286,7 @@ import hpdcache_pkg::*;
     //  {{{
     hpdcache_req_t           st0_req;
     hpdcache_pma_t           st0_req_pma;
+    logic                    st0_req_is_error;
     logic                    st0_req_is_uncacheable;
     logic                    st0_req_is_load;
     logic                    st0_req_is_store;
@@ -299,8 +302,10 @@ import hpdcache_pkg::*;
     logic                    st0_rtab_pop_try_ready;
     rtab_entry_t             st0_rtab_pop_try_req;
     rtab_ptr_t               st0_rtab_pop_try_ptr;
+    logic                    st0_rtab_pop_try_error;
 
     logic                    st1_rsp_valid;
+    logic                    st1_rsp_error;
     logic                    st1_rsp_aborted;
     hpdcache_req_t           st1_req;
     logic                    st1_req_abort;
@@ -418,6 +423,9 @@ import hpdcache_pkg::*;
     assign st0_req.pma          = st0_rtab_pop_try_valid ? st0_rtab_pop_try_req.req.pma
                                                          : st0_req_pma;
 
+    //     Check if the request from the RTAB has been tagged with an error
+    assign st0_req_is_error = st0_rtab_pop_try_valid & st0_rtab_pop_try_error;
+
     //     Decode operation in stage 0
     assign st0_req_is_uncacheable  =     st0_req.pma.uncacheable;
     assign st0_req_is_load         =         is_load(st0_req.op);
@@ -505,6 +513,7 @@ import hpdcache_pkg::*;
         .refill_req_valid_i,
         .refill_req_ready_o,
 
+        .st0_req_is_error_i                 (st0_req_is_error),
         .st0_req_is_uncacheable_i           (st0_req_is_uncacheable),
         .st0_req_need_rsp_i                 (st0_req.need_rsp),
         .st0_req_is_load_i                  (st0_req_is_load),
@@ -520,6 +529,7 @@ import hpdcache_pkg::*;
         .st1_req_valid_i                    (st1_req_valid_q),
         .st1_req_abort_i                    (st1_req_abort),
         .st1_req_rtab_i                     (st1_req_rtab_q),
+        .st1_req_is_error_i                 (st1_req_is_error_q),
         .st1_req_is_uncacheable_i           (st1_req_is_uncacheable),
         .st1_req_need_rsp_i                 (st1_req.need_rsp),
         .st1_req_is_load_i                  (st1_req_is_load),
@@ -540,7 +550,9 @@ import hpdcache_pkg::*;
         .st1_dir_victim_wback_i             (st1_dir_victim_wback),
         .st1_dir_victim_dirty_i             (st1_dir_victim_dirty),
         .st1_req_valid_o                    (st1_req_valid_d),
+        .st1_req_is_error_o                 (st1_req_is_error_d),
         .st1_rsp_valid_o                    (st1_rsp_valid),
+        .st1_rsp_error_o                    (st1_rsp_error),
         .st1_rsp_aborted_o                  (st1_rsp_aborted),
         .st1_req_cachedir_sel_victim_o      (st1_victim_sel),
         .st1_req_cachedir_updt_sel_victim_o (st1_req_updt_sel_victim),
@@ -694,6 +706,7 @@ import hpdcache_pkg::*;
         .pop_try_i                          (st0_rtab_pop_try_ready),
         .pop_try_req_o                      (st0_rtab_pop_try_req),
         .pop_try_ptr_o                      (st0_rtab_pop_try_ptr),
+        .pop_try_error_o                    (st0_rtab_pop_try_error),
 
         .pop_commit_i                       (st1_rtab_pop_try_commit),
         .pop_commit_ptr_i                   (st1_rtab_pop_try_ptr_q),
@@ -711,6 +724,7 @@ import hpdcache_pkg::*;
         .miss_ready_i                       (st1_mshr_alloc_ready_i),
 
         .refill_i                           (refill_updt_rtab_i),
+        .refill_is_error_i,
         .refill_nline_i,
         .refill_way_index_i                 (refill_way_index),
 
@@ -735,11 +749,12 @@ import hpdcache_pkg::*;
     begin : st1_req_valid_ff
         if (!rst_ni) begin
             st1_req_valid_q        <= 1'b0;
+            st1_req_is_error_q     <= 1'b0;
             st1_req_rtab_q         <= 1'b0;
             st1_rtab_pop_try_ptr_q <= '0;
-
         end else begin
-            st1_req_valid_q <= st1_req_valid_d;
+            st1_req_valid_q    <= st1_req_valid_d;
+            st1_req_is_error_q <= st1_req_is_error_d;
             if (core_req_ready_o | st0_rtab_pop_try_ready) begin
                 st1_req_rtab_q <= st0_rtab_pop_try_ready;
                 if (st0_rtab_pop_try_ready) begin
@@ -1021,7 +1036,7 @@ import hpdcache_pkg::*;
     assign core_rsp_o.tid     = (refill_core_rsp_valid_i ? refill_core_rsp_i.tid :
                                 (uc_core_rsp_valid_i     ? uc_core_rsp_i.tid : st1_req.tid));
     assign core_rsp_o.error   = (refill_core_rsp_valid_i ? refill_core_rsp_i.error :
-                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.error : 1'b0));
+                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.error : st1_rsp_error));
     assign core_rsp_o.aborted = st1_rsp_aborted;
     //  }}}
 

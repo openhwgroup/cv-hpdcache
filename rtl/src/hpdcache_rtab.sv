@@ -79,6 +79,7 @@ import hpdcache_pkg::*;
     input  logic                  pop_try_i,
     output rtab_entry_t           pop_try_req_o,
     output rtab_ptr_t             pop_try_ptr_o,
+    output logic                  pop_try_error_o,
 
     //  Pop Commit signals
     //     This interface allows to actually remove a popped request
@@ -103,6 +104,7 @@ import hpdcache_pkg::*;
 
     //  Control signals from the Refill Handler
     input  logic                  refill_i,           // Active refill
+    input  logic                  refill_is_error_i,  // Active refill has error bit set
     input  hpdcache_nline_t       refill_nline_i,     // Cache-line index being refilled
     input  hpdcache_way_t         refill_way_index_i, // Way index being refilled
 
@@ -173,7 +175,12 @@ import hpdcache_pkg::*;
     logic               [N-1:0]  pop_commit_valid_rst;
     logic               [N-1:0]  pop_rback_bv;
 
-    //  Bits indicating  if the corresponding entry is the head of a linked list
+    //  Bits indicating if the corresponding entry is an error response
+    logic               [N-1:0]  error_q;
+    logic               [N-1:0]  error_set, error_rst;
+    logic                        refill_is_error;
+
+    //  Bits indicating if the corresponding entry is the head of a linked list
     logic               [N-1:0]  head_q;
     logic               [N-1:0]  head_set, head_rst;
     logic               [N-1:0]  alloc_head_set, alloc_head_rst;
@@ -181,12 +188,12 @@ import hpdcache_pkg::*;
     logic               [N-1:0]  pop_commit_head_set;
     logic               [N-1:0]  pop_rback_head_set;
 
-    //  Bits indicating  if the corresponding entry is the tail of a linked list
+    //  Bits indicating if the corresponding entry is the tail of a linked list
     logic               [N-1:0]  tail_q;
     logic               [N-1:0]  tail_set, tail_rst;
     logic               [N-1:0]  alloc_tail_set, alloc_tail_rst;
 
-    //  There is a pend ing miss on the target nline
+    //  There is a pending miss on the target nline
     logic               [N-1:0]  deps_mshr_hit_q;
     logic               [N-1:0]  deps_mshr_hit_set, deps_mshr_hit_rst;
     logic               [N-1:0]  alloc_deps_mshr_hit_set;
@@ -570,6 +577,8 @@ import hpdcache_pkg::*;
     //  commit or rollback operations
     assign pop_try_ptr_o = rtab_bv_to_index(pop_sel);
 
+    //  Forward the error bit
+    assign pop_try_error_o = |(pop_sel & error_q);
     //  }}}
 
     //  Pop commit process
@@ -619,6 +628,11 @@ import hpdcache_pkg::*;
     assign valid_set = alloc_valid_set;
     assign valid_rst = pop_commit_valid_rst;
 
+    assign refill_is_error = refill_i & refill_is_error_i;
+
+    assign error_set = valid_q & (deps_mshr_hit_q & match_refill_nline & {N{refill_is_error}});
+    assign error_rst = pop_commit_valid_rst;
+
     assign deps_mshr_hit_set        = alloc_deps_mshr_hit_set | pop_rback_deps_mshr_hit_set;
     assign deps_mshr_full_set       = alloc_deps_mshr_full_set | pop_rback_deps_mshr_full_set;
     assign deps_mshr_ready_set      = alloc_deps_mshr_ready_set | pop_rback_deps_mshr_ready_set;
@@ -638,6 +652,7 @@ import hpdcache_pkg::*;
     begin : rtab_valid_ff
         if (!rst_ni) begin
             valid_q                <= '0;
+            error_q                <= '0;
             head_q                 <= '0;
             tail_q                 <= '0;
             deps_mshr_hit_q        <= '0;
@@ -652,6 +667,9 @@ import hpdcache_pkg::*;
             next_q                 <= '0;
         end else begin
             valid_q <= (~valid_q & valid_set) | (valid_q & ~valid_rst);
+
+            //  error flags
+            error_q <= (~error_q & error_set) | (error_q & ~error_rst);
 
             //  update head and tail flags
             head_q <= (~head_q & head_set) | (head_q & ~head_rst);

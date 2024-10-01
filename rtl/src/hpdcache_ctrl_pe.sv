@@ -41,6 +41,7 @@ module hpdcache_ctrl_pe
 
     //   Pipeline stage 0
     //   {{{
+    input  logic                   st0_req_is_error_i,
     input  logic                   st0_req_is_uncacheable_i,
     input  logic                   st0_req_need_rsp_i,
     input  logic                   st0_req_is_load_i,
@@ -59,6 +60,7 @@ module hpdcache_ctrl_pe
     input  logic                   st1_req_valid_i,
     input  logic                   st1_req_abort_i,
     input  logic                   st1_req_rtab_i,
+    input  logic                   st1_req_is_error_i,
     input  logic                   st1_req_is_uncacheable_i,
     input  logic                   st1_req_need_rsp_i,
     input  logic                   st1_req_is_load_i,
@@ -79,7 +81,9 @@ module hpdcache_ctrl_pe
     input  logic                   st1_dir_victim_wback_i,
     input  logic                   st1_dir_victim_dirty_i,
     output logic                   st1_req_valid_o,
+    output logic                   st1_req_is_error_o,
     output logic                   st1_rsp_valid_o,
+    output logic                   st1_rsp_error_o,
     output logic                   st1_rsp_aborted_o,
     output logic                   st1_req_cachedir_sel_victim_o,
     output logic                   st1_req_cachedir_updt_sel_victim_o,
@@ -264,12 +268,14 @@ module hpdcache_ctrl_pe
         st0_req_cachedata_read_o            = 1'b0;
 
         st1_req_valid_o                     = st1_req_valid_i;
+        st1_req_is_error_o                  = st1_req_is_error_i;
         st1_nop                             = 1'b0;
         st1_req_cachedata_write_o           = 1'b0;
         st1_req_cachedata_write_enable_o    = 1'b0;
         st1_req_cachedir_sel_victim_o       = 1'b0;
         st1_req_cachedir_updt_sel_victim_o  = 1'b0;
         st1_rsp_valid_o                     = 1'b0;
+        st1_rsp_error_o                     = 1'b0;
         st1_rsp_aborted_o                   = 1'b0;
 
         st2_mshr_alloc_o                    = st2_mshr_alloc_i;
@@ -387,6 +393,12 @@ module hpdcache_ctrl_pe
                 if (st1_req_abort_i && !st1_req_rtab_i) begin
                     st1_rsp_valid_o = st1_req_need_rsp_i;
                     st1_rsp_aborted_o = 1'b1;
+                end
+
+                else if (st1_req_is_error_i) begin
+                    st1_rtab_commit_o = st1_req_rtab_i;
+                    st1_rsp_valid_o = st1_req_need_rsp_i;
+                    st1_rsp_error_o = st1_req_need_rsp_i;
                 end
 
                 //  Allocate a new entry in the replay table in case of conflict with
@@ -911,6 +923,7 @@ module hpdcache_ctrl_pe
 
             //      Forward the core/rtab request to stage 1
             st1_req_valid_o = core_req_ready_o | rtab_req_ready_o;
+            st1_req_is_error_o = st0_req_is_error_i;
 
             //      New cacheable stage 0 request granted
             //      {{{
@@ -919,10 +932,14 @@ module hpdcache_ctrl_pe
             //          This increases the power consumption in that cases, but
             //          removes the timing paths RAM-to-RAM between the cache
             //          directory and the data array.
-            if ((core_req_ready_o | rtab_req_ready_o) && !st0_req_is_uncacheable_i) begin
+            if ((core_req_ready_o | rtab_req_ready_o) &&
+                !st0_req_is_uncacheable_i &&
+                !st0_req_is_error_i)
+            begin
                 st0_req_cachedata_read_o =
                           st0_req_is_load_i &
                         ~(st1_req_valid_i   & st1_req_is_store_i & ~st1_req_is_uncacheable_i);
+
                 if (st0_req_is_load_i         |
                     st0_req_is_cmo_prefetch_i |
                     st0_req_is_store_i        |
