@@ -426,7 +426,7 @@ import hpdcache_pkg::*;
                         refill_fsm_d = REFILL_WRITE_DIR;
                     end else begin
                         //  Write the new entry in the cache directory
-                        refill_write_dir_o  = 1'b1;
+                        refill_write_dir_o = 1'b1;
 
                         //  Update the victim selection. Only in the following cases:
                         //  - There is no error in response AND
@@ -456,7 +456,7 @@ import hpdcache_pkg::*;
                 refill_way = refill_way_q;
 
                 //  Write the new entry in the cache directory
-                refill_write_dir_o  = ~refill_is_error_o;
+                refill_write_dir_o  = 1'b1;
 
                 //  Update the victim selection. Only in the following cases:
                 //  - There is no error in response AND
