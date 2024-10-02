@@ -250,6 +250,8 @@ module hpdcache_ctrl_pe
         automatic logic nop;
         automatic logic st1_nop; //  Do not consume a request in stage 0 because of stage 1 hazard
         automatic logic st2_nop; //  Do not consume a request in stage 0 because of stage 2 haward
+        automatic logic st1_req_is_cacheable_store;
+
 
         uc_req_valid_o                      = 1'b0;
 
@@ -269,6 +271,7 @@ module hpdcache_ctrl_pe
 
         st1_req_valid_o                     = st1_req_valid_i;
         st1_req_is_error_o                  = st1_req_is_error_i;
+        st1_req_is_cacheable_store          = 1'b0;
         st1_nop                             = 1'b0;
         st1_req_cachedata_write_o           = 1'b0;
         st1_req_cachedata_write_enable_o    = 1'b0;
@@ -936,9 +939,11 @@ module hpdcache_ctrl_pe
                 !st0_req_is_uncacheable_i &&
                 !st0_req_is_error_i)
             begin
-                st0_req_cachedata_read_o =
-                          st0_req_is_load_i &
-                        ~(st1_req_valid_i   & st1_req_is_store_i & ~st1_req_is_uncacheable_i);
+                st1_req_is_cacheable_store = st1_req_valid_i & st1_req_is_store_i &
+                        ~st1_req_is_uncacheable_i;
+
+                st0_req_cachedata_read_o = st0_req_is_load_i &
+                        (~st1_req_is_cacheable_store | st1_req_is_error_i);
 
                 if (st0_req_is_load_i         |
                     st0_req_is_cmo_prefetch_i |
