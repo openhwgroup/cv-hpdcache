@@ -220,15 +220,6 @@ package hpdcache_pkg;
         endcase
     endfunction
 
-    function automatic logic is_cmo(input hpdcache_req_op_t op);
-        return (op inside { HPDCACHE_REQ_CMO_INVAL_NLINE
-                          , HPDCACHE_REQ_CMO_INVAL_ALL
-                          , HPDCACHE_REQ_CMO_FLUSH_NLINE
-                          , HPDCACHE_REQ_CMO_FLUSH_ALL
-                          , HPDCACHE_REQ_CMO_FENCE
-                          , HPDCACHE_REQ_CMO_PREFETCH});
-    endfunction
-
     function automatic logic is_cmo_inval(input hpdcache_req_op_t op);
         return (op inside {HPDCACHE_REQ_CMO_INVAL_NLINE, HPDCACHE_REQ_CMO_INVAL_ALL});
     endfunction
@@ -271,6 +262,14 @@ package hpdcache_pkg;
     function automatic logic is_cmo_flush_inval_all(input hpdcache_req_op_t op);
         return (op == HPDCACHE_REQ_CMO_FLUSH_INVAL_ALL);
     endfunction
+
+    function automatic logic is_cmo(input hpdcache_req_op_t op);
+        return (is_cmo_flush(op) ||
+                is_cmo_fence(op) ||
+                is_cmo_inval(op) ||
+                is_cmo_prefetch(op));
+    endfunction
+
     //      }}}
     //  }}}
 
