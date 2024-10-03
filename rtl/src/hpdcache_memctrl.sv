@@ -948,9 +948,11 @@ import hpdcache_pkg::*;
     //  Assertions
     //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
-    check_dirty_state: assert property (@(posedge clk_i) disable iff (!rst_ni || !init_q)
-            |(dir_cs & ~dir_we) |=> ((dir_dirty & dir_valid) == dir_dirty)) else
-            $error("hpdcache_memctrl: wrong directory state - dirty but not valid");
+    for (gen_i = 0; gen_i < HPDcacheCfg.u.ways; gen_i++) begin : gen_check_dirty_state
+        check_dirty_state: assert property (@(posedge clk_i) disable iff (!rst_ni || !init_q)
+                (dir_cs[gen_i] & ~dir_we[gen_i]) |=> (dir_dirty[gen_i] |-> dir_valid[gen_i])) else
+                $error("hpdcache_memctrl: wrong directory state - dirty but not valid");
+    end
 
     concurrent_dir_access_assert: assert property (@(posedge clk_i) disable iff (!rst_ni)
             $onehot0({dir_match_i,
