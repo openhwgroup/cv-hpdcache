@@ -444,11 +444,46 @@ module hpdcache_ctrl_pe
                     //  AMO cacheable request
                     //  {{{
                     if (st1_req_is_amo_i) begin
-                        uc_req_valid_o = 1'b1;
-                        st1_nop        = 1'b1;
+                        //  Flush required but the controller is not ready
+                        if (cachedir_hit_i && st1_dir_hit_dirty_i && !st1_flush_alloc_ready_i)
+                        begin
+                            st1_rtab_alloc = 1'b1;
+                            st1_rtab_flush_not_ready_o = 1'b1;
+                            st1_nop = 1'b1;
+                        end
 
-                        //  Performance event
-                        evt_uncached_req_o = 1'b1;
+                        //  Process the AMO request
+                        else begin
+                            uc_req_valid_o = 1'b1;
+                            st1_nop = 1'b1;
+
+                            //  If the request comes from the replay table, free the
+                            //  corresponding RTAB entry
+                            st1_rtab_commit_o = st1_req_rtab_i;
+
+                            if (cachedir_hit_i) begin
+                                //  When the hit cacheline is dirty, flush its data to the memory
+                                st2_flush_alloc_o = st1_dir_hit_dirty_i;
+
+                                //  Update the directory: an AMO request invalidates the local copy
+                                //  of the cacheline.
+                                //  FIXME : this invalidation could be skipped or at least
+                                //  configurable. Another option is to keep the local copy, and
+                                //  make sure that the FSM, processing the AMO, sets the dirty bit
+                                //  after writing locally the data.
+                                st2_dir_updt_o = 1'b1;
+                                st2_dir_updt_valid_o = 1'b0;
+                                st2_dir_updt_wback_o = 1'b0;
+                                st2_dir_updt_dirty_o = 1'b0;
+
+                                //  If the cacheline has been pre-allocated for a pending miss, keep
+                                //  the fetch bit set
+                                st2_dir_updt_fetch_o = st1_dir_hit_fetch_i;
+                            end
+
+                            //  Performance event
+                            evt_uncached_req_o = 1'b1;
+                        end
                     end
                     //  }}}
 
@@ -547,6 +582,8 @@ module hpdcache_ctrl_pe
                                 st2_dir_updt_o = 1'b1;
                                 st2_dir_updt_valid_o = st1_dir_victim_valid_i;
                                 st2_dir_updt_wback_o = st1_dir_victim_wback_i;
+                                // FIXME should dirty be set to 0 ??? The cacheline is set to be
+                                //       flushed
                                 st2_dir_updt_dirty_o = st1_dir_victim_dirty_i;
                                 st2_dir_updt_fetch_o = 1'b1;
                             end
@@ -718,6 +755,9 @@ module hpdcache_ctrl_pe
                                     st2_dir_updt_o = 1'b1;
                                     st2_dir_updt_valid_o = st1_dir_victim_valid_i;
                                     st2_dir_updt_wback_o = st1_dir_victim_wback_i;
+
+                                    // FIXME should dirty be set to 0 ??? The cacheline is set to be
+                                    //       flushed
                                     st2_dir_updt_dirty_o = st1_dir_victim_dirty_i;
                                     st2_dir_updt_fetch_o = 1'b1;
 
@@ -953,7 +993,7 @@ module hpdcache_ctrl_pe
                     st0_req_is_amo_i          )
                 begin
                     st0_req_mshr_check_o    = 1'b1;
-                    st0_req_cachedir_read_o = ~st0_req_is_amo_i;
+                    st0_req_cachedir_read_o = 1'b1;
                 end
             end
             //      }}}
