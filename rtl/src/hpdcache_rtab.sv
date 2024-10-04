@@ -48,8 +48,9 @@ import hpdcache_pkg::*;
     input  logic                  rst_ni,
 
     //  Global control signals
-    output logic                  empty_o,          // RTAB is empty
-    output logic                  full_o,           // RTAB is full
+    output logic                  empty_o,  // RTAB is empty
+    output logic                  full_o,   // RTAB is full
+    output logic                  fence_o,  // There is a pending instruction with fence in the RTAB
 
     //  Check RTAB signals
     //     This interface allows to check if there is an address-overlapping
@@ -250,7 +251,9 @@ import hpdcache_pkg::*;
     logic               [N-1:0]  nodeps;
     hpdcache_nline_t    [N-1:0]  nline;
     hpdcache_req_addr_t [N-1:0]  addr;
-    logic               [N-1:0]  is_read;
+    logic               [N-1:0]  is_read_bv;
+    logic               [N-1:0]  is_amo_bv;
+    logic               [N-1:0]  fence_bv;
     logic               [N-1:0]  check_hit;
     logic               [N-1:0]  match_check_nline;
     logic               [N-1:0]  match_check_tail;
@@ -299,23 +302,24 @@ import hpdcache_pkg::*;
     //  full and empty signals
     assign empty_o = &(~valid_q);
     assign  full_o = &( valid_q) | (|valid_q & cfg_single_entry_i);
+    assign fence_o = |fence_bv;
 //  }}}
 
 //  Check interface
 //  {{{
-    generate
-        for (gen_i = 0; gen_i < N; gen_i++) begin : gen_check
-            assign addr[gen_i] = {req_q[gen_i].req.addr_tag, req_q[gen_i].req.addr_offset};
-            assign nline[gen_i] = addr[gen_i][HPDcacheCfg.clOffsetWidth +: HPDcacheCfg.nlineWidth];
-            assign match_check_nline[gen_i] = (check_nline_i == nline[gen_i]);
-            assign is_read[gen_i] = is_load(req_q[gen_i].req.op) |
-                                    is_cmo_prefetch(req_q[gen_i].req.op);
-        end
-    endgenerate
+    for (gen_i = 0; gen_i < N; gen_i++) begin : gen_check
+        assign addr[gen_i] = {req_q[gen_i].req.addr_tag, req_q[gen_i].req.addr_offset};
+        assign nline[gen_i] = addr[gen_i][HPDcacheCfg.clOffsetWidth +: HPDcacheCfg.nlineWidth];
+        assign match_check_nline[gen_i] = (check_nline_i == nline[gen_i]);
+        assign is_read_bv[gen_i] = is_load(req_q[gen_i].req.op) |
+                                   is_cmo_prefetch(req_q[gen_i].req.op);
+        assign is_amo_bv[gen_i] = is_amo(req_q[gen_i].req.op);
+    end
 
-    assign check_hit        =  valid_q   & match_check_nline;
+    assign fence_bv         = valid_q & is_amo_bv;
+    assign check_hit        = valid_q & match_check_nline;
     assign check_hit_o      = |check_hit;
-    assign match_check_tail =  check_hit & tail_q;
+    assign match_check_tail = check_hit & tail_q;
 //  }}}
 
 //  Allocation process
@@ -428,7 +432,7 @@ import hpdcache_pkg::*;
         .DATA_WIDTH     (1),
         .ONE_HOT_SEL    (1'b1)
     ) wbuf_pending_is_read_mux_i (
-        .data_i         (is_read),
+        .data_i         (is_read_bv),
         .sel_i          (wbuf_sel),
         .data_o         (wbuf_is_read_o)
     );

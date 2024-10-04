@@ -119,6 +119,7 @@ module hpdcache_ctrl_pe
     //   Replay
     //   {{{
     input  logic                   rtab_full_i,
+    input  logic                   rtab_fence_i,
     output logic                   rtab_check_o,
     input  logic                   rtab_check_hit_i,
     output logic                   st1_rtab_alloc_o,
@@ -912,11 +913,12 @@ module hpdcache_ctrl_pe
                                & ~rtab_full_i
                                & ~cmo_busy_i
                                & ~uc_busy_i
+                               & ~rtab_fence_i
                                & ~nop;
 
             rtab_req_ready_o = rtab_req_valid_i
                                & ~refill_req_valid_i
-                               & (~cmo_busy_i        | cmo_wait_i)
+                               & (~cmo_busy_i | cmo_wait_i)
                                & ~nop;
 
             refill_req_ready_o = refill_req_valid_i

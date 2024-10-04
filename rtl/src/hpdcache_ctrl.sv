@@ -375,6 +375,7 @@ import hpdcache_pkg::*;
     hpdcache_way_t           refill_way_index;
 
     logic                    rtab_full;
+    logic                    rtab_fence;
 
     logic                    hpdcache_init_ready;
     //  }}}
@@ -585,6 +586,7 @@ import hpdcache_pkg::*;
         .st2_flush_alloc_o                  (st2_flush_alloc_d),
 
         .rtab_full_i                        (rtab_full),
+        .rtab_fence_i                       (rtab_fence),
         .rtab_check_o                       (st1_rtab_check),
         .rtab_check_hit_i                   (st1_rtab_check_hit),
         .st1_rtab_alloc_o                   (st1_rtab_alloc),
@@ -684,6 +686,7 @@ import hpdcache_pkg::*;
 
         .empty_o                            (rtab_empty_o),
         .full_o                             (rtab_full),
+        .fence_o                            (rtab_fence),
 
         .check_i                            (st1_rtab_check),
         .check_nline_i                      (st1_req_nline),
