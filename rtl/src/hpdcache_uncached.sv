@@ -66,6 +66,7 @@ import hpdcache_pkg::*;
     input  logic                  mshr_empty_i,
     input  logic                  rtab_empty_i,
     input  logic                  ctrl_empty_i,
+    input  logic                  flush_empty_i,
     //  }}}
 
     //  Cache-side request interface
@@ -408,7 +409,12 @@ import hpdcache_pkg::*;
             //  Wait for the write buffer to be empty
             //  {{{
             UC_WAIT_PENDING: begin
-                if (wbuf_empty_i && mshr_empty_i && rtab_empty_i && ctrl_empty_i) begin
+                if (wbuf_empty_i &&
+                    mshr_empty_i &&
+                    rtab_empty_i &&
+                    ctrl_empty_i &&
+                    flush_empty_i)
+                begin
                     uc_fsm_d = UC_MEM_REQ;
                 end else begin
                     uc_fsm_d = UC_WAIT_PENDING;
