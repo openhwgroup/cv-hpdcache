@@ -465,15 +465,15 @@ module hpdcache_ctrl_pe
                                 //  When the hit cacheline is dirty, flush its data to the memory
                                 st2_flush_alloc_o = st1_dir_hit_dirty_i;
 
-                                //  Update the directory: an AMO request invalidates the local copy
-                                //  of the cacheline.
-                                //  FIXME This invalidation could be skipped or at least
-                                //  configurable. Another option is to keep the local copy. Even
-                                //  when keeping the cacheline, it does not become dirty because the
-                                //  AMO is first done in the upper levels of the memory hierarchy.
+                                //  Update the directory: an AMO request clears the dirty bit
+                                //  because it triggers a flush of the cacheline before actually
+                                //  executing the AMO.
+                                //  An AMO does not set the dirty bit because it is always forwarded
+                                //  to the memory. Then the local copy is updated with respect
+                                //  to the old data from the memory.
                                 st2_dir_updt_o = 1'b1;
-                                st2_dir_updt_valid_o = 1'b0;
-                                st2_dir_updt_wback_o = 1'b0;
+                                st2_dir_updt_valid_o = 1'b1;
+                                st2_dir_updt_wback_o = st1_dir_hit_wback_i;
                                 st2_dir_updt_dirty_o = 1'b0;
 
                                 //  If the cacheline has been pre-allocated for a pending miss, keep
