@@ -467,10 +467,10 @@ module hpdcache_ctrl_pe
 
                                 //  Update the directory: an AMO request invalidates the local copy
                                 //  of the cacheline.
-                                //  FIXME : this invalidation could be skipped or at least
-                                //  configurable. Another option is to keep the local copy, and
-                                //  make sure that the FSM, processing the AMO, sets the dirty bit
-                                //  after writing locally the data.
+                                //  FIXME This invalidation could be skipped or at least
+                                //  configurable. Another option is to keep the local copy. Even
+                                //  when keeping the cacheline, it does not become dirty because the
+                                //  AMO is first done in the upper levels of the memory hierarchy.
                                 st2_dir_updt_o = 1'b1;
                                 st2_dir_updt_valid_o = 1'b0;
                                 st2_dir_updt_wback_o = 1'b0;
@@ -582,9 +582,7 @@ module hpdcache_ctrl_pe
                                 st2_dir_updt_o = 1'b1;
                                 st2_dir_updt_valid_o = st1_dir_victim_valid_i;
                                 st2_dir_updt_wback_o = st1_dir_victim_wback_i;
-                                // FIXME should dirty be set to 0 ??? The cacheline is set to be
-                                //       flushed
-                                st2_dir_updt_dirty_o = st1_dir_victim_dirty_i;
+                                st2_dir_updt_dirty_o = 1'b0;
                                 st2_dir_updt_fetch_o = 1'b1;
                             end
                         end
@@ -755,10 +753,7 @@ module hpdcache_ctrl_pe
                                     st2_dir_updt_o = 1'b1;
                                     st2_dir_updt_valid_o = st1_dir_victim_valid_i;
                                     st2_dir_updt_wback_o = st1_dir_victim_wback_i;
-
-                                    // FIXME should dirty be set to 0 ??? The cacheline is set to be
-                                    //       flushed
-                                    st2_dir_updt_dirty_o = st1_dir_victim_dirty_i;
+                                    st2_dir_updt_dirty_o = 1'b0;
                                     st2_dir_updt_fetch_o = 1'b1;
 
                                     //  Send a miss request to the memory (write-allocate)
