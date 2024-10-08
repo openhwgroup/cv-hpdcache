@@ -11,19 +11,23 @@ The HPDcache is an open-source High-Performance, Multi-requester, Out-of-Order L
     <th style="text-align:left">Description</th>
   </tr>
   <tr>
-    <td><i>rtl</i></td>
+    <td>rtl</td>
     <td>Contains the file lists to be used for the compiling of the HPDcache</td>
   </tr>
   <tr>
-    <td><i>rtl/src<i></td>
+    <td>rtl/src</td>
     <td>Contains the SystemVerilog RTL sources of the HPDcache</td>
   </tr>
   <tr>
-    <td><i>rtl/src/target</i></td>
-    <td>Contains processor-dependent sources (e.g. adapter modules for the CVA6 core)</td>
+    <td>rtl/lint</td>
+    <td>Contains a linter wrapper and a Mafile to run a lint tool on the RTL</td>
   </tr>
   <tr>
-    <td><i>docs</i></td>
+    <td>rtl/tb</td>
+    <td>Contains a HPDcache standalone testbench for validation of the RTL</td>
+  </tr>
+  <tr>
+    <td>docs</td>
     <td>Contains documentation of the HPDcache</td>
   </tr>
 </table>
@@ -64,6 +68,13 @@ You may look into the docs/lint subdirectory of this repository to see an integr
 
 This example uses the macros defined in the [hpdcache_typedef.svh](rtl/include/hpdcache_typedef.svh) file.
 These macros ease the definition of types required by the interface of the HPDcache module.
+
+## HPDcache Validation and Verification
+
+For a complete UVM testbench of the HPDcache, please see the [HPDcache Verif](https://github.com/openhwgroup/cv-hpdcache-verif) repository.
+
+There is another simpler testbench (hence not as complete as the one above) into the `rtl/tb` subdirectory of this repository .
+This testbench is compatible with the [Verilator](https://www.veripool.org/verilator/) simulation tool.
 
 
 ## HPDcache Publications & Tutorials
