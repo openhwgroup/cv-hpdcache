@@ -525,8 +525,8 @@ module hpdcache_ctrl_pe
                                 st1_rtab_dir_unavailable_o = 1'b1;
                             end
 
-                            //  Hit on an open entry of the write buffer:
-                            //    wait for the entry to be acknowledged
+                            //  Hit on an open entry of the write buffer: wait for the entry to be
+                            //  acknowledged
                             else if (wbuf_read_hit_i) begin
                                 //  Put the request in the replay table
                                 st1_rtab_alloc = 1'b1;
@@ -728,6 +728,14 @@ module hpdcache_ctrl_pe
                                     //  Put the request in the replay table
                                     st1_rtab_alloc = 1'b1;
                                     st1_rtab_mshr_full_o = 1'b1;
+                                end
+
+                                //  Hit on an entry of the write buffer: wait for the entry to be
+                                //  acknowledged
+                                else if (wbuf_read_hit_i) begin
+                                    //  Put the request in the replay table
+                                    st1_rtab_alloc = 1'b1;
+                                    st1_rtab_wbuf_hit_o = 1'b1;
                                 end
 
                                 //  no available victim cacheline (all currently pre-allocated and
