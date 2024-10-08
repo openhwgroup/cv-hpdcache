@@ -46,6 +46,7 @@
 #include "sequence_lib/hpdcache_test_random_seq.h"
 #include "sequence_lib/hpdcache_test_read_seq.h"
 #include "sequence_lib/hpdcache_test_write_seq.h"
+#include "sequence_lib/hpdcache_test_single_addr_seq.h"
 
 class hpdcache_test
 {
@@ -300,6 +301,8 @@ public:
             seq = std::make_shared<hpdcache_test_read_seq>("read");
         } else if (seq_name == "write") {
             seq = std::make_shared<hpdcache_test_write_seq>("write");
+        } else if (seq_name == "single_addr") {
+            seq = std::make_shared<hpdcache_test_single_addr_seq>("single_addr");
         } else {
             std::cout << "error: sequence " << seq_name << " not found" << std::endl;
             exit(EXIT_FAILURE);
