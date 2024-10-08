@@ -6,11 +6,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+The major modification in this release is the support of the write-back (WB) policy (in
+addition to the write-through (WT) policy). The cache can either implement one of these
+policies or both in a per-cacheline basis.
+
 ### Added
+
+- Support of the WB policy.
+- Configuration parameters to choose between WT or WB, or both, at synthesis time.
+- Validation testbench compatible to Verilator.
+- Add a write-policy hint field in the request to select between WT and WB, dinamically.
 
 ### Removed
 
 ### Changed
+
+- Arbitration between cacheable and uncacheable memory requests is done inside the
+  HPDcache. The memory interface implements 5 channels, instead of 10.
+- The CMO type is into the operation field of the request (instead of the size field).
+- Select the victim cacheline at cache miss time (before was done on refill time). The
+  slot is pre-allocated and written by the miss handler when the refill response arrives.
 
 ### Fixed
 
