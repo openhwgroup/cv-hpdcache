@@ -220,8 +220,7 @@ module hpdcache_ctrl_pe
     assign st1_fence = st1_req_is_uncacheable_i |
                        st1_req_is_cmo_fence_i   |
                        st1_req_is_cmo_inval_i   |
-                       st1_req_is_cmo_flush_i   |
-                       st1_req_is_amo_i;
+                       st1_req_is_cmo_flush_i;
 
     //      Trigger an event signal when a new request cannot consumed
     assign evt_stall_o = core_req_valid_i & ~core_req_ready_o;

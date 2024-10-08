@@ -242,6 +242,7 @@ import hpdcache_pkg::*;
     hpdcache_req_sid_t  req_sid_q;
     hpdcache_req_tid_t  req_tid_q;
     logic               req_need_rsp_q;
+    logic               no_pend_trans;
 
     logic               uc_sc_retcode_q, uc_sc_retcode_d;
 
@@ -306,6 +307,12 @@ import hpdcache_pkg::*;
                                                   (lrsc_rsrv_word  == lrsc_uc_word);
 //  }}}
 
+    assign no_pend_trans = wbuf_empty_i &&
+                           mshr_empty_i &&
+                           rtab_empty_i &&
+                           ctrl_empty_i &&
+                           flush_empty_i;
+
 //  Uncacheable request FSM
 //  {{{
     always_comb
@@ -333,9 +340,7 @@ import hpdcache_pkg::*;
                     unique case (1'b1)
                         req_op_i.is_ld,
                         req_op_i.is_st: begin
-                            if (wbuf_empty_i && mshr_empty_i && rtab_empty_i &&
-                                ctrl_empty_i)
-                            begin
+                            if (no_pend_trans) begin
                                 uc_fsm_d = UC_MEM_REQ;
                             end else begin
                                 uc_fsm_d = UC_WAIT_PENDING;
@@ -359,9 +364,7 @@ import hpdcache_pkg::*;
                                 rsp_error_set = 1'b1;
                                 uc_fsm_d = UC_CORE_RSP;
                             end else begin
-                                if (wbuf_empty_i && mshr_empty_i && rtab_empty_i &&
-                                    ctrl_empty_i)
-                                begin
+                                if (no_pend_trans) begin
                                     uc_fsm_d = UC_MEM_REQ;
                                 end else begin
                                     uc_fsm_d = UC_WAIT_PENDING;
@@ -379,9 +382,7 @@ import hpdcache_pkg::*;
 
                                 //  SC with valid reservation
                                 if (lrsc_uc_hit) begin
-                                    if (wbuf_empty_i && mshr_empty_i && rtab_empty_i &&
-                                        ctrl_empty_i)
-                                    begin
+                                    if (no_pend_trans) begin
                                         uc_fsm_d = UC_MEM_REQ;
                                     end else begin
                                         uc_fsm_d = UC_WAIT_PENDING;
@@ -406,15 +407,10 @@ import hpdcache_pkg::*;
             end
             //  }}}
 
-            //  Wait for the write buffer to be empty
+            //  Wait for all pending transactions to be completed
             //  {{{
             UC_WAIT_PENDING: begin
-                if (wbuf_empty_i &&
-                    mshr_empty_i &&
-                    rtab_empty_i &&
-                    ctrl_empty_i &&
-                    flush_empty_i)
-                begin
+                if (no_pend_trans) begin
                     uc_fsm_d = UC_MEM_REQ;
                 end else begin
                     uc_fsm_d = UC_WAIT_PENDING;
