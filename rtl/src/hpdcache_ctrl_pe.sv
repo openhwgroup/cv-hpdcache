@@ -590,13 +590,21 @@ module hpdcache_ctrl_pe
                         //  Cache hit
                         //  {{{
                         else begin
-                            //  Flush needed (hint is WT but the cacheline is WB and dirty) but the
-                            //  controller is not ready
-                            if ( st1_req_wr_wt_i && st1_dir_hit_wback_i && st1_dir_hit_dirty_i &&
-                                !st1_flush_alloc_ready_i)
+                            //  Flush needed but the controller is not ready
+                            if (st1_req_wr_wt_i && st1_dir_hit_wback_i &&
+                                st1_dir_hit_dirty_i && !st1_flush_alloc_ready_i)
                             begin
                                 st1_rtab_alloc = 1'b1;
                                 st1_rtab_flush_not_ready_o = 1'b1;
+                                st1_nop = 1'b1;
+                            end
+
+                            //  Flush needed but there is a hit in the write buffer
+                            else if (st1_req_wr_wt_i && st1_dir_hit_wback_i &&
+                                     st1_dir_hit_dirty_i && wbuf_read_hit_i)
+                            begin
+                                st1_rtab_alloc = 1'b1;
+                                st1_rtab_wbuf_hit_o = 1'b1;
                                 st1_nop = 1'b1;
                             end
 
