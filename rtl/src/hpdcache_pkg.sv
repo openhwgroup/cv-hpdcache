@@ -421,8 +421,6 @@ package hpdcache_pkg;
         int unsigned wbufWords;
         //  Write-Buffer threshold counter width (in bits)
         int unsigned wbufTimecntWidth;
-        //  Use feedthrough FIFOs from the write-buffer to the NoC
-        bit wbufSendFeedThrough;
         //  Number of entries in the replay table
         int unsigned rtabEntries;
         //  Number of entries in the flush directory

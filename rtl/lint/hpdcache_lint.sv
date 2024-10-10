@@ -57,7 +57,6 @@ module hpdcache_lint
       wbufDataEntries: 8,
       wbufWords: 4,
       wbufTimecntWidth: 3,
-      wbufSendFeedThrough: 1'b0,
       rtabEntries: 4,
       flushEntries: 4,
       flushFifoDepth: 2,

@@ -614,7 +614,7 @@ import hpdcache_pkg::*;
 
     hpdcache_fifo_reg #(
         .FIFO_DEPTH          (WBUF_SEND_FIFO_DEPTH),
-        .FEEDTHROUGH         (HPDcacheCfg.u.wbufSendFeedThrough),
+        .FEEDTHROUGH         (1'b0),
         .fifo_data_t         (wbuf_send_data_t)
     ) send_data_ptr_fifo_i (
         .clk_i,
@@ -636,7 +636,7 @@ import hpdcache_pkg::*;
 
     hpdcache_fifo_reg #(
         .FIFO_DEPTH          (WBUF_SEND_FIFO_DEPTH),
-        .FEEDTHROUGH         (HPDcacheCfg.u.wbufSendFeedThrough),
+        .FEEDTHROUGH         (1'b0),
         .fifo_data_t         (wbuf_send_meta_t)
     ) send_meta_fifo_i (
         .clk_i,
@@ -710,8 +710,6 @@ import hpdcache_pkg::*;
 `ifndef HPDCACHE_ASSERT_OFF
     initial assert(WBUF_DATA_NWORDS inside {1, 2, 4, 8, 16}) else
             $fatal("WBUF: width of data buffers must be a power of 2");
-    initial assert(HPDcacheCfg.u.wbufSendFeedThrough == 1'b0) else
-            $fatal("WBUF: wbufSendFeedThrough=1 is currently not supported");
     initial assert(WBUF_MEM_DATA_RATIO > 0) else
             $fatal($sformatf("WBUF: width of mem interface (%d) shall be g.e. to wbuf width(%d)",
                              HPDcacheCfg.u.memDataWidth, HPDcacheCfg.wbufDataWidth));

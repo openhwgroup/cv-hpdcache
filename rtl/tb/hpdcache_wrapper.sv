@@ -56,7 +56,6 @@ import hpdcache_pkg::*;
         wbufDataEntries: `CONF_HPDCACHE_WBUF_DATA_ENTRIES,
         wbufWords: `CONF_HPDCACHE_WBUF_WORDS,
         wbufTimecntWidth: `CONF_HPDCACHE_WBUF_TIMECNT_WIDTH,
-        wbufSendFeedThrough: `CONF_HPDCACHE_WBUF_SEND_FEEDTHROUGH,
         rtabEntries: `CONF_HPDCACHE_RTAB_ENTRIES,
         flushEntries: `CONF_HPDCACHE_FLUSH_ENTRIES,
         flushFifoDepth: `CONF_HPDCACHE_FLUSH_FIFO_DEPTH,
