@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+### Removed
+
+### Changed
+
+### Fixed
+
+## [5.0.0] 2024-10-10
+
 The major modification in this release is the support of the write-back (WB) policy (in
 addition to the write-through (WT) policy). The cache can either implement one of these
 policies or both in a per-cacheline basis.
@@ -18,6 +28,8 @@ policies or both in a per-cacheline basis.
 - Add a write-policy hint field in the request to select between WT and WB, dinamically.
 
 ### Removed
+
+- WbufSendFeedThrough parameter removed
 
 ### Changed
 
