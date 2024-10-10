@@ -44,16 +44,14 @@ that can be set when integrating the HPDcache.
      - Number of requesters to the HPDcache
    * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_PA\_WIDTH}`
      - Physical address width (in bits)
+   * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_WORD\_WIDTH}`
+     - Width (in bits) of a data word
    * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_SETS}`
      - Number of sets
    * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_WAYS}`
      - Number of ways (associativity)
-   * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_WORD\_WIDTH}`
-     - Width (in bits) of a data word
    * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_CL\_WORDS}`
      - Number of words in a cacheline
-   * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_REQ\_WORDS}`
-     - Number of words in the data channels from/to requesters
    * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_REQ\_WORDS}`
      - Number of words in the data channels from/to requesters
    * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_REQ\_TRANS\_ID\_WIDTH}`
@@ -76,10 +74,22 @@ that can be set when integrating the HPDcache.
      - Width (in bits) of the time counter in write buffer entries
    * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_RTAB\_ENTRIES}`
      - Number of entries in the replay table
+   * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_FLUSH\_ENTRIES}`
+     - Number of entries in the flush directory
+   * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_FLUSH\_FIFO\_DEPTH}`
+     - Number of entries in the flush FIFO
+   * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_REFILL\_FIFO\_DEPTH}`
+     - Number of entries in the refill FIFO
+   * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_REFILL\_CORE\_RSP\_FEEDTHROUGH}`
+     - Use feedthrough FIFO for responses from the refill handler to the core
    * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_MEM\_DATA\_WIDTH}`
      - Width (in bits) of the data channels from/to the memory interface
    * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_MEM\_ID\_WIDTH}`
      - Width (in bits) of the transaction ID from the memory interface
+   * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_WT\_ENABLE}`
+     - Enable the write-through policy in the cache
+   * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_WB\_ENABLE}`
+     - Enable the write-back policy in the cache
    * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_SUPPORT\_AMO}`
      - When set to 1, the HPDCache supports Atomic Memory Operations (AMOs)
    * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_SUPPORT\_CMO}`
@@ -112,14 +122,16 @@ latency (see section :ref:`sec_cache_ram_organization`).
      - Number of ways in the same CACHE data SRAM word
    * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_DATA\_SETS\_PER\_RAM}`
      - Number of sets per RAM macro in the DATA array of the cache
-   * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_DATA\_RAM\_WBYTEENABLE}`
+   * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_DATA\_RAM\_BYTE\_ENABLE}`
      - Use RAM macros with byte-enable instead of bit-mask for the CACHE data
        array
+   * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_MSHR\_USE\_REG\_BANK}`
+     - Use FFs instead of SRAM for the MSHR
    * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_MSHR\_WAYS\_PER\_RAM\_WORD}`
      - Number of ways in the same MSHR SRAM word
    * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_MSHR\_SETS\_PER\_RAM}`
      - Number of sets per RAM macro in the MSHR array of the cache
-   * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_MSHR\_RAM\_WBYTEENABLE}`
+   * - :math:`\scriptsize\mathsf{CONF\_HPDCACHE\_MSHR\_RAM\_BYTE\_ENABLE}`
      - Use RAM macros with byte-enable instead of bit-mask for the MSHR
 
 Several internal configuration values are computed from the above ones.
@@ -293,6 +305,12 @@ CRI Signal Description
        (set) or not (unset). IO accesses are directly forwarded to the memory.
        It is only valid when using physical indexing
        (``core_req_i.phys_indexed = 1``)
+   * - ``core_req_i.pma.wr_policy_hint``
+     - Requester
+     - Indicates whether the target cacheline shall be managed as write-back
+       (write allocate) or write-through (write non-allocate).
+       It is only valid when using physical indexing
+       (``core_req_i.phys_indexed = 1``)
    * - ``core_req_tag_i``
      - Requester
      - Most significant bits of the target address of the request. This signal
@@ -314,6 +332,12 @@ CRI Signal Description
        or not (unset). IO accesses are directly forwarded to the memory. This
        signal must be delayed of 1 cycle after
        ``(core_req_valid_i & core_req_ready_o) = 1``.
+       It is only valid when using virtual indexing
+       (``core_req_i.phys_indexed = 0``)
+   * - ``core_req_pma_i.wr_policy_hint``
+     - Requester
+     - Indicates whether the target cacheline shall be managed as write-back
+       (write allocate) or write-through (write non-allocate).
        It is only valid when using virtual indexing
        (``core_req_i.phys_indexed = 0``)
 
@@ -779,7 +803,7 @@ HPDcache respond to the corresponding requester with the bit
 CRI Type of Operation
 ~~~~~~~~~~~~~~~~~~~~~
 
-A requester indicates the required operation on the 4-bit, ``HPDCACHE_REQ_OP``
+A requester indicates the required operation on the 5-bit, ``HPDCACHE_REQ_OP``
 signal. The supported operation are detailed in :numref:`tab_req_op_types`.
 
 .. _tab_req_op_types:
@@ -792,47 +816,68 @@ signal. The supported operation are detailed in :numref:`tab_req_op_types`.
      - Encoding
      - Type
    * - ``HPDCACHE_REQ_LOAD``
-     - 0b0000
+     - 0b00000
      - Read operation
    * - ``HPDCACHE_REQ_STORE``
-     - 0b0001
+     - 0b00001
      - Write operation
    * - ``HPDCACHE_REQ_AMO_LR``
-     - 0b0100
+     - 0b00100
      - Atomic Load-reserved operation
    * - ``HPDCACHE_REQ_AMO_SC``
-     - 0b0101
+     - 0b00101
      - Atomic Store-conditional operation
    * - ``HPDCACHE_REQ_AMO_SWAP``
-     - 0b0110
+     - 0b00110
      - Atomic SWAP operation
    * - ``HPDCACHE_REQ_AMO_ADD``
-     - 0b0111
+     - 0b00111
      - Atomic integer ADD operation
    * - ``HPDCACHE_REQ_AMO_AND``
-     - 0b1000
+     - 0b01000
      - Atomic bitwise AND operation
    * - ``HPDCACHE_REQ_AMO_OR``
-     - 0b1001
+     - 0b01001
      - Atomic bitwise OR operation
    * - ``HPDCACHE_REQ_AMO_XOR``
-     - 0b1010
+     - 0b01010
      - Atomic bitwise XOR operation
    * - ``HPDCACHE_REQ_AMO_MAX``
-     - 0b1011
+     - 0b01011
      - Atomic integer signed MAX operation
    * - ``HPDCACHE_REQ_AMO_MAXU``
-     - 0b1100
+     - 0b01100
      - Atomic integer unsigned MAX operation
    * - ``HPDCACHE_REQ_AMO_MIN``
-     - 0b1101
+     - 0b01101
      - Atomic integer signed MIN operation
    * - ``HPDCACHE_REQ_AMO_MINU``
-     - 0b1110
+     - 0b01110
      - Atomic integer unsigned MIN operation
-   * - ``HPDCACHE_REQ_CMO``
-     - 0b1111
-     - Cache Management Operation (CMO)
+   * - ``HPDCACHE_CMO_FENCE``
+     - 0b10000
+     - Memory write fence
+   * - ``HPDCACHE_CMO_PREFETCH``
+     - 0b10001
+     - Prefetch a cacheline given its address
+   * - ``HPDCACHE_CMO_INVAL_NLINE``
+     - 0b10010
+     - Invalidate a cacheline given its address
+   * - ``HPDCACHE_CMO_INVAL_ALL``
+     - 0b10011
+     - Invalidate all Cachelines
+   * - ``HPDCACHE_CMO_FLUSH_NLINE``
+     - 0b10100
+     - Flush a cacheline given its Address
+   * - ``HPDCACHE_CMO_FLUSH_ALL``
+     - 0b10101
+     - Flush All Cachelines
+   * - ``HPDCACHE_CMO_FLUSH_INVAL_NLINE``
+     - 0b10110
+     - Flush and invalidate a cacheline given its address
+   * - ``HPDCACHE_CMO_FLUSH_INVAL_ALL``
+     - 0b10111
+     - Flush and invalidate all cachelines
 
 Load and store operations are normal read and write operations from/to the
 specified address.
@@ -922,6 +967,43 @@ signal is set to 1.
 When ``core_req_i.need_rsp`` is set to 0, the HPDcache processes the request
 but it does not send an acknowledgement to the corresponding requester when the
 transaction is completed.
+
+Write-Policy Hint
+~~~~~~~~~~~~~~~~~
+
+The CRI may set dynamically the write-policy (write-back or write-through) for
+the target cacheline. In the request interface, there are specific flags (hint)
+to indicate the desired policy for a given request.
+
+The request interface drives the hint through the
+``core_req_i.pma.wr_policy_hint`` or ``core_req_pma_i.wr_policy_hint`` signals.
+The ``core_req_i.pma.wr_policy_hint`` signal shall be decoded when the
+``core_req_valid_i`` signal is set to 1. The ``core_req_pma_i.wr_policy_hint``
+shall be decoded when the ``core_req_valid_i``, ``core_req_ready_o`` and the
+``core_req_i.phys_indexed`` signals were set to 1 the previous cycle.
+
+The supported hints are detailed in :numref:`tab_req_wr_policy_hints`.
+
+.. _tab_req_wr_policy_hints:
+
+.. list-table:: Requesters Write-Policy Hint
+   :widths: 30 15 55
+   :header-rows: 1
+
+   * - Mnemonic
+     - Encoding
+     - Type
+   * - ``HPDCACHE_WR_POLICY_AUTO``
+     - 0b001
+     - Request to to keep the current write-policy for the target cacheline if
+       there is a copy in the cache, or use the default policy otherwise.
+   * - ``HPDCACHE_WR_POLICY_WB``
+     - 0b010
+     - Request a write-back (write allocate) policy for the target cacheline
+   * - ``HPDCACHE_WR_POLICY_WT``
+     - 0b100
+     - Request a write-through (write non-allocate) policy for the target
+       cacheline
 
 Error response
 ~~~~~~~~~~~~~~

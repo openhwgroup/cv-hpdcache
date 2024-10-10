@@ -56,7 +56,8 @@ List of features
 - Fixed priority arbiter between requesters: the requester port with the lowest
   index has the highest priority.
 
-- Non-allocate, write-through policy.
+- Non-allocate, write-through policy or allocate, write-back policy. Either one
+  or both are supported simultaneously at cacheline granularity.
 
 - Hardware write-buffer to mask the latency of write acknowledgements from
   the memory system.

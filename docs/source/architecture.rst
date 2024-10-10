@@ -213,6 +213,35 @@ operation may be preceded by an infinite number of memory operations**. That
 is, all memory operations need to be processed at some point in time. They
 cannot wait indefinitely.
 
+Hybrid Write-Policy
+'''''''''''''''''''
+
+The HPDcache can handle writes in both write-back and write-through policies.
+The HPDcache handles the write policy at cacheline granularity. This means that
+at any given time, the HPDcache has two logical subsets of cachelines: one
+subset containing cachelines in write-back policy, and another subset
+containing cachelines in write-through policy. Any of these two subsets may be
+empty, meaning that all cachelines may be either write-back or write-through.
+
+If only one write-policy is required, the system designer can:
+
+  - Disable the write-back policy setting to 0 the ``CONF_HPDCACHE_WB_ENABLE``
+    parameter.
+
+  - Disable the write-through policy setting to 0 the ``CONF_HPDCACHE_WT_ENABLE``
+    parameter.
+
+When both write-policies are enabled, the request interface may set dynamically
+the write-policy (write-back or write-through) for the target cacheline. In the
+request interface, there are specific flags (hints) to indicate the desired
+policy for a given request.
+
+The HPDcache keeps the policy for subsequent accesses until a request/response
+force it to a specific policy. It accepts policy changes for any cacheline.
+This is, a request/response may ask for write-back policy (respectively
+write-through) for a given cacheline, and another request/response may ask for
+write-through policy (respectively write-back) for that same cacheline later.
+
 
 Cache Directory and Data
 ------------------------
