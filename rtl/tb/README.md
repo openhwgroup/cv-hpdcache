@@ -16,20 +16,20 @@ by the testbench scoreboard.
 
 This testbench requires the following tools and libraries pre-installed:
 
-- Verilator - version 5.018 or newer
-- SystemC library - version 2.3.4 or newer
-- SystemC Verification library (SCV) - version 2.0.1 or newer
-- Perl - version 5
+- [Verilator](https://verilator.org/guide/latest/install.html) - Version 5.018 or newer
+- [SystemC Library](https://www.accellera.org/downloads/standards/systemc) - Version 2.3.4 or newer
+- [SystemC Verification Library (SCV)](https://www.accellera.org/downloads/standards/systemc) - Version 2.0.1 or newer
+- Perl - Version 5
 
 Please follow the corresponding installation instructions for those packages to
 install them in your system prior to the execution of this testbench.
 
-You need to set the following environment variables (bash: `export`, csh: `setenv`):
+You need to set the following environment variables (bash: `$ export`, csh: `$ setenv`):
 
 - Set the SYSTEMC_LIBDIR to the libdir directory of the SystemC library installation
-  (e.g. `export SYSTEMC_LIBDIR=<systemc-install-dir>/lib-linux64`)
+  (e.g. `$ export SYSTEMC_LIBDIR=<systemc-install-dir>/lib-linux64`)
 - Add the bin/ subdirectory of the Verilator installation into your PATH
-  (e.g. `export PATH=<verilator-install-dir>/bin:${PATH}`)
+  (e.g. `$ export PATH=<verilator-install-dir>/bin:${PATH}`)
 
 ## Usage
 
