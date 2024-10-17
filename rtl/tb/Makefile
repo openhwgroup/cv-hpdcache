@@ -24,22 +24,21 @@
 ##
 -include user_conf.mk
 
-ifndef HPDCACHE_DIR
-$(error "HPDCACHE_DIR not defined")
-endif
+TB_DIR              := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+HPDCACHE_DIR        ?= $(TB_DIR)/../..
+
 ifndef SYSTEMC_LIBDIR
 $(error "SYSTEMC_LIBDIR not defined")
 endif
 
 VERILATOR           ?= verilator
 VERILATOR_COV       ?= verilator_coverage
-TB_DIR              := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 TOUCH               := touch
 RM                  := rm -f
 MKDIR               := mkdir -p
 GDB                 := gdb
 ECHO                := echo
-SCANLOG             := @$(TB_DIR)/scripts/scan_logs.pl -listwarnings -listerrors
+SCANLOG             := $(TB_DIR)/scripts/scan_logs.pl -listwarnings -listerrors
 SHELL               := bash
 
 Q                   ?= @
@@ -66,6 +65,7 @@ DATE_TIME           ?= $(shell date "+%Y_%m_%d-%H%M")
 export CXX             := $(CXX)
 export LINK            := $(CXX)
 export CC              := $(CC)
+export PERL5LIB        := $(TB_DIR)/scripts/perl5
 
 CONF_DEFINES =
 
@@ -181,7 +181,7 @@ endef
 
 SVLOG_SOURCES=\
 $(subst $${HPDCACHE_DIR},$(HPDCACHE_DIR),\
-$(shell egrep --no-filename "*.sv$$" \
+$(shell sed -n -e '/.*\.sv/p' \
     $(HPDCACHE_DIR)/rtl/hpdcache.Flist hpdcache.vlt.Flist))
 
 export help_message
