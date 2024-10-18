@@ -223,6 +223,7 @@ import hpdcache_pkg::*;
 
     //   Configuration signals
     input  logic                  cfg_enable_i,
+    input  logic                  cfg_prefetch_updt_plru_i,
     input  logic                  cfg_rtab_single_entry_i,
     input  logic                  cfg_default_wb_i,
 
@@ -627,6 +628,7 @@ import hpdcache_pkg::*;
         .cmo_wait_i,
         .cmo_req_valid_o,
 
+        .cfg_prefetch_updt_plru_i,
         .cfg_default_wb_i,
 
         .evt_cache_write_miss_o,

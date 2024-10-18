@@ -605,6 +605,7 @@ import hpdcache_pkg::*;
         .ctrl_empty_o                       (ctrl_empty),
 
         .cfg_enable_i,
+        .cfg_prefetch_updt_plru_i,
         .cfg_rtab_single_entry_i,
         .cfg_default_wb_i                   (cfg_default_wb),
 

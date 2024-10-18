@@ -181,6 +181,7 @@ module hpdcache_ctrl_pe
 
     //   Configuration
     //   {{{
+    input  logic                   cfg_prefetch_updt_plru_i,
     input  logic                   cfg_default_wb_i,
     //   }}}
 
@@ -607,7 +608,9 @@ module hpdcache_ctrl_pe
                                 st1_nop = st1_req_rtab_i & ~rtab_req_valid_i;
 
                                 //  Update victim selection for the accessed set
-                                st1_req_cachedir_updt_sel_victim_o = st1_req_is_load_i;
+                                st1_req_cachedir_updt_sel_victim_o =
+                                    ~st1_req_is_cmo_prefetch_i |
+                                     cfg_prefetch_updt_plru_i;
 
                                 //  Respond to the core (if needed)
                                 st1_rsp_valid_o = st1_req_need_rsp_i;
