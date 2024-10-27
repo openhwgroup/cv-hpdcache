@@ -31,6 +31,12 @@ jobs:
     steps:
       - uses: actions/checkout@master
 
+      #  Install Dependencies
+      - name: Install Dependencies
+        run: |
+          ./.github/scripts/install_deps_ubuntu.sh
+
+      #  Install SystemC
       - name: Cache SystemC
         id: cache-systemc
         uses: actions/cache@v3
@@ -38,17 +44,18 @@ jobs:
           path: build/systemc-3.0.1
           key: ${{ runner.os }}-build-${{ hashFiles('.github/scripts/install_systemc.sh') }}
 
+      - name: Install SystemC
+        run: |
+          . .github/scripts/env.sh
+          ./.github/scripts/install_systemc.sh
+
+      #  Install Verilator
       - name: Cache Verilator
         id: cache-verilator
         uses: actions/cache@v3
         with:
           path: build/verilator-v5.028
           key: ${{ runner.os }}-build-${{ hashFiles('.github/scripts/install_verilator.sh') }}
-
-      - name: Install SystemC
-        run: |
-          . .github/scripts/env.sh
-          ./.github/scripts/install_systemc.sh
 
       - name: Install Verilator
         run: |

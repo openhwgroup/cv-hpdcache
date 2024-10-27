@@ -54,7 +54,10 @@ if [[ ${verilator_installed} == "no" ]]; then
     cd ${VERILATOR_ROOT} ;
     autoconf ;
     ./configure ;
+    [[ $? != 0 ]] && exit 1 ;
+
     make -j${num_jobs} ;
+    [[ $? != 0 ]] && exit 1 ;
 
     #  housekeeping
     rm -rf ${VERILATOR_ROOT}/src/obj_dbg ;

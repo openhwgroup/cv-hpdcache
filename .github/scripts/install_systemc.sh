@@ -58,8 +58,13 @@ if [[ ${systemc_installed} == "no" ]] ; then
     mkdir -p ${SYSTEMC_HOME}/objdir ;
     cd ${SYSTEMC_HOME}/objdir ;
     ../configure ;
+    [[ $? != 0 ]] && exit 1 ;
+
     make -j${num_jobs} ;
+    [[ $? != 0 ]] && exit 1 ;
+
     make install ;
+    [[ $? != 0 ]] && exit 1 ;
 
     #  housekeeping
     rm -rf ${SYSTEMC_HOME}/objdir ;
@@ -101,8 +106,13 @@ if [[ ${scv_installed} == "no" ]] ; then
     mkdir -p ${SCV_HOME}/objdir ;
     cd ${SCV_HOME}/objdir ;
     ../configure --with-systemc=${SYSTEMC_HOME} ;
+    [[ $? != 0 ]] && exit 1 ;
+
     make -j${num_jobs} ;
+    [[ $? != 0 ]] && exit 1 ;
+
     make install ;
+    [[ $? != 0 ]] && exit 1 ;
 
     #  housekeeping
     rm -rf ${SCV_HOME}/objdir ;
