@@ -31,7 +31,7 @@ if [[ "x${SYSTEMC_HOME}" == "x" ]] ; then
 fi
 
 systemc_installed="no"
-if [[ -d ${SYSTEMC_HOME} ]] ; then
+if [[ -e ${SYSTEMC_HOME}/lib-linux64/libsystemc.la ]] ; then
    echo "SystemC is already installed" ;
    systemc_installed="yes" ;
 fi
@@ -79,7 +79,7 @@ if [[ "x${SCV_HOME}" == "x" ]] ; then
 fi
 
 scv_installed="no"
-if [[ -d ${SCV_HOME} ]] ; then
+if [[ -e ${SYSTEMC_HOME}/lib-linux64/libscv.la ]] ; then
    echo "SystemC Verification library is already installed" ;
    scv_installed="yes" ;
 fi
