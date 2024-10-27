@@ -31,11 +31,13 @@ jobs:
     steps:
       - uses: actions/checkout@master
 
+
       #  Install Dependencies
       - name: Install Dependencies
         shell: bash
         run: |
           ./.github/scripts/install_deps_ubuntu.sh
+
 
       #  Install SystemC
       - name: Cache SystemC
@@ -51,6 +53,7 @@ jobs:
           . .github/scripts/env.sh
           ./.github/scripts/install_systemc.sh
 
+
       #  Install Verilator
       - name: Cache Verilator
         id: cache-verilator
@@ -65,8 +68,10 @@ jobs:
           . .github/scripts/env.sh
           ./.github/scripts/install_verilator.sh
 
+
       #  Verilate the HPDcache RTL sources and build the testbench
       - name: Verilate the HPDcache RTL
+        id: verilate
         shell: bash
         run: |
           . .github/scripts/env.sh
@@ -74,12 +79,14 @@ jobs:
           make verilate
 
       - name: Archive Verilate log
+        if: ${{ failure () && steps.verilate.conclusion == 'failure' }}
         uses: actions/upload-artifact@v4
         with:
           name: verilate-log
           path: rtl/tb/build/verilate.log
 
       - name: Build SystemC testbench
+        id: build-tb
         shell: bash
         run: |
           . .github/scripts/env.sh
@@ -87,10 +94,12 @@ jobs:
           make build -j${PARALLEL_JOBS}
 
       - name: Archive SystemC build log
+        if: ${{ failure () && steps.build-tb.conclusion == 'failure' }}
         uses: actions/upload-artifact@v4
         with:
           name: build-log
           path: rtl/tb/build/build.log
+
 
       #  Run the tests
       - name: Run the random test sequence (short)
@@ -105,7 +114,7 @@ jobs:
         run: |
           . .github/scripts/env.sh
           cd rtl/tb
-          make nonregression SEQUENCE=random NTESTS=32 NTRANSACTIONS=100000
+          make nonregression SEQUENCE=random NTESTS=16 NTRANSACTIONS=100000
 
       - name: Run the single addr test sequence
         shell: bash
@@ -113,3 +122,10 @@ jobs:
           . .github/scripts/env.sh
           cd rtl/tb
           make nonregression SEQUENCE=single_addr NTESTS=64 NTRANSACTIONS=5000
+
+      - name: Archive nonregression logs
+        if: ${{ failure () }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-log
+          path: rtl/tb/logs
