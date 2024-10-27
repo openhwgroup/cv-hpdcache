@@ -42,7 +42,7 @@ jobs:
       #  Install SystemC
       - name: Cache SystemC
         id: cache-systemc
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: build/systemc-3.0.1
           key: ${{ runner.os }}-build-systemc-${{ hashFiles('.github/scripts/install_systemc.sh') }}
@@ -57,7 +57,7 @@ jobs:
       #  Install Verilator
       - name: Cache Verilator
         id: cache-verilator
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: build/verilator-v5.028
           key: ${{ runner.os }}-build-verilator-${{ hashFiles('.github/scripts/install_verilator.sh') }}
