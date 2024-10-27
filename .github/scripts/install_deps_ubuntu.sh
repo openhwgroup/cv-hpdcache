@@ -22,11 +22,11 @@
 #  Date       : October, 2024
 #  Description: Install dependencies for the HPDcache's Github CI
 ##
-
-apt update ; 
+#  Update list of packages
+sudo apt-get update ;
 
 #  Install essential packages
-apt install -y build-essential python3 git wget file ;
+sudo apt-get install -y build-essential python3 git wget file ;
 
 #  Install Verilator dependencies
-apt install -y ccache mold numactl help2man make autoconf flex libfl-dev bison ;
+sudo apt-get install -y ccache mold numactl help2man make autoconf flex libfl-dev bison ;
