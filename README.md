@@ -1,5 +1,7 @@
 # OpenHW Core-V High-Performance L1 Dcache (CV-HPDcache)
 
+![HPDcache CI](https://github.com/openhwgroup/cv-hpdcache/actions/workflows/test.yml/badge.svg)
+
 The HPDcache is an open-source High-Performance, Multi-requester, Out-of-Order L1 Dcache for RISC-V cores and accelerators.
 
 
