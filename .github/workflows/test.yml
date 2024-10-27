@@ -71,11 +71,31 @@ jobs:
     steps:
       - uses: actions/checkout@master
 
+      - name: Verilate the HPDcache RTL
+        run: |
+          . .github/scripts/env.sh
+          cd rtl/tb
+          make verilate
+
+      - name: Archive Verilate log
+        uses: actions/upload-artifact@v4
+        with:
+          name: verilate-log
+          path: build/verilate.log
+          retention-days: 3
+
       - name: Build SystemC testbench
         run: |
           . .github/scripts/env.sh
           cd rtl/tb
           make build -j${PARALLEL_JOBS}
+
+      - name: Archive SystemC build log
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build/build.log
+          retention-days: 3
 
       - name: Run the random test sequence (short)
         run: |
