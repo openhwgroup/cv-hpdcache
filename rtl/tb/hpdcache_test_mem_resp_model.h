@@ -89,7 +89,9 @@ public:
 
 private:
 
+#if SC_VERSION_MAJOR < 3
     SC_HAS_PROCESS(hpdcache_test_mem_resp_model);
+#endif
 
 public:
 

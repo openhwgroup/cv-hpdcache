@@ -329,7 +329,9 @@ private:
     sc_fifo<inflight_entry_t>                  inflight_amo_req_m;
     bool                                       sc_is_atomic;
 
+#if SC_VERSION_MAJOR < 3
     SC_HAS_PROCESS(hpdcache_test_scoreboard);
+#endif
 
     void perf_events_process()
     {

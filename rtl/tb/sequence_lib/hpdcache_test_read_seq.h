@@ -35,7 +35,7 @@ class hpdcache_test_read_seq : public hpdcache_test_sequence
 {
 public:
 
-    hpdcache_test_read_seq(sc_core::sc_module_name nm) : hpdcache_test_sequence(nm, "read_req")
+    hpdcache_test_read_seq(sc_core::sc_module_name nm) : hpdcache_test_sequence(nm, "read_seq")
     {
         SC_THREAD(run);
         sensitive << clk_i.pos();
@@ -57,7 +57,9 @@ private:
     scv_smart_ptr<req_data_t> size;
     const unsigned int HPDCACHE_REQ_DATA_BYTES = HPDCACHE_REQ_DATA_WIDTH/8;
 
+#if SC_VERSION_MAJOR < 3
     SC_HAS_PROCESS(hpdcache_test_read_seq);
+#endif
 
     inline uint32_t create_random_size(bool is_amo)
     {

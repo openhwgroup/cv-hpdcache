@@ -63,7 +63,9 @@ public:
 
 private:
 
+#if SC_VERSION_MAJOR < 3
     SC_HAS_PROCESS(hpdcache_test_driver);
+#endif
 
     typedef std::shared_ptr<hpdcache_test_transaction_req> transaction_ptr;
 

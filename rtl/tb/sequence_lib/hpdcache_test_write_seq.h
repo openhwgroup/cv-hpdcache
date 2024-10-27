@@ -35,7 +35,7 @@ class hpdcache_test_write_seq : public hpdcache_test_sequence
 {
 public:
 
-    hpdcache_test_write_seq(sc_core::sc_module_name nm) : hpdcache_test_sequence(nm, "write_req")
+    hpdcache_test_write_seq(sc_core::sc_module_name nm) : hpdcache_test_sequence(nm, "write_seq")
     {
         SC_THREAD(run);
         sensitive << clk_i.pos();
@@ -57,7 +57,9 @@ private:
     scv_smart_ptr<req_data_t> size;
     const unsigned int HPDCACHE_REQ_DATA_BYTES = HPDCACHE_REQ_DATA_WIDTH/8;
 
+#if SC_VERSION_MAJOR < 3
     SC_HAS_PROCESS(hpdcache_test_write_seq);
+#endif
 
     inline req_data_t create_random_data()
     {

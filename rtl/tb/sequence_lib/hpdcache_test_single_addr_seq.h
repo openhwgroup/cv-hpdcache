@@ -35,7 +35,7 @@ class hpdcache_test_single_addr_seq : public hpdcache_test_sequence
 public:
 
     hpdcache_test_single_addr_seq(sc_core::sc_module_name nm)
-        : hpdcache_test_sequence(nm, "random_seq")
+        : hpdcache_test_sequence(nm, "single_addr_seq")
     {
         SC_THREAD(run);
         sensitive << clk_i.pos();
@@ -102,7 +102,9 @@ private:
     scv_smart_ptr<sc_bv<HPDCACHE_REQ_DATA_WIDTH> > size;
     const unsigned int HPDCACHE_REQ_DATA_BYTES = HPDCACHE_REQ_DATA_WIDTH/8;
 
+#if SC_VERSION_MAJOR < 3
     SC_HAS_PROCESS(hpdcache_test_single_addr_seq);
+#endif
 
     inline sc_bv<HPDCACHE_REQ_DATA_WIDTH> create_random_data()
     {
