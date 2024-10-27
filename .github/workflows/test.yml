@@ -23,7 +23,14 @@
 ##
 name: HPDcache Test CI
 on:
-  [push, pull_request]:
+  push:
+    paths-ignore:
+      - 'docs'
+      - '*.md'
+      - 'CODEOWNERS'
+      - 'LICENSE'
+
+  pull_request:
     paths-ignore:
       - 'docs'
       - '*.md'
