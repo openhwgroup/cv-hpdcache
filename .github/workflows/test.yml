@@ -22,12 +22,13 @@
 #  Description: GitHub Action to run tests on pull requests and pushes
 ##
 name: HPDcache Test CI
-on: [push, pull_request]
-  paths-ignore:
-    - 'docs'
-    - '*.md'
-    - 'CODEOWNERS'
-    - 'LICENSE'
+on:
+  [push, pull_request]:
+    paths-ignore:
+      - 'docs'
+      - '*.md'
+      - 'CODEOWNERS'
+      - 'LICENSE'
 
 jobs:
   build-and-run:
