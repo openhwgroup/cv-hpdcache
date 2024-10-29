@@ -80,8 +80,8 @@ runs:
         cd rtl/tb
         make nonregression \
             SEQUENCE=${{ inputs.seqname }} \
-            NTESTS=${{ inputs.ntrans }} \
-            NTRANSACTIONS=${{ inputs.ntests }}
+            NTESTS=${{ inputs.ntests }} \
+            NTRANSACTIONS=${{ inputs.ntrans }}
 
     - name: Archive nonregression logs
       if: ${{ failure () && steps.run-tb.conclusion == 'failure' }}
