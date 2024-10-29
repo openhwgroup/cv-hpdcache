@@ -64,15 +64,7 @@ import hpdcache_pkg::*;
     input  logic                  alloc_i,
     input  logic                  alloc_and_link_i,
     input  rtab_entry_t           alloc_req_i,
-    input  logic                  alloc_mshr_hit_i,
-    input  logic                  alloc_mshr_full_i,
-    input  logic                  alloc_mshr_ready_i,
-    input  logic                  alloc_wbuf_hit_i,
-    input  logic                  alloc_wbuf_not_ready_i,
-    input  logic                  alloc_dir_unavailable_i,
-    input  logic                  alloc_dir_fetch_i,
-    input  logic                  alloc_flush_hit_i,
-    input  logic                  alloc_flush_not_ready_i,
+    input  hpdcache_rtab_deps_t   alloc_deps_i,
 
     //  Pop signals
     //     This interface allows to read (and remove) a request from the RTAB
@@ -194,59 +186,11 @@ import hpdcache_pkg::*;
     logic               [N-1:0]  tail_set, tail_rst;
     logic               [N-1:0]  alloc_tail_set, alloc_tail_rst;
 
-    //  There is a pending miss on the target nline
-    logic               [N-1:0]  deps_mshr_hit_q;
-    logic               [N-1:0]  deps_mshr_hit_set, deps_mshr_hit_rst;
-    logic               [N-1:0]  alloc_deps_mshr_hit_set;
-    logic               [N-1:0]  pop_rback_deps_mshr_hit_set;
-
-    //  The MSHR has no  available slot for the new miss
-    logic               [N-1:0]  deps_mshr_full_q;
-    logic               [N-1:0]  deps_mshr_full_set, deps_mshr_full_rst;
-    logic               [N-1:0]  alloc_deps_mshr_full_set;
-    logic               [N-1:0]  pop_rback_deps_mshr_full_set;
-
-    //  The MSHR is not  ready to send a new miss requests
-    logic               [N-1:0]  deps_mshr_ready_q;
-    logic               [N-1:0]  deps_mshr_ready_set, deps_mshr_ready_rst;
-    logic               [N-1:0]  alloc_deps_mshr_ready_set;
-    logic               [N-1:0]  pop_rback_deps_mshr_ready_set;
-
-    //  Hit on an non-e mpty entry of the write buffer
-    logic               [N-1:0]  deps_wbuf_hit_q;
-    logic               [N-1:0]  deps_wbuf_hit_set, deps_wbuf_hit_rst;
-    logic               [N-1:0]  alloc_deps_wbuf_hit_set;
-    logic               [N-1:0]  pop_rback_deps_wbuf_hit_set;
-
-    //  Hit on a pend entry of the write buffer
-    logic               [N-1:0]  deps_wbuf_not_ready_q;
-    logic               [N-1:0]  deps_wbuf_not_ready_set, deps_wbuf_not_ready_rst;
-    logic               [N-1:0]  alloc_deps_wbuf_not_ready_set;
-    logic               [N-1:0]  pop_rback_deps_wbuf_not_ready_set;
-
-    //  Unavailable entry in the cache
-    logic               [N-1:0]  deps_dir_unavailable_q;
-    logic               [N-1:0]  deps_dir_unavailable_set, deps_dir_unavailable_rst;
-    logic               [N-1:0]  alloc_deps_dir_unavailable_set;
-    logic               [N-1:0]  pop_rback_deps_dir_unavailable_set;
-
-    //  Fetch entry in the cache
-    logic               [N-1:0]  deps_dir_fetch_q;
-    logic               [N-1:0]  deps_dir_fetch_set, deps_dir_fetch_rst;
-    logic               [N-1:0]  alloc_deps_dir_fetch_set;
-    logic               [N-1:0]  pop_rback_deps_dir_fetch_set;
-
-    //  Flush hit
-    logic               [N-1:0]  deps_flush_hit_q;
-    logic               [N-1:0]  deps_flush_hit_set, deps_flush_hit_rst;
-    logic               [N-1:0]  alloc_deps_flush_hit_set;
-    logic               [N-1:0]  pop_rback_deps_flush_hit_set;
-
-    //  Flush not ready
-    logic               [N-1:0]  deps_flush_not_ready_q;
-    logic               [N-1:0]  deps_flush_not_ready_set, deps_flush_not_ready_rst;
-    logic               [N-1:0]  alloc_deps_flush_not_ready_set;
-    logic               [N-1:0]  pop_rback_deps_flush_not_ready_set;
+    //  Bits indicating the pending dependencies of request
+    hpdcache_rtab_deps_t[N-1:0]  deps_q;
+    hpdcache_rtab_deps_t[N-1:0]  deps_set, deps_rst;
+    hpdcache_rtab_deps_t[N-1:0]  alloc_deps_set;
+    hpdcache_rtab_deps_t[N-1:0]  pop_rback_deps_set;
 
     logic               [N-1:0]  nodeps;
     hpdcache_nline_t    [N-1:0]  nline;
@@ -277,18 +221,11 @@ import hpdcache_pkg::*;
 //  Compute global control signals
 //  {{{
     //  compute if entries are ready to be replayed
-    assign nodeps       = ~(deps_mshr_hit_q |
-                            deps_mshr_full_q |
-                            deps_mshr_ready_q |
-                            deps_wbuf_hit_q |
-                            deps_wbuf_not_ready_q |
-                            deps_dir_unavailable_q |
-                            deps_dir_fetch_q |
-                            deps_flush_hit_q |
-                            deps_flush_not_ready_q);
+    for (gen_i = 0; gen_i < N; gen_i++) begin : gen_nodeps
+        assign nodeps[gen_i] = ~(|deps_q[gen_i]);
+    end
 
     assign ready        = valid_q & head_q & nodeps;
-
     assign free         = ~valid_q;
 
     //  compute the free vector (one-hot signal)
@@ -342,15 +279,9 @@ import hpdcache_pkg::*;
     assign alloc_tail_rst  = match_check_tail & {N{alloc_and_link_i}};
 
     //  Set the dependency bits for the allocated entry
-    assign alloc_deps_mshr_hit_set        = alloc_valid_set & {N{       alloc_mshr_hit_i}};
-    assign alloc_deps_mshr_full_set       = alloc_valid_set & {N{      alloc_mshr_full_i}};
-    assign alloc_deps_mshr_ready_set      = alloc_valid_set & {N{     alloc_mshr_ready_i}};
-    assign alloc_deps_wbuf_hit_set        = alloc_valid_set & {N{       alloc_wbuf_hit_i}};
-    assign alloc_deps_wbuf_not_ready_set  = alloc_valid_set & {N{ alloc_wbuf_not_ready_i}};
-    assign alloc_deps_dir_unavailable_set = alloc_valid_set & {N{alloc_dir_unavailable_i}};
-    assign alloc_deps_dir_fetch_set       = alloc_valid_set & {N{      alloc_dir_fetch_i}};
-    assign alloc_deps_flush_hit_set       = alloc_valid_set & {N{      alloc_flush_hit_i}};
-    assign alloc_deps_flush_not_ready_set = alloc_valid_set & {N{alloc_flush_not_ready_i}};
+    for (gen_i = 0; gen_i < N; gen_i++) begin : gen_deps_set
+        assign alloc_deps_set[gen_i] = alloc_valid_set[gen_i] ? alloc_deps_i : '0;
+    end
 //  }}}
 
 //  Update replay table dependencies
@@ -377,8 +308,12 @@ import hpdcache_pkg::*;
     logic          wbuf_ready;
     logic [N-1:0]  wbuf_sel;
 
-    assign wbuf_rd_pending = valid_q & head_q & deps_wbuf_hit_q;
-    assign wbuf_wr_pending = valid_q & head_q & deps_wbuf_not_ready_q;
+    for (gen_i = 0; gen_i < N; gen_i++) begin : gen_wbuf_pending
+        assign wbuf_rd_pending[gen_i] = valid_q[gen_i] & head_q[gen_i] &
+                                        deps_q[gen_i].wbuf_hit;
+        assign wbuf_wr_pending[gen_i] = valid_q[gen_i] & head_q[gen_i] &
+                                        deps_q[gen_i].wbuf_not_ready;
+    end
 
     //  Choose in a round-robin manner a ready transaction waiting for a conflict in the wbuf
     hpdcache_rrarb #(
@@ -436,34 +371,42 @@ import hpdcache_pkg::*;
         .sel_i          (wbuf_sel),
         .data_o         (wbuf_is_read_o)
     );
-
-    //  reset write buffer dependency bits with the output from the write buffer
-    assign deps_wbuf_hit_rst = wbuf_sel & ~{N{wbuf_hit_open_i | wbuf_hit_pend_i | wbuf_hit_sent_i}};
-    assign deps_wbuf_not_ready_rst = wbuf_sel & ~{N{wbuf_not_ready_i}};
     //  }}}
 
-    //  Update miss handler dependency
-    //  {{{
-    assign deps_mshr_ready_rst = {N{miss_ready_i}};
-    //  }}}
+    for (gen_i = 0; gen_i < N; gen_i++) begin : gen_deps_rst
+        //  reset write buffer dependency bits with the output from the write buffer
+        //  {{{
+        assign deps_rst[gen_i].wbuf_hit = wbuf_sel[gen_i] & ~(wbuf_hit_open_i |
+                                                              wbuf_hit_pend_i |
+                                                              wbuf_hit_sent_i);
+        assign deps_rst[gen_i].wbuf_not_ready = wbuf_sel[gen_i] & ~wbuf_not_ready_i;
+        //  }}}
 
-    //  Update refill dependencies
-    //  {{{
-    assign deps_mshr_full_rst = {N{refill_i}} & match_refill_mshr_set;
-    assign deps_mshr_hit_rst  = {N{refill_i}} & match_refill_nline;
-    //  }}}
+        //  Update miss handler dependency
+        //  {{{
+        assign deps_rst[gen_i].mshr_ready = miss_ready_i;
+        //  }}}
 
-    //  Update cache directory dependencies
-    //  {{{
-    assign deps_dir_unavailable_rst = {N{refill_i}} & match_refill_set;
-    assign deps_dir_fetch_rst       = {N{refill_i}} & match_refill_set & match_refill_way;
-    //  }}}
+        //  Update refill dependencies
+        //  {{{
+        assign deps_rst[gen_i].mshr_full = refill_i & match_refill_mshr_set[gen_i];
+        assign deps_rst[gen_i].mshr_hit = refill_i & match_refill_nline[gen_i];
+        assign deps_rst[gen_i].write_miss = deps_rst[gen_i].mshr_hit;
+        //  }}}
 
-    //  Update flush dependencies
-    //  {{{
-    assign deps_flush_hit_rst = {N{flush_ack_i}} & match_flush_nline;
-    assign deps_flush_not_ready_rst = {N{flush_ready_i}};
-    //  }}}
+        //  Update cache directory dependencies
+        //  {{{
+        assign deps_rst[gen_i].dir_unavailable = refill_i & match_refill_set[gen_i];
+        assign deps_rst[gen_i].dir_fetch = refill_i & match_refill_set[gen_i] &
+                                           match_refill_way[gen_i];
+        //  }}}
+
+        //  Update flush dependencies
+        //  {{{
+        assign deps_rst[gen_i].flush_hit = flush_ack_i & match_flush_nline[gen_i];
+        assign deps_rst[gen_i].flush_not_ready = flush_ready_i;
+        //  }}}
+end
 //  }}}
 
 //  Pop interface
@@ -595,29 +538,12 @@ import hpdcache_pkg::*;
     //  {{{
     //  Set again the head bit of the rolled-back request
     assign pop_rback_ptr_bv = rtab_index_to_bv(pop_rback_ptr_i);
+    assign pop_rback_bv = {N{pop_rback_i}} & pop_rback_ptr_bv;
+    assign pop_rback_head_set = pop_rback_bv;
 
-    assign pop_rback_bv                       = {N{pop_rback_i}} & pop_rback_ptr_bv;
-
-    assign pop_rback_head_set                 = pop_rback_bv;
-
-    assign pop_rback_deps_mshr_hit_set        = {N{pop_rback_i}} & pop_rback_ptr_bv &
-                                                {N{alloc_mshr_hit_i}};
-    assign pop_rback_deps_mshr_full_set       = {N{pop_rback_i}} & pop_rback_ptr_bv &
-                                                {N{alloc_mshr_full_i}};
-    assign pop_rback_deps_mshr_ready_set      = {N{pop_rback_i}} & pop_rback_ptr_bv &
-                                                {N{alloc_mshr_ready_i}};
-    assign pop_rback_deps_wbuf_hit_set        = {N{pop_rback_i}} & pop_rback_ptr_bv &
-                                                {N{alloc_wbuf_hit_i}};
-    assign pop_rback_deps_wbuf_not_ready_set  = {N{pop_rback_i}} & pop_rback_ptr_bv &
-                                                {N{alloc_wbuf_not_ready_i}};
-    assign pop_rback_deps_dir_unavailable_set = {N{pop_rback_i}} & pop_rback_ptr_bv &
-                                                {N{alloc_dir_unavailable_i}};
-    assign pop_rback_deps_dir_fetch_set       = {N{pop_rback_i}} & pop_rback_ptr_bv &
-                                                {N{alloc_dir_fetch_i}};
-    assign pop_rback_deps_flush_hit_set       = {N{pop_rback_i}} & pop_rback_ptr_bv &
-                                                {N{alloc_flush_hit_i}};
-    assign pop_rback_deps_flush_not_ready_set = {N{pop_rback_i}} & pop_rback_ptr_bv &
-                                                {N{alloc_flush_not_ready_i}};
+    for (gen_i = 0; gen_i < N; gen_i++) begin : gen_pop_rback_set
+        assign pop_rback_deps_set[gen_i] = pop_rback_bv[gen_i] ? alloc_deps_i : '0;
+    end
     //  }}}
 //  }}}
 
@@ -634,41 +560,28 @@ import hpdcache_pkg::*;
 
     assign refill_is_error = refill_i & refill_is_error_i;
 
-    assign error_set = valid_q & (deps_mshr_hit_q & match_refill_nline & {N{refill_is_error}});
+    //  Set the error flag
+    //  - If the pending request is a write miss and the corresponding refill response is an error,
+    //  then set the error bit of the pending request to abort it when replayed
+    for (gen_i = 0; gen_i < N; gen_i++) begin : gen_error_set
+        assign error_set[gen_i] = valid_q[gen_i] &
+                                  deps_q[gen_i].write_miss &
+                                  match_refill_nline[gen_i] &
+                                  refill_is_error;
+    end
     assign error_rst = pop_commit_valid_rst;
 
-    assign deps_mshr_hit_set        = alloc_deps_mshr_hit_set | pop_rback_deps_mshr_hit_set;
-    assign deps_mshr_full_set       = alloc_deps_mshr_full_set | pop_rback_deps_mshr_full_set;
-    assign deps_mshr_ready_set      = alloc_deps_mshr_ready_set | pop_rback_deps_mshr_ready_set;
-    assign deps_wbuf_hit_set        = alloc_deps_wbuf_hit_set | pop_rback_deps_wbuf_hit_set;
-    assign deps_wbuf_not_ready_set  = alloc_deps_wbuf_not_ready_set |
-                                      pop_rback_deps_wbuf_not_ready_set;
-    assign deps_dir_unavailable_set = alloc_deps_dir_unavailable_set |
-                                      pop_rback_deps_dir_unavailable_set;
-    assign deps_dir_fetch_set       = alloc_deps_dir_fetch_set |
-                                      pop_rback_deps_dir_fetch_set;
-    assign deps_flush_hit_set       = alloc_deps_flush_hit_set |
-                                      pop_rback_deps_flush_hit_set;
-    assign deps_flush_not_ready_set = alloc_deps_flush_not_ready_set |
-                                      pop_rback_deps_flush_not_ready_set;
+    assign deps_set = alloc_deps_set | pop_rback_deps_set;
 
     always_ff @(posedge clk_i or negedge rst_ni)
     begin : rtab_valid_ff
         if (!rst_ni) begin
-            valid_q                <= '0;
-            error_q                <= '0;
-            head_q                 <= '0;
-            tail_q                 <= '0;
-            deps_mshr_hit_q        <= '0;
-            deps_mshr_full_q       <= '0;
-            deps_mshr_ready_q      <= '0;
-            deps_wbuf_hit_q        <= '0;
-            deps_wbuf_not_ready_q  <= '0;
-            deps_dir_unavailable_q <= '0;
-            deps_dir_fetch_q       <= '0;
-            deps_flush_hit_q       <= '0;
-            deps_flush_not_ready_q <= '0;
-            next_q                 <= '0;
+            valid_q <= '0;
+            error_q <= '0;
+            head_q  <= '0;
+            tail_q  <= '0;
+            deps_q  <= '0;
+            next_q  <= '0;
         end else begin
             valid_q <= (~valid_q & valid_set) | (valid_q & ~valid_rst);
 
@@ -680,26 +593,8 @@ import hpdcache_pkg::*;
             tail_q <= (~tail_q & tail_set) | (tail_q & ~tail_rst);
 
             //  update dependency flags
-            deps_mshr_hit_q        <= (~deps_mshr_hit_q        &  deps_mshr_hit_set) |
-                                      ( deps_mshr_hit_q        & ~deps_mshr_hit_rst);
-            deps_mshr_full_q       <= (~deps_mshr_full_q       &  deps_mshr_full_set) |
-                                      ( deps_mshr_full_q       & ~deps_mshr_full_rst);
-            deps_mshr_ready_q      <= (~deps_mshr_ready_q      &  deps_mshr_ready_set) |
-                                      ( deps_mshr_ready_q      & ~deps_mshr_ready_rst);
-            deps_wbuf_hit_q        <= (~deps_wbuf_hit_q        &  deps_wbuf_hit_set) |
-                                      ( deps_wbuf_hit_q        & ~deps_wbuf_hit_rst);
-            deps_wbuf_not_ready_q  <= (~deps_wbuf_not_ready_q  &  deps_wbuf_not_ready_set) |
-                                      ( deps_wbuf_not_ready_q  & ~deps_wbuf_not_ready_rst);
-            deps_dir_unavailable_q <= (~deps_dir_unavailable_q &  deps_dir_unavailable_set) |
-                                      ( deps_dir_unavailable_q & ~deps_dir_unavailable_rst);
-            deps_dir_fetch_q       <= (~deps_dir_fetch_q       &  deps_dir_fetch_set) |
-                                      ( deps_dir_fetch_q       & ~deps_dir_fetch_rst);
-
-            deps_flush_hit_q       <= (~deps_flush_hit_q       &  deps_flush_hit_set) |
-                                      ( deps_flush_hit_q       & ~deps_flush_hit_rst);
-
-            deps_flush_not_ready_q <= (~deps_flush_not_ready_q &  deps_flush_not_ready_set) |
-                                      ( deps_flush_not_ready_q & ~deps_flush_not_ready_rst);
+            deps_q <= (~deps_q &  deps_set) |
+                      ( deps_q & ~deps_rst);
 
             //  update the next pointers
             for (int i = 0; i < N; i++) begin

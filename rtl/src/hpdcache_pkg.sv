@@ -359,6 +359,22 @@ package hpdcache_pkg;
     } hpdcache_cmoh_op_t;
     //  }}}
 
+    //  Definition Replay Table (RTAB) dependencies
+    //  {{{
+    typedef struct packed {
+        logic mshr_hit;
+        logic mshr_full;
+        logic mshr_ready;
+        logic write_miss;
+        logic wbuf_hit;
+        logic wbuf_not_ready;
+        logic dir_unavailable;
+        logic dir_fetch;
+        logic flush_hit;
+        logic flush_not_ready;
+    } hpdcache_rtab_deps_t;
+    //  }}}
+
     //  Definition of parameters
     //  {{{
     typedef struct packed {
