@@ -361,15 +361,7 @@ import hpdcache_pkg::*;
     logic                    st1_rtab_alloc_and_link;
     logic                    st1_rtab_pop_try_commit;
     logic                    st1_rtab_pop_try_rback;
-    logic                    st1_rtab_mshr_hit;
-    logic                    st1_rtab_mshr_full;
-    logic                    st1_rtab_mshr_ready;
-    logic                    st1_rtab_wbuf_hit;
-    logic                    st1_rtab_wbuf_not_ready;
-    logic                    st1_rtab_dir_unavailable;
-    logic                    st1_rtab_dir_fetch;
-    logic                    st1_rtab_flush_hit;
-    logic                    st1_rtab_flush_not_ready;
+    hpdcache_rtab_deps_t     st1_rtab_deps;
     logic                    st1_rtab_check;
     logic                    st1_rtab_check_hit;
 
@@ -594,15 +586,16 @@ import hpdcache_pkg::*;
         .st1_rtab_alloc_and_link_o          (st1_rtab_alloc_and_link),
         .st1_rtab_commit_o                  (st1_rtab_pop_try_commit),
         .st1_rtab_rback_o                   (st1_rtab_pop_try_rback),
-        .st1_rtab_mshr_hit_o                (st1_rtab_mshr_hit),
-        .st1_rtab_mshr_full_o               (st1_rtab_mshr_full),
-        .st1_rtab_mshr_ready_o              (st1_rtab_mshr_ready),
-        .st1_rtab_wbuf_hit_o                (st1_rtab_wbuf_hit),
-        .st1_rtab_wbuf_not_ready_o          (st1_rtab_wbuf_not_ready),
-        .st1_rtab_dir_unavailable_o         (st1_rtab_dir_unavailable),
-        .st1_rtab_dir_fetch_o               (st1_rtab_dir_fetch),
-        .st1_rtab_flush_hit_o               (st1_rtab_flush_hit),
-        .st1_rtab_flush_not_ready_o         (st1_rtab_flush_not_ready),
+        .st1_rtab_mshr_hit_o                (st1_rtab_deps.mshr_hit),
+        .st1_rtab_mshr_full_o               (st1_rtab_deps.mshr_full),
+        .st1_rtab_mshr_ready_o              (st1_rtab_deps.mshr_ready),
+        .st1_rtab_write_miss_o              (st1_rtab_deps.write_miss),
+        .st1_rtab_wbuf_hit_o                (st1_rtab_deps.wbuf_hit),
+        .st1_rtab_wbuf_not_ready_o          (st1_rtab_deps.wbuf_not_ready),
+        .st1_rtab_dir_unavailable_o         (st1_rtab_deps.dir_unavailable),
+        .st1_rtab_dir_fetch_o               (st1_rtab_deps.dir_fetch),
+        .st1_rtab_flush_hit_o               (st1_rtab_deps.flush_hit),
+        .st1_rtab_flush_not_ready_o         (st1_rtab_deps.flush_not_ready),
 
         .cachedir_hit_i                     (cachedir_hit_o),
         .cachedir_init_ready_i              (hpdcache_init_ready),
@@ -697,15 +690,7 @@ import hpdcache_pkg::*;
         .alloc_i                            (st1_rtab_alloc),
         .alloc_and_link_i                   (st1_rtab_alloc_and_link),
         .alloc_req_i                        (st1_alloc_rtab),
-        .alloc_mshr_hit_i                   (st1_rtab_mshr_hit),
-        .alloc_mshr_full_i                  (st1_rtab_mshr_full),
-        .alloc_mshr_ready_i                 (st1_rtab_mshr_ready),
-        .alloc_wbuf_hit_i                   (st1_rtab_wbuf_hit),
-        .alloc_wbuf_not_ready_i             (st1_rtab_wbuf_not_ready),
-        .alloc_dir_unavailable_i            (st1_rtab_dir_unavailable),
-        .alloc_dir_fetch_i                  (st1_rtab_dir_fetch),
-        .alloc_flush_hit_i                  (st1_rtab_flush_hit),
-        .alloc_flush_not_ready_i            (st1_rtab_flush_not_ready),
+        .alloc_deps_i                       (st1_rtab_deps),
 
         .pop_try_valid_o                    (st0_rtab_pop_try_valid),
         .pop_try_i                          (st0_rtab_pop_try_ready),
