@@ -70,7 +70,7 @@ module hpdcache_mux
         begin : data_out_mux_comb
             data_o = '0;
             for (int unsigned i = 0; i < NINPUT; i++) begin
-                data_o |= (i == int'(sel_i)) ? data_i[i] : '0;
+                data_o |= (i == unsigned'(sel_i)) ? data_i[i] : '0;
             end
         end
     end
