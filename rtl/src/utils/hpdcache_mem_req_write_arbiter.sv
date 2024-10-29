@@ -69,6 +69,10 @@ module hpdcache_mem_req_write_arbiter
     logic                        mem_write_arb_req_rok, mem_write_arb_req_wok;
     logic                        mem_write_arb_req_ready;
 
+    logic                        mem_req_write_w;
+    logic                        mem_req_write_wok;
+    hpdcache_mem_req_t           mem_req_write;
+
     genvar                       gen_i;
     //  }}}
 
@@ -90,10 +94,10 @@ module hpdcache_mem_req_write_arbiter
     assign req_data_last  = |(mem_write_arb_req_gnt_q & mem_write_arb_req_data_last);
 
     //  Accept a new request when the grant FIFO is not full and the NoC can accept the request
-    assign mem_write_arb_req_ready = mem_write_arb_req_wok & mem_req_write_ready_i;
+    assign mem_write_arb_req_ready = mem_write_arb_req_wok & mem_req_write_wok;
 
     //  Write a grant decision into the FIFO
-    assign mem_write_arb_req_w = mem_req_write_ready_i & req_valid;
+    assign mem_write_arb_req_w = req_valid & mem_req_write_wok;
 
     //  Read grant FIFO when the NoC is able to receive the data and it is the last flit of data
     assign mem_write_arb_req_r = mem_req_write_data_ready_i &
@@ -101,8 +105,8 @@ module hpdcache_mem_req_write_arbiter
                                  req_data_valid &
                                  req_data_last;
 
-    //  Forward the request to the NoC if there is any and the grant FIFO is not full
-    assign mem_req_write_valid_o = req_valid & mem_write_arb_req_wok;
+    //  Accept a new request when the grant FIFO is not full and the NoC can accept the request
+    assign mem_req_write_w = req_valid & mem_write_arb_req_wok;
 
     //  Forward the data to the NoC if there is any and there is a grant decision in the FIFO
     assign mem_req_write_data_valid_o = req_data_valid & mem_write_arb_req_rok;
@@ -118,6 +122,24 @@ module hpdcache_mem_req_write_arbiter
         .req_i         (mem_req_write_valid_i),
         .gnt_o         (mem_write_arb_req_gnt),
         .ready_i       (mem_write_arb_req_ready)
+    );
+    //  }}}
+
+    //  Request FIFO
+    //  {{{
+    hpdcache_fifo_reg #(
+        .FIFO_DEPTH    (1),
+        .FEEDTHROUGH   (1'b1),
+        .fifo_data_t   (hpdcache_mem_req_t)
+    ) req_fifo_i(
+        .clk_i,
+        .rst_ni,
+        .w_i           (mem_req_write_w),
+        .wok_o         (mem_req_write_wok),
+        .wdata_i       (mem_req_write),
+        .r_i           (mem_req_write_ready_i),
+        .rok_o         (mem_req_write_valid_o),
+        .rdata_o       (mem_req_write_o)
     );
     //  }}}
 
@@ -148,7 +170,7 @@ module hpdcache_mem_req_write_arbiter
     ) req_mux_i(
         .data_i        (mem_req_write_i),
         .sel_i         (mem_write_arb_req_gnt),
-        .data_o        (mem_req_write_o)
+        .data_o        (mem_req_write)
     );
     //  }}}
 
