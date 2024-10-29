@@ -1,0 +1,85 @@
+name: 'Run sequence'
+inputs:
+  seq_name:
+    description: 'Name of the test sequence'
+    required: true
+    default: 'random'
+
+  seq_ntrans:
+    description: 'Number of transactions in the sequence'
+    required: true
+    default: '5000'
+
+  seq_ntests:
+    description: 'Number of separate tests'
+    required: true
+    default: '32'
+
+runs:
+  using: "composite"
+
+  steps:
+    - name: Cache SystemC
+      id: cache-systemc
+      uses: actions/cache@v4
+      with:
+        path: build/systemc-3.0.1
+        fail-on-cache-miss: true
+        key: ${{ runner.os }}-build-systemc-${{ hashFiles('.github/scripts/install_systemc.sh') }}
+
+    - name: Cache Verilator
+      id: cache-verilator
+      uses: actions/cache@v4
+      with:
+        path: build/verilator-v5.028
+        fail-on-cache-miss: true
+        key: ${{ runner.os }}-build-verilator-${{ hashFiles('.github/scripts/install_verilator.sh') }}
+
+    #  Verilate the HPDcache RTL sources and build the testbench
+    - name: Verilate the HPDcache RTL
+      id: verilate
+      shell: bash
+      run: |
+        . .github/scripts/env.sh
+        cd rtl/tb
+        make verilate
+
+    - name: Archive Verilate log
+      if: ${{ failure () && steps.verilate.conclusion == 'failure' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: verilate-log
+        path: rtl/tb/build/verilate.log
+
+    - name: Build SystemC testbench
+      id: build-tb
+      shell: bash
+      run: |
+        . .github/scripts/env.sh
+        cd rtl/tb
+        make build -j${PARALLEL_JOBS}
+
+    - name: Archive SystemC build log
+      if: ${{ failure () && steps.build-tb.conclusion == 'failure' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-log
+        path: rtl/tb/build/build.log
+
+    #  Run the test sequence
+    - name: Run the random test sequence (short)
+      shell: bash
+      run: |
+        . .github/scripts/env.sh
+        cd rtl/tb
+        make nonregression \
+            SEQUENCE=${{ inputs.seq_name }} \
+            NTESTS=${{ inputs.seq_ntrans }} \
+            NTRANSACTIONS=${{ inputs.seq_ntests }}
+
+    - name: Archive nonregression logs
+      if: ${{ failure () }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: run_log
+        path: rtl/tb/logs

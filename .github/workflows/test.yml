@@ -38,19 +38,17 @@ on:
       - 'LICENSE'
 
 jobs:
-  build-and-run:
-    name: build-and-run
+  build:
+    name: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-
 
       #  Install Dependencies
       - name: Install Dependencies
         shell: bash
         run: |
           ./.github/scripts/install_deps_ubuntu.sh
-
 
       #  Install SystemC
       - name: Cache SystemC
@@ -65,7 +63,6 @@ jobs:
         run: |
           . .github/scripts/env.sh
           ./.github/scripts/install_systemc.sh
-
 
       #  Install Verilator
       - name: Cache Verilator
@@ -82,63 +79,45 @@ jobs:
           ./.github/scripts/install_verilator.sh
 
 
-      #  Verilate the HPDcache RTL sources and build the testbench
-      - name: Verilate the HPDcache RTL
-        id: verilate
-        shell: bash
-        run: |
-          . .github/scripts/env.sh
-          cd rtl/tb
-          make verilate
+  #  Run the tests
+  run_random_short:
+    runs-on: ubuntu-latest
+    name: run_random_short
+    needs: build
+    steps:
+      - uses: actions/checkout@master
 
-      - name: Archive Verilate log
-        if: ${{ failure () && steps.verilate.conclusion == 'failure' }}
-        uses: actions/upload-artifact@v4
+      - id: run_random_short_sequence
+        uses: ./.github/actions/run_sequence
         with:
-          name: verilate-log
-          path: rtl/tb/build/verilate.log
+          seq_name: 'random'
+          seq_ntrans: '5000'
+          seq_ntests: '64'
 
-      - name: Build SystemC testbench
-        id: build-tb
-        shell: bash
-        run: |
-          . .github/scripts/env.sh
-          cd rtl/tb
-          make build -j${PARALLEL_JOBS}
+  run_random_long:
+    runs-on: ubuntu-latest
+    name: run_random_long
+    needs: build
+    steps:
+      - uses: actions/checkout@master
 
-      - name: Archive SystemC build log
-        if: ${{ failure () && steps.build-tb.conclusion == 'failure' }}
-        uses: actions/upload-artifact@v4
+      - id: run_random_long_sequence
+        uses: ./.github/actions/run_sequence
         with:
-          name: build-log
-          path: rtl/tb/build/build.log
+          seq_name: 'random'
+          seq_ntrans: '50000'
+          seq_ntests: '16'
 
+  run_single_addr:
+    runs-on: ubuntu-latest
+    name: run_single_addr
+    needs: build
+    steps:
+      - uses: actions/checkout@master
 
-      #  Run the tests
-      - name: Run the random test sequence (short)
-        shell: bash
-        run: |
-          . .github/scripts/env.sh
-          cd rtl/tb
-          make nonregression SEQUENCE=random NTESTS=128 NTRANSACTIONS=5000
-
-      - name: Run the random test sequence (long)
-        shell: bash
-        run: |
-          . .github/scripts/env.sh
-          cd rtl/tb
-          make nonregression SEQUENCE=random NTESTS=16 NTRANSACTIONS=100000
-
-      - name: Run the single addr test sequence
-        shell: bash
-        run: |
-          . .github/scripts/env.sh
-          cd rtl/tb
-          make nonregression SEQUENCE=single_addr NTESTS=64 NTRANSACTIONS=5000
-
-      - name: Archive nonregression logs
-        if: ${{ failure () }}
-        uses: actions/upload-artifact@v4
+      - id: run_single_addr_sequence
+        uses: ./.github/actions/run_sequence
         with:
-          name: run-log
-          path: rtl/tb/logs
+          seq_name: 'single_addr'
+          seq_ntrans: '20000'
+          seq_ntests: '16'
