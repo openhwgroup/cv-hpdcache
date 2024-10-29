@@ -90,9 +90,9 @@ jobs:
       - id: run_random_short_sequence
         uses: ./.github/actions/run_sequence
         with:
-          seq_name: 'random'
-          seq_ntrans: '5000'
-          seq_ntests: '64'
+          seqname: 'random'
+          ntrans: '5000'
+          ntests: '64'
 
   run_random_long:
     runs-on: ubuntu-latest
@@ -104,9 +104,9 @@ jobs:
       - id: run_random_long_sequence
         uses: ./.github/actions/run_sequence
         with:
-          seq_name: 'random'
-          seq_ntrans: '50000'
-          seq_ntests: '16'
+          seqname: 'random'
+          ntrans: '50000'
+          ntests: '16'
 
   run_single_addr:
     runs-on: ubuntu-latest
@@ -118,6 +118,6 @@ jobs:
       - id: run_single_addr_sequence
         uses: ./.github/actions/run_sequence
         with:
-          seq_name: 'single_addr'
-          seq_ntrans: '20000'
-          seq_ntests: '16'
+          seqname: 'single_addr'
+          ntrans: '20000'
+          ntests: '16'

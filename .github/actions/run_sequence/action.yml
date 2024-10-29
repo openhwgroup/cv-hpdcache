@@ -1,23 +1,19 @@
 name: 'Run sequence'
 inputs:
-  seq_name:
+  seqname:
     description: 'Name of the test sequence'
     required: true
     default: 'random'
 
-  seq_ntrans:
+  ntrans:
     description: 'Number of transactions in the sequence'
     required: true
     default: '5000'
 
-  seq_ntests:
+  ntests:
     description: 'Number of separate tests'
     required: true
     default: '32'
-
-  artifact_suffix:
-    required: false
-    default: "${{ inputs.seq_name }}_${{ inputs.seq_ntrans }}_${{ inputs.seq_ntests }}"
 
 runs:
   using: "composite"
@@ -57,7 +53,7 @@ runs:
       if: ${{ failure () && steps.verilate.conclusion == 'failure' }}
       uses: actions/upload-artifact@v4
       with:
-        name: verilate-${{ inputs.artifact_suffix }}-log
+        name: verilate-${{ inputs.seqname }}_${{ inputs.ntrans }}_${{ inputs.ntests }}-log
         path: rtl/tb/build/verilate.log
 
     - name: Build SystemC testbench
@@ -72,7 +68,7 @@ runs:
       if: ${{ failure () && steps.build-tb.conclusion == 'failure' }}
       uses: actions/upload-artifact@v4
       with:
-        name: build-${{ inputs.artifact_suffix }}-log
+        name: build-${{ inputs.seqname }}_${{ inputs.ntrans }}_${{ inputs.ntests }}-log
         path: rtl/tb/build/build.log
 
     #  Run the test sequence
@@ -91,5 +87,5 @@ runs:
       if: ${{ failure () && steps.run-tb.conclusion == 'failure' }}
       uses: actions/upload-artifact@v4
       with:
-        name: run-${{ inputs.artifact_suffix }}-log
+        name: run-${{ inputs.seqname }}_${{ inputs.ntrans }}_${{ inputs.ntests }}-log
         path: rtl/tb/logs
