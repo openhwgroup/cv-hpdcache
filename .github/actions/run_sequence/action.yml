@@ -79,9 +79,9 @@ runs:
         . .github/scripts/env.sh
         cd rtl/tb
         make nonregression \
-            SEQUENCE=${{ inputs.seq_name }} \
-            NTESTS=${{ inputs.seq_ntrans }} \
-            NTRANSACTIONS=${{ inputs.seq_ntests }}
+            SEQUENCE=${{ inputs.seqname }} \
+            NTESTS=${{ inputs.ntrans }} \
+            NTRANSACTIONS=${{ inputs.ntests }}
 
     - name: Archive nonregression logs
       if: ${{ failure () && steps.run-tb.conclusion == 'failure' }}
