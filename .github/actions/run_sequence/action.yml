@@ -17,8 +17,13 @@ inputs:
 
 runs:
   using: "composite"
-
   steps:
+    #  Install Dependencies
+    - name: Install Dependencies
+      shell: bash
+      run: |
+        ./.github/scripts/install_deps_ubuntu.sh
+
     - name: Cache SystemC
       id: cache-systemc
       uses: actions/cache@v4
