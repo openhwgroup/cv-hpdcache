@@ -363,7 +363,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     always_comb
     begin: lzc_comb
         first_one_pos = '0;
-        for (int unsigned i = int'(HPDcacheMemDataWidth/8); i > 0; i--) begin
+        for (int unsigned i = unsigned'(HPDcacheMemDataWidth/8); i > 0; i--) begin
             if (req_wbe[i-1]) begin
                 first_one_pos = i-1;
                 break;

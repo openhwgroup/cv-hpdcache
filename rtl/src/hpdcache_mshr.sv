@@ -160,7 +160,7 @@ import hpdcache_pkg::*;
 
         found_available_way = 0;
         for (int unsigned i = 0; i < HPDcacheCfg.u.mshrWays; i++) begin
-            if (!mshr_valid_q[i*HPDcacheCfg.u.mshrSets + int'(alloc_set)]) begin
+            if (!mshr_valid_q[i*HPDcacheCfg.u.mshrSets + unsigned'(alloc_set)]) begin
                 found_available_way = mshr_way_t'(i);
                 break;
             end
@@ -175,7 +175,7 @@ import hpdcache_pkg::*;
 
         found_available = 1'b0;
         for (int unsigned i = 0; i < HPDcacheCfg.u.mshrWays; i++) begin
-            if (!mshr_valid_q[i*HPDcacheCfg.u.mshrSets + int'(check_set_st1)]) begin
+            if (!mshr_valid_q[i*HPDcacheCfg.u.mshrSets + unsigned'(check_set_st1)]) begin
                 found_available = 1'b1;
                 break;
             end
@@ -260,8 +260,8 @@ import hpdcache_pkg::*;
             automatic bit v_valid;
             automatic bit v_match_set;
             automatic bit v_match_tag;
-            v_valid = mshr_valid_q[w*HPDcacheCfg.u.mshrSets + int'(check_set_st1)];
-            v_match_set = (mshr_cache_set_q[w*HPDcacheCfg.u.mshrSets + int'(check_set_st1)] ==
+            v_valid = mshr_valid_q[w*HPDcacheCfg.u.mshrSets + unsigned'(check_set_st1)];
+            v_match_set = (mshr_cache_set_q[w*HPDcacheCfg.u.mshrSets + unsigned'(check_set_st1)] ==
                           check_cache_set_q);
             v_match_tag = (mshr_rentry[w].tag == check_tag_i);
             v_hit_way[w] = (v_valid && v_match_tag && v_match_set);
@@ -297,7 +297,7 @@ import hpdcache_pkg::*;
         always_comb
         begin : mshr_wbyteenable_comb
             for (int unsigned i = 0; i < HPDcacheCfg.u.mshrWays; i++) begin
-                mshr_wbyteenable[i] = (int'(alloc_way_o) == i) ? '1 : '0;
+                mshr_wbyteenable[i] = (unsigned'(alloc_way_o) == i) ? '1 : '0;
             end
         end
 
@@ -338,7 +338,7 @@ import hpdcache_pkg::*;
         always_comb
         begin : mshr_wmask_comb
             for (int unsigned i = 0; i < HPDcacheCfg.u.mshrWays; i++) begin
-                mshr_wmask[i] = (int'(alloc_way_o) == i) ? '1 : '0;
+                mshr_wmask[i] = (unsigned'(alloc_way_o) == i) ? '1 : '0;
             end
         end
 
