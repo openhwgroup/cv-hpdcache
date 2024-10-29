@@ -17,6 +17,8 @@ inputs:
 
 runs:
   using: "composite"
+  env:
+    artifact_suffix: "${{ inputs.seq_name }}_${{ inputs.seq_ntrans }}_${{ inputs.seq_ntests }}"
   steps:
     #  Install Dependencies
     - name: Install Dependencies
@@ -53,7 +55,7 @@ runs:
       if: ${{ failure () && steps.verilate.conclusion == 'failure' }}
       uses: actions/upload-artifact@v4
       with:
-        name: verilate-log
+        name: verilate-${{ env.artifact_suffix }}-log
         path: rtl/tb/build/verilate.log
 
     - name: Build SystemC testbench
@@ -68,7 +70,7 @@ runs:
       if: ${{ failure () && steps.build-tb.conclusion == 'failure' }}
       uses: actions/upload-artifact@v4
       with:
-        name: build-log
+        name: build-${{ env.artifact_suffix }}-log
         path: rtl/tb/build/build.log
 
     #  Run the test sequence
@@ -86,5 +88,5 @@ runs:
       if: ${{ failure () }}
       uses: actions/upload-artifact@v4
       with:
-        name: run_log
+        name: run-${{ env.artifact_suffix }}-log
         path: rtl/tb/logs
