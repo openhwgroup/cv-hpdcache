@@ -300,7 +300,7 @@ import hpdcache_pkg::*;
 
     //  FIFO for memory request metadata
     //
-    localparam int unsigned MemReqFlits = HPDcacheCfg.u.memDataWidth < HPDcacheCfg.clWidth ?
+    localparam hpdcache_uint32 MemReqFlits = HPDcacheCfg.u.memDataWidth < HPDcacheCfg.clWidth ?
         (HPDcacheCfg.clWidth / HPDcacheCfg.u.memDataWidth) - 1 : 0;
 
     assign flush_mem_req_wmeta = '{
@@ -353,7 +353,7 @@ import hpdcache_pkg::*;
     //
     hpdcache_mem_len_t write_flits_cnt_q;
 
-    assign flush_mem_req_rlast = (write_flits_cnt_q == MemReqFlits);
+    assign flush_mem_req_rlast = (hpdcache_uint32'(write_flits_cnt_q) == MemReqFlits);
 
     always_ff @(posedge clk_i or negedge rst_ni)
     begin

@@ -166,7 +166,7 @@ import hpdcache_pkg::*;
     always_comb
     begin : resp_demux
         for (int unsigned i = 0; i < HPDcacheCfg.u.nRequesters; i++) begin
-            core_rsp_valid_o[i]  = core_rsp_valid_i && (i == unsigned'(core_rsp_i.sid));
+            core_rsp_valid_o[i]  = core_rsp_valid_i && (i == hpdcache_uint32'(core_rsp_i.sid));
             core_rsp_o[i]        = core_rsp_i;
         end
     end

@@ -277,7 +277,7 @@ import hpdcache_pkg::*;
             always_comb
             begin : wbuf_write_be_comb
                 for (int unsigned w = 0; w < WBUF_DATA_NWORDS; w++) begin
-                    if (w == unsigned'(write_addr_i[WBUF_OFFSET_WIDTH-1:WBUF_WORD_OFFSET])) begin
+                    if (w == hpdcache_uint32'(write_addr_i[WBUF_OFFSET_WIDTH-1:WBUF_WORD_OFFSET])) begin
                         write_be[w] = write_be_i;
                     end else begin
                         write_be[w] = '0;
@@ -485,7 +485,7 @@ import hpdcache_pkg::*;
                 end
 
                 WBUF_OPEN: begin
-                    match_open_ptr  = (i == unsigned'(wbuf_write_hit_open_dir_ptr));
+                    match_open_ptr  = (i == hpdcache_uint32'(wbuf_write_hit_open_dir_ptr));
                     timeout         = (wbuf_dir_q[i].cnt == (cfg_threshold_i - 1));
                     read_hit        = read_flush_hit_i & wbuf_write_hit_open & match_open_ptr;
                     write_hit       = write_i
@@ -521,7 +521,7 @@ import hpdcache_pkg::*;
                 end
 
                 WBUF_PEND: begin
-                    match_pend_ptr = (i == unsigned'(wbuf_write_hit_pend_dir_ptr));
+                    match_pend_ptr = (i == hpdcache_uint32'(wbuf_write_hit_pend_dir_ptr));
                     write_hit = write_i
                                 & wbuf_write_hit_pend
                                 & match_pend_ptr
@@ -544,7 +544,7 @@ import hpdcache_pkg::*;
                 end
 
                 WBUF_SENT: begin
-                    if (mem_resp_write_valid_i && (i == unsigned'(ack_id))) begin
+                    if (mem_resp_write_valid_i && (i == hpdcache_uint32'(ack_id))) begin
                         wbuf_dir_state_d[i] = WBUF_FREE;
                     end
                 end
