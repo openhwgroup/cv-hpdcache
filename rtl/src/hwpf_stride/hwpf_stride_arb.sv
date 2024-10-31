@@ -112,7 +112,7 @@ import hpdcache_pkg::*;
     always_comb
     begin : resp_demux
         for (int unsigned i = 0; i < NUM_HW_PREFETCH; i++) begin
-            hwpf_stride_rsp_valid_o[i]  = hpdcache_rsp_valid_i && (i == unsigned'(hpdcache_rsp_i.tid));
+            hwpf_stride_rsp_valid_o[i]  = hpdcache_rsp_valid_i && (i == hpdcache_uint32'(hpdcache_rsp_i.tid));
             hwpf_stride_rsp_o[i]        = hpdcache_rsp_i;
         end
     end
