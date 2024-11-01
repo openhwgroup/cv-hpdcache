@@ -272,27 +272,26 @@ import hpdcache_pkg::*;
         end
     end
 
-    generate
-        if (WBUF_OFFSET_WIDTH > WBUF_WORD_OFFSET) begin : gen_wbuf_write_be_gt
-            always_comb
-            begin : wbuf_write_be_comb
-                for (int unsigned w = 0; w < WBUF_DATA_NWORDS; w++) begin
-                    if (w == hpdcache_uint32'(write_addr_i[WBUF_OFFSET_WIDTH-1:WBUF_WORD_OFFSET])) begin
-                        write_be[w] = write_be_i;
-                    end else begin
-                        write_be[w] = '0;
-                    end
-                end
-            end
-        end else begin : gen_wbuf_write_be_le
-            always_comb
-            begin : wbuf_write_be_comb
-                for (int unsigned w = 0; w < WBUF_DATA_NWORDS; w++) begin
+    if (WBUF_OFFSET_WIDTH > WBUF_WORD_OFFSET) begin : gen_wbuf_write_be_gt
+        always_comb
+        begin : wbuf_write_be_comb
+            for (int unsigned w = 0; w < WBUF_DATA_NWORDS; w++) begin
+                if (w == hpdcache_uint32'(write_addr_i[WBUF_OFFSET_WIDTH-1:WBUF_WORD_OFFSET]))
+                begin
                     write_be[w] = write_be_i;
+                end else begin
+                    write_be[w] = '0;
                 end
             end
         end
-    endgenerate
+    end else begin : gen_wbuf_write_be_le
+        always_comb
+        begin : wbuf_write_be_comb
+            for (int unsigned w = 0; w < WBUF_DATA_NWORDS; w++) begin
+                write_be[w] = write_be_i;
+            end
+        end
+    end
 
     hpdcache_fxarb #(
         .N       (WBUF_DIR_NENTRIES)

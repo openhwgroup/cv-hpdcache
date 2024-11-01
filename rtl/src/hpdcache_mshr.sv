@@ -258,11 +258,15 @@ import hpdcache_pkg::*;
 
         for (int unsigned w = 0; w < HPDcacheCfg.u.mshrWays; w++) begin
             automatic bit v_valid;
+            hpdcache_uint32 v_check_set_st1;
+            hpdcache_set_t v_check_set;
             automatic bit v_match_set;
             automatic bit v_match_tag;
+
             v_valid = mshr_valid_q[w*HPDcacheCfg.u.mshrSets + hpdcache_uint32'(check_set_st1)];
-            v_match_set = (mshr_cache_set_q[w*HPDcacheCfg.u.mshrSets + hpdcache_uint32'(check_set_st1)] ==
-                          check_cache_set_q);
+            v_check_set_st1 = hpdcache_uint32'(check_set_st1);
+            v_check_set = mshr_cache_set_q[w*HPDcacheCfg.u.mshrSets + v_check_set_st1];
+            v_match_set = (v_check_set == check_cache_set_q);
             v_match_tag = (mshr_rentry[w].tag == check_tag_i);
             v_hit_way[w] = (v_valid && v_match_tag && v_match_set);
         end
