@@ -246,6 +246,23 @@ write-through policy (respectively write-back) for that same cacheline later.
 Cache Directory and Data
 ------------------------
 
+State Bits in the Cache Directory
+'''''''''''''''''''''''''''''''''
+
+Each cacheline in the HPDcache has the following state bits:
+
+  - **valid**: when this bit is set, it means that the cacheline is valid.
+    Otherwise, the slot is available.
+  - **wback**: when this bit is set, it means that the cacheline is in
+    write-back mode. It is only valid when the valid bit is set.
+  - **dirty**: when this bit is set, it means that the cacheline is in
+    write-back mode and it is dirty (it has locally modified data which has not
+    been transmitted to the next memory level). It is only valid when the valid
+    bit is set.
+  - **fetch**: when this bit is set, it means that the cacheline has been
+    pre-selected to be replaced by a new one. While this bit is set, the refill
+    response for the miss has not yet arrived.
+
 Replacement Policy
 ''''''''''''''''''
 
@@ -256,10 +273,16 @@ actual policy at synthesis-time through the
 configuration parameter (:numref:`Table %s <tab_synthesis_parameters>`).
 
 The cache uses the selected policy to select the victim way where a new
-cacheline is written. At the arrival of the response for a read miss request,
-the miss handler starts the refilling operations. During refill, the miss
-handler applies the replacement policy to select the way where it writes the
-new cacheline.
+cacheline is written. In case of a read miss or a write miss with the write-back
+policy the cache controller applies the replacement policy to select the way of
+the corresponding set where the miss handler will write the new cacheline.
+
+The cache selects the victim way at the moment of a cache miss. At that moment,
+it also asks for the missing cacheline to the memory. While waiting for the
+refill response, the victim cacheline is still accessible but in a 'fetching'
+state (fetch bit set). This means that it has been pre-selected for replacement,
+and cannot be a candidate for victim selection for a future miss (until the
+refill response does not arrive).
 
 
 Pseudo Least Recently Used (PLRU)
@@ -267,12 +290,12 @@ Pseudo Least Recently Used (PLRU)
 
 This replacement policy requires one state bit per cacheline in the cache. This
 bit is named Least Recently Used (LRU) state. All LRU bits are set to 0 on
-reset. They are then updated at each read, store, atomic operation from the
-requesters. They are also updated by refill operations.
+reset. They are then updated at each read, store and atomic operation from the
+requesters.
 
-The following code snippet shows the declaration of the array containing the LRU
-bits. As explained before, there are as many bits as cachelines in the cache.
-Therefore the LRU bits are organized as a two-dimensional array of
+The following code snippet shows the declaration of the array containing the
+LRU bits. As explained before, there are as many bits as cachelines in the
+cache. Therefore the LRU bits are organized as a two-dimensional array of
 :math:`\mathsf{CONF\_HPDCACHE\_SETS}` and
 :math:`\mathsf{CONF\_HPDCACHE\_WAYS}` bits.
 
@@ -284,13 +307,12 @@ Therefore the LRU bits are organized as a two-dimensional array of
 
 The following code snippet illustrates the algorithm (``update_plru`` function)
 that the cache controller uses to update LRU bits. This function is used by
-read, write or atomic requests from requesters, and also by the refill operation
-from the miss handler. In the case of requests from requesters, the cache
-controller first check for a hit in any way of the set designated by the request
-address. If there is a hit, the cache controller applies the ``update_plru``
-algorithm on the corresponding set and way. In the case of a refill operation,
-the miss handler first select a victim way, then applies the ``update_plru``
-algorithm.
+read, write and atomic requests from requesters. The cache controller first
+checks for a hit in any way of the set designated by the request address. If
+there is a hit, the cache controller applies the ``update_plru`` algorithm on
+the corresponding set and way. In the case of a miss, the cache controller first
+selects a victim way, then during the refill, the miss handler applies the
+``update_plru`` algorithm.
 
 .. code:: c
 
@@ -314,9 +336,15 @@ algorithm.
 
 
 The following code snippet illustrates the algorithm (``select_victim_way``
-function) that the miss handler uses to select a victim way during a refill
-operation. In summary, the victim way is either the first way (starting from
-way 0) where the valid bit is 0, or the first way where the LRU bit is unset.
+function) that the cache controller uses to select a victim way on a cache
+miss. In summary, the victim way is either the first way (starting from way
+0) where the valid bit is 0, or the first way where the LRU bit is unset.
+In the case where the way with the LRU bit unset is being fetched (fetch bit
+set), the controller selects one of the ways which is not being fetched, giving
+the highest priority to clean ways (no local modification in case of write-back
+policy). If all ways are pre-selected (being fetched by a previous miss), the
+cache controller cannot select a victim, and puts the new miss request into the
+replay table.
 
 .. code:: c
 
@@ -330,15 +358,32 @@ way 0) where the valid bit is 0, or the first way where the LRU bit is unset.
       }
 
       //  If all ways are valid, return the first way (of the target set) whose
-      //  LRU bit is unset
+      //  LRU bit is unset and which is not pre-selected as victim
       for (int w = 0; w < HPDCACHE_WAYS; w++) {
-         if (!lru[set][w]) {
+         if (!fetch[set][w] && !lru[set][w]) {
             return w;
          }
       }
 
-      //  This return statement should not be reached as there is always, at
-      //  least, one LRU bit unset (refer to update_plru)
+      //  If the PLRU designated way cannot be selected (already pre-selected
+      //  as victim), return the first clean way (no locally modified in case
+      //  of write-back policy)
+      for (int w = 0; w < HPDCACHE_WAYS; w++) {
+         if (!fetch[set][w] && !dirty[set][w]) {
+            return w;
+         }
+      }
+
+      //  If there is no clean way selectable, return the first dirty way
+      for (int w = 0; w < HPDCACHE_WAYS; w++) {
+         if (!fetch[set][w]) {
+            return w;
+         }
+      }
+
+      // If there is no selectable way (all ways are being already
+      // pre-selected and are waiting for a refill) returns -1. In this case
+      // the cache controller puts the miss request on hold in the replay table.
       return -1;
    }
 
@@ -420,6 +465,15 @@ Each entry contains the following information:
    * - V
      - Valid
      - :math:`\mathsf{1}`
+   * - W
+     - Write-back (wback)
+     - :math:`\mathsf{1}`
+   * - D
+     - Dirty
+     - :math:`\mathsf{1}`
+   * - F
+     - Fetch
+     - :math:`\mathsf{1}`
    * - T
      - Cache Tag
      - :math:`\mathsf{HPDCACHE\_NLINE\_WIDTH - HPDCACHE\_SET\_WIDTH}`
@@ -430,7 +484,7 @@ The depth of the macros is:
 
 The width (in bits) of the macros is:
 
-   :math:`\mathsf{1 + T}` bits.
+   :math:`\mathsf{4 + T}` bits.
 
 Finally, the total number of SRAM macros for the cache directory is:
 
