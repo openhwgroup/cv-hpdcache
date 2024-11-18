@@ -282,6 +282,7 @@ import hpdcache_pkg::*;
                          *       invalidation of one cycle to ease the timing closure */
                         dir_inval_o     = cmoh_dir_check_nline_hit;
                         dir_inval_way_o = dir_check_nline_hit_way_i;
+                        dir_inval_set_o = cmoh_set;
                         cmoh_fsm_d      = CMOH_IDLE;
                     end
 
