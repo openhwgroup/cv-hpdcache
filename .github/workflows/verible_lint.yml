@@ -3,7 +3,20 @@
 
 name: verible-lint HPDcache source code
 on:
+  push:
+    paths-ignore:
+      - 'docs/'
+      - '*.md'
+      - 'CODEOWNERS'
+      - 'LICENSE'
+
   pull_request:
+    paths-ignore:
+      - 'docs/'
+      - '*.md'
+      - 'CODEOWNERS'
+      - 'LICENSE'
+
 jobs:
   lint:
     runs-on: ubuntu-latest
