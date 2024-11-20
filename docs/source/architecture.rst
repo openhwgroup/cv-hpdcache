@@ -273,16 +273,17 @@ actual policy at synthesis-time through the
 configuration parameter (:numref:`Table %s <tab_synthesis_parameters>`).
 
 The cache uses the selected policy to select the victim way where a new
-cacheline is written. In case of a read miss or a write miss with the write-back
-policy the cache controller applies the replacement policy to select the way of
-the corresponding set where the miss handler will write the new cacheline.
+cacheline is written. In case of a read miss, CMO prefetch miss or a write miss
+with the write-back policy the cache controller applies the replacement policy
+to select the way of the corresponding set where the miss handler will write
+the new cacheline.
 
 The cache selects the victim way at the moment of a cache miss. At that moment,
 it also asks for the missing cacheline to the memory. While waiting for the
-refill response, the victim cacheline is still accessible but in a 'fetching'
-state (fetch bit set). This means that it has been pre-selected for replacement,
-and cannot be a candidate for victim selection for a future miss (until the
-refill response does not arrive).
+refill response, the victim cacheline is still accessible but in **fetch** mode
+(fetch bit set). This means that it has been pre-selected for replacement, and
+cannot be a candidate for victim selection for a future miss (until the refill
+response does not arrive).
 
 
 Pseudo Least Recently Used (PLRU)
@@ -290,29 +291,29 @@ Pseudo Least Recently Used (PLRU)
 
 This replacement policy requires one state bit per cacheline in the cache. This
 bit is named Least Recently Used (LRU) state. All LRU bits are set to 0 on
-reset. They are then updated at each read, store and atomic operation from the
-requesters.
+reset. They are then updated at each read, CMO prefetch, store and atomic
+operation from the requesters.
 
 The following code snippet shows the declaration of the array containing the
 LRU bits. As explained before, there are as many bits as cachelines in the
-cache. Therefore the LRU bits are organized as a two-dimensional array of
+cache. Therefore the LRU bits are organized as a 2D (two-dimensions) array of
 :math:`\mathsf{CONF\_HPDCACHE\_SETS}` and
 :math:`\mathsf{CONF\_HPDCACHE\_WAYS}` bits.
 
 .. code:: c
 
-   //  Two-dimension array containing LRU state bits
+   //  2D array containing LRU state bits
    bool lru[CONF_HPDCACHE_SETS][CONF_HPDCACHE_WAYS];
 
 
 The following code snippet illustrates the algorithm (``update_plru`` function)
-that the cache controller uses to update LRU bits. This function is used by
-read, write and atomic requests from requesters. The cache controller first
-checks for a hit in any way of the set designated by the request address. If
-there is a hit, the cache controller applies the ``update_plru`` algorithm on
-the corresponding set and way. In the case of a miss, the cache controller first
-selects a victim way, then during the refill, the miss handler applies the
-``update_plru`` algorithm.
+that the cache controller uses to update PLRU bits. This function is used by
+read, CMO prefetch, write and atomic requests from requesters. The cache
+controller first checks for a hit in any way of the set designated by the
+request address. If there is a hit, the cache controller applies the
+``update_plru`` algorithm on the corresponding set and way. In the case of a
+miss, the cache controller first selects a victim way, then during the refill,
+the miss handler applies the ``update_plru`` algorithm.
 
 .. code:: c
 
@@ -358,7 +359,7 @@ replay table.
       }
 
       //  If all ways are valid, return the first way (of the target set) whose
-      //  LRU bit is unset and which is not pre-selected as victim
+      //  PLRU bit is unset and which is not pre-selected as victim
       for (int w = 0; w < HPDCACHE_WAYS; w++) {
          if (!fetch[set][w] && !lru[set][w]) {
             return w;
@@ -381,9 +382,9 @@ replay table.
          }
       }
 
-      // If there is no selectable way (all ways are being already
-      // pre-selected and are waiting for a refill) returns -1. In this case
-      // the cache controller puts the miss request on hold in the replay table.
+      // If there is no selectable way (all ways are being already pre-selected
+      // and are waiting for a refill) returns -1. In this case the cache
+      // controller puts the miss request on hold in the replay table.
       return -1;
    }
 
@@ -394,16 +395,19 @@ Pseudo Random
 This replacement policy requires only one 8-bit Linear Feedback Shift Register
 (LFSR).
 
-Each time there is a refill operation, the miss handler selects either a free
-way (valid bit is set to 0), or a way designated by the value in the LFSR.
-Each time the miss handler uses the pseudo random value, it performs a shift of
-the LFSR.
+Each time there is a miss (read, CMO prefetch, write in write-back mode), the
+cache controller selects either a free way (valid bit is set to 0), or a way
+designated by the value in the LFSR. If the random way is in **fetch** mode,
+then the cache controller selects the first way which is not in **fetch** mode,
+giving the highest priority to clean ways. If all ways are in **fetch** mode,
+then the request is put on-hold in the replay table. Each time the cache
+controller uses the pseudo random value, it performs a shift of the LFSR.
 
 This pseudo random policy has a lower area footprint than the PLRU policy
-because it only uses a 8-bit LFSR. The PLRU policy requires one bit per
-cacheline in the cache. However, some applications may exhibit lower
-performance with the pseudo random replacement policy as locality is not
-considered while selecting the victim.
+because it only uses a 8-bit LFSR (independently of the number of cachelines in
+the cache). The PLRU policy requires one bit per cacheline in the cache.
+However, some applications may exhibit lower performance with the pseudo random
+replacement policy as locality is not considered while selecting the victim.
 
 
 RAM Organization
