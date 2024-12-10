@@ -1225,6 +1225,9 @@ import hpdcache_pkg::*;
         refill_access_width_assert:
             assert (HPDcacheCfg.u.clWords >= HPDcacheCfg.u.accessWords) else
                 $fatal("cache access width shall be l.e. to cache-line width");
+        cl_words_assert:
+            assert (HPDcacheCfg.u.clWords > 1) else
+                $fatal("cacheline words shall be greater than 1");
         mem_width_assert:
             assert (HPDcacheCfg.u.memDataWidth >= HPDcacheCfg.reqDataWidth) else
                 $fatal("memory interface data width shall be g.e. to req data width");
