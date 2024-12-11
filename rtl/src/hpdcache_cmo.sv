@@ -134,7 +134,8 @@ import hpdcache_pkg::*;
     hpdcache_nline_t      cmoh_nline;
     hpdcache_set_t        cmoh_set;
     hpdcache_tag_t        cmoh_tag;
-    logic                 cmoh_flush_req_w, cmoh_flush_req_wok;
+    logic                 cmoh_flush_req_w;
+    logic                 cmoh_flush_req_wok;
     hpdcache_set_t        cmoh_flush_req_set;
     hpdcache_tag_t        cmoh_flush_req_tag;
     hpdcache_way_vector_t cmoh_flush_req_way;
@@ -185,7 +186,6 @@ import hpdcache_pkg::*;
 
         wbuf_flush_all_o = 1'b0;
 
-        cmoh_flush_req_w   = 1'b0;
         cmoh_flush_req_set = '0;
         cmoh_flush_req_way = '0;
         cmoh_flush_req_tag = '0;
@@ -323,7 +323,6 @@ import hpdcache_pkg::*;
                     dir_inval_o = cmoh_flush_req_inval_q;
                     dir_inval_set_o = cmoh_flush_req_set_q;
                     dir_inval_way_o = cmoh_flush_req_way_q;
-                    cmoh_flush_req_w = dir_check_entry_valid_i & dir_check_entry_dirty_i;
                     cmoh_flush_req_set = cmoh_flush_req_set_q;
                     cmoh_flush_req_way = cmoh_flush_req_way_q;
                     cmoh_flush_req_tag = dir_check_entry_tag_i;
@@ -354,7 +353,6 @@ import hpdcache_pkg::*;
                     dir_inval_o = cmoh_flush_req_inval_q;
                     dir_inval_set_o = cmoh_flush_req_set_q;
                     dir_inval_way_o = cmoh_flush_req_way_q;
-                    cmoh_flush_req_w = dir_check_entry_valid_i & dir_check_entry_dirty_i;
                     cmoh_flush_req_set = cmoh_flush_req_set_q;
                     cmoh_flush_req_way = cmoh_flush_req_way_q;
                     cmoh_flush_req_tag = dir_check_entry_tag_i;
@@ -386,7 +384,6 @@ import hpdcache_pkg::*;
                     dir_inval_o = cmoh_flush_req_inval_q & cmoh_dir_check_nline_hit;
                     dir_inval_set_o = cmoh_set;
                     dir_inval_way_o = dir_check_nline_hit_way_i;
-                    cmoh_flush_req_w = cmoh_dir_check_nline_hit & dir_check_nline_dirty_i;
                     cmoh_flush_req_set = cmoh_set;
                     cmoh_flush_req_tag = cmoh_tag;
                     cmoh_flush_req_way = dir_check_nline_hit_way_i;
@@ -460,6 +457,19 @@ import hpdcache_pkg::*;
     if (HPDcacheCfg.u.wbEn) begin : gen_cmo_flush_fifo
         cmoh_flush_req_t cmoh_flush_req_wdata, cmoh_flush_req_rdata;
 
+        always_comb
+        begin : cmoh_flush_req_w_comb
+            cmoh_flush_req_w = 1'b0;
+            if (cmoh_flush_req_valid_q) begin
+                unique case (cmoh_fsm_q)
+                    CMOH_FLUSH_ALL_NEXT, CMOH_FLUSH_ALL_LAST:
+                        cmoh_flush_req_w = dir_check_entry_valid_i & dir_check_entry_dirty_i;
+                    CMOH_FLUSH_NLINE_NEXT:
+                        cmoh_flush_req_w = cmoh_dir_check_nline_hit & dir_check_nline_dirty_i;
+                endcase
+            end
+        end
+
         assign cmoh_flush_req_wdata = '{
             nline: {cmoh_flush_req_tag, cmoh_flush_req_set},
             way  :  cmoh_flush_req_way
@@ -483,6 +493,7 @@ import hpdcache_pkg::*;
         assign flush_alloc_nline_o = cmoh_flush_req_rdata.nline;
         assign flush_alloc_way_o   = cmoh_flush_req_rdata.way;
     end else begin : gen_cmo_no_flush_fifo
+        assign cmoh_flush_req_w    = 1'b0;
         assign cmoh_flush_req_wok  = 1'b1;
         assign flush_alloc_o       = 1'b0;
         assign flush_alloc_nline_o = '0;

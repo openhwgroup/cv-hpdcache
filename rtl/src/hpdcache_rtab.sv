@@ -373,40 +373,43 @@ import hpdcache_pkg::*;
     );
     //  }}}
 
-    for (gen_i = 0; gen_i < N; gen_i++) begin : gen_deps_rst
-        //  reset write buffer dependency bits with the output from the write buffer
-        //  {{{
-        assign deps_rst[gen_i].wbuf_hit = wbuf_sel[gen_i] & ~(wbuf_hit_open_i |
-                                                              wbuf_hit_pend_i |
-                                                              wbuf_hit_sent_i);
-        assign deps_rst[gen_i].wbuf_not_ready = wbuf_sel[gen_i] & ~wbuf_not_ready_i;
-        //  }}}
+    always_comb
+    begin : deps_rst_comb
+        deps_rst = '0;
 
-        //  Update miss handler dependency
-        //  {{{
-        assign deps_rst[gen_i].mshr_ready = miss_ready_i;
-        //  }}}
+        for (int i = 0; i < N; i++) begin
 
-        //  Update refill dependencies
-        //  {{{
-        assign deps_rst[gen_i].mshr_full = refill_i & match_refill_mshr_set[gen_i];
-        assign deps_rst[gen_i].mshr_hit = refill_i & match_refill_nline[gen_i];
-        assign deps_rst[gen_i].write_miss = deps_rst[gen_i].mshr_hit;
-        //  }}}
+            //  reset write buffer dependency bits with the output from the write buffer
+            //  {{{
+            if (wbuf_sel[i]) begin
+                deps_rst[i].wbuf_hit = ~(wbuf_hit_open_i | wbuf_hit_pend_i | wbuf_hit_sent_i);
+                deps_rst[i].wbuf_not_ready = ~wbuf_not_ready_i;
+            end
+            //  }}}
 
-        //  Update cache directory dependencies
-        //  {{{
-        assign deps_rst[gen_i].dir_unavailable = refill_i & match_refill_set[gen_i];
-        assign deps_rst[gen_i].dir_fetch = refill_i & match_refill_set[gen_i] &
-                                           match_refill_way[gen_i];
-        //  }}}
+            //  Update miss handler dependency
+            //  {{{
+            deps_rst[i].mshr_ready = miss_ready_i;
+            //  }}}
 
-        //  Update flush dependencies
-        //  {{{
-        assign deps_rst[gen_i].flush_hit = flush_ack_i & match_flush_nline[gen_i];
-        assign deps_rst[gen_i].flush_not_ready = flush_ready_i;
-        //  }}}
-end
+            //  Update refill dependencies
+            //  {{{
+            if (refill_i) begin
+                deps_rst[i].mshr_full = match_refill_mshr_set[i];
+                deps_rst[i].mshr_hit = match_refill_nline[i];
+                deps_rst[i].write_miss = match_refill_nline[i];
+                deps_rst[i].dir_unavailable = match_refill_set[i];
+                deps_rst[i].dir_fetch = match_refill_set[i] & match_refill_way[i];
+            end
+            //  }}}
+
+            //  Update flush dependencies
+            //  {{{
+            deps_rst[i].flush_hit = flush_ack_i & match_flush_nline[i];
+            deps_rst[i].flush_not_ready = flush_ready_i;
+            //  }}}
+        end
+    end
 //  }}}
 
 //  Pop interface
