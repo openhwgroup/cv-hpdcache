@@ -277,7 +277,10 @@ import hpdcache_pkg::*;
     logic                  cmo_ready;
     hpdcache_cmoh_op_t     cmo_req_op;
     hpdcache_req_addr_t    cmo_req_addr;
+    hpdcache_req_sid_t     cmo_req_sid;
+    hpdcache_req_tid_t     cmo_req_tid;
     hpdcache_req_data_t    cmo_req_wdata;
+    logic                  cmo_req_need_rsp;
     logic                  cmo_wbuf_flush_all;
     logic                  cmo_dir_check_nline;
     hpdcache_set_t         cmo_dir_check_nline_set;
@@ -297,6 +300,9 @@ import hpdcache_pkg::*;
     logic                  cmo_flush_alloc;
     hpdcache_nline_t       cmo_flush_alloc_nline;
     hpdcache_way_vector_t  cmo_flush_alloc_way;
+    logic                  cmo_core_rsp_ready;
+    logic                  cmo_core_rsp_valid;
+    hpdcache_rsp_t         cmo_core_rsp;
 
     logic                  flush_empty;
     logic                  flush_busy;
@@ -585,6 +591,9 @@ import hpdcache_pkg::*;
         .cmo_req_op_o                       (cmo_req_op),
         .cmo_req_addr_o                     (cmo_req_addr),
         .cmo_req_wdata_o                    (cmo_req_wdata),
+        .cmo_req_sid_o                      (cmo_req_sid),
+        .cmo_req_tid_o                      (cmo_req_tid),
+        .cmo_req_need_rsp_o                 (cmo_req_need_rsp),
         .cmo_wbuf_flush_all_i               (cmo_wbuf_flush_all),
         .cmo_dir_check_nline_i              (cmo_dir_check_nline),
         .cmo_dir_check_nline_set_i          (cmo_dir_check_nline_set),
@@ -600,6 +609,9 @@ import hpdcache_pkg::*;
         .cmo_dir_inval_i                    (cmo_dir_inval),
         .cmo_dir_inval_set_i                (cmo_dir_inval_set),
         .cmo_dir_inval_way_i                (cmo_dir_inval_way),
+        .cmo_core_rsp_ready_o               (cmo_core_rsp_ready),
+        .cmo_core_rsp_valid_i               (cmo_core_rsp_valid),
+        .cmo_core_rsp_i                     (cmo_core_rsp),
 
         .rtab_empty_o                       (rtab_empty),
         .ctrl_empty_o                       (ctrl_empty),
@@ -879,16 +891,19 @@ import hpdcache_pkg::*;
     //  CMO Request Handler
     //  {{{
     hpdcache_cmo #(
-      .HPDcacheCfg                     (HPDcacheCfg),
+        .HPDcacheCfg                   (HPDcacheCfg),
 
-      .hpdcache_nline_t                (hpdcache_nline_t),
-      .hpdcache_tag_t                  (hpdcache_tag_t),
-      .hpdcache_set_t                  (hpdcache_set_t),
-      .hpdcache_data_word_t            (hpdcache_data_word_t),
-      .hpdcache_way_vector_t           (hpdcache_way_vector_t),
+        .hpdcache_nline_t              (hpdcache_nline_t),
+        .hpdcache_tag_t                (hpdcache_tag_t),
+        .hpdcache_set_t                (hpdcache_set_t),
+        .hpdcache_data_word_t          (hpdcache_data_word_t),
+        .hpdcache_way_vector_t         (hpdcache_way_vector_t),
 
-      .hpdcache_req_addr_t             (hpdcache_req_addr_t),
-      .hpdcache_req_data_t             (hpdcache_req_data_t)
+        .hpdcache_rsp_t                (hpdcache_rsp_t),
+        .hpdcache_req_addr_t           (hpdcache_req_addr_t),
+        .hpdcache_req_tid_t            (hpdcache_req_tid_t),
+        .hpdcache_req_sid_t            (hpdcache_req_sid_t),
+        .hpdcache_req_data_t           (hpdcache_req_data_t)
     ) hpdcache_cmo_i(
         .clk_i,
         .rst_ni,
@@ -903,7 +918,14 @@ import hpdcache_pkg::*;
         .req_op_i                      (cmo_req_op),
         .req_addr_i                    (cmo_req_addr),
         .req_wdata_i                   (cmo_req_wdata),
+        .req_sid_i                     (cmo_req_sid),
+        .req_tid_i                     (cmo_req_tid),
+        .req_need_rsp_i                (cmo_req_need_rsp),
         .req_wait_o                    (cmo_wait),
+
+        .core_rsp_ready_i              (cmo_core_rsp_ready),
+        .core_rsp_valid_o              (cmo_core_rsp_valid),
+        .core_rsp_o                    (cmo_core_rsp),
 
         .wbuf_flush_all_o              (cmo_wbuf_flush_all),
 

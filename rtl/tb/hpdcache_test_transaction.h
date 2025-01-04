@@ -179,6 +179,12 @@ public:
                 (op == HPDCACHE_REQ_CMO_FLUSH_INVAL_ALL));
     }
 
+    bool is_cmo_prefetch() const
+    {
+        unsigned op = this->req_op.to_uint();
+        return (op == HPDCACHE_REQ_CMO_PREFETCH);
+    }
+
     static const char* op_to_string(unsigned int op)
     {
         switch (op) {

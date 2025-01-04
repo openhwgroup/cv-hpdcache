@@ -178,6 +178,7 @@ module hpdcache_ctrl_pe
     input  logic                   cmo_busy_i,
     input  logic                   cmo_wait_i,
     output logic                   cmo_req_valid_o,
+    output logic                   cmo_core_rsp_ready_o,
     //   }}}
 
     //   Configuration
@@ -230,7 +231,8 @@ module hpdcache_ctrl_pe
 
     //  Arbitration of responses to the core
     //  {{{
-    assign uc_core_rsp_ready_o = ~refill_core_rsp_valid_i;
+    assign uc_core_rsp_ready_o  = ~refill_core_rsp_valid_i;
+    assign cmo_core_rsp_ready_o = ~refill_core_rsp_valid_i;
     //  }}}
 
     //  Replay logic

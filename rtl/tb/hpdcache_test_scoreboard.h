@@ -429,9 +429,12 @@ private:
                     }
                 }
 #endif
-                //  release response ID on the sequence
-                seq->deallocate_id(req_id);
-                continue;
+
+                if (!req.req_need_rsp) {
+                    //  release response ID on the sequence
+                    seq->deallocate_id(req_id);
+                    continue;
+                }
             }
 
             bool hit = false;
@@ -469,7 +472,7 @@ private:
             }
 
             //  Look for the request address into the error memory segments
-            if (mem_resp_model) {
+            if (mem_resp_model && (!req.is_cmo() || req.is_cmo_prefetch())) {
                 e.is_error = mem_resp_model->within_error_region(e.addr, e.addr + e.bytes);
             }
 

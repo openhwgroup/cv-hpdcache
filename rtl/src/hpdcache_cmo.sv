@@ -36,7 +36,10 @@ import hpdcache_pkg::*;
     parameter type hpdcache_data_word_t = logic,
     parameter type hpdcache_way_vector_t = logic,
 
+    parameter type hpdcache_rsp_t = logic,
     parameter type hpdcache_req_addr_t = logic,
+    parameter type hpdcache_req_tid_t = logic,
+    parameter type hpdcache_req_sid_t = logic,
     parameter type hpdcache_req_data_t = logic
 )
 //  }}}
@@ -61,8 +64,18 @@ import hpdcache_pkg::*;
     output logic                  req_ready_o,
     input  hpdcache_cmoh_op_t     req_op_i,
     input  hpdcache_req_addr_t    req_addr_i,
-    input  hpdcache_req_data_t    req_wdata_i,
+    input  hpdcache_req_data_t    req_wdata_i/*unused*/,
+    input  hpdcache_req_sid_t     req_sid_i,
+    input  hpdcache_req_tid_t     req_tid_i,
+    input  logic                  req_need_rsp_i,
     output logic                  req_wait_o,
+    //  }}}
+
+    //  Core response interface
+    //  {{{
+    input  logic                  core_rsp_ready_i,
+    output logic                  core_rsp_valid_o,
+    output hpdcache_rsp_t         core_rsp_o,
     //  }}}
 
     //  Write Buffer Interface
@@ -140,8 +153,32 @@ import hpdcache_pkg::*;
     hpdcache_tag_t        cmoh_flush_req_tag;
     hpdcache_way_vector_t cmoh_flush_req_way;
 
+    logic                 core_rsp_w, core_rsp_r, core_rsp_rok;
+    hpdcache_rsp_t        core_rsp;
+    logic                 core_rsp_send_q, core_rsp_send_d;
+
     logic cmoh_set_incr, cmoh_set_reset, cmoh_set_last;
     logic cmoh_way_incr, cmoh_way_reset, cmoh_way_last;
+//  }}}
+
+//  CMO core response buffer
+//  {{{
+    hpdcache_sync_buffer #(
+        .FEEDTHROUGH (1'b0),
+        .data_t      (hpdcache_rsp_t)
+    ) cmoh_core_rsp_buffer_i(
+        .clk_i,
+        .rst_ni,
+        .w_i         (core_rsp_w),
+        .wok_o       (/*unused*/),
+        .wdata_i     (core_rsp),
+        .r_i         (core_rsp_r),
+        .rok_o       (core_rsp_rok),
+        .rdata_o     (core_rsp_o)
+    );
+
+    assign core_rsp_r       = core_rsp_send_q & core_rsp_ready_i;
+    assign core_rsp_valid_o = core_rsp_rok    & core_rsp_send_q;
 //  }}}
 
 //  CMO request handler FSM
@@ -150,11 +187,18 @@ import hpdcache_pkg::*;
     assign cmoh_set   =  cmoh_nline[0                         +: HPDcacheCfg.setWidth];
     assign cmoh_tag   =  cmoh_nline[HPDcacheCfg.setWidth      +: HPDcacheCfg.tagWidth];
 
-    assign req_ready_o = (cmoh_fsm_q == CMOH_IDLE);
     assign req_wait_o  = (cmoh_fsm_q == CMOH_FENCE_WAIT_WBUF_RTAB_EMPTY) |
                          (cmoh_fsm_q == CMOH_WAIT_MSHR_RTAB_EMPTY);
 
     assign cmoh_dir_check_nline_hit = |dir_check_nline_hit_way_i;
+
+    assign core_rsp = '{
+        rdata: '0,
+        sid: req_sid_i,
+        tid: req_tid_i,
+        error: 1'b0,
+        aborted: 1'b0
+    };
 
     always_comb
     begin : cmoh_fsm_comb
@@ -190,11 +234,24 @@ import hpdcache_pkg::*;
         cmoh_flush_req_way = '0;
         cmoh_flush_req_tag = '0;
 
+        core_rsp_w      = 1'b0;
+        core_rsp_send_d = core_rsp_send_q;
+
+        req_ready_o = 1'b0;
+
         cmoh_fsm_d = cmoh_fsm_q;
 
         unique case (cmoh_fsm_q)
             CMOH_IDLE: begin
-                if (req_valid_i) begin
+                req_ready_o = ~core_rsp_send_q;
+
+                if (core_rsp_r) begin
+                    core_rsp_send_d = 1'b0;
+                end
+
+                else if (req_valid_i) begin
+                    core_rsp_w = req_need_rsp_i;
+
                     unique case (1'b1)
                         req_op_i.is_fence: begin
                             //  request to the write buffer to send all open entries
@@ -203,6 +260,8 @@ import hpdcache_pkg::*;
                             //  then wait for the write buffer to be empty
                             if (!rtab_empty_i || !wbuf_empty_i) begin
                                 cmoh_fsm_d = CMOH_FENCE_WAIT_WBUF_RTAB_EMPTY;
+                            end else begin
+                                core_rsp_send_d = req_need_rsp_i;
                             end
                         end
 
@@ -244,6 +303,7 @@ import hpdcache_pkg::*;
             CMOH_FENCE_WAIT_WBUF_RTAB_EMPTY: begin
                 wbuf_flush_all_o = rtab_empty_i;
                 if (wbuf_empty_i && rtab_empty_i) begin
+                    core_rsp_send_d = core_rsp_rok;
                     cmoh_fsm_d = CMOH_IDLE;
                 end
             end
@@ -283,6 +343,8 @@ import hpdcache_pkg::*;
                         dir_inval_o     = cmoh_dir_check_nline_hit;
                         dir_inval_way_o = dir_check_nline_hit_way_i;
                         dir_inval_set_o = cmoh_set;
+
+                        core_rsp_send_d = core_rsp_rok;
                         cmoh_fsm_d      = CMOH_IDLE;
                     end
 
@@ -296,6 +358,7 @@ import hpdcache_pkg::*;
                         dir_inval_set_o = cmoh_set_q;
                         cmoh_set_incr   = 1'b1;
                         if (cmoh_set_last) begin
+                            core_rsp_send_d = core_rsp_rok;
                             cmoh_fsm_d = CMOH_IDLE;
                         end
                     end
@@ -315,6 +378,7 @@ import hpdcache_pkg::*;
                 end else if (cmoh_flush_req_inval_q) begin
                     cmoh_fsm_d = CMOH_INVAL_SET;
                 end else begin
+                    core_rsp_send_d = core_rsp_rok;
                     cmoh_fsm_d = CMOH_IDLE;
                 end
             end
@@ -360,6 +424,7 @@ import hpdcache_pkg::*;
 
                 //  Make sure that all requests have been processed
                 if (flush_empty_i && !flush_alloc_o) begin
+                    core_rsp_send_d = core_rsp_rok;
                     cmoh_fsm_d = CMOH_IDLE;
                 end
             end
@@ -373,6 +438,7 @@ import hpdcache_pkg::*;
                 end else if (cmoh_flush_req_inval_q) begin
                     cmoh_fsm_d = CMOH_INVAL_CHECK_NLINE;
                 end else begin
+                    core_rsp_send_d = core_rsp_rok;
                     cmoh_fsm_d = CMOH_IDLE;
                 end
             end
@@ -391,6 +457,7 @@ import hpdcache_pkg::*;
 
                 //  Make sure that all requests have been processed
                 if (flush_empty_i && !flush_alloc_o) begin
+                    core_rsp_send_d = core_rsp_rok;
                     cmoh_fsm_d = CMOH_IDLE;
                 end
             end
@@ -428,9 +495,11 @@ import hpdcache_pkg::*;
     always_ff @(posedge clk_i or negedge rst_ni)
     begin
         if (!rst_ni) begin
-            cmoh_fsm_q <= CMOH_IDLE;
+            core_rsp_send_q <= 1'b0;
+            cmoh_fsm_q      <= CMOH_IDLE;
         end else begin
-            cmoh_fsm_q <= cmoh_fsm_d;
+            core_rsp_send_q <= core_rsp_send_d;
+            cmoh_fsm_q      <= cmoh_fsm_d;
         end
     end
 
