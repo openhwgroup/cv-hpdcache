@@ -243,13 +243,13 @@ import hpdcache_pkg::*;
 
         unique case (cmoh_fsm_q)
             CMOH_IDLE: begin
-                req_ready_o = ~core_rsp_send_q;
+                req_ready_o = ~core_rsp_rok | core_rsp_r;
 
                 if (core_rsp_r) begin
                     core_rsp_send_d = 1'b0;
                 end
 
-                else if (req_valid_i) begin
+                if (req_valid_i && req_ready_o) begin
                     core_rsp_w = req_need_rsp_i;
 
                     unique case (1'b1)
