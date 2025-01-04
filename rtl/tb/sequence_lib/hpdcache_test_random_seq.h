@@ -218,7 +218,7 @@ private:
             t->req_be          = 0;
             t->req_size        = 0;
             t->req_uncacheable = false;
-            t->req_need_rsp    = false;
+            t->req_need_rsp    = true;
         } else {
             uint32_t offset = address % HPDCACHE_REQ_DATA_BYTES;
             t->req_be          = ((1UL << bytes) - 1) << offset;
