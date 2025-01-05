@@ -112,18 +112,25 @@ import hpdcache_pkg::*;
     input  hpdcache_set_t                       dir_cmo_check_nline_set_i,
     input  hpdcache_tag_t                       dir_cmo_check_nline_tag_i,
     output hpdcache_way_vector_t                dir_cmo_check_nline_hit_way_o,
+    output logic                                dir_cmo_check_nline_wback_o,
     output logic                                dir_cmo_check_nline_dirty_o,
 
     input  logic                                dir_cmo_check_entry_i,
     input  hpdcache_set_t                       dir_cmo_check_entry_set_i,
     input  hpdcache_way_vector_t                dir_cmo_check_entry_way_i,
     output logic                                dir_cmo_check_entry_valid_o,
+    output logic                                dir_cmo_check_entry_wback_o,
     output logic                                dir_cmo_check_entry_dirty_o,
     output hpdcache_tag_t                       dir_cmo_check_entry_tag_o,
 
-    input  logic                                dir_cmo_inval_i,
-    input  hpdcache_set_t                       dir_cmo_inval_set_i,
-    input  hpdcache_way_vector_t                dir_cmo_inval_way_i,
+    input  logic                                dir_cmo_updt_i,
+    input  hpdcache_set_t                       dir_cmo_updt_set_i,
+    input  hpdcache_way_vector_t                dir_cmo_updt_way_i,
+    input  hpdcache_tag_t                       dir_cmo_updt_tag_i,
+    input  logic                                dir_cmo_updt_valid_i,
+    input  logic                                dir_cmo_updt_wback_i,
+    input  logic                                dir_cmo_updt_dirty_i,
+    input  logic                                dir_cmo_updt_fetch_i,
     //      }}}
 
     //      DATA array access interface
@@ -504,11 +511,20 @@ import hpdcache_pkg::*;
             end
 
             //  Cache directory CMO inval tag
-            dir_cmo_inval_i: begin
-                dir_addr    = dir_cmo_inval_set_i;
-                dir_cs      = dir_cmo_inval_way_i;
-                dir_we      = dir_cmo_inval_way_i;
-                dir_wentry  = '0;
+            dir_cmo_updt_i: begin
+                dir_addr    = dir_cmo_updt_set_i;
+                dir_cs      = dir_cmo_updt_way_i;
+                dir_we      = dir_cmo_updt_way_i;
+
+                for (hpdcache_uint i = 0; i < HPDcacheCfg.u.ways; i++) begin
+                    dir_wentry[i] = '{
+                        valid: dir_cmo_updt_valid_i,
+                        wback: dir_cmo_updt_wback_i,
+                        dirty: dir_cmo_updt_dirty_i,
+                        fetch: dir_cmo_updt_fetch_i,
+                        tag  : dir_cmo_updt_tag_i
+                    };
+                end
             end
 
             //  Cache directory match tag -> hit
@@ -577,8 +593,10 @@ import hpdcache_pkg::*;
     assign dir_hit_dirty_o = |(dir_hit_way_o & dir_dirty);
     assign dir_hit_fetch_o = |(dir_hit_way_o & dir_fetch);
 
+    assign dir_cmo_check_nline_wback_o = |(dir_cmo_check_nline_hit_way_o & dir_wback);
     assign dir_cmo_check_nline_dirty_o = |(dir_cmo_check_nline_hit_way_o & dir_dirty);
     assign dir_cmo_check_entry_valid_o = |(dir_req_way_q & dir_valid);
+    assign dir_cmo_check_entry_wback_o = |(dir_req_way_q & dir_wback);
     assign dir_cmo_check_entry_dirty_o = |(dir_req_way_q & dir_dirty);
     hpdcache_mux #(
         .NINPUT      (HPDcacheCfg.u.ways),
@@ -962,7 +980,7 @@ import hpdcache_pkg::*;
                       dir_inval_write_i,
                       dir_cmo_check_nline_i,
                       dir_cmo_check_entry_i,
-                      dir_cmo_inval_i,
+                      dir_cmo_updt_i,
                       dir_updt_i})) else
             $error("hpdcache_memctrl: more than one process is accessing the cache directory");
 

@@ -286,16 +286,23 @@ import hpdcache_pkg::*;
     hpdcache_set_t         cmo_dir_check_nline_set;
     hpdcache_tag_t         cmo_dir_check_nline_tag;
     hpdcache_way_vector_t  cmo_dir_check_nline_hit_way;
+    logic                  cmo_dir_check_nline_wback;
     logic                  cmo_dir_check_nline_dirty;
     logic                  cmo_dir_check_entry;
     hpdcache_set_t         cmo_dir_check_entry_set;
     hpdcache_way_vector_t  cmo_dir_check_entry_way;
     logic                  cmo_dir_check_entry_valid;
+    logic                  cmo_dir_check_entry_wback;
     logic                  cmo_dir_check_entry_dirty;
     hpdcache_tag_t         cmo_dir_check_entry_tag;
-    logic                  cmo_dir_inval;
-    hpdcache_set_t         cmo_dir_inval_set;
-    hpdcache_way_vector_t  cmo_dir_inval_way;
+    logic                  cmo_dir_updt;
+    hpdcache_set_t         cmo_dir_updt_set;
+    hpdcache_way_vector_t  cmo_dir_updt_way;
+    logic                  cmo_dir_updt_valid;
+    logic                  cmo_dir_updt_wback;
+    logic                  cmo_dir_updt_dirty;
+    logic                  cmo_dir_updt_fetch;
+    hpdcache_tag_t         cmo_dir_updt_tag;
     logic                  cmo_wait;
     logic                  cmo_flush_alloc;
     hpdcache_nline_t       cmo_flush_alloc_nline;
@@ -599,16 +606,23 @@ import hpdcache_pkg::*;
         .cmo_dir_check_nline_set_i          (cmo_dir_check_nline_set),
         .cmo_dir_check_nline_tag_i          (cmo_dir_check_nline_tag),
         .cmo_dir_check_nline_hit_way_o      (cmo_dir_check_nline_hit_way),
+        .cmo_dir_check_nline_wback_o        (cmo_dir_check_nline_wback),
         .cmo_dir_check_nline_dirty_o        (cmo_dir_check_nline_dirty),
         .cmo_dir_check_entry_i              (cmo_dir_check_entry),
         .cmo_dir_check_entry_set_i          (cmo_dir_check_entry_set),
         .cmo_dir_check_entry_way_i          (cmo_dir_check_entry_way),
         .cmo_dir_check_entry_valid_o        (cmo_dir_check_entry_valid),
+        .cmo_dir_check_entry_wback_o        (cmo_dir_check_entry_wback),
         .cmo_dir_check_entry_dirty_o        (cmo_dir_check_entry_dirty),
         .cmo_dir_check_entry_tag_o          (cmo_dir_check_entry_tag),
-        .cmo_dir_inval_i                    (cmo_dir_inval),
-        .cmo_dir_inval_set_i                (cmo_dir_inval_set),
-        .cmo_dir_inval_way_i                (cmo_dir_inval_way),
+        .cmo_dir_updt_i                     (cmo_dir_updt),
+        .cmo_dir_updt_set_i                 (cmo_dir_updt_set),
+        .cmo_dir_updt_way_i                 (cmo_dir_updt_way),
+        .cmo_dir_updt_valid_i               (cmo_dir_updt_valid),
+        .cmo_dir_updt_wback_i               (cmo_dir_updt_wback),
+        .cmo_dir_updt_dirty_i               (cmo_dir_updt_dirty),
+        .cmo_dir_updt_fetch_i               (cmo_dir_updt_fetch),
+        .cmo_dir_updt_tag_i                 (cmo_dir_updt_tag),
         .cmo_core_rsp_ready_o               (cmo_core_rsp_ready),
         .cmo_core_rsp_valid_i               (cmo_core_rsp_valid),
         .cmo_core_rsp_i                     (cmo_core_rsp),
@@ -933,18 +947,25 @@ import hpdcache_pkg::*;
         .dir_check_nline_set_o         (cmo_dir_check_nline_set),
         .dir_check_nline_tag_o         (cmo_dir_check_nline_tag),
         .dir_check_nline_hit_way_i     (cmo_dir_check_nline_hit_way),
+        .dir_check_nline_wback_i       (cmo_dir_check_nline_wback),
         .dir_check_nline_dirty_i       (cmo_dir_check_nline_dirty),
 
         .dir_check_entry_o             (cmo_dir_check_entry),
         .dir_check_entry_set_o         (cmo_dir_check_entry_set),
         .dir_check_entry_way_o         (cmo_dir_check_entry_way),
         .dir_check_entry_valid_i       (cmo_dir_check_entry_valid),
+        .dir_check_entry_wback_i       (cmo_dir_check_entry_wback),
         .dir_check_entry_dirty_i       (cmo_dir_check_entry_dirty),
         .dir_check_entry_tag_i         (cmo_dir_check_entry_tag),
 
-        .dir_inval_o                   (cmo_dir_inval),
-        .dir_inval_set_o               (cmo_dir_inval_set),
-        .dir_inval_way_o               (cmo_dir_inval_way),
+        .dir_updt_o                    (cmo_dir_updt),
+        .dir_updt_set_o                (cmo_dir_updt_set),
+        .dir_updt_way_o                (cmo_dir_updt_way),
+        .dir_updt_valid_o              (cmo_dir_updt_valid),
+        .dir_updt_wback_o              (cmo_dir_updt_wback),
+        .dir_updt_dirty_o              (cmo_dir_updt_dirty),
+        .dir_updt_fetch_o              (cmo_dir_updt_fetch),
+        .dir_updt_tag_o                (cmo_dir_updt_tag),
 
         .flush_empty_i                 (flush_empty),
         .flush_alloc_o                 (cmo_flush_alloc),
