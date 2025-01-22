@@ -143,8 +143,11 @@ import hpdcache_pkg::*;
     //  {{{
     localparam hpdcache_uint REFILL_REQ_RATIO = HPDcacheCfg.u.accessWords /
                                                 HPDcacheCfg.u.reqWords;
-    localparam hpdcache_uint REFILL_LAST_CHUNK_WORD = HPDcacheCfg.u.clWords -
-                                                      HPDcacheCfg.u.accessWords;
+
+    localparam hpdcache_uint REFILL_LAST_CHUNK_WORD =
+        (HPDcacheCfg.u.memDataWidth / HPDcacheCfg.u.wordWidth) > HPDcacheCfg.u.accessWords
+        ? (HPDcacheCfg.u.memDataWidth / HPDcacheCfg.u.wordWidth) - HPDcacheCfg.u.accessWords
+        : 0;
 
     typedef enum logic {
         MISS_REQ_IDLE = 1'b0,
