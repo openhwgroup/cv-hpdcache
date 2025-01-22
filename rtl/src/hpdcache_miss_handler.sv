@@ -259,7 +259,10 @@ import hpdcache_pkg::*;
     end
 
     localparam hpdcache_uint REFILL_REQ_SIZE = $clog2(HPDcacheCfg.u.memDataWidth / 8);
-    localparam hpdcache_uint REFILL_REQ_LEN = HPDcacheCfg.clWidth / HPDcacheCfg.u.memDataWidth;
+    localparam hpdcache_uint REFILL_REQ_LEN =
+        ( HPDcacheCfg.clWidth >= HPDcacheCfg.u.memDataWidth )
+        ? HPDcacheCfg.clWidth / HPDcacheCfg.u.memDataWidth
+        : 1;
 
     assign mem_req_o.mem_req_addr = {mshr_alloc_nline_q, {HPDcacheCfg.clOffsetWidth{1'b0}} };
     assign mem_req_o.mem_req_len = hpdcache_mem_len_t'(REFILL_REQ_LEN-1);
