@@ -614,7 +614,7 @@ import hpdcache_pkg::*;
 //  Assertions
 //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
-    assert property (@(posedge clk_i) disable iff (!rst_ni)
+    assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
             req_valid_i -> $onehot({req_op_i.is_fence,
                                     req_op_i.is_inval_by_nline,
                                     req_op_i.is_inval_all,
@@ -624,7 +624,7 @@ import hpdcache_pkg::*;
                                     req_op_i.is_flush_inval_all})) else
                     $error("cmo_handler: invalid request");
 
-    assert property (@(posedge clk_i) disable iff (!rst_ni)
+    assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
             req_valid_i -> (cmoh_fsm_q == CMOH_IDLE)) else
                     $error("cmo_handler: new request received while busy");
 `endif

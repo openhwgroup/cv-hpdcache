@@ -1064,14 +1064,14 @@ import hpdcache_pkg::*;
 `ifndef HPDCACHE_ASSERT_OFF
     //  Check that the cache controller is being used by one and only one among a core request, the
     //  RTAB or the miss handler.
-    assert property (@(posedge clk_i) disable iff (!rst_ni)
+    assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
             $onehot0({core_req_ready_o, st0_rtab_pop_try_ready, refill_req_ready_o})) else
                     $error("ctrl: only one request can be served per cycle");
 
     //  Check that requests have a valid size field. The check is not necessary for the fence,
     //  invalidation and flush CMOs because these requests do not use the size field.
     property prop_core_req_size_max;
-        @(posedge clk_i) disable iff (!rst_ni) (
+        @(posedge clk_i) disable iff (rst_ni !== 1'b1) (
             core_req_valid_i && core_req_ready_o &&
             !(is_cmo_fence(core_req_i.op) ||
               is_cmo_inval(core_req_i.op) ||
@@ -1095,7 +1095,7 @@ import hpdcache_pkg::*;
     endfunction
 
     property prop_core_req_be_align;
-        @(posedge clk_i) disable iff (!rst_ni) (
+        @(posedge clk_i) disable iff (rst_ni !== 1'b1) (
             core_req_valid_i && core_req_ready_o &&
             (is_store(core_req_i.op) || is_amo(core_req_i.op))
         ) |-> (
@@ -1107,7 +1107,7 @@ import hpdcache_pkg::*;
             $error("ctrl: bad BE alignment for request");
 
     //  Check that only one cache victim way is required when reserving a slot in the MSHR
-    assert property (@(posedge clk_i) disable iff (!rst_ni)
+    assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
         st2_mshr_alloc_q |-> $onehot(st2_mshr_alloc_victim_way_q)) else
             $error("ctrl: no victim way selected during MSHR allocation");
 `endif

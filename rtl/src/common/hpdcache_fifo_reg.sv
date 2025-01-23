@@ -166,7 +166,7 @@ module hpdcache_fifo_reg
         //  Assertions
         //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
-        rptr_ahead_wptr_assert: assert property (@(posedge clk_i) disable iff (!rst_ni)
+        rptr_ahead_wptr_assert: assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
                 ((rptr_q <= wptr_q) && !crossover_q) ||
                 ((rptr_q >= wptr_q) &&  crossover_q)) else
                 $error("fifo: read pointer is ahead of the write pointer");
