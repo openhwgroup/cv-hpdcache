@@ -108,6 +108,8 @@ import hpdcache_pkg::*;
     //  {{{
     localparam int unsigned FlushEntries = HPDcacheCfg.u.flushEntries;
     localparam int unsigned FlushIndexWidth = (FlushEntries > 1) ? $clog2(FlushEntries) : 1;
+    // FlushMaxEntries is equal to FlushEntries if it is a power of two
+    localparam int unsigned FlushMaxEntries = 2 ** FlushIndexWidth;
 
     typedef struct packed {
         hpdcache_nline_t nline;
@@ -124,33 +126,34 @@ import hpdcache_pkg::*;
 
     //  Definition of internal signals and registers
     //  {{{
-    logic [FlushEntries-1:0] flush_dir_valid_q;
-    flush_dir_t              flush_dir_q;
-    flush_dir_index_t        flush_dir_free_ptr;
-    logic [FlushEntries-1:0] flush_dir_free_bv;
-    logic [FlushEntries-1:0] flush_dir_alloc_bv;
-    flush_dir_index_t        flush_dir_ack_ptr;
-    logic [FlushEntries-1:0] flush_dir_ack_bv;
-    hpdcache_set_t           flush_set_q;
-    hpdcache_way_vector_t    flush_way_q;
-    hpdcache_word_t          flush_word_q, flush_word_d;
-    flush_fsm_e              flush_fsm_q, flush_fsm_d;
+    logic [FlushEntries-1:0]    flush_dir_valid_q;
+    flush_dir_t                 flush_dir_q;
+    flush_dir_index_t           flush_dir_free_ptr;
+    logic [FlushEntries-1:0]    flush_dir_free_bv;
+    logic [FlushEntries-1:0]    flush_dir_alloc_bv;
+    flush_dir_index_t           flush_dir_ack_ptr;
+    logic [FlushMaxEntries-1:0] flush_dir_ack_dec;
+    logic [FlushEntries-1:0]    flush_dir_ack_bv;
+    hpdcache_set_t              flush_set_q;
+    hpdcache_way_vector_t       flush_way_q;
+    hpdcache_word_t             flush_word_q, flush_word_d;
+    flush_fsm_e                 flush_fsm_q, flush_fsm_d;
 
-    logic                    flush_eol;
-    logic                    flush_alloc;
-    hpdcache_set_t           flush_alloc_set;
-    logic                    flush_ack;
-    logic                    flush_resizer_w, flush_resizer_wok;
-    logic                    flush_resizer_wlast;
+    logic                       flush_eol;
+    logic                       flush_alloc;
+    hpdcache_set_t              flush_alloc_set;
+    logic                       flush_ack;
+    logic                       flush_resizer_w, flush_resizer_wok;
+    logic                       flush_resizer_wlast;
 
-    logic                    flush_mem_req_w, flush_mem_req_wok;
-    hpdcache_mem_req_t       flush_mem_req_wmeta;
-    hpdcache_mem_data_t      flush_mem_req_rdata;
-    logic                    flush_mem_req_rlast;
+    logic                       flush_mem_req_w, flush_mem_req_wok;
+    hpdcache_mem_req_t          flush_mem_req_wmeta;
+    hpdcache_mem_data_t         flush_mem_req_rdata;
+    logic                       flush_mem_req_rlast;
 
-    logic [FlushEntries-1:0] flush_check_hit;
+    logic [FlushEntries-1:0]    flush_check_hit;
 
-    genvar                   gen_i;
+    genvar                      gen_i;
     //  }}}
 
     //  Flush FSM
@@ -281,8 +284,10 @@ import hpdcache_pkg::*;
     hpdcache_decoder #(.N(FlushIndexWidth)) flush_ack_decoder_i(
         .en_i           (flush_ack),
         .val_i          (flush_dir_ack_ptr),
-        .val_o          (flush_dir_ack_bv)
+        .val_o          (flush_dir_ack_dec)
     );
+
+    assign flush_dir_ack_bv = flush_dir_ack_dec[FlushEntries-1:0];
 
     //  Select a free entry in the flush directory
     //
