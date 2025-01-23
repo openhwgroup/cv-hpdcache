@@ -707,17 +707,18 @@ import hpdcache_pkg::*;
     //  Assertions
     //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
-    initial assert(WBUF_DATA_NWORDS inside {1, 2, 4, 8, 16}) else
-            $fatal("WBUF: width of data buffers must be a power of 2");
-    initial assert(WBUF_MEM_DATA_RATIO > 0) else
-            $fatal($sformatf("WBUF: width of mem interface (%d) shall be g.e. to wbuf width(%d)",
-                             HPDcacheCfg.u.memDataWidth, HPDcacheCfg.wbufDataWidth));
-    initial assert (HPDcacheCfg.wbufDirPtrWidth <= HPDcacheCfg.u.memIdWidth) else
-            $fatal("MemIdWidth is not wide enough to fit all possible write buffer transactions");
-    ack_sent_assert: assert property (@(posedge clk_i) disable iff (!rst_ni)
+    if (!(WBUF_DATA_NWORDS inside {1, 2, 4, 8, 16}))
+    begin : gen_wbuf_data_words_assertion
+        $fatal("WBUF: width of data buffers must be a power of 2");
+    end
+    if (HPDcacheCfg.u.memDataWidth < HPDcacheCfg.wbufDataWidth)
+    begin : gen_mem_data_width_assertion
+        $fatal("WBUF: width of mem interface shall be g.e. to wbuf width");
+    end
+    ack_sent_assert: assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
             (mem_resp_write_valid_i -> (wbuf_dir_state_q[ack_id] == WBUF_SENT))) else
             $error("WBUF: acknowledging a not SENT slot");
-    send_valid_data_assert: assert property (@(posedge clk_i) disable iff (!rst_ni)
+    send_valid_data_assert: assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
             (mem_req_write_data_valid_o -> (wbuf_data_valid_q[send_data_q.data_ptr] == 1'b1))) else
             $error("WBUF: sending a not valid data");
 `endif
