@@ -536,11 +536,13 @@ import hpdcache_pkg::*;
     always_ff @(posedge clk_i or negedge rst_ni)
     begin
         if (!rst_ni) begin
-            core_rsp_send_q <= 1'b0;
-            cmoh_fsm_q      <= CMOH_IDLE;
+            core_rsp_send_q        <= 1'b0;
+            cmoh_flush_req_valid_q <= 1'b0;
+            cmoh_fsm_q             <= CMOH_IDLE;
         end else begin
-            core_rsp_send_q <= core_rsp_send_d;
-            cmoh_fsm_q      <= cmoh_fsm_d;
+            core_rsp_send_q        <= core_rsp_send_d;
+            cmoh_flush_req_valid_q <= cmoh_flush_req_valid_d;
+            cmoh_fsm_q             <= cmoh_fsm_d;
         end
     end
 
@@ -550,7 +552,6 @@ import hpdcache_pkg::*;
         cmoh_addr_q            <= cmoh_addr_d;
         cmoh_way_q             <= cmoh_way_d;
         cmoh_set_q             <= cmoh_set_d;
-        cmoh_flush_req_valid_q <= cmoh_flush_req_valid_d;
         cmoh_flush_req_set_q   <= cmoh_flush_req_set_d;
         cmoh_flush_req_way_q   <= cmoh_flush_req_way_d;
         cmoh_flush_req_inval_q <= cmoh_flush_req_inval_d;
