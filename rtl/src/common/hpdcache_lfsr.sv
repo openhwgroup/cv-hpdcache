@@ -87,7 +87,7 @@ end
 //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
 if ((WIDTH < 8) || (WIDTH > 16)) begin : gen_lfsr_width_assertion
-    $fatal("illegal LFSR width");
+    $fatal(1, "illegal LFSR width");
 end
 `endif
 //  }}}
