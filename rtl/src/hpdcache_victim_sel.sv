@@ -115,7 +115,7 @@ import hpdcache_pkg::*;
 `ifndef HPDCACHE_ASSERT_OFF
     initial victim_sel_assert:
             assert (HPDcacheCfg.u.victimSel inside {HPDCACHE_VICTIM_RANDOM, HPDCACHE_VICTIM_PLRU})
-                    else $fatal("unsupported victim selection policy");
+                    else $fatal(1, "unsupported victim selection policy");
 `endif
 
 endmodule

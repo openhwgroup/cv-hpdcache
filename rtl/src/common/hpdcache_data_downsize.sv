@@ -170,19 +170,19 @@ import hpdcache_pkg::*;
     //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
     if (DEPTH <= 0) begin : gen_depth_assertion
-        $fatal("DEPTH must be greater than 0");
+        $fatal(1, "DEPTH must be greater than 0");
     end
     if (WR_WIDTH <= 0) begin : gen_wr_width_assertion
-        $fatal("WR_WIDTH must be greater than 0");
+        $fatal(1, "WR_WIDTH must be greater than 0");
     end
     if (RD_WIDTH <= 0) begin : gen_rd_width_assertion
-        $fatal("RD_WIDTH must be greater than 0");
+        $fatal(1, "RD_WIDTH must be greater than 0");
     end
     if (RD_WIDTH >= WR_WIDTH) begin : gen_rd_wr_ratio_assertion
-        $fatal("RD_WIDTH must be less to WR_WIDTH");
+        $fatal(1, "RD_WIDTH must be less to WR_WIDTH");
     end
     if ((WR_WIDTH % RD_WIDTH) != 0) begin : gen_wr_multiple_of_rd_assertion
-        $fatal("WR_WIDTH must be a multiple of RD_WIDTH");
+        $fatal(1, "WR_WIDTH must be a multiple of RD_WIDTH");
     end
 `endif
     //  }}}

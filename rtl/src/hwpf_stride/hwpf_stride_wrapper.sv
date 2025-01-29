@@ -133,7 +133,7 @@ import hpdcache_pkg::*;
     //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
     if (NUM_HW_PREFETCH > 16) begin : gen_max_hwpf_stride_assertion
-        $fatal("hwpf_stride: maximum number of HW prefetchers is 16");
+        $fatal(1, "hwpf_stride: maximum number of HW prefetchers is 16");
     end
 `endif
     //  }}}

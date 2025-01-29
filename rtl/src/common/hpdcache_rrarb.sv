@@ -58,7 +58,7 @@ module hpdcache_rrarb
     //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
     if (N <= 0) begin : gen_n_assertion
-        $fatal("N must be greater than 0");
+        $fatal(1, "N must be greater than 0");
     end
 `endif
     //  }}}

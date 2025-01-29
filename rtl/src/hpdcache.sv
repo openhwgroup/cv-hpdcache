@@ -1259,35 +1259,35 @@ import hpdcache_pkg::*;
             $error("Unsupported concurrent flush from ctrl and cmo");
 
     if (!(HPDcacheCfg.u.wordWidth inside {32, 64})) begin : gen_word_width_assertion
-        $fatal("word width shall be 32 or 64");
+        $fatal(1, "word width shall be 32 or 64");
     end
     if (HPDcacheCfg.u.reqWords > HPDcacheCfg.u.accessWords) begin : gen_req_data_width_assertion
-        $fatal("req data width shall be l.e. to cache access width");
+        $fatal(1, "req data width shall be l.e. to cache access width");
     end
     if (HPDcacheCfg.u.clWords < HPDcacheCfg.u.accessWords) begin : gen_access_width_assertion
-        $fatal("cache access width shall be l.e. to cache-line width");
+        $fatal(1, "cache access width shall be l.e. to cache-line width");
     end
     if (HPDcacheCfg.u.clWords <= 1) begin : gen_cacheline_words_assertion
-        $fatal("cacheline words shall be greater than 1");
+        $fatal(1, "cacheline words shall be greater than 1");
     end
     if (HPDcacheCfg.u.memDataWidth < HPDcacheCfg.reqDataWidth) begin : gen_mem_data_width_assertion
-        $fatal("memory interface data width shall be g.e. to req data width");
+        $fatal(1, "memory interface data width shall be g.e. to req data width");
     end
     if ((2**HPDcacheCfg.u.memIdWidth - 1) < (HPDcacheCfg.u.mshrWays * HPDcacheCfg.u.mshrSets))
     begin : gen_mem_id_mshr_width_assertion
-        $fatal("insufficient ID bits on the mem interface to transport misses");
+        $fatal(1, "insufficient ID bits on the mem interface to transport reads");
     end
     if (HPDcacheCfg.u.wtEn && (2**(HPDcacheCfg.u.memIdWidth - 1) < HPDcacheCfg.u.wbufDirEntries))
     begin : gen_mem_id_wbuf_width_assertion
-        $fatal("insufficient ID bits on the mem interface to transport writes");
+        $fatal(1, "insufficient ID bits on the mem interface to transport writes");
     end
     if (HPDcacheCfg.u.wbEn &&
         (2**(HPDcacheCfg.u.memIdWidth - 1) < (HPDcacheCfg.u.flushEntries + 1)))
     begin : gen_mem_id_flush_width_assertion
-        $fatal("insufficient ID bits on the mem interface to transport flushes");
+        $fatal(1, "insufficient ID bits on the mem interface to transport flushes");
     end
     if (!HPDcacheCfg.u.wtEn && !HPDcacheCfg.u.wbEn) begin : gen_write_policy_assertion
-        $fatal("the cache shall be configured to support WT, WB or both");
+        $fatal(1, "the cache shall be configured to support WT, WB or both");
     end
 `endif
     // }}}
