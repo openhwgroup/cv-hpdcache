@@ -14,6 +14,28 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
+## [5.0.1] 2025-01-30
+
+This releases include some bugfixes and optimizations.
+
+### Added
+
+- Support responses for CMO operations when ``need_rsp`` in the request is set
+- Support not-power-of-two number of entries in the Flush controller
+
+### Removed
+
+### Changed
+
+### Fixed
+
+- Fix implementation of the data merge logic in the write buffer to improve the area
+- Fix assertions syntax
+- Fix CMO flushes shall unset the dirty bit in the cache directory
+- Fix handling of bus errors on write misses
+- Fix prefetch requests shall update PLRU bits
+- Fix initialization of the CMO handler flush request valid register
+
 ## [5.0.0] 2024-10-10
 
 The major modification in this release is the support of the write-back (WB) policy (in
