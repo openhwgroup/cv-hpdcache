@@ -188,6 +188,10 @@ import hpdcache_pkg::*;
     wbuf_data_ptr_t                             wbuf_data_free_ptr;
     logic [WBUF_DATA_NENTRIES-1:0]              wbuf_data_free_ptr_bv;
 
+    logic                                       wbuf_data_w_init;
+    logic                                       wbuf_data_w;
+    wbuf_data_ptr_t                             wbuf_data_w_ptr;
+
     logic                                       wbuf_write_free;
     logic                                       wbuf_write_hit_open;
     logic                                       wbuf_write_hit_pend;
@@ -453,7 +457,10 @@ import hpdcache_pkg::*;
 
         wbuf_dir_state_d = wbuf_dir_state_q;
         wbuf_dir_d = wbuf_dir_q;
-        wbuf_data_d = wbuf_data_q;
+
+        wbuf_data_w_init = 1'b0;
+        wbuf_data_w = 1'b0;
+        wbuf_data_w_ptr = '0;
 
         for (int unsigned i = 0; i < WBUF_DIR_NENTRIES; i++) begin
             unique case (wbuf_dir_state_q[i])
@@ -472,14 +479,9 @@ import hpdcache_pkg::*;
                         wbuf_dir_d[i].ptr = wbuf_data_free_ptr;
                         wbuf_dir_d[i].uc  = write_uc_i;
 
-                        wbuf_data_write(
-                            wbuf_data_d[wbuf_data_free_ptr].data,
-                            wbuf_data_d[wbuf_data_free_ptr].be,
-                            '0,
-                            '0,
-                            write_data,
-                            write_be
-                        );
+                        wbuf_data_w_init = 1'b1;
+                        wbuf_data_w = 1'b1;
+                        wbuf_data_w_ptr = wbuf_data_free_ptr;
                     end
                 end
 
@@ -508,14 +510,8 @@ import hpdcache_pkg::*;
                     end
 
                     if (write_hit) begin
-                        wbuf_data_write(
-                            wbuf_data_d[wbuf_dir_q[i].ptr].data,
-                            wbuf_data_d[wbuf_dir_q[i].ptr].be,
-                            wbuf_data_q[wbuf_dir_q[i].ptr].data,
-                            wbuf_data_q[wbuf_dir_q[i].ptr].be,
-                            write_data,
-                            write_be
-                        );
+                        wbuf_data_w = 1'b1;
+                        wbuf_data_w_ptr = wbuf_dir_q[i].ptr;
                     end
                 end
 
@@ -527,14 +523,8 @@ import hpdcache_pkg::*;
                                 & ~cfg_inhibit_write_coalescing_i;
 
                     if (write_hit) begin
-                        wbuf_data_write(
-                            wbuf_data_d[wbuf_dir_q[i].ptr].data,
-                            wbuf_data_d[wbuf_dir_q[i].ptr].be,
-                            wbuf_data_q[wbuf_dir_q[i].ptr].data,
-                            wbuf_data_q[wbuf_dir_q[i].ptr].be,
-                            write_data,
-                            write_be
-                        );
+                        wbuf_data_w = 1'b1;
+                        wbuf_data_w_ptr = wbuf_dir_q[i].ptr;
                     end
 
                     if (wbuf_send_grant[i] && send_data_ready && send_meta_ready) begin
@@ -548,6 +538,24 @@ import hpdcache_pkg::*;
                     end
                 end
             endcase
+        end
+    end
+
+    always_comb
+    begin : wbuf_data_write_comb
+        automatic wbuf_be_buf_t buf_be;
+
+        wbuf_data_d = wbuf_data_q;
+        buf_be = wbuf_data_w_init ? '0 : wbuf_data_q[wbuf_data_w_ptr].be;
+
+        if (wbuf_data_w) begin
+            wbuf_data_write(
+                wbuf_data_d[wbuf_data_w_ptr].data,
+                wbuf_data_d[wbuf_data_w_ptr].be,
+                wbuf_data_q[wbuf_data_w_ptr].data,
+                buf_be,
+                write_data,
+                write_be);
         end
     end
 
