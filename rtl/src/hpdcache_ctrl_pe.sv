@@ -24,6 +24,16 @@
  *  History       :
  */
 module hpdcache_ctrl_pe
+    // Package imports
+    // {{{
+import hpdcache_pkg::*;
+    // }}}
+    // Parameters
+    // {{{
+#(
+    parameter hpdcache_cfg_t HPDcacheCfg = '0
+)
+    // }}}
     // Ports
     // {{{
 (
@@ -52,7 +62,6 @@ module hpdcache_ctrl_pe
     input  logic                   st0_req_is_cmo_prefetch_i,
     output logic                   st0_req_mshr_check_o,
     output logic                   st0_req_cachedir_read_o,
-    output logic                   st0_req_cachedata_read_o,
     //   }}}
 
     //   Pipeline stage 1
@@ -114,6 +123,11 @@ module hpdcache_ctrl_pe
     output logic                   st2_dir_updt_wback_o,
     output logic                   st2_dir_updt_dirty_o,
     output logic                   st2_dir_updt_fetch_o,
+    //   }}}
+
+    //   Pipeline Stages 1/2 (depending on fastLoadEn setting)
+    //   {{{
+    output logic                   req_cachedata_read_o,
     //   }}}
 
     //   Replay
@@ -271,7 +285,7 @@ module hpdcache_ctrl_pe
 
         st0_req_mshr_check_o                = 1'b0;
         st0_req_cachedir_read_o             = 1'b0;
-        st0_req_cachedata_read_o            = 1'b0;
+        req_cachedata_read_o                = 1'b0;
 
         st1_req_valid_o                     = st1_req_valid_i;
         st1_req_is_error_o                  = st1_req_is_error_i;
@@ -619,6 +633,10 @@ module hpdcache_ctrl_pe
                                     ~st1_req_is_cmo_prefetch_i |
                                      cfg_prefetch_updt_plru_i;
 
+                                if (!HPDcacheCfg.u.fastLoadEn) begin
+                                    req_cachedata_read_o = 1'b1;
+                                end
+
                                 //  Respond to the core (if needed)
                                 st1_rsp_valid_o = st1_req_need_rsp_i;
 
@@ -669,17 +687,18 @@ module hpdcache_ctrl_pe
                     //  {{{
                     if (st1_req_is_store_i) begin
                         //  Add a NOP in the pipeline when:
-                        //  - Structural hazard on the cache data if the st0 request is a load
-                        //    operation.
                         //  - Replaying a request, the cache cannot accept a request from the
                         //    core the next cycle. It can however accept a new request from the
                         //    replay table
-                        //
-                        //  IMPORTANT: we could remove the NOP in the first scenario if the
-                        //  controller checks for the hit of this write. However, this adds
-                        //  a DIR_RAM -> DATA_RAM timing path.
-                        st1_nop = ((core_req_valid_i |  rtab_req_valid_i) & st0_req_is_load_i) |
-                                   (st1_req_rtab_i   & ~rtab_req_valid_i);
+                        if (!HPDcacheCfg.u.fastLoadEn) begin
+                            st1_nop = st1_req_rtab_i & ~rtab_req_valid_i;
+                        end else begin
+                            // Additional NOP case in non-high throughput mode:
+                            //  - Structural hazard on the cache data if the st0 request is a load
+                            //    operation.
+                            st1_nop = ((core_req_valid_i |  rtab_req_valid_i) & st0_req_is_load_i) |
+                                    (st1_req_rtab_i   & ~rtab_req_valid_i);
+                        end
 
                         //  Enable the data RAM in case of write. However, the actual write
                         //  depends on the hit signal from the cache directory.
@@ -1015,8 +1034,10 @@ module hpdcache_ctrl_pe
                 st1_req_is_cacheable_store = st1_req_valid_i & st1_req_is_store_i &
                         ~st1_req_is_uncacheable_i;
 
-                st0_req_cachedata_read_o = st0_req_is_load_i &
-                        (~st1_req_is_cacheable_store | st1_req_is_error_i);
+                if (HPDcacheCfg.u.fastLoadEn) begin
+                    req_cachedata_read_o = st0_req_is_load_i &
+                            (~st1_req_is_cacheable_store | st1_req_is_error_i);
+                end
 
                 if (st0_req_is_load_i         |
                     st0_req_is_cmo_prefetch_i |

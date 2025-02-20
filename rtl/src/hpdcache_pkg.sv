@@ -453,6 +453,9 @@ package hpdcache_pkg;
         bit wtEn;
         //  Enable support for the write-back policy
         bit wbEn;
+        //  Enable fast loads.
+        //  Perform loads in 1 cycle at the cost of structural hazard for stores
+        bit fastLoadEn;
     } hpdcache_user_cfg_t;
 
     typedef struct packed {
