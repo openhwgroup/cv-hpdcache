@@ -640,8 +640,8 @@ import hpdcache_pkg::*;
                                     ~st1_req_is_cmo_prefetch_i |
                                      cfg_prefetch_updt_plru_i;
 
-                                //  If not fastLoadEn, data is read from the cache in stage 1
-                                if (!HPDcacheCfg.u.fastLoadEn) begin
+                                //  If not lowLatency, data is read from the cache in stage 1
+                                if (!HPDcacheCfg.u.lowLatency) begin
                                     //  Read data from the cache
                                     st1_req_cachedata_read = 1'b1;
                                 end
@@ -698,11 +698,11 @@ import hpdcache_pkg::*;
                         //  Add a NOP in the pipeline when: Replaying a request, the cache cannot
                         //  accept a request from the core the next cycle. It can however accept
                         //  a new request from the replay table
-                        if (!HPDcacheCfg.u.fastLoadEn) begin
+                        if (!HPDcacheCfg.u.lowLatency) begin
                             st1_nop = st1_req_rtab_i & ~rtab_req_valid_i;
                         end
 
-                        // Additional NOP case in fastLoadEn mode: Structural hazard on the cache
+                        // Additional NOP case in lowLatency mode: Structural hazard on the cache
                         // data if the st0 request is a load operation.
                         else begin
                             st1_nop = ((core_req_valid_i |  rtab_req_valid_i) & st0_req_is_load_i) |
@@ -1043,7 +1043,7 @@ import hpdcache_pkg::*;
                 st1_req_is_cacheable_store = st1_req_valid_i & st1_req_is_store_i &
                         ~st1_req_is_uncacheable_i;
 
-                if (HPDcacheCfg.u.fastLoadEn) begin
+                if (HPDcacheCfg.u.lowLatency) begin
                     st0_req_cachedata_read = st0_req_is_load_i &
                             (~st1_req_is_cacheable_store | st1_req_is_error_i);
                 end

@@ -378,7 +378,7 @@ import hpdcache_pkg::*;
     logic                    st1_rtab_check;
     logic                    st1_rtab_check_hit;
 
-    // Pipeline Stage 1/2 (depending on fastLoadEn setting)
+    // Pipeline Stage 1/2 (depending on lowLatency setting)
     logic                    core_rsp_valid;
     logic                    core_rsp_error;
     logic                    core_rsp_aborted;
@@ -844,14 +844,14 @@ import hpdcache_pkg::*;
 
     assign st1_victim_nline = {st1_dir_victim_tag, st1_req_set};
 
-    //  When fastLoadEn, data SRAM is read at stage 0 but way selection is done at stage 1
-    if (HPDcacheCfg.u.fastLoadEn) begin : gen_st0_data_sram_read
+    //  When lowLatency, data SRAM is read at stage 0 but way selection is done at stage 1
+    if (HPDcacheCfg.u.lowLatency) begin : gen_st0_data_sram_read
         assign data_req_read_set = st0_req_set;
         assign data_req_read_size = st0_req.size;
         assign data_req_read_word = st0_req_word;
         assign data_req_read_way = st1_dir_hit_way;
     end
-    //  When not fastLoadEn, data SRAM is read at stage 1 but way selection is done at stage 2
+    //  When not lowLatency, data SRAM is read at stage 1 but way selection is done at stage 2
     else begin : gen_st1_data_sram_read
         assign data_req_read_set = st1_req_set;
         assign data_req_read_size = st1_req.size;
@@ -1077,15 +1077,15 @@ import hpdcache_pkg::*;
 
     //  Control of the response to the core
     //  {{{
-    if (HPDcacheCfg.u.fastLoadEn) begin : gen_st2_core_rsp_comb
-        //  When fastLoadEn, all responses to the core are sent on stage 1
+    if (HPDcacheCfg.u.lowLatency) begin : gen_st2_core_rsp_comb
+        //  When lowLatency, all responses to the core are sent on stage 1
         assign core_rsp_valid = st1_rsp_valid;
         assign core_rsp_aborted = st1_rsp_aborted;
         assign core_rsp_error = st1_rsp_error;
         assign core_rsp_sid = st1_req.sid;
         assign core_rsp_tid = st1_req.tid;
     end else begin : gen_st2_core_rsp_ff
-        //  When not fastLoadEn, delay all responses to the core by one cycle (stage 2)
+        //  When not lowLatency, delay all responses to the core by one cycle (stage 2)
         always_ff @(posedge clk_i or negedge rst_ni)
         begin : st2_core_rsp_ff
             core_rsp_valid <= st1_rsp_valid;

@@ -455,7 +455,7 @@ package hpdcache_pkg;
         bit wbEn;
         //  Enable fast loads.
         //  Perform loads in 1 cycle at the cost of structural hazard for stores
-        bit fastLoadEn;
+        bit lowLatency;
     } hpdcache_user_cfg_t;
 
     typedef struct packed {

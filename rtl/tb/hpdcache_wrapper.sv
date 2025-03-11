@@ -64,7 +64,7 @@ import hpdcache_pkg::*;
         memDataWidth: `CONF_HPDCACHE_MEM_DATA_WIDTH,
         wtEn: `CONF_HPDCACHE_WT_ENABLE,
         wbEn: `CONF_HPDCACHE_WB_ENABLE,
-        fastLoadEn: `CONF_HPDCACHE_FAST_LOAD
+        lowLatency: `CONF_HPDCACHE_LOW_LATENCY
     },
 
     localparam hpdcache_cfg_t Cfg = hpdcacheBuildConfig(UserCfg),
