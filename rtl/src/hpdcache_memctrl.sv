@@ -763,11 +763,11 @@ import hpdcache_pkg::*;
     end
 
     //  Multiplex between read and write access on the data RAM
-    assign  data_way = data_refill_i     ? data_refill_way_i :
-                       data_flush_read_i ? data_flush_read_way_i :
-                       data_amo_write_i  ? dir_amo_hit_way_o :
-                       data_req_read_i   ? data_req_read_way_i :
-                                           data_req_write_way_i;
+    assign data_way = data_refill_i     ? data_refill_way_i :
+                      data_flush_read_i ? data_flush_read_way_i :
+                      data_amo_write_i  ? dir_amo_hit_way_o :
+                      data_req_read_i   ? data_req_read_way_i :
+                                          data_req_write_way_i;
 
     //  Decode way index
     assign data_ram_word = hpdcache_way_to_data_ram_word(data_way);

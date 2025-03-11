@@ -844,18 +844,21 @@ import hpdcache_pkg::*;
 
     assign st1_victim_nline = {st1_dir_victim_tag, st1_req_set};
 
-    if (HPDcacheCfg.u.fastLoadEn) begin : gen_st0_data_sram_comb
-        assign data_req_read_set  = st0_req_set;
+    //  When fastLoadEn, data SRAM is read at stage 0 but way selection is done at stage 1
+    if (HPDcacheCfg.u.fastLoadEn) begin : gen_st0_data_sram_read
+        assign data_req_read_set = st0_req_set;
         assign data_req_read_size = st0_req.size;
         assign data_req_read_word = st0_req_word;
-        assign data_req_read_way  = st1_dir_hit_way;
-    end else begin : gen_st1_data_sram_ff
+        assign data_req_read_way = st1_dir_hit_way;
+    end
+    //  When not fastLoadEn, data SRAM is read at stage 1 but way selection is done at stage 2
+    else begin : gen_st1_data_sram_read
+        assign data_req_read_set = st1_req_set;
+        assign data_req_read_size = st1_req.size;
+        assign data_req_read_word = st1_req_word;
         always_ff @(posedge clk_i)
-        begin : st1_data_ff
-            data_req_read_set  <= st0_req_set;
-            data_req_read_size <= st0_req.size;
-            data_req_read_word <= st0_req_word;
-            data_req_read_way  <= st1_dir_hit_way;
+        begin : data_req_read_way_ff
+            data_req_read_way <= st1_dir_hit_way;
         end
     end
 
