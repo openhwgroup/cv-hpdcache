@@ -125,7 +125,7 @@ import hpdcache_pkg::*;
     output logic                   st2_dir_updt_fetch_o,
     //   }}}
 
-    //   Pipeline Stages 1/2 (depending on fastLoadEn setting)
+    //   Cache data read enable
     //   {{{
     output logic                   req_cachedata_read_o,
     //   }}}
@@ -222,6 +222,7 @@ import hpdcache_pkg::*;
     //  {{{
     logic  st1_fence;
     logic  st1_rtab_alloc, st1_rtab_alloc_and_link;
+    logic  st0_req_cachedata_read, st1_req_cachedata_read;
     //  }}}
 
     //  Global control signals
@@ -261,15 +262,20 @@ import hpdcache_pkg::*;
            evt_rtab_rollback_o = st1_rtab_rback_o;
     //  }}}
 
+    //  Cachedata read enable
+    //  {{{
+    assign req_cachedata_read_o = st0_req_cachedata_read | st1_req_cachedata_read;
+    //  }}}
+
+
     //  Data-cache control lines
     //  {{{
     always_comb
     begin : hpdcache_ctrl_comb
         automatic logic nop;
         automatic logic st1_nop; //  Do not consume a request in stage 0 because of stage 1 hazard
-        automatic logic st2_nop; //  Do not consume a request in stage 0 because of stage 2 haward
+        automatic logic st2_nop; //  Do not consume a request in stage 0 because of stage 2 hazard
         automatic logic st1_req_is_cacheable_store;
-
 
         uc_req_valid_o                      = 1'b0;
 
@@ -285,12 +291,13 @@ import hpdcache_pkg::*;
 
         st0_req_mshr_check_o                = 1'b0;
         st0_req_cachedir_read_o             = 1'b0;
-        req_cachedata_read_o                = 1'b0;
+        st0_req_cachedata_read              = 1'b0;
 
         st1_req_valid_o                     = st1_req_valid_i;
         st1_req_is_error_o                  = st1_req_is_error_i;
         st1_req_is_cacheable_store          = 1'b0;
         st1_nop                             = 1'b0;
+        st1_req_cachedata_read              = 1'b0;
         st1_req_cachedata_write_o           = 1'b0;
         st1_req_cachedata_write_enable_o    = 1'b0;
         st1_req_cachedir_sel_victim_o       = 1'b0;
@@ -633,8 +640,10 @@ import hpdcache_pkg::*;
                                     ~st1_req_is_cmo_prefetch_i |
                                      cfg_prefetch_updt_plru_i;
 
+                                //  If not fastLoadEn, data is read from the cache in stage 1
                                 if (!HPDcacheCfg.u.fastLoadEn) begin
-                                    req_cachedata_read_o = 1'b1;
+                                    //  Read data from the cache
+                                    st1_req_cachedata_read = 1'b1;
                                 end
 
                                 //  Respond to the core (if needed)
@@ -686,18 +695,18 @@ import hpdcache_pkg::*;
                     //  Store cacheable request
                     //  {{{
                     if (st1_req_is_store_i) begin
-                        //  Add a NOP in the pipeline when:
-                        //  - Replaying a request, the cache cannot accept a request from the
-                        //    core the next cycle. It can however accept a new request from the
-                        //    replay table
+                        //  Add a NOP in the pipeline when: Replaying a request, the cache cannot
+                        //  accept a request from the core the next cycle. It can however accept
+                        //  a new request from the replay table
                         if (!HPDcacheCfg.u.fastLoadEn) begin
                             st1_nop = st1_req_rtab_i & ~rtab_req_valid_i;
-                        end else begin
-                            // Additional NOP case in non-high throughput mode:
-                            //  - Structural hazard on the cache data if the st0 request is a load
-                            //    operation.
+                        end
+
+                        // Additional NOP case in fastLoadEn mode: Structural hazard on the cache
+                        // data if the st0 request is a load operation.
+                        else begin
                             st1_nop = ((core_req_valid_i |  rtab_req_valid_i) & st0_req_is_load_i) |
-                                    (st1_req_rtab_i   & ~rtab_req_valid_i);
+                                       (st1_req_rtab_i   & ~rtab_req_valid_i);
                         end
 
                         //  Enable the data RAM in case of write. However, the actual write
@@ -892,7 +901,7 @@ import hpdcache_pkg::*;
                                     //  corresponding RTAB entry
                                     st1_rtab_commit_o = st1_req_rtab_i;
 
-                                    //  Respond to the core
+                                    //  Respond to the core (if needed)
                                     st1_rsp_valid_o = st1_req_need_rsp_i;
 
                                     //  Write in the data RAM
@@ -959,7 +968,7 @@ import hpdcache_pkg::*;
                                     //  corresponding RTAB entry
                                     st1_rtab_commit_o = st1_req_rtab_i;
 
-                                    //  Respond to the core
+                                    //  Respond to the core (if needed)
                                     st1_rsp_valid_o = st1_req_need_rsp_i;
 
                                     //  Update victim selection for the accessed set
@@ -1035,7 +1044,7 @@ import hpdcache_pkg::*;
                         ~st1_req_is_uncacheable_i;
 
                 if (HPDcacheCfg.u.fastLoadEn) begin
-                    req_cachedata_read_o = st0_req_is_load_i &
+                    st0_req_cachedata_read = st0_req_is_load_i &
                             (~st1_req_is_cacheable_store | st1_req_is_error_i);
                 end
 

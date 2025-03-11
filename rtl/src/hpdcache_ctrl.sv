@@ -379,11 +379,11 @@ import hpdcache_pkg::*;
     logic                    st1_rtab_check_hit;
 
     // Pipeline Stage 1/2 (depending on fastLoadEn setting)
-    logic                    ctrl_rsp_valid;
-    logic                    ctrl_rsp_error;
-    logic                    ctrl_rsp_aborted;
-    hpdcache_req_tid_t       ctrl_rsp_tid;
-    hpdcache_req_sid_t       ctrl_rsp_sid;
+    logic                    core_rsp_valid;
+    logic                    core_rsp_error;
+    logic                    core_rsp_aborted;
+    hpdcache_req_tid_t       core_rsp_tid;
+    hpdcache_req_sid_t       core_rsp_sid;
 
     hpdcache_way_t           refill_way_index;
 
@@ -1074,40 +1074,46 @@ import hpdcache_pkg::*;
 
     //  Control of the response to the core
     //  {{{
-    if (HPDcacheCfg.u.fastLoadEn) begin : gen_st2_ctrl_rsp_comb
-        assign ctrl_rsp_valid = st1_rsp_valid;
-        assign ctrl_rsp_aborted = st1_rsp_aborted;
-        assign ctrl_rsp_error = st1_rsp_error;
-        assign ctrl_rsp_sid = st1_req.sid;
-        assign ctrl_rsp_tid = st1_req.tid;
-    end else begin : gen_st2_ctrl_rsp_ff
-        always_ff @(posedge clk_i)
-        begin : st2_ctrl_rsp_ff
-            ctrl_rsp_valid <= st1_rsp_valid;
-            ctrl_rsp_aborted <= st1_rsp_aborted;
-            ctrl_rsp_error <= st1_rsp_error;
-            ctrl_rsp_sid <= st1_req.sid;
-            ctrl_rsp_tid <= st1_req.tid;
+    if (HPDcacheCfg.u.fastLoadEn) begin : gen_st2_core_rsp_comb
+        //  When fastLoadEn, all responses to the core are sent on stage 1
+        assign core_rsp_valid = st1_rsp_valid;
+        assign core_rsp_aborted = st1_rsp_aborted;
+        assign core_rsp_error = st1_rsp_error;
+        assign core_rsp_sid = st1_req.sid;
+        assign core_rsp_tid = st1_req.tid;
+    end else begin : gen_st2_core_rsp_ff
+        //  When not fastLoadEn, delay all responses to the core by one cycle (stage 2)
+        always_ff @(posedge clk_i or negedge rst_ni)
+        begin : st2_core_rsp_ff
+            core_rsp_valid <= st1_rsp_valid;
+            core_rsp_aborted <= st1_rsp_aborted;
+            core_rsp_error <= st1_rsp_error;
+            core_rsp_sid <= st1_req.sid;
+            core_rsp_tid <= st1_req.tid;
         end
     end
 
     assign core_rsp_valid_o   = refill_core_rsp_valid_i |
                                 (uc_core_rsp_valid_i & uc_core_rsp_ready_o) |
                                 (cmo_core_rsp_valid_i & cmo_core_rsp_ready_o) |
-                                ctrl_rsp_valid;
+                                core_rsp_valid;
     assign core_rsp_o.rdata   = (refill_core_rsp_valid_i ? refill_core_rsp_i.rdata :
                                 (cmo_core_rsp_valid_i    ? cmo_core_rsp_i.rdata :
-                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.rdata : data_req_read_data)));
+                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.rdata :
+                                                           data_req_read_data)));
     assign core_rsp_o.sid     = (refill_core_rsp_valid_i ? refill_core_rsp_i.sid :
                                 (cmo_core_rsp_valid_i    ? cmo_core_rsp_i.sid :
-                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.sid : ctrl_rsp_sid)));
+                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.sid :
+                                                           core_rsp_sid)));
     assign core_rsp_o.tid     = (refill_core_rsp_valid_i ? refill_core_rsp_i.tid :
                                 (cmo_core_rsp_valid_i    ? cmo_core_rsp_i.tid :
-                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.tid : ctrl_rsp_tid)));
+                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.tid :
+                                                           core_rsp_tid)));
     assign core_rsp_o.error   = (refill_core_rsp_valid_i ? refill_core_rsp_i.error :
                                 (cmo_core_rsp_valid_i    ? cmo_core_rsp_i.error :
-                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.error : ctrl_rsp_error)));
-    assign core_rsp_o.aborted = ctrl_rsp_aborted;
+                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.error :
+                                                           core_rsp_error)));
+    assign core_rsp_o.aborted = core_rsp_aborted;
     //  }}}
 
     //  Assertions
