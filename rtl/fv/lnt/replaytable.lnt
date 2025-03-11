@@ -1,0 +1,323 @@
+module replaytable (types, channels) is
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-- Table keeping track of on-hold requests.
+-- Only replays a request if the cause of the blocking is resolved.
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-- REMARK : possible invariant, a rollback can only happen for full buffers ?
+process RTAB [CONTROLLER_RTAB, RTAB_REQ, CRI_REQ: Wire,
+              WBUF_NOTIF, MSHR_NOTIF: Notifgate,
+              CHECK: Checkgate, DEBUG: any] is
+   access DEBUG;
+   var table: RTAB_Array, pop_state: pop_state_t, last: int, next: int,
+       o: Operation, d: Data, sid: SId, tid: TId, a: Addr, deps: RTAB_Deps,
+       req: RTAB_Request, ind: int in
+      table := RTAB_Array (REntry (false, NoDeps, false, false, 0, NoReq));
+      pop_state := PS_HEAD; last := 0; next := 0;
+      loop
+         CHECK (?any Cache, ?any WBUF_Buffer, ?any MSHR_Buffer, table);
+         alt
+            -- receives a notification from the Write Buffer
+            WBUF_NOTIF (?a);
+            eval rtab_update_deps (!?table, a, NoDeps);
+            -- the address is in the replay table because of a WbufCollide
+            eval rtab_update_deps_all (!?table, WbufFull)
+         []
+            -- receives a notification from the Miss Handler
+            MSHR_NOTIF (?a);
+            eval rtab_update_deps (!?table, a, NoDeps);
+            -- the address is in the replay table because of a WbufCollide
+            eval rtab_update_deps_all (!?table, MshrFull)
+         []
+            -- sends a replayable request (heading, no dependency) to the controller
+            ind := rtab_pop_try (!?table, !?pop_state, !?last, !?next);
+            if (ind != -1) then
+               RTAB_REQ (table[Nat (ind)].request.o,
+                         table[Nat (ind)].request.d,
+                         table[Nat (ind)].request.sid,
+                         table[Nat (ind)].request.tid,
+                         table[Nat (ind)].request.a);
+               -- DEBUG (pop_state, last, next);
+               -- blocking until the controller response
+               CONTROLLER_RTAB (?o, ?d, ?sid, ?tid, ?a, ?deps);
+               assert (table[Nat (ind)].request == Req (o, d, sid, tid, a));
+               if deps == NoDeps then
+                  eval rtab_pop_commit (!?table, ind)
+               else
+                  eval rtab_pop_rollback (!?table, ind, deps);
+                  -- DEBUG ("rollback", pop_state, last, next);
+                  -- "fixing" the bug, to allow state space generation
+                  if (fixed) then
+                     next := ind;
+                     pop_state := PS_NEXT
+                  end if
+               end if
+            else
+               -- replay table requests have higher priority than core requests
+               CRI_REQ (?any Operation, ?any Data, ?any SId, ?any TId,
+                        ?any Addr);
+               alt
+                  -- receives an on-hold request and inserts it in the buffer
+                  -- the controller has already checked the on-hold conditions
+                  CONTROLLER_RTAB (?o, ?d, ?sid, ?tid, ?a, ?deps);
+                  req := Req (o, d, sid, tid, a);
+                  if (deps == RtabHit) then
+                     eval rtab_alloc_and_link (!?table, req)
+                  else
+                     eval rtab_alloc (!?table, req, deps)
+                  end if
+               []
+                  null
+               end alt
+            end if
+         []
+            null
+         end alt
+      end loop
+   end var
+end process
+
+function fixed : bool is
+   return true
+end function
+
+-- cf. guide page 36 to 39
+-------------------------------------------------------------------------------
+-- In case of an on-hold condition : creates a new linked list.
+-------------------------------------------------------------------------------
+function rtab_alloc (in out rtab: RTAB_Array, r: RTAB_Request, d: RTAB_Deps) is
+   var index: int in
+      index := rtab_find_empty (rtab);
+      rtab[Nat (index)] := Rentry (true, d, true, true, 0, r)
+   end var
+end function
+
+-------------------------------------------------------------------------------
+-- If RTAB hit on an address : link the request at the tail.
+-------------------------------------------------------------------------------
+function rtab_alloc_and_link (in out rtab: RTAB_Array, r: RTAB_Request) is
+   var index: int, match: int in
+      index := rtab_find_empty (rtab);
+      match := rtab_match_tail (rtab, r.a);
+      rtab[Nat (match)] := rtab[Nat (match)].{ll_tail -> false};
+      rtab[Nat (match)] := rtab[Nat (match)].{ll_next -> index};
+      rtab[Nat (index)] := Rentry (true, NoDeps, false, true, 0, r)
+   end var
+end function
+
+-------------------------------------------------------------------------------
+-- Selects a request ready to be removed (dependencies have been resolved).
+-- Global variables : pop_state = HEAD or NEXT,
+--                    last = head-of-list index, next = request index
+-- HEAD : rtab_find_ready (last) finds the next ready head to be returned.
+--        If it is not a tail, pop_state is set to NEXT.
+-- NEXT : selects the next-th request to the returned.
+--        If it is a tail then next is updated,
+--        else pop_state is set to HEAD.
+-------------------------------------------------------------------------------
+function rtab_pop_try (in out rtab: RTAB_Array, in out pop_state: pop_state_t,
+                       in out last: int, in out next: int): int is
+   var index: int in
+      -- Brief description of the following code:
+      -- The rtab_pop_try function tries to retire all the requests of a given
+      -- linked list. Then it passes to another one.
+      case pop_state in
+         PS_HEAD ->
+            -- Find a list whose head request is ready
+            -- (using a round-robin policy)
+            index := rtab_find_ready (rtab, last);
+            if (index == -1) then
+               return -1
+            end if;
+
+            -- Update the pointer to the last linked list served
+            last := index;
+
+            -- If the list have more than one request, the next time this function
+            -- is called, serve the next request of the list
+            if (not (rtab[Nat (index)].ll_tail)) then
+               next := rtab[Nat (index)].ll_next;
+               pop_state := PS_NEXT
+            end if;
+
+            -- Temporarily unset the head bit. This is to prevent the
+            -- request to be rescheduled.
+            rtab[Nat (index)] := rtab[Nat (index)].{ll_head -> false}
+
+       | PS_NEXT ->
+            index := next;
+
+            -- If the list have more than one request, the next time this
+            -- function is called, serve the next request of the list
+            if (not (rtab[Nat (index)].ll_tail)) then
+               next := rtab[Nat (index)].ll_next;
+               pop_state := PS_NEXT            
+            -- It it is the last element of the list, return to the PS_HEAD state
+            else
+               pop_state := PS_HEAD
+            end if;
+            
+            -- Temporarily unset the head bit. This is to prevent the
+            -- request to be rescheduled.
+            rtab[Nat (index)] := rtab[Nat (index)].{ll_head -> false}
+      end case;
+
+      -- Pop the selected request
+      return index
+   end var
+end function
+
+type pop_state_t is
+   -- pop_state variable, used in rtab_pop_try()
+   PS_HEAD, PS_NEXT
+end type
+
+-------------------------------------------------------------------------------
+-- Called to confirm the removal of a request.
+-------------------------------------------------------------------------------
+function rtab_pop_commit (in out rtab: RTAB_Array, index: int) is
+   rtab[Nat (index)] := rtab[Nat (index)].{valid -> false}
+end function
+
+-------------------------------------------------------------------------------
+-- Called when the replayed request cannot be removed because a on-hold
+-- condition is met. Restores the request into the RTAB with updated
+-- dependency, at the same position in its corresponding linked list to respect
+-- the program execution order.
+-------------------------------------------------------------------------------
+function rtab_pop_rollback (in out rtab: RTAB_Array, index: int,
+                            deps: RTAB_Deps) is
+   rtab[Nat (index)] := rtab[Nat (index)].{ll_head -> true};
+   rtab[Nat (index)] := rtab[Nat (index)].{deps -> deps}
+   -- missing update of the index to search for the next pop
+end function
+
+-------------------------------------------------------------------------------
+-- Finds a linked list whose head request can be replayed
+-- (dependencies have been resolved).
+-------------------------------------------------------------------------------
+function rtab_find_ready (rtab: RTAB_Array, last: int): int is
+   var i: int in
+      -- choose a ready entry using a round-robin policy
+      i := (last + 1) mod RTAB_NENTRIES;
+      loop
+         -- ready entry found
+         if (rtab[Nat (i)].valid and rtab[Nat (i)].ll_head and
+             (rtab[Nat (i)].deps == NoDeps)) then
+            return i
+         
+         -- there is no ready entry
+         elsif i == last then
+            return -1
+         end if;
+
+         i := (i + 1) mod RTAB_NENTRIES
+      end loop
+   end var
+end function
+
+-------------------------------------------------------------------------------
+-- Cancels the dependency for address a. Called by MSHR or WBUF.
+-- Uses the following rtab_match() function.
+-------------------------------------------------------------------------------
+function rtab_update_deps (in out rtab: RTAB_Array, a: Addr,
+                           deps_new: RTAB_Deps) is
+   var index: int in
+      for index:=0 while index < RTAB_NENTRIES by index:=index+1 loop L in
+         if (rtab[Nat (index)].valid and
+             (rtab[Nat (index)].deps != deps_new) and
+             (rtab[Nat (index)].request.a == a)) then
+            rtab[Nat (index)] := rtab[Nat (index)].{deps -> deps_new};
+            break L
+         end if
+      end loop
+   end var
+end function
+
+-------------------------------------------------------------------------------
+-- Altered version of the previous one : every occurrence of a given
+--   dependency is removed.
+-------------------------------------------------------------------------------
+function rtab_update_deps_all (in out rtab: RTAB_Array, deps_old: RTAB_Deps) is
+   var index: int in
+      for index:=0 while index < RTAB_NENTRIES by index:=index+1 loop
+         if (rtab[Nat (index)].valid and (rtab[Nat (index)].deps == deps_old)) then
+            rtab[Nat (index)] := rtab[Nat (index)].{deps -> NoDeps}
+         end if
+      end loop
+   end var
+end function
+
+-------------------------------------------------------------------------------
+-- Utility function, used by rtab_alloc() and rtab_alloc_and_link().
+-- Returns an invalid (i.e. empty) location.
+-------------------------------------------------------------------------------
+function rtab_find_empty (rtab: RTAB_Array): int is
+   var i: int in
+      for i:=0 while i<RTAB_NENTRIES by i:=i+1 loop
+         if (not (rtab[Nat (i)].valid)) then
+            return i
+         end if
+      end loop
+   end var;
+   return -1
+end function
+
+-------------------------------------------------------------------------------
+-- Utility function, used by the controller.
+-- Is the Replay Table full ?
+-------------------------------------------------------------------------------
+function rtab_is_full (rtab: RTAB_Array): Bool is
+   return rtab_find_empty (rtab) == -1
+end function
+
+-------------------------------------------------------------------------------
+-- Utility function.
+-- Is the Replay Table empty ?
+-------------------------------------------------------------------------------
+function rtab_is_empty (rtab: RTAB_Array): int is
+   var i: int in
+      for i:=0 while i<RTAB_NENTRIES by i:=i+1 loop
+         if (rtab[Nat (i)].valid) then
+            return 0
+         end if
+      end loop
+   end var;
+   return 1
+end function
+
+-------------------------------------------------------------------------------
+-- Utility function, used by rtab_alloc() and rtab_alloc_and_link().
+-- Returns the tail corresponding to address a.
+-------------------------------------------------------------------------------
+function rtab_match_tail (rtab: RTAB_Array, a: Addr): int is
+   var i: int in
+      for i:=0 while i < RTAB_NENTRIES by i:=i+1 loop
+         if (rtab[Nat (i)].valid and (rtab[Nat (i)].request.a == a) and
+             rtab[Nat (i)].ll_tail) then
+            return i
+         end if
+      end loop
+   end var;
+   return -1
+end function
+
+-------------------------------------------------------------------------------
+-- Returns a RTAB location matching a given address.
+-- REMARK : it is called "rtab_match()" in the spec, but in this program we
+--   keep an "*_match()" convention.
+-------------------------------------------------------------------------------
+function rtab_match (rtab: RTAB_Array, a: Addr): int is
+   var i: int in
+      for i:=0 while i < RTAB_NENTRIES by i:=i+1 loop
+         if (rtab[Nat (i)].valid and (rtab[Nat (i)].request.a == a)) then
+            return i
+         end if
+      end loop
+   end var;
+   return -1
+end function
+
+end module

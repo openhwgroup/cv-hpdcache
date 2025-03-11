@@ -1,0 +1,132 @@
+module misshandler (types, channels) is
+
+-------------------------------------------------------------------------------
+-- queue keeping track of read-misses
+-- fetches requests from the memory and then sends a refill to the cache
+-------------------------------------------------------------------------------
+
+-- circular queue of (addr, rid, sid, bit d'attente) elements, cf. types.lnt
+
+-- INVARIANT 1: the locations between Front and Rear are those whose
+--              addresses are not NoAddr
+--   in mshr_enqueue() : rear++ <--> the address takes a value
+--   in mshr_dequeue() : front++ <--> the address value is set to NoAddr
+-- therefore mshr_match() only searches through valid locations in the queue
+
+-- INVARIANT 2: all the addresses in the queue are distinct
+--   if the address is in the queue, the request is sent to the replay table
+
+process MSHR [CONTROLLER_MSHR, REFILL_REQ, CMI_REQ_R, CMI_RSP_R: Wire,
+              MSHR_NOTIF: Notifgate, CHECK: Checkgate, DEBUG: any] is
+   access DEBUG;
+   var buf: MSHR_Buffer, pending_refill: bool, refill_d: Data, refill_sid: SId,
+       refill_tid: TId, refill_a: Addr in
+      buf := MBuf (MSHR_Array (MEntry (NoAddr, 1 of SId, 1 of TId, false)),
+                   -1, -1);
+      -- initialize the refill information
+      pending_refill := false;
+      refill_d := NoData;
+      refill_sid := 1 of SId;
+      refill_tid := 1 of TId;
+      refill_a := NoAddr;
+      loop
+         CHECK (?any Cache, ?any WBUF_Buffer, buf, ?any RTAB_Array);
+         alt
+            -- receives a read-miss and adds it to the buffer
+            var sid: SId, tid: TId, a: Addr in
+               CONTROLLER_MSHR (?sid, ?tid, ?a);
+               -- the following is ensured by a controller condition
+               assert (mshr_match (buf, a) == -1);
+               eval mshr_enqueue (!?buf, a, sid, tid)
+            end var
+         []
+            -- sends a request to the memory from the buffer head
+            if ((buf.front!=-1) and (buf.arr[Nat (buf.front)].b == false)) then
+               var arr: MSHR_Array in
+                  arr := buf.arr;
+                  CMI_REQ_R (arr[Nat(buf.front)].sid, arr[Nat (buf.front)].tid,
+                             arr[Nat (buf.front)].a);
+                  arr[Nat (buf.front)] := arr[Nat (buf.front)].{b -> true};
+                  buf := buf.{arr -> arr}
+               end var
+            end if
+         []
+            -- receives the memory responses, dequeues,
+            -- and sends a refill to the cache
+            CMI_RSP_R (?refill_d, ?refill_sid, ?refill_tid, ?refill_a);
+            pending_refill := true
+         []
+            if (pending_refill) then
+               assert ((buf.arr[Nat (buf.front)].a == refill_a) and
+                       (buf.arr[Nat (buf.front)].b == true));
+               REFILL_REQ (refill_d, refill_sid, refill_tid, refill_a);
+               MSHR_NOTIF (refill_a);
+               eval mshr_dequeue (!?buf);
+               pending_refill := false
+            end if
+         []
+            null
+         end alt
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+
+function mshr_match (buf: MSHR_Buffer, a: Addr) : int is
+   -- returns the index to address a in the buffer buf, or -1 is a is not in buf
+   var i: int in
+      for i:=0 while i<MSHR_NENTRIES by i:=i+1 loop
+         if (buf.arr[Nat (i)].a == a) then
+            return i
+         end if
+      end loop
+   end var;
+   return -1
+end function
+
+-------------------------------------------------------------------------------
+
+function mshr_enqueue (in out buf: MSHR_Buffer, a: Addr, sid: SId, tid: TId) is
+   -- adds a triple (a, sid, tid) to the buffer buf
+   if (mshr_is_full (buf)) then
+      return
+   end if;
+   if (buf.front == -1) then -- empty buffer
+      buf := buf.{front -> 0}
+   end if;
+   buf := buf.{rear -> (buf.rear + 1) mod MSHR_NENTRIES};
+   var arr: MSHR_Array in
+      arr := buf.arr;
+      arr[Nat (buf.rear)] := MEntry (a, sid, tid, false);
+      buf := buf.{arr -> arr}
+   end var
+end function
+
+-------------------------------------------------------------------------------
+
+function mshr_dequeue (in out buf: MSHR_Buffer) is
+   -- removes an element from the buffer buf
+   require (buf.front != -1); -- buffer not empty
+   var arr: MSHR_Array in
+      arr := buf.arr;
+      arr[Nat (buf.front)] := arr[Nat (buf.front)].{a -> NoAddr};
+      buf := buf.{arr -> arr};
+      -- updates the queue pointers
+      if (buf.front == buf.rear) then -- only one element
+         buf := buf.{front -> -1, rear -> -1}
+      else
+         buf := buf.{front -> (buf.front + 1) mod MSHR_NENTRIES}
+      end if
+   end var
+end function
+
+-------------------------------------------------------------------------------
+
+function mshr_is_full (buf: MSHR_Buffer): Bool is
+   return ((buf.rear + 1) mod MSHR_NENTRIES == buf.front)
+end function
+
+-------------------------------------------------------------------------------
+
+end module
