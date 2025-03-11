@@ -1,0 +1,145 @@
+module writebuffer (types, channels) is
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-- Buffer keeping track of the writes, and sending them to the memory.
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-- Circular queue of (addr, data, counter, state), cf. types.lnt
+
+-- INVARIANT 1 : the locations between Front and Rear are those whose
+--               states are not Free.
+--   in wbuf_enqueue() : rear++ <--> rear-th location goes from Free to Pend
+--   in wbuf_dequeue() : front++ <--> front-th location goes from Sent to Free
+-- therefore wbuf_match() only searches through valid locations in the queue.
+
+-- INVARIANT 2 : all the non-Free locations track distinct addresses.
+--   in wbuf_enqueue(), address A added -> there is no non-Free A elsewhere
+
+process WRITEBUFFER [CONTROLLER_WRITEBUFFER, CMI_REQ_W, CMI_RSP_W: Wire,
+                     WBUF_NOTIF: Notifgate, CHECK: Checkgate, DEBUG: any] is
+   access DEBUG;
+   var buf: WBUF_Buffer in
+      buf := WBuf (WBUF_Array (WEntry (NoAddr, NoData, 0, Free)), -1, -1);
+      loop
+         CHECK (?any Cache, buf, ?any MSHR_Buffer, ?any RTAB_Array);
+         alt
+            -- receives a request from the controller and adds it to the buffer :
+            -- Free => Pend
+            var d: Data, a: Addr, state: WBUF_State, ind: int in
+               CONTROLLER_WRITEBUFFER (?d, ?any SId, ?any TId, ?a);
+               ind := wbuf_match (buf, a);
+               if (ind == -1) then
+                  state := Free
+               else
+                  state := buf.arr[Nat (ind)].s -- Open or Pend
+               end if;
+               case state in
+                  Free ->
+                     eval wbuf_enqueue (!?buf, a, d) -- adds to the buffer
+               |  Open | Pend ->
+                     eval coalesce (!?buf, ind, d) -- coalesces
+               |  Sent ->
+                     -- impossible : ensured by a condition in the controller
+                     raise unexpected
+               end case
+            end var
+         []
+            -- send a request to the memory : Pend => Sent
+            if ((buf.front != -1) and (buf.arr[Nat(buf.front)].s == Pend)) then
+               var arr: WBUF_Array in
+                  arr := buf.arr;
+                  CMI_REQ_W (arr[Nat (buf.front)].a, arr[Nat (buf.front)].d);
+                  arr[Nat (buf.front)] := arr[Nat (buf.front)].{s -> Sent};
+                  buf := buf.{arr -> arr}
+               end var
+            end if
+         []
+            -- receives a confirmation from the memory : Dequeue, Sent => Free
+            var a: Addr, d: Data in
+               CMI_RSP_W (?a, ?d);
+               assert (buf.arr[Nat (buf.front)] == WEntry (a, d, 0, Sent));
+               -- /!\ if counters are implemented, replace the previous '0'
+               eval wbuf_dequeue (!?buf);
+               WBUF_NOTIF (a)
+            end var
+         []
+            null
+         end alt
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+-- Is an address in a non-Free location of the Write Buffer ?
+-------------------------------------------------------------------------------
+function wbuf_match (buf: WBUF_Buffer, a: Addr) : int is
+   var i: int in
+      for i:=0 while i<WBUF_NENTRIES by i:=i+1 loop
+         if ((buf.arr[Nat (i)].a == a) and (buf.arr[Nat (i)].s != Free)) then
+            return i
+         end if
+      end loop
+   end var;
+   return -1
+end function
+
+-------------------------------------------------------------------------------
+-- Coalesces a datum to a location in the Write Buffer.
+-------------------------------------------------------------------------------
+function coalesce (in out buf: WBUF_Buffer, ind: int, d: Data) is
+   var arr: WBUF_Array in
+      arr := buf.arr;
+      arr[Nat (ind)] := arr[Nat (ind)].{d -> d};
+      buf := buf.{arr -> arr}
+      -- buf.arr[ind].d = d
+   end var
+end function
+
+-------------------------------------------------------------------------------
+-- Adds (a, d) to the Write Buffer.
+-------------------------------------------------------------------------------
+function wbuf_enqueue (in out buf: WBUF_Buffer, a: Addr, d: Data) is
+   if (wbuf_is_full (buf)) then -- full queue !
+      return
+   end if;
+   if (buf.front == -1) then -- empty queue
+      buf := buf.{front -> 0}
+   end if;
+   buf := buf.{rear -> (buf.rear + 1) mod WBUF_NENTRIES};
+   var arr: WBUF_Array in
+      arr := buf.arr;
+      arr[Nat (buf.rear)] := WEntry (a, d, 0, Pend);
+      -- /!\ if counters are implemented, replace the previous 'Pend' by 'Open'
+      buf := buf.{arr -> arr}
+   end var
+end function
+
+-------------------------------------------------------------------------------
+-- Removes an element from the Write Buffer.
+-------------------------------------------------------------------------------
+function wbuf_dequeue (in out buf: WBUF_Buffer) is
+   require (buf.front != -1); -- empty queue !
+   var arr: WBUF_Array in
+      -- status of the emptied location is updated to Free
+      arr := buf.arr;
+      arr[Nat (buf.front)] := arr[Nat (buf.front)].{s -> Free};
+      buf := buf.{arr -> arr};
+      -- updates the queue pointers
+      if (buf.front == buf.rear) then -- un seul élément
+         buf := buf.{front -> -1, rear -> -1}
+      else
+         buf := buf.{front -> (buf.front + 1) mod WBUF_NENTRIES}
+      end if
+   end var
+end function
+
+-------------------------------------------------------------------------------
+-- Is the Write Buffer full ?
+-------------------------------------------------------------------------------
+function wbuf_is_full (buf: WBUF_Buffer): Bool is
+   return ((buf.rear + 1) mod WBUF_NENTRIES == buf.front)
+end function
+
+
+end module

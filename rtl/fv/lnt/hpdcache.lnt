@@ -1,0 +1,223 @@
+module hpdcache (cachedata, misshandler, replaytable, writebuffer) is
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-- The full HPDcache, with its internal components.
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+process HPDCACHE [CRI_REQ, CRI_RSP_R, CRI_RSP_W,
+                  CMI_REQ_R, CMI_REQ_W, CMI_RSP_R, CMI_RSP_W,
+                  RTAB_REQ, REFILL_REQ,
+                  CONTROLLER_CACHE, CONTROLLER_RTAB, CONTROLLER_WRITEBUFFER,
+                  CONTROLLER_MSHR: Wire,
+                  CHECK: Checkgate, WBUF_NOTIF, MSHR_NOTIF: Notifgate,
+                  DEBUG: any] is
+   -- hide CHECK, RTAB_REQ, REFILL_REQ, CONTROLLER_CACHE, CONTROLLER_RTAB,
+   --        CONTROLLER_WRITEBUFFER, CONTROLLER_MSHR, WBUF_NOTIF, MSHR_NOTIF
+   par CHECK in
+      CRI_REQ, CMI_REQ_R, CMI_REQ_W, CMI_RSP_W, CMI_RSP_R,
+      RTAB_REQ, REFILL_REQ, CONTROLLER_CACHE, CONTROLLER_RTAB,
+      CONTROLLER_WRITEBUFFER, CONTROLLER_MSHR ->
+         CONTROLLER [...]
+    ||
+      CONTROLLER_CACHE ->
+         CACHEDATA [CONTROLLER_CACHE, CRI_RSP_R, CHECK, DEBUG]
+    ||
+      CONTROLLER_WRITEBUFFER, CMI_REQ_W, CMI_RSP_W, WBUF_NOTIF ->
+         WRITEBUFFER [CONTROLLER_WRITEBUFFER, CMI_REQ_W, CMI_RSP_W, WBUF_NOTIF,
+                      CHECK, DEBUG]
+    ||
+      CONTROLLER_MSHR, REFILL_REQ, CMI_REQ_R, CMI_RSP_R, MSHR_NOTIF ->
+         MSHR [CONTROLLER_MSHR, REFILL_REQ, CMI_REQ_R, CMI_RSP_R, MSHR_NOTIF,
+               CHECK, DEBUG]
+    ||
+      CONTROLLER_RTAB, RTAB_REQ, CRI_REQ, WBUF_NOTIF, MSHR_NOTIF ->
+         RTAB [CONTROLLER_RTAB, RTAB_REQ, CRI_REQ, WBUF_NOTIF, MSHR_NOTIF,
+               CHECK, DEBUG]
+   end par
+end process
+
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-- Receives requests from requesters (Read Write);
+--                   from MSHR (Refill)
+--                   from RTAB (OnHold).
+-- The pipeline sorts and sends them to the cache :
+-- to the write-buffer, or MSHR, or RTAB.
+
+-- The conditions for sending to RTAB are as follows (cf. user guide 25 & 35):
+--    (1) miss (or hit ?)  & RTAB hit
+--    (2) read-miss        & (MSHR full/hit ou WBUF hit),
+--    (3) write            & WBUF full
+--    (4) write-miss       & (MSHR hit or WBUF hit sent)
+
+-- LOOP INVARIANT : an addr cannot be simultaneously in the WBUF and the MSHR.
+--   A in MSHR => A not in cache. Writing on A will result in a write miss,
+--      thus the request will be sent to RTAB (4) instead of the write buffer.
+--   A in WBUF => a read-miss, because of (2), will be sent to RTAB instead
+--      of MSHR.
+
+-- REMARK : about WBUF, the specification in unclear in case of sent hit.
+-- page 35 : "Dependency [...] Write miss and there is a match with a sent
+--            entry in the write buffer"
+-- page 41 : "when there is an address conflict with a SENT entry,
+--            the write access is put on-hold" [...] "The system may choose to
+--            relax the constraint of putting a write on-hold in case of an
+--            address conflict with a SENT entry"
+-- but what if there is a match with a sent entry and a write miss ?
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+process CONTROLLER [CRI_REQ, RTAB_REQ, REFILL_REQ, CONTROLLER_CACHE,
+                    CONTROLLER_RTAB, CONTROLLER_WRITEBUFFER, CONTROLLER_MSHR,
+                    CRI_RSP_W: Wire, CHECK: Checkgate, DEBUG: any,
+                    CMI_REQ_R, CMI_REQ_W, CMI_RSP_R, CMI_RSP_W: Wire] is
+   access DEBUG;
+   var C: Cache, W: WBUF_Buffer, M: MSHR_Buffer, R: RTAB_Array,
+       d: Data, sid: SId, tid: TId, a: Addr, ind: nat,
+       pending_refill: bool, refill_d: Data, refill_sid: SId, refill_tid: TId,
+       refill_a: Addr in
+      -- initializing variables to prevent TRAIAN warnings
+      -- written during refill phase 2, read during refill phase 3
+      pending_refill := false;
+      refill_d := NoData;
+      refill_sid := 1 of SId;
+      refill_tid := 1 of TId;
+      refill_a := NoAddr;
+      loop
+         CHECK (?C, ?W, ?M, ?R);
+         alt
+            if (not (rtab_is_full (R))) then
+               CRI_REQ (Load, NoData, ?sid, ?tid, ?a); -- read
+               ind := cache_match (C, a);
+               if (rtab_match (R, a) != -1) then -- rtab hit
+                  CONTROLLER_RTAB (Load, NoData, sid, tid, a, RtabHit)
+               elsif (ind != 0) then -- if cache-hit
+                  CONTROLLER_CACHE (Load, NoData, sid, tid, ind)
+               else -- if cache-miss
+                  if (mshr_match (M, a) != -1) then -- read-miss & mshr hit
+                     CONTROLLER_RTAB (Load, NoData, sid, tid, a, MshrCollide)
+                  elsif (wbuf_match (W, a) != -1) then -- read-miss & wbuf hit
+                     CONTROLLER_RTAB (Load, NoData, sid, tid, a, WbufCollide)
+                  else
+                     CONTROLLER_MSHR (sid, tid, a)
+                  end if
+               end if
+            end if
+         []
+            if (not (rtab_is_full (R))) then
+               CRI_REQ (Store, ?d, ?sid, ?tid, ?a); -- write
+               if (rtab_match (R, a) != -1) then -- rtab hit
+                  CONTROLLER_RTAB (Store, d, sid, tid, a, RtabHit)
+               elsif wbuf_is_full (W) then -- write & wbuf full
+                  CONTROLLER_RTAB (Store, d, sid, tid, a, WbufFull)
+               elsif ((wbuf_match (W, a) != -1) and
+                      (W.arr[Nat (wbuf_match (W, a))].s == Sent)) then
+                  -- write & wbuf hit sent
+                  CONTROLLER_RTAB (Store, d, sid, tid, a, WbufCollide)
+               else -- else the request is processed
+                  ind := cache_match (C, a);
+                  if (ind != 0) then -- if cache-hit
+                     par
+                        CONTROLLER_CACHE (Store, d, sid, tid, ind)
+                     ||
+                        CONTROLLER_WRITEBUFFER (d, sid, tid, a)
+                     end par;
+                     CRI_RSP_W (d, sid, tid)
+                  else
+                     if (mshr_match (M, a) != -1) then -- write-miss & mshr hit
+                        CONTROLLER_RTAB (Store, d, sid, tid, a, MshrCollide)                  
+                     else
+                        CONTROLLER_WRITEBUFFER (d, sid, tid, a);
+                        CRI_RSP_W (d, sid, tid)
+                     end if
+                  end if
+               end if
+            end if
+         []
+            -- same code as CRI_REQ for RTAB_REQ, except :
+            -- 1. with an additional transmission to CONTROLLER_RTAB (NoDeps)
+            --    if the request is successfully processed
+            -- 2. without stalling if RTAB is full
+            -- 3. without sending to RTAB in case of RTAB hit
+            RTAB_REQ (Load, NoData, ?sid, ?tid, ?a); -- lecture
+            ind := cache_match (C, a);
+            if (ind != 0) then -- if cache-hit
+               par
+                  CONTROLLER_CACHE (Load, NoData, sid, tid, ind)
+               ||
+                  CONTROLLER_RTAB (Load, NoData, sid, tid, a, NoDeps)
+               end par
+            else -- if cache-miss
+               if (mshr_match (M, a) != -1) then -- read-miss & mshr hit
+                  CONTROLLER_RTAB (Load, NoData, sid, tid, a, MshrCollide)
+               elsif (wbuf_match (W, a) != -1) then -- read-miss & wbuf hit
+                  CONTROLLER_RTAB (Load, NoData, sid, tid, a, WbufCollide)
+               else
+                  par
+                     CONTROLLER_MSHR (sid, tid, a)
+                  ||
+                     CONTROLLER_RTAB (Load, NoData, sid, tid, a, NoDeps)
+                  end par
+               end if
+            end if
+         []
+            RTAB_REQ (Store, ?d, ?sid, ?tid, ?a); -- write
+            if wbuf_is_full (W) then -- write & wbuf full
+               CONTROLLER_RTAB (Store, d, sid, tid, a, WbufFull)
+            elsif ((wbuf_match (W, a) != -1) and
+                   (W.arr[Nat (wbuf_match (W, a))].s == Sent)) then
+               -- write & wbuf hit sent
+               CONTROLLER_RTAB (Store, d, sid, tid, a, WbufCollide)
+            else -- else the request is processed
+               ind := cache_match (C, a);
+               if (ind != 0) then -- if cache-hit
+                  par
+                     CONTROLLER_CACHE (Store, d, sid, tid, ind)
+                  || 
+                     CONTROLLER_WRITEBUFFER (d, sid, tid, a)
+                  || 
+                     CONTROLLER_RTAB (Store, d, sid, tid, a, NoDeps)
+                  end par;
+                  CRI_RSP_W (d, sid, tid)
+               else
+                  if (mshr_match (M, a) != -1) then -- write-miss & mshr hit
+                     CONTROLLER_RTAB (Store, d, sid, tid, a, MshrCollide)
+                  else
+                     par
+                        CONTROLLER_WRITEBUFFER (d, sid, tid, a)
+                     ||
+                        CONTROLLER_RTAB (Store, d, sid, tid, a, NoDeps)
+                     end par;
+                     CRI_RSP_W (d, sid, tid)
+                  end if
+               end if
+            end if
+         []
+            -- refill
+            CMI_RSP_R (?refill_d, ?refill_sid, ?refill_tid, ?refill_a);
+            pending_refill := true
+         []
+            -- refill: phase 2 (with misshandler)
+            if (pending_refill) then
+               REFILL_REQ (refill_d, refill_sid, refill_tid, refill_a);
+               CONTROLLER_CACHE (Refill, refill_d, refill_sid, refill_tid,
+                                 refill_a);
+               pending_refill := false
+            end if
+         []
+            -- if the cache is processing a memory response, it can't process
+            -- a core request at the same time
+            CMI_RSP_W (?any Addr, ?any Data)
+         []
+            -- if the cache is sending a memory response, it can't process
+            -- a core request at the same time
+            CMI_REQ_R (?any SId, ?any TId, ?any Addr)
+         []
+            CMI_REQ_W (?any Addr, ?any Data)
+         end alt
+      end loop
+   end var
+end process
+
+end module

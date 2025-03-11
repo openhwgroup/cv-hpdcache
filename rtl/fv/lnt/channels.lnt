@@ -1,0 +1,55 @@
+module channels (types) is
+
+-------------------------------------------------------------------------------
+-- Gates through which the components communicate with each other.
+-------------------------------------------------------------------------------
+
+channel Wire is
+   -- CRI_REQ_R_W             Requester => Controller, priority 3/3
+   -- RTAB_REQ                RTAB => Controller, priority 2/3
+   -- CONTROLLER_CACHE        with Refill
+   (o: Operation, d: Data, sid: SId, tid: TId, a: Addr),
+
+   -- CONTROLLER_RTAB         Controller => RTAB
+   (o: Operation, d: Data, sid: SId, tid: TId, a: Addr, deps: RTAB_deps),
+
+   -- CONTROLLER_CACHE        Controller => Cachedata, if hit
+   (o: Operation, d: Data, sid: SId, tid: TId, ind: nat),
+   
+   -- REFILL_REQ              MSHR => Controller, priority 1/3
+   -- CONTROLLER_WRITEBUFFER  Controller => Write buffer, if write
+   -- CMI_RSP_R               Memory => Cache, read
+   (d: Data, sid: SId, tid: TId, a: Addr),
+   
+   -- CRI_RSP_R               Cache => Requester
+   -- CRI_RSP_W               Cache => Requester
+   (d: Data, sid: SId, tid: TId),
+
+   -- CONTROLLER_MSHR         Controller => MSHR, if read miss
+   -- CMI_REQ_R               Cache => Memory, read
+   (sid: SId, tid: TId, a: Addr),
+
+   -- CMI_REQ_W               Cache => Memory, write
+   -- CMI_RSP_W               Memory => Cache, write
+   (a: Addr, wd: Data)
+end channel
+
+-------------------------------------------------------------------------------
+-- Special gate : used by the write buffer and the miss handler, to notify
+--                the replay table about possible dependency solving.
+-------------------------------------------------------------------------------
+channel Notifgate is
+   (a: Addr) -- the conflicted address, now resolved
+end channel
+
+-------------------------------------------------------------------------------
+-- Special gate : used by the controller to consult the other components :
+--                cache data, write buffer, miss handler, replay table.
+--   The {cache, wbuf, mshr, rtab}_match() functions take an address as an input, and
+--   return the index where it is located if it is, else zero.
+-------------------------------------------------------------------------------
+channel Checkgate is
+   (C: Cache, W: WBUF_Buffer, M: MSHR_Buffer, R: RTAB_Array)
+end channel
+
+end module
