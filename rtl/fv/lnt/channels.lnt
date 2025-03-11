@@ -74,7 +74,7 @@ end channel
 --   The {cache, wbuf, mshr, rtab}_match() functions take an address as an input, and
 --   return the index where it is located if it is, else zero.
 -------------------------------------------------------------------------------
-channel Checkgate is
+channel Statusgate is
    (C: Cache, W: WBUF_Buffer, M: MSHR_Buffer, R: RTAB_Array)
 end channel
 

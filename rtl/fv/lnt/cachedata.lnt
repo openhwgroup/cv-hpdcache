@@ -30,7 +30,7 @@ module cachedata (types, channels) is
 -- process managing the data stored in the cache.
 -------------------------------------------------------------------------------
 
-process CACHEDATA [CONTROLLER_CACHE, CRI_RSP_R: Wire, CHECK: Checkgate,
+process CACHEDATA [CONTROLLER_CACHE, CRI_RSP_R: Wire, STATUS: Statusgate,
                    DEBUG: any] is
    access DEBUG;
    var C: Cache, lru: LRU_t, a: Addr, d: Data, sid: SId, tid: TId, ind: nat in
@@ -38,7 +38,7 @@ process CACHEDATA [CONTROLLER_CACHE, CRI_RSP_R: Wire, CHECK: Checkgate,
       lru := LRU_t (false);
       C := Cache (Invalid);
       loop
-         CHECK (C, ?any WBUF_Buffer, ?any MSHR_Buffer, ?any RTAB_Array);
+         STATUS (C, ?any WBUF_Buffer, ?any MSHR_Buffer, ?any RTAB_Array);
          alt
             -- read an address that is present in the cache
             CONTROLLER_CACHE (Load, NoData, ?sid, ?tid, ?ind);

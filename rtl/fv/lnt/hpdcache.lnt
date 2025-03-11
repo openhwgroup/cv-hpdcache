@@ -35,30 +35,30 @@ process HPDCACHE [CRI_REQ, CRI_RSP_R, CRI_RSP_W,
                   RTAB_REQ, REFILL_REQ,
                   CONTROLLER_CACHE, CONTROLLER_RTAB, CONTROLLER_WRITEBUFFER,
                   CONTROLLER_MSHR: Wire,
-                  CHECK: Checkgate, WBUF_NOTIF, MSHR_NOTIF: Notifgate,
+                  STATUS: Statusgate, WBUF_NOTIF, MSHR_NOTIF: Notifgate,
                   DEBUG: any] is
-   -- hide CHECK, RTAB_REQ, REFILL_REQ, CONTROLLER_CACHE, CONTROLLER_RTAB,
+   -- hide STATUS, RTAB_REQ, REFILL_REQ, CONTROLLER_CACHE, CONTROLLER_RTAB,
    --        CONTROLLER_WRITEBUFFER, CONTROLLER_MSHR, WBUF_NOTIF, MSHR_NOTIF
-   par CHECK in
+   par STATUS in
       CRI_REQ, CMI_REQ_R, CMI_REQ_W, CMI_RSP_W, CMI_RSP_R,
       RTAB_REQ, REFILL_REQ, CONTROLLER_CACHE, CONTROLLER_RTAB,
       CONTROLLER_WRITEBUFFER, CONTROLLER_MSHR ->
          CONTROLLER [...]
     ||
       CONTROLLER_CACHE ->
-         CACHEDATA [CONTROLLER_CACHE, CRI_RSP_R, CHECK, DEBUG]
+         CACHEDATA [CONTROLLER_CACHE, CRI_RSP_R, STATUS, DEBUG]
     ||
       CONTROLLER_WRITEBUFFER, CMI_REQ_W, CMI_RSP_W, WBUF_NOTIF ->
          WRITEBUFFER [CONTROLLER_WRITEBUFFER, CMI_REQ_W, CMI_RSP_W, WBUF_NOTIF,
-                      CHECK, DEBUG]
+                      STATUS, DEBUG]
     ||
       CONTROLLER_MSHR, REFILL_REQ, CMI_REQ_R, CMI_RSP_R, MSHR_NOTIF ->
          MSHR [CONTROLLER_MSHR, REFILL_REQ, CMI_REQ_R, CMI_RSP_R, MSHR_NOTIF,
-               CHECK, DEBUG]
+               STATUS, DEBUG]
     ||
       CONTROLLER_RTAB, RTAB_REQ, CRI_REQ, WBUF_NOTIF, MSHR_NOTIF ->
          RTAB [CONTROLLER_RTAB, RTAB_REQ, CRI_REQ, WBUF_NOTIF, MSHR_NOTIF,
-               CHECK, DEBUG]
+               STATUS, DEBUG]
    end par
 end process
 
@@ -95,7 +95,7 @@ end process
 -------------------------------------------------------------------------------
 process CONTROLLER [CRI_REQ, RTAB_REQ, REFILL_REQ, CONTROLLER_CACHE,
                     CONTROLLER_RTAB, CONTROLLER_WRITEBUFFER, CONTROLLER_MSHR,
-                    CRI_RSP_W: Wire, CHECK: Checkgate, DEBUG: any,
+                    CRI_RSP_W: Wire, STATUS: Statusgate, DEBUG: any,
                     CMI_REQ_R, CMI_REQ_W, CMI_RSP_R, CMI_RSP_W: Wire] is
    access DEBUG;
    var C: Cache, W: WBUF_Buffer, M: MSHR_Buffer, R: RTAB_Array,
@@ -110,7 +110,7 @@ process CONTROLLER [CRI_REQ, RTAB_REQ, REFILL_REQ, CONTROLLER_CACHE,
       refill_tid := 1 of TId;
       refill_a := NoAddr;
       loop
-         CHECK (?C, ?W, ?M, ?R);
+         STATUS (?C, ?W, ?M, ?R);
          alt
             if (not (rtab_is_full (R))) then
                CRI_REQ (Load, NoData, ?sid, ?tid, ?a); -- read

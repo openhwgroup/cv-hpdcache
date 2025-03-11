@@ -42,12 +42,12 @@ module writebuffer (types, channels) is
 --   in wbuf_enqueue(), address A added -> there is no non-Free A elsewhere
 
 process WRITEBUFFER [CONTROLLER_WRITEBUFFER, CMI_REQ_W, CMI_RSP_W: Wire,
-                     WBUF_NOTIF: Notifgate, CHECK: Checkgate, DEBUG: any] is
+                     WBUF_NOTIF: Notifgate, STATUS: Statusgate, DEBUG: any] is
    access DEBUG;
    var buf: WBUF_Buffer in
       buf := WBuf (WBUF_Array (WEntry (NoAddr, NoData, 0, Free)), -1, -1);
       loop
-         CHECK (?any Cache, buf, ?any MSHR_Buffer, ?any RTAB_Array);
+         STATUS (?any Cache, buf, ?any MSHR_Buffer, ?any RTAB_Array);
          alt
             -- receives a request from the controller and adds it to the buffer :
             -- Free => Pend

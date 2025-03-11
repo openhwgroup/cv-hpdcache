@@ -199,7 +199,7 @@ type WBUF_State is -- sect. 3.7.3
    Pend, -- the counter is over, ready to send
          --        /!\ here the counter is always set to 0
          --            so the Open phase is skipped directly to Pend
-         --            (increment the counter at every CHECK ?)
+         --            (increment the counter at every STATUS ?)
    Sent  -- sent entry, waiting for a confirmation
    with ==, !=
 end type

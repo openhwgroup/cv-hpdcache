@@ -49,7 +49,7 @@ The model parameters are configurable, by altering type or function definitions 
 - enable/disable the documentation fix from v5.0.1 (module replaytable.lnt): modify (constant) function fixed
 
 # Simulation and Verification
-This formal LNT model can be (simulated and verified ???) using the [CADP toolbox](https://cadp.inria.fr/).
+This formal LNT model can be simulated and verified using the [CADP toolbox](https://cadp.inria.fr/).
 
 # References
 ## [1] H. Garavel, F. Lang and W. Serwe.

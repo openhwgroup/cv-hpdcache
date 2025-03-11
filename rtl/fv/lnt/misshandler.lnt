@@ -42,7 +42,7 @@ module misshandler (types, channels) is
 --   if the address is in the queue, the request is sent to the replay table
 
 process MSHR [CONTROLLER_MSHR, REFILL_REQ, CMI_REQ_R, CMI_RSP_R: Wire,
-              MSHR_NOTIF: Notifgate, CHECK: Checkgate, DEBUG: any] is
+              MSHR_NOTIF: Notifgate, STATUS: Statusgate, DEBUG: any] is
    access DEBUG;
    var buf: MSHR_Buffer, pending_refill: bool, refill_d: Data, refill_sid: SId,
        refill_tid: TId, refill_a: Addr in
@@ -55,7 +55,7 @@ process MSHR [CONTROLLER_MSHR, REFILL_REQ, CMI_REQ_R, CMI_RSP_R: Wire,
       refill_tid := 1 of TId;
       refill_a := NoAddr;
       loop
-         CHECK (?any Cache, ?any WBUF_Buffer, buf, ?any RTAB_Array);
+         STATUS (?any Cache, ?any WBUF_Buffer, buf, ?any RTAB_Array);
          alt
             -- receives a read-miss and adds it to the buffer
             var sid: SId, tid: TId, a: Addr in

@@ -27,7 +27,7 @@ module main (hpdcache) is
 
 -- Gate naming pattern
 
--- "CHECK" : synchronisation between controller and other components
+-- "STATUS" : synchronisation between controller and other components
 
 -- "CONTROLLER_<x>" : le controller sends data to composant <x>
 --                    with <x> in {CACHE, MSHR, RTAB, WRITEBUFFER}
@@ -58,7 +58,7 @@ process MAIN [CRI_REQ, CRI_RSP_R, CRI_RSP_W, -- interface CRI
               RTAB_REQ, REFILL_REQ,
               CONTROLLER_CACHE, CONTROLLER_RTAB, CONTROLLER_WRITEBUFFER,
               CONTROLLER_MSHR: Wire,
-              CHECK: Checkgate,
+              STATUS: Statusgate,
               WBUF_NOTIF, MSHR_NOTIF: Notifgate,
               DEBUG: any] is
    par
@@ -72,7 +72,7 @@ process MAIN [CRI_REQ, CRI_RSP_R, CRI_RSP_W, -- interface CRI
                    RTAB_REQ, REFILL_REQ,
                    CONTROLLER_CACHE, CONTROLLER_RTAB, CONTROLLER_WRITEBUFFER,
                    CONTROLLER_MSHR,
-                   CHECK, WBUF_NOTIF, MSHR_NOTIF,
+                   STATUS, WBUF_NOTIF, MSHR_NOTIF,
                    DEBUG]
     ||
       CMI_REQ_R, CMI_REQ_W, CMI_RSP_R, CMI_RSP_W ->

@@ -34,7 +34,7 @@ module replaytable (types, channels) is
 -- REMARK : possible invariant, a rollback can only happen for full buffers ?
 process RTAB [CONTROLLER_RTAB, RTAB_REQ, CRI_REQ: Wire,
               WBUF_NOTIF, MSHR_NOTIF: Notifgate,
-              CHECK: Checkgate, DEBUG: any] is
+              STATUS: Statusgate, DEBUG: any] is
    access DEBUG;
    var table: RTAB_Array, pop_state: pop_state_t, last: int, next: int,
        o: Operation, d: Data, sid: SId, tid: TId, a: Addr, deps: RTAB_Deps,
@@ -42,7 +42,7 @@ process RTAB [CONTROLLER_RTAB, RTAB_REQ, CRI_REQ: Wire,
       table := RTAB_Array (REntry (false, NoDeps, false, false, 0, NoReq));
       pop_state := PS_HEAD; last := 0; next := 0;
       loop
-         CHECK (?any Cache, ?any WBUF_Buffer, ?any MSHR_Buffer, table);
+         STATUS (?any Cache, ?any WBUF_Buffer, ?any MSHR_Buffer, table);
          alt
             -- receives a notification from the Write Buffer
             WBUF_NOTIF (?a);
