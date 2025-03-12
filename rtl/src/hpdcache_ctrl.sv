@@ -298,6 +298,7 @@ import hpdcache_pkg::*;
 
     //  Definition of internal signals
     //  {{{
+    // Pipeline Stage 0
     hpdcache_req_t           st0_req;
     hpdcache_pma_t           st0_req_pma;
     logic                    st0_req_is_error;
@@ -309,7 +310,6 @@ import hpdcache_pkg::*;
     logic                    st0_req_is_cmo_inval;
     logic                    st0_req_is_cmo_prefetch;
     logic                    st0_req_cachedir_read;
-    logic                    st0_req_cachedata_read;
     hpdcache_set_t           st0_req_set;
     hpdcache_word_t          st0_req_word;
     logic                    st0_rtab_pop_try_valid;
@@ -318,6 +318,7 @@ import hpdcache_pkg::*;
     rtab_ptr_t               st0_rtab_pop_try_ptr;
     logic                    st0_rtab_pop_try_error;
 
+    // Pipeline Stage 1
     logic                    st1_rsp_valid;
     logic                    st1_rsp_error;
     logic                    st1_rsp_aborted;
@@ -369,7 +370,6 @@ import hpdcache_pkg::*;
     hpdcache_tag_t           st1_dir_victim_tag;
     hpdcache_way_vector_t    st1_dir_victim_way;
     hpdcache_nline_t         st1_victim_nline;
-    hpdcache_req_data_t      st1_read_data;
     logic                    st1_rtab_alloc;
     logic                    st1_rtab_alloc_and_link;
     logic                    st1_rtab_pop_try_commit;
@@ -378,12 +378,26 @@ import hpdcache_pkg::*;
     logic                    st1_rtab_check;
     logic                    st1_rtab_check_hit;
 
+    // Pipeline Stage 1/2 (depending on lowLatency setting)
+    logic                    core_rsp_valid;
+    logic                    core_rsp_error;
+    logic                    core_rsp_aborted;
+    hpdcache_req_tid_t       core_rsp_tid;
+    hpdcache_req_sid_t       core_rsp_sid;
+
     hpdcache_way_t           refill_way_index;
 
     logic                    rtab_full;
     logic                    rtab_fence;
 
     logic                    hpdcache_init_ready;
+
+    logic                    data_req_read;
+    hpdcache_set_t           data_req_read_set;
+    hpdcache_req_size_t      data_req_read_size;
+    hpdcache_word_t          data_req_read_word;
+    hpdcache_way_vector_t    data_req_read_way;
+    hpdcache_req_data_t      data_req_read_data;
     //  }}}
 
     //  Decoding of the request in stage 0
@@ -512,7 +526,9 @@ import hpdcache_pkg::*;
 
     //  Cache controller protocol engine
     //  {{{
-    hpdcache_ctrl_pe hpdcache_ctrl_pe_i(
+    hpdcache_ctrl_pe #(
+        .HPDcacheCfg(HPDcacheCfg)
+    ) hpdcache_ctrl_pe_i(
         .core_req_valid_i,
         .core_req_ready_o,
         .rtab_req_valid_i                   (st0_rtab_pop_try_valid),
@@ -531,7 +547,6 @@ import hpdcache_pkg::*;
         .st0_req_is_cmo_prefetch_i          (st0_req_is_cmo_prefetch),
         .st0_req_mshr_check_o               (st0_mshr_check_o),
         .st0_req_cachedir_read_o            (st0_req_cachedir_read),
-        .st0_req_cachedata_read_o           (st0_req_cachedata_read),
 
         .st1_req_valid_i                    (st1_req_valid_q),
         .st1_req_abort_i                    (st1_req_abort),
@@ -584,6 +599,8 @@ import hpdcache_pkg::*;
         .st2_dir_updt_wback_o               (st2_dir_updt_wback_d),
         .st2_dir_updt_dirty_o               (st2_dir_updt_dirty_d),
         .st2_dir_updt_fetch_o               (st2_dir_updt_fetch_d),
+
+        .req_cachedata_read_o               (data_req_read),
 
         .flush_busy_i,
         .st1_flush_check_hit_i              (flush_check_hit_i),
@@ -827,6 +844,24 @@ import hpdcache_pkg::*;
 
     assign st1_victim_nline = {st1_dir_victim_tag, st1_req_set};
 
+    //  When lowLatency, data SRAM is read at stage 0 but way selection is done at stage 1
+    if (HPDcacheCfg.u.lowLatency) begin : gen_st0_data_sram_read
+        assign data_req_read_set = st0_req_set;
+        assign data_req_read_size = st0_req.size;
+        assign data_req_read_word = st0_req_word;
+        assign data_req_read_way = st1_dir_hit_way;
+    end
+    //  When not lowLatency, data SRAM is read at stage 1 but way selection is done at stage 2
+    else begin : gen_st1_data_sram_read
+        assign data_req_read_set = st1_req_set;
+        assign data_req_read_size = st1_req.size;
+        assign data_req_read_word = st1_req_word;
+        always_ff @(posedge clk_i)
+        begin : data_req_read_way_ff
+            data_req_read_way <= st1_dir_hit_way;
+        end
+    end
+
     hpdcache_memctrl #(
         .HPDcacheCfg                   (HPDcacheCfg),
         .hpdcache_nline_t              (hpdcache_nline_t),
@@ -915,15 +950,17 @@ import hpdcache_pkg::*;
         .dir_cmo_updt_dirty_i          (cmo_dir_updt_dirty_i),
         .dir_cmo_updt_fetch_i          (cmo_dir_updt_fetch_i),
 
-        .data_req_read_i               (st0_req_cachedata_read),
-        .data_req_read_set_i           (st0_req_set),
-        .data_req_read_size_i          (st0_req.size),
-        .data_req_read_word_i          (st0_req_word),
-        .data_req_read_data_o          (st1_read_data),
+        .data_req_read_i               (data_req_read),
+        .data_req_read_set_i           (data_req_read_set),
+        .data_req_read_size_i          (data_req_read_size),
+        .data_req_read_word_i          (data_req_read_word),
+        .data_req_read_way_i           (data_req_read_way),
+        .data_req_read_data_o          (data_req_read_data),
 
         .data_req_write_i              (st1_req_cachedata_write),
         .data_req_write_enable_i       (st1_req_cachedata_write_enable),
         .data_req_write_set_i          (st1_req_set),
+        .data_req_write_way_i          (st1_dir_hit_way),
         .data_req_write_size_i         (st1_req.size),
         .data_req_write_word_i         (st1_req_word),
         .data_req_write_data_i         (st1_req.wdata),
@@ -1040,23 +1077,46 @@ import hpdcache_pkg::*;
 
     //  Control of the response to the core
     //  {{{
+    if (HPDcacheCfg.u.lowLatency) begin : gen_st2_core_rsp_comb
+        //  When lowLatency, all responses to the core are sent on stage 1
+        assign core_rsp_valid = st1_rsp_valid;
+        assign core_rsp_aborted = st1_rsp_aborted;
+        assign core_rsp_error = st1_rsp_error;
+        assign core_rsp_sid = st1_req.sid;
+        assign core_rsp_tid = st1_req.tid;
+    end else begin : gen_st2_core_rsp_ff
+        //  When not lowLatency, delay all responses to the core by one cycle (stage 2)
+        always_ff @(posedge clk_i or negedge rst_ni)
+        begin : st2_core_rsp_ff
+            core_rsp_valid <= st1_rsp_valid;
+            core_rsp_aborted <= st1_rsp_aborted;
+            core_rsp_error <= st1_rsp_error;
+            core_rsp_sid <= st1_req.sid;
+            core_rsp_tid <= st1_req.tid;
+        end
+    end
+
     assign core_rsp_valid_o   = refill_core_rsp_valid_i |
                                 (uc_core_rsp_valid_i & uc_core_rsp_ready_o) |
                                 (cmo_core_rsp_valid_i & cmo_core_rsp_ready_o) |
-                                st1_rsp_valid;
+                                core_rsp_valid;
     assign core_rsp_o.rdata   = (refill_core_rsp_valid_i ? refill_core_rsp_i.rdata :
                                 (cmo_core_rsp_valid_i    ? cmo_core_rsp_i.rdata :
-                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.rdata : st1_read_data)));
+                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.rdata :
+                                                           data_req_read_data)));
     assign core_rsp_o.sid     = (refill_core_rsp_valid_i ? refill_core_rsp_i.sid :
                                 (cmo_core_rsp_valid_i    ? cmo_core_rsp_i.sid :
-                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.sid : st1_req.sid)));
+                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.sid :
+                                                           core_rsp_sid)));
     assign core_rsp_o.tid     = (refill_core_rsp_valid_i ? refill_core_rsp_i.tid :
                                 (cmo_core_rsp_valid_i    ? cmo_core_rsp_i.tid :
-                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.tid : st1_req.tid)));
+                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.tid :
+                                                           core_rsp_tid)));
     assign core_rsp_o.error   = (refill_core_rsp_valid_i ? refill_core_rsp_i.error :
                                 (cmo_core_rsp_valid_i    ? cmo_core_rsp_i.error :
-                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.error : st1_rsp_error)));
-    assign core_rsp_o.aborted = st1_rsp_aborted;
+                                (uc_core_rsp_valid_i     ? uc_core_rsp_i.error :
+                                                           core_rsp_error)));
+    assign core_rsp_o.aborted = core_rsp_aborted;
     //  }}}
 
     //  Assertions
