@@ -53,6 +53,7 @@ class hpdcache_test
 public:
     uint64_t max_cycles;
     uint64_t max_trans;
+    size_t error_limit;
     bool trace_on;
     std::string trace_name;
 
@@ -65,6 +66,7 @@ public:
     hpdcache_test() :
         max_cycles(1ULL << 30),
         max_trans(100),
+        error_limit(0),
         covname(""),
         tf(nullptr),
         seq(nullptr)
@@ -224,6 +226,7 @@ public:
         hpdcache_test_agent_i->add_sequence(seq);
         hpdcache_test_scoreboard_i->set_sequence(seq);
         hpdcache_test_scoreboard_i->set_mem_resp_model(hpdcache_test_mem_resp_model_i);
+        hpdcache_test_scoreboard_i->set_error_limit(error_limit);
     }
 
     void simulate()
@@ -452,7 +455,7 @@ int sc_main(int argc, char** argv)
         };
 
         option_index = 0;
-        c = getopt_long(argc, argv, "hm:n:r:c:l:t:s:", long_options, &option_index);
+        c = getopt_long(argc, argv, "hm:n:r:c:l:t:s:e:", long_options, &option_index);
         if (c == -1) break;
 
         switch (c) {
@@ -502,6 +505,9 @@ int sc_main(int argc, char** argv)
             }
             case 's':
                 test.set_sequence(optarg);
+                break;
+            case 'e':
+                test.error_limit = atoll(optarg);
                 break;
         }
     }

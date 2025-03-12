@@ -95,6 +95,7 @@ public:
             nb_mem_write_req(0),
             nb_mem_write_resp(0),
             nb_error(0),
+            sb_error_limit_m(0),
             evt_cache_write_miss(0),
             evt_cache_read_miss(0),
             evt_uncached_req(0),
@@ -213,6 +214,11 @@ public:
         mem_resp_model = p;
     }
 
+    void set_error_limit(size_t error_limit)
+    {
+        sb_error_limit_m = error_limit;
+    }
+
 private:
 
     uint64_t nb_cycles;
@@ -226,6 +232,7 @@ private:
     uint64_t nb_mem_write_resp;
 
     size_t   nb_error;
+    size_t   sb_error_limit_m;
 
     uint64_t evt_cache_write_miss;
     uint64_t evt_cache_read_miss;
@@ -363,7 +370,15 @@ private:
     {
         std::cout << sc_time_stamp().to_string()
                   << " / SB_ERROR: " << msg << std::endl;
+
         nb_error++;
+        if (sb_error_limit_m > 0 && (nb_error >= sb_error_limit_m)) {
+            std::cout << "SB_ERROR: number of errors exceeded the limit ("
+                      << sb_error_limit_m << ")"
+                      << std::endl;
+
+            std::exit(1);
+        }
     }
 
     void print_debug(const std::string &msg)
