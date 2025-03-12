@@ -47,6 +47,7 @@ TIMEOUT             ?= $$(( $(NTRANSACTIONS)*1000 ))
 SEQUENCE            ?= random
 LOG_LEVEL           ?= 1
 SEED                ?= 1234
+ERROR_LIMIT         ?= 0
 NTESTS              ?= 128
 TRACE               ?= 0
 
@@ -125,6 +126,7 @@ VERILATOR_RUNFLAGS  += +verilator+seed+$(SEED) \
                        -s $(SEQUENCE) \
                        -l $(LOG_LEVEL) \
                        -r $(SEED) \
+                       -e $(ERROR_LIMIT) \
                        $(if $(filter 1,$(TRACE)), +trace -t $(TRACE_FILE)) \
                        $(if $(filter 1,$(COV)),-c $(COV_FILE))
 
@@ -173,6 +175,7 @@ run <options>                Execute the specified test sequence on the
     [LOG_LEVEL=$(LOG_LEVEL)] - level of log verbosity (low = 0, 1, 2, high = 3)
     [NTRANSACTIONS=$(NTRANSACTIONS)] - nb of transactions during the test
     [SEED=$(SEED)] - random seed
+    [ERROR_LIMIT=$(ERROR_LIMIT)] - limit of errors during simulation to stop
 
 nonregression <options>      Execute a a non-regression test suite.
                              This suite executes the specified sequence
