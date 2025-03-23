@@ -1,2 +1,8 @@
+# Used by ReadTheDocs
+# Copyright 2025 OpenHW Foundation
+# SPDX-License-Identifier:Apache-2.0 WITH SHL-2.1
 sphinx
-sphinx-rtd-theme
+sphinx_rtd_theme
+recommonmark
+#sphinxcontrib-svg2pdfconverter
+#sphinx_github_changelog
