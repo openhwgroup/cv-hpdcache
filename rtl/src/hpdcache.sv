@@ -1130,7 +1130,7 @@ import hpdcache_pkg::*;
         mem_resp_read_miss_valid = 1'b0;
         mem_resp_read_ready_o = 1'b0;
         if (mem_resp_read_valid_i) begin
-            if (mem_resp_read_i.mem_resp_r_id == {HPDcacheCfg.u.memIdWidth{1'b1}} && ~mem_resp_read_inval_i) begin
+            if (mem_resp_read_i.mem_resp_r_id == {HPDcacheCfg.u.memIdWidth{1'b1}} && ~mem_resp_read_miss_inval) begin
                 mem_resp_read_uc_valid = 1'b1;
                 mem_resp_read_ready_o = mem_resp_read_uc_ready;
             end else begin
