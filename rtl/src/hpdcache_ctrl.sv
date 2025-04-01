@@ -94,16 +94,20 @@ import hpdcache_pkg::*;
     input  logic                  st1_mshr_hit_i,
     input  logic                  st1_mshr_alloc_ready_i,
     input  logic                  st1_mshr_alloc_full_i,
+    input  logic                  st1_mshr_alloc_cbuf_full_i,
     output logic                  st2_mshr_alloc_o,
     output logic                  st2_mshr_alloc_cs_o,
     output hpdcache_nline_t       st2_mshr_alloc_nline_o,
     output hpdcache_req_tid_t     st2_mshr_alloc_tid_o,
     output hpdcache_req_sid_t     st2_mshr_alloc_sid_o,
     output hpdcache_word_t        st2_mshr_alloc_word_o,
+    output hpdcache_req_data_t    st2_mshr_alloc_wdata_o,
+    output hpdcache_req_be_t      st2_mshr_alloc_be_o,
     output hpdcache_way_vector_t  st2_mshr_alloc_victim_way_o,
     output logic                  st2_mshr_alloc_need_rsp_o,
     output logic                  st2_mshr_alloc_is_prefetch_o,
     output logic                  st2_mshr_alloc_wback_o,
+    output logic                  st2_mshr_alloc_dirty_o,
 
     //      Refill interface
     input  logic                  refill_req_valid_i,
@@ -276,10 +280,13 @@ import hpdcache_pkg::*;
     logic                    st2_mshr_alloc_q, st2_mshr_alloc_d;
     logic                    st2_mshr_alloc_is_prefetch_q;
     logic                    st2_mshr_alloc_wback_q, st2_mshr_alloc_wback_d;
+    logic                    st2_mshr_alloc_dirty_q, st2_mshr_alloc_dirty_d;
     logic                    st2_mshr_alloc_need_rsp_q, st2_mshr_alloc_need_rsp_d;
     hpdcache_req_addr_t      st2_mshr_alloc_addr_q;
     hpdcache_req_sid_t       st2_mshr_alloc_sid_q;
     hpdcache_req_tid_t       st2_mshr_alloc_tid_q;
+    hpdcache_req_data_t      st2_mshr_alloc_wdata_q;
+    hpdcache_req_be_t        st2_mshr_alloc_be_q;
     hpdcache_way_vector_t    st2_mshr_alloc_victim_way_q;
 
     logic                    st2_flush_alloc_q, st2_flush_alloc_d;
@@ -584,10 +591,12 @@ import hpdcache_pkg::*;
         .st2_mshr_alloc_i                   (st2_mshr_alloc_q),
         .st2_mshr_alloc_is_prefetch_i       (st2_mshr_alloc_is_prefetch_q),
         .st2_mshr_alloc_wback_i             (st2_mshr_alloc_wback_q),
+        .st2_mshr_alloc_dirty_i             (st2_mshr_alloc_dirty_q),
         .st2_mshr_alloc_o                   (st2_mshr_alloc_d),
         .st2_mshr_alloc_cs_o                (st2_mshr_alloc_cs_o),
         .st2_mshr_alloc_need_rsp_o          (st2_mshr_alloc_need_rsp_d),
         .st2_mshr_alloc_wback_o             (st2_mshr_alloc_wback_d),
+        .st2_mshr_alloc_dirty_o             (st2_mshr_alloc_dirty_d),
 
         .st2_dir_updt_i                     (st2_dir_updt_q),
         .st2_dir_updt_valid_i               (st2_dir_updt_valid_q),
@@ -633,6 +642,7 @@ import hpdcache_pkg::*;
         .st1_mshr_alloc_ready_i             (st1_mshr_alloc_ready_i),
         .st1_mshr_hit_i                     (st1_mshr_hit_i),
         .st1_mshr_full_i                    (st1_mshr_alloc_full_i),
+        .st1_mshr_cbuf_full_i               (st1_mshr_alloc_cbuf_full_i),
 
         .refill_busy_i,
         .refill_core_rsp_valid_i,
@@ -795,8 +805,11 @@ import hpdcache_pkg::*;
             st2_mshr_alloc_addr_q        <= st1_req_addr;
             st2_mshr_alloc_sid_q         <= st1_req.sid;
             st2_mshr_alloc_tid_q         <= st1_req.tid;
+            st2_mshr_alloc_wdata_q       <= st1_req.wdata;
+            st2_mshr_alloc_be_q          <= st1_req.be;
             st2_mshr_alloc_is_prefetch_q <= st1_req_is_cmo_prefetch;
             st2_mshr_alloc_wback_q       <= st2_mshr_alloc_wback_d;
+            st2_mshr_alloc_dirty_q       <= st2_mshr_alloc_dirty_d;
             st2_mshr_alloc_victim_way_q  <= st1_dir_victim_way;
         end
 
@@ -1011,10 +1024,13 @@ import hpdcache_pkg::*;
     assign st2_mshr_alloc_sid_o         = st2_mshr_alloc_sid_q;
     assign st2_mshr_alloc_word_o        = st2_mshr_alloc_addr_q[HPDcacheCfg.wordByteIdxWidth +:
                                                                 HPDcacheCfg.clWordIdxWidth];
+    assign st2_mshr_alloc_wdata_o       = st2_mshr_alloc_wdata_q;
+    assign st2_mshr_alloc_be_o          = st2_mshr_alloc_be_q;
     assign st2_mshr_alloc_victim_way_o  = st2_mshr_alloc_victim_way_q;
     assign st2_mshr_alloc_need_rsp_o    = st2_mshr_alloc_need_rsp_q;
     assign st2_mshr_alloc_is_prefetch_o = st2_mshr_alloc_is_prefetch_q;
     assign st2_mshr_alloc_wback_o       = st2_mshr_alloc_wback_q;
+    assign st2_mshr_alloc_dirty_o       = st2_mshr_alloc_dirty_q;
     //  }}}
 
     //  Uncacheable request handler outputs
