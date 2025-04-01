@@ -388,7 +388,7 @@ package hpdcache_pkg;
         int unsigned sets;
         //  Number of ways
         int unsigned ways;
-        //  Cache-Line width (bits)
+        //  Cache-Line width (words)
         int unsigned clWords;
         //  Number of words in the request data channels (request and response)
         int unsigned reqWords;
