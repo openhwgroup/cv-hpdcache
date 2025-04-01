@@ -44,6 +44,7 @@ import hpdcache_pkg::*;
     parameter type hpdcache_refill_data_t = logic,
 
     parameter type hpdcache_req_data_t = logic,
+    parameter type hpdcache_req_be_t = logic,
     parameter type hpdcache_req_offset_t = logic,
     parameter type hpdcache_req_sid_t = logic,
     parameter type hpdcache_req_tid_t = logic,
@@ -90,6 +91,7 @@ import hpdcache_pkg::*;
     input  logic                  mshr_alloc_cs_i,
     input  hpdcache_nline_t       mshr_alloc_nline_i,
     output logic                  mshr_alloc_full_o,
+    output logic                  mshr_alloc_cbuf_full_o,
     input  hpdcache_req_tid_t     mshr_alloc_tid_i,
     input  hpdcache_req_sid_t     mshr_alloc_sid_i,
     input  hpdcache_word_t        mshr_alloc_word_i,
@@ -97,6 +99,9 @@ import hpdcache_pkg::*;
     input  logic                  mshr_alloc_need_rsp_i,
     input  logic                  mshr_alloc_is_prefetch_i,
     input  logic                  mshr_alloc_wback_i,
+    input  logic                  mshr_alloc_dirty_i,
+    input  hpdcache_req_data_t    mshr_alloc_wdata_i,
+    input  hpdcache_req_be_t      mshr_alloc_be_i,
 
     //          REFILL MISS / Invalidation interface
     input  logic                  refill_req_ready_i,
@@ -167,6 +172,8 @@ import hpdcache_pkg::*;
 
     typedef logic [HPDcacheCfg.mshrWayWidth-1:0] mshr_way_t;
     typedef logic [HPDcacheCfg.mshrSetWidth-1:0] mshr_set_t;
+
+    typedef logic [HPDcacheCfg.cbufEntryWidth-1:0] cbuf_id_t;
     //  }}}
 
     //  Declaration of internal signals and registers
@@ -185,8 +192,14 @@ import hpdcache_pkg::*;
     logic                    refill_need_rsp_q;
     logic                    refill_is_prefetch_q;
     logic                    refill_wback_q;
+    logic                    refill_dirty_q;
+    hpdcache_req_data_t      refill_dirty_wdata_q;
+    hpdcache_req_be_t        refill_dirty_be_q;
     hpdcache_word_t          refill_core_rsp_word_q;
     hpdcache_way_t           refill_way;
+    logic                    refill_dirty;
+    hpdcache_req_data_t      refill_dirty_wdata;
+    hpdcache_req_be_t        refill_dirty_be;
 
     mem_resp_metadata_t      refill_fifo_resp_meta_wdata, refill_fifo_resp_meta_rdata;
     logic                    refill_fifo_resp_meta_w, refill_fifo_resp_meta_wok;
@@ -209,6 +222,7 @@ import hpdcache_pkg::*;
     logic                    mshr_alloc;
     logic                    mshr_alloc_cs;
     hpdcache_way_t           mshr_alloc_victim_way;
+    cbuf_id_t                mshr_alloc_cbuf_id;
     logic                    mshr_ack;
     logic                    mshr_ack_cs;
     mshr_set_t               mshr_ack_set;
@@ -222,6 +236,10 @@ import hpdcache_pkg::*;
     logic                    mshr_ack_need_rsp;
     logic                    mshr_ack_is_prefetch;
     logic                    mshr_ack_wback;
+    logic                    mshr_ack_dirty;
+    cbuf_id_t                mshr_ack_cbuf_id;
+    hpdcache_req_data_t      mshr_ack_wdata;
+    hpdcache_req_be_t        mshr_ack_be;
     logic                    mshr_empty;
     //  }}}
 
@@ -310,10 +328,14 @@ import hpdcache_pkg::*;
         refill_updt_sel_victim_o = 1'b0;
         refill_set_o            = '0;
         refill_way              = '0;
+        refill_dirty            = 1'b0;
         refill_write_dir_o      = 1'b0;
         refill_write_data_o     = 1'b0;
         refill_updt_rtab_o      = 1'b0;
         refill_cnt_d            = refill_cnt_q;
+
+        refill_dirty_wdata      = refill_dirty_wdata_q;
+        refill_dirty_be         = refill_dirty_be_q;
 
         inval_check_dir_o       = 1'b0;
         inval_write_dir_o       = 1'b0;
@@ -405,10 +427,16 @@ import hpdcache_pkg::*;
                     refill_set_o = mshr_ack_cache_set;
                     refill_way = mshr_ack_cache_way;
                     is_prefetch = mshr_ack_is_prefetch;
+                    refill_dirty = mshr_ack_dirty;
+                    refill_dirty_wdata = mshr_ack_wdata;
+                    refill_dirty_be = mshr_ack_be;
                 end else begin
                     refill_set_o = refill_set_q;
                     refill_way = refill_way_q;
                     is_prefetch = refill_is_prefetch_q;
+                    refill_dirty = refill_dirty_q;
+                    refill_dirty_wdata = refill_dirty_wdata_q;
+                    refill_dirty_be = refill_dirty_be_q;
                 end
                 refill_write_data_o = ~refill_is_error_o;
 
@@ -530,7 +558,7 @@ import hpdcache_pkg::*;
     assign refill_dir_entry_o = '{
         valid   : ~refill_is_error_o,
         wback   : ~refill_is_error_o & refill_wback_q,
-        dirty   : 1'b0,
+        dirty   : ~refill_is_error_o & refill_dirty_q,
         fetch   : 1'b0,
         tag     : refill_tag_q,
         default :'0
@@ -618,7 +646,38 @@ import hpdcache_pkg::*;
         .rlast_o(/* unused */)
     );
 
-    assign refill_data_o = refill_fifo_resp_data_rdata;
+    //  Refill data multiplexing logic
+    always_comb begin
+        //  Multiplexing has a byte granularity
+        //  REFILL_REQ_RATIO is always greater or equal to 1
+        //  Use `accessBytes` bytes long signals
+        automatic logic [HPDcacheCfg.accessBytes-1:0]      v_dirty_be;
+        automatic logic [HPDcacheCfg.accessBytes-1:0][7:0] v_dirty_data;
+        automatic logic [HPDcacheCfg.accessBytes-1:0][7:0] v_refill_data;
+
+        automatic hpdcache_uint                            v_current_rsp;
+
+        v_dirty_be    = {REFILL_REQ_RATIO{refill_dirty_be}};
+        v_dirty_data  = {REFILL_REQ_RATIO{refill_dirty_wdata}};
+        v_refill_data = refill_fifo_resp_data_rdata;
+        v_current_rsp = '0;
+
+        //  The refill counter is pointing to the refill data slice
+        //  that should be (partially) replaced by buffered wdata AND
+        //  the refill is effectively coalesced with a store
+        if (refill_core_rsp_valid_o && refill_dirty) begin
+            for (hpdcache_uint i = 0; i < HPDcacheCfg.accessBytes; i++) begin
+                //  Iterate on all `accessBytes` bytes
+                //  Locate each byte to be replaced in the refill data
+                //  AND replace it if the byte enable is set
+                v_current_rsp = i / HPDcacheCfg.reqDataBytes;
+                if (v_dirty_be[i] &&
+                    v_current_rsp == refill_core_rsp_word[$clog2(REFILL_REQ_RATIO)-1:0])
+                    v_refill_data[i] = v_dirty_data[i];
+            end
+        end
+        refill_data_o = hpdcache_refill_data_t'(v_refill_data);
+    end
 
     //      The DATA fifo is only used for refill responses
     assign refill_fifo_resp_data_w = mem_resp_valid_i &
@@ -663,6 +722,9 @@ import hpdcache_pkg::*;
             refill_need_rsp_q <= mshr_ack_need_rsp;
             refill_is_prefetch_q <= mshr_ack_is_prefetch;
             refill_wback_q <= mshr_ack_wback;
+            refill_dirty_q <= mshr_ack_dirty;
+            refill_dirty_wdata_q <= mshr_ack_wdata;
+            refill_dirty_be_q <= mshr_ack_be;
             refill_core_rsp_word_q <= mshr_ack_word;
         end
         refill_cnt_q <= refill_cnt_d;
@@ -684,7 +746,9 @@ import hpdcache_pkg::*;
         .hpdcache_req_sid_t       (hpdcache_req_sid_t),
 
         .mshr_way_t               (mshr_way_t),
-        .mshr_set_t               (mshr_set_t)
+        .mshr_set_t               (mshr_set_t),
+
+        .cbuf_id_t                (cbuf_id_t)
     ) hpdcache_mshr_i(
         .clk_i,
         .rst_ni,
@@ -706,6 +770,8 @@ import hpdcache_pkg::*;
         .alloc_need_rsp_i         (mshr_alloc_need_rsp_i),
         .alloc_is_prefetch_i      (mshr_alloc_is_prefetch_i),
         .alloc_wback_i            (mshr_alloc_wback_i),
+        .alloc_dirty_i            (mshr_alloc_dirty_i),
+        .alloc_cbuf_id_i          (mshr_alloc_cbuf_id),
         .alloc_full_o             (mshr_alloc_full_o),
         .alloc_way_o              (mshr_alloc_way_d),
 
@@ -721,7 +787,9 @@ import hpdcache_pkg::*;
         .ack_word_o               (mshr_ack_word),
         .ack_need_rsp_o           (mshr_ack_need_rsp),
         .ack_is_prefetch_o        (mshr_ack_is_prefetch),
-        .ack_wback_o              (mshr_ack_wback)
+        .ack_wback_o              (mshr_ack_wback),
+        .ack_dirty_o              (mshr_ack_dirty),
+        .ack_cbuf_id_o            (mshr_ack_cbuf_id)
     );
 
     hpdcache_1hot_to_binary #(.N(HPDcacheCfg.u.ways)) victim_way_encoder_i(
@@ -739,6 +807,37 @@ import hpdcache_pkg::*;
     //    is, when the MSHR is empty, and the MISS handler has finished of
     //    processing the last miss response.
     assign mshr_empty_o = mshr_empty & ~refill_busy_o;
+    //  }}}
+
+    //  Coalesce Buffer
+    //  {{{
+
+    logic cbuf_alloc, cbuf_ack;
+
+    assign cbuf_alloc = mshr_alloc_dirty_i && mshr_alloc;
+    assign cbuf_ack   = refill_dirty && (refill_fsm_q == REFILL_WRITE) && (refill_cnt_q == 0);
+
+    hpdcache_cbuf #(
+        .HPDcacheCfg         (HPDcacheCfg),
+        .hpdcache_req_data_t (hpdcache_req_data_t),
+        .hpdcache_req_be_t   (hpdcache_req_be_t),
+        .cbuf_id_t           (cbuf_id_t)
+    ) hpdcache_cbuf_i (
+        .clk_i,
+        .rst_ni,
+
+        .alloc_i       (cbuf_alloc),
+        .alloc_wdata_i (mshr_alloc_wdata_i),
+        .alloc_be_i    (mshr_alloc_be_i),
+        .alloc_id_o    (mshr_alloc_cbuf_id),
+        .alloc_full_o  (mshr_alloc_cbuf_full_o),
+
+        .ack_i         (cbuf_ack),
+        .ack_id_i      (mshr_ack_cbuf_id),
+        .ack_wdata_o   (mshr_ack_wdata),
+        .ack_be_o      (mshr_ack_be)
+    );
+
     //  }}}
 
     //  Assertions
