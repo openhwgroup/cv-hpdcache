@@ -50,6 +50,7 @@ import hpdcache_pkg::*;
         mshrSetsPerRam: `CONF_HPDCACHE_MSHR_SETS_PER_RAM,
         mshrRamByteEnable: `CONF_HPDCACHE_MSHR_RAM_WBYTEENABLE,
         mshrUseRegbank: `CONF_HPDCACHE_MSHR_USE_REGBANK,
+        cbufEntries: `CONF_HPDCACHE_CBUF_ENTRIES,
         refillCoreRspFeedthrough: `CONF_HPDCACHE_REFILL_CORE_RSP_FEEDTHROUGH,
         refillFifoDepth: `CONF_HPDCACHE_REFILL_FIFO_DEPTH,
         wbufDirEntries: `CONF_HPDCACHE_WBUF_DIR_ENTRIES,
