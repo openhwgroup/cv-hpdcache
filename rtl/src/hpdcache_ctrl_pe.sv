@@ -101,7 +101,6 @@ import hpdcache_pkg::*;
     input  logic                   st1_mshr_alloc_ready_i,
     input  logic                   st1_mshr_hit_i,
     input  logic                   st1_mshr_full_i,
-    input  logic                   st1_mshr_cbuf_full_i,
     //   }}}
 
     //   Pipeline stage 2
@@ -109,12 +108,10 @@ import hpdcache_pkg::*;
     input  logic                   st2_mshr_alloc_i,
     input  logic                   st2_mshr_alloc_is_prefetch_i,
     input  logic                   st2_mshr_alloc_wback_i,
-    input  logic                   st2_mshr_alloc_dirty_i,
     output logic                   st2_mshr_alloc_o,
     output logic                   st2_mshr_alloc_cs_o,
     output logic                   st2_mshr_alloc_need_rsp_o,
     output logic                   st2_mshr_alloc_wback_o,
-    output logic                   st2_mshr_alloc_dirty_o,
 
     input  logic                   st2_dir_updt_i,
     input  logic                   st2_dir_updt_valid_i,
@@ -313,7 +310,6 @@ import hpdcache_pkg::*;
         st2_mshr_alloc_cs_o                 = 1'b0;
         st2_mshr_alloc_need_rsp_o           = 1'b0;
         st2_mshr_alloc_wback_o              = st2_mshr_alloc_wback_i;
-        st2_mshr_alloc_dirty_o              = st2_mshr_alloc_dirty_i;
 
         st2_flush_alloc_o                   = st2_flush_alloc_i;
 
@@ -484,14 +480,6 @@ import hpdcache_pkg::*;
                             st1_nop = 1'b1;
                         end
 
-                        //  Pending miss on the same line
-                        else if (st1_mshr_hit_i) begin
-                            //  Put the request in the replay table
-                            st1_rtab_alloc = 1'b1;
-                            st1_rtab_mshr_hit_o = 1'b1;
-                            st1_nop = 1'b1;
-                        end
-
                         //  Process the AMO request
                         else begin
                             uc_req_valid_o = 1'b1;
@@ -614,7 +602,6 @@ import hpdcache_pkg::*;
                                 st2_mshr_alloc_need_rsp_o = st1_req_need_rsp_i;
                                 st2_mshr_alloc_wback_o = (st1_req_wr_auto_i & cfg_default_wb_i) |
                                                           st1_req_wr_wb_i;
-                                st2_mshr_alloc_dirty_o = 1'b0;
 
                                 //  Update the cache directory state to FETCHING
                                 st2_dir_updt_o = 1'b1;
@@ -779,13 +766,6 @@ import hpdcache_pkg::*;
                                     st1_rtab_mshr_full_o = 1'b1;
                                 end
 
-                                //  No available slot in the Coalesce Buffer
-                                else if (st1_mshr_cbuf_full_i) begin
-                                    //  Put the request in the replay table
-                                    st1_rtab_alloc = 1'b1;
-                                    st1_rtab_mshr_full_o = 1'b1;
-                                end
-
                                 //  Hit on an entry of the write buffer: wait for the entry to be
                                 //  acknowledged
                                 else if (wbuf_read_hit_i) begin
@@ -822,13 +802,16 @@ import hpdcache_pkg::*;
 
                                     //  Send a miss request to the memory (write-allocate)
                                     st2_mshr_alloc_o = 1'b1;
-                                    st2_mshr_alloc_need_rsp_o = st1_req_need_rsp_i;
+                                    st2_mshr_alloc_need_rsp_o = 1'b0;
                                     st2_mshr_alloc_wback_o = 1'b1;
-                                    st2_mshr_alloc_dirty_o = 1'b1;
+                                    // FIXME Optimization: ask here the miss handler to set the
+                                    //       dirty bit when the new cacheline is refilled to avoid
+                                    //       the update penalty of the pending write
+                                    // st2_mshr_alloc_dirty_o = 1'b1
 
-                                    //  If the request comes from the replay table, free the
-                                    //  corresponding RTAB entry
-                                    st1_rtab_commit_o = st1_req_rtab_i;
+                                    //  Put the request in the replay table
+                                    st1_rtab_alloc = 1'b1;
+                                    st1_rtab_write_miss_o = 1'b1;
 
                                     //  Performance event
                                     evt_cache_write_miss_o = 1'b1;

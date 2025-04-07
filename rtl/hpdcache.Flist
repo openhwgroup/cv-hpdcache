@@ -38,7 +38,6 @@ ${HPDCACHE_DIR}/rtl/src/common/hpdcache_mux.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_decoder.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_1hot_to_binary.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_prio_1hot_encoder.sv
-${HPDCACHE_DIR}/rtl/src/common/hpdcache_prio_bin_encoder.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_sram.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_sram_wbyteenable.sv
 ${HPDCACHE_DIR}/rtl/src/common/hpdcache_sram_wmask.sv
@@ -58,7 +57,6 @@ ${HPDCACHE_DIR}/rtl/src/hpdcache_core_arbiter.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_ctrl.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_ctrl_pe.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_memctrl.sv
-${HPDCACHE_DIR}/rtl/src/hpdcache_cbuf.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_miss_handler.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_mshr.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_rtab.sv

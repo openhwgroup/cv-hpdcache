@@ -425,8 +425,6 @@ package hpdcache_pkg;
         bit mshrRamByteEnable;
         //  MSHR uses whether FFs or SRAM
         bit mshrUseRegbank;
-        //  Store and refill coalesce buffer entries
-        int unsigned cbufEntries;
         //  Use feedthrough FIFOs from the refill handler to the core
         bit refillCoreRspFeedthrough;
         //  Depth of the refill FIFO
@@ -479,12 +477,10 @@ package hpdcache_pkg;
         int unsigned reqDataBytes;
         int unsigned mshrSetWidth;
         int unsigned mshrWayWidth;
-        int unsigned cbufEntryWidth;
         int unsigned wbufDataWidth;
         int unsigned wbufDirPtrWidth;
         int unsigned wbufDataPtrWidth;
         int unsigned accessWidth;
-        int unsigned accessBytes;
     } hpdcache_cfg_t;
 
     function automatic hpdcache_cfg_t hpdcacheBuildConfig(input hpdcache_user_cfg_t p);
@@ -508,14 +504,11 @@ package hpdcache_pkg;
         ret.mshrSetWidth = (p.mshrSets > 1) ? $clog2(p.mshrSets) : 1;
         ret.mshrWayWidth = (p.mshrWays > 1) ? $clog2(p.mshrWays) : 1;
 
-        ret.cbufEntryWidth = (p.cbufEntries > 1) ? $clog2(p.cbufEntries) : 1;
-
         ret.wbufDataWidth = ret.reqDataWidth*p.wbufWords;
         ret.wbufDirPtrWidth = $clog2(p.wbufDirEntries);
         ret.wbufDataPtrWidth = $clog2(p.wbufDataEntries);
 
         ret.accessWidth = p.accessWords * p.wordWidth;
-        ret.accessBytes = ret.accessWidth/8;
 
         return ret;
     endfunction

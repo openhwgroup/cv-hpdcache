@@ -39,9 +39,7 @@ import hpdcache_pkg::*;
     parameter type hpdcache_req_sid_t = logic,
 
     parameter type mshr_way_t = logic,
-    parameter type mshr_set_t = logic,
-
-    parameter type cbuf_id_t = logic
+    parameter type mshr_set_t = logic
 )
     //  }}}
 
@@ -71,8 +69,6 @@ import hpdcache_pkg::*;
     input  logic                  alloc_need_rsp_i,
     input  logic                  alloc_is_prefetch_i,
     input  logic                  alloc_wback_i,
-    input  logic                  alloc_dirty_i,
-    input  cbuf_id_t              alloc_cbuf_id_i,
     output logic                  alloc_full_o,
     output mshr_way_t             alloc_way_o,
 
@@ -89,9 +85,7 @@ import hpdcache_pkg::*;
     output hpdcache_word_t        ack_word_o,
     output logic                  ack_need_rsp_o,
     output logic                  ack_is_prefetch_o,
-    output logic                  ack_wback_o,
-    output logic                  ack_dirty_o,
-    output cbuf_id_t              ack_cbuf_id_o
+    output logic                  ack_wback_o
 );
     //  }}}
 
@@ -104,10 +98,8 @@ import hpdcache_pkg::*;
         hpdcache_word_t    word_idx;
         hpdcache_way_t     victim_way_idx;
         logic              wback;
-        logic              dirty;
         logic              need_rsp;
         logic              is_prefetch;
-        cbuf_id_t          cbuf_id;
     } mshr_entry_t;
 
 
@@ -206,8 +198,6 @@ import hpdcache_pkg::*;
             mshr_wentry[i].need_rsp = alloc_need_rsp_i;
             mshr_wentry[i].is_prefetch = alloc_is_prefetch_i;
             mshr_wentry[i].wback = alloc_wback_i;
-            mshr_wentry[i].dirty = alloc_dirty_i;
-            mshr_wentry[i].cbuf_id = alloc_cbuf_id_i;
         end
     end
     //  }}}
@@ -255,8 +245,6 @@ import hpdcache_pkg::*;
     assign ack_need_rsp_o    = mshr_rentry[ack_way_q].need_rsp;
     assign ack_is_prefetch_o = mshr_rentry[ack_way_q].is_prefetch;
     assign ack_wback_o       = mshr_rentry[ack_way_q].wback;
-    assign ack_dirty_o       = mshr_rentry[ack_way_q].dirty;
-    assign ack_cbuf_id_o     = mshr_rentry[ack_way_q].cbuf_id;
     //  }}}
 
     //  Global control signals
