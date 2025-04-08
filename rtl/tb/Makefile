@@ -94,6 +94,7 @@ VERILATOR_FLAGS     += -Wall -Wno-fatal \
                        -Werror-MULTIDRIVEN \
                        -Wno-PINCONNECTEMPTY \
                        --report-unoptflat \
+                       --pins-bv 2 \
                        -O3 -I$(HPDCACHE_DIR)/rtl/src \
                        --x-assign unique --x-initial unique \
                        $(if $(filter 1,$(DISABLE_TRACE)),\
@@ -322,3 +323,4 @@ print_config:
 	@printf "CONF_HPDCACHE_MEM_DATA_WIDTH=$(CONF_HPDCACHE_MEM_DATA_WIDTH)\n"
 	@printf "CONF_HPDCACHE_WT_ENABLE=$(CONF_HPDCACHE_WT_ENABLE)\n"
 	@printf "CONF_HPDCACHE_WB_ENABLE=$(CONF_HPDCACHE_WB_ENABLE)\n"
+	@printf "CONF_HPDCACHE_LOW_LATENCY=$(CONF_HPDCACHE_LOW_LATENCY)\n"
