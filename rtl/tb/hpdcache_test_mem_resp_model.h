@@ -45,42 +45,42 @@ public:
 
     sc_out<bool>                                           mem_req_read_ready_o;
     sc_in<bool>                                            mem_req_read_valid_i;
-    sc_in<uint64_t>                                        mem_req_read_addr_i;
-    sc_in<uint32_t>                                        mem_req_read_len_i;
-    sc_in<uint32_t>                                        mem_req_read_size_i;
-    sc_in<uint32_t>                                        mem_req_read_id_i;
-    sc_in<uint32_t>                                        mem_req_read_command_i;
-    sc_in<uint32_t>                                        mem_req_read_atomic_i;
+    sc_in<sc_bv<HPDCACHE_MEM_ADDR_WIDTH> >                 mem_req_read_addr_i;
+    sc_in<sc_bv<8> >                                       mem_req_read_len_i;
+    sc_in<sc_bv<3> >                                       mem_req_read_size_i;
+    sc_in<sc_bv<HPDCACHE_MEM_ID_WIDTH> >                   mem_req_read_id_i;
+    sc_in<sc_bv<2> >                                       mem_req_read_command_i;
+    sc_in<sc_bv<4> >                                       mem_req_read_atomic_i;
     sc_in<bool>                                            mem_req_read_cacheable_i;
 
     sc_in<bool>                                            mem_resp_read_ready_i;
     sc_out<bool>                                           mem_resp_read_valid_o;
-    sc_out<uint32_t>                                       mem_resp_read_error_o;
-    sc_out<uint32_t>                                       mem_resp_read_id_o;
+    sc_out<sc_bv<2> >                                      mem_resp_read_error_o;
+    sc_out<sc_bv<HPDCACHE_MEM_ID_WIDTH> >                  mem_resp_read_id_o;
     sc_out<sc_bv<HPDCACHE_MEM_DATA_WIDTH> >                mem_resp_read_data_o;
     sc_out<bool>                                           mem_resp_read_last_o;
 
     sc_out<bool>                                           mem_req_write_ready_o;
     sc_in<bool>                                            mem_req_write_valid_i;
-    sc_in<uint64_t>                                        mem_req_write_addr_i;
-    sc_in<uint32_t>                                        mem_req_write_len_i;
-    sc_in<uint32_t>                                        mem_req_write_size_i;
-    sc_in<uint32_t>                                        mem_req_write_id_i;
-    sc_in<uint32_t>                                        mem_req_write_command_i;
-    sc_in<uint32_t>                                        mem_req_write_atomic_i;
+    sc_in<sc_bv<HPDCACHE_MEM_ADDR_WIDTH> >                 mem_req_write_addr_i;
+    sc_in<sc_bv<8> >                                       mem_req_write_len_i;
+    sc_in<sc_bv<3> >                                       mem_req_write_size_i;
+    sc_in<sc_bv<HPDCACHE_MEM_ID_WIDTH> >                   mem_req_write_id_i;
+    sc_in<sc_bv<2> >                                       mem_req_write_command_i;
+    sc_in<sc_bv<4> >                                       mem_req_write_atomic_i;
     sc_in<bool>                                            mem_req_write_cacheable_i;
 
     sc_out<bool>                                           mem_req_write_data_ready_o;
     sc_in<bool>                                            mem_req_write_data_valid_i;
     sc_in<sc_bv<HPDCACHE_MEM_DATA_WIDTH> >                 mem_req_write_data_i;
-    sc_in<uint64_t>                                        mem_req_write_be_i;
+    sc_in<sc_bv<HPDCACHE_MEM_DATA_WIDTH/8> >               mem_req_write_be_i;
     sc_in<bool>                                            mem_req_write_last_i;
 
     sc_in<bool>                                            mem_resp_write_ready_i;
     sc_out<bool>                                           mem_resp_write_valid_o;
     sc_out<bool>                                           mem_resp_write_is_atomic_o;
-    sc_out<uint32_t>                                       mem_resp_write_error_o;
-    sc_out<uint32_t>                                       mem_resp_write_id_o;
+    sc_out<sc_bv<2> >                                      mem_resp_write_error_o;
+    sc_out<sc_bv<HPDCACHE_MEM_ID_WIDTH> >                  mem_resp_write_id_o;
 
     sc_fifo_out<hpdcache_test_transaction_mem_read_req>    sb_mem_read_req_o;
     sc_fifo_out<hpdcache_test_transaction_mem_read_resp>   sb_mem_read_resp_o;
@@ -126,12 +126,12 @@ private:
         hpdcache_test_transaction_mem_read_resp resp;
 
         //  consume the request from the request ports
-        req.addr      = mem_req_read_addr_i.read();
-        req.len       = mem_req_read_len_i.read();
-        req.size      = mem_req_read_size_i.read();
-        req.id        = mem_req_read_id_i.read();
-        req.command   = mem_req_read_command_i.read();
-        req.atomic    = mem_req_read_atomic_i.read();
+        req.addr      = mem_req_read_addr_i.read().to_uint();
+        req.len       = mem_req_read_len_i.read().to_uint();
+        req.size      = mem_req_read_size_i.read().to_uint();
+        req.id        = mem_req_read_id_i.read().to_uint();
+        req.command   = mem_req_read_command_i.read().to_uint();
+        req.atomic    = mem_req_read_atomic_i.read().to_uint();
         req.cacheable = mem_req_read_cacheable_i.read();
         sb_mem_read_req_o.write(req); // send request to scoreboard
 
@@ -389,12 +389,12 @@ private:
             mem_req_write_ready_o.write(true);
 
             //  Forward the request to the write process
-            r.addr = mem_req_write_addr_i.read();
-            r.len = mem_req_write_len_i.read();
-            r.size = mem_req_write_size_i.read();
-            r.id = mem_req_write_id_i.read();
-            r.command = mem_req_write_command_i.read();
-            r.atomic = mem_req_write_atomic_i.read();
+            r.addr = mem_req_write_addr_i.read().to_uint();
+            r.len = mem_req_write_len_i.read().to_uint();
+            r.size = mem_req_write_size_i.read().to_uint();
+            r.id = mem_req_write_id_i.read().to_uint();
+            r.command = mem_req_write_command_i.read().to_uint();
+            r.atomic = mem_req_write_atomic_i.read().to_uint();
             r.cacheable = mem_req_write_cacheable_i.read();
             write_req_fifo.write(r);
 
