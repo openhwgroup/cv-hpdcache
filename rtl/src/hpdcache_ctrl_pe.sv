@@ -832,6 +832,7 @@ import hpdcache_pkg::*;
 
                                     //  Performance event
                                     evt_cache_write_miss_o = 1'b1;
+                                    evt_write_req_o        = 1'b1;
                                 end
                             end
                             //  }}}
