@@ -779,13 +779,6 @@ import hpdcache_pkg::*;
                                     st1_rtab_mshr_full_o = 1'b1;
                                 end
 
-                                //  No available slot in the Coalesce Buffer
-                                else if (st1_mshr_cbuf_full_i) begin
-                                    //  Put the request in the replay table
-                                    st1_rtab_alloc = 1'b1;
-                                    st1_rtab_mshr_full_o = 1'b1;
-                                end
-
                                 //  Hit on an entry of the write buffer: wait for the entry to be
                                 //  acknowledged
                                 else if (wbuf_read_hit_i) begin
@@ -822,17 +815,31 @@ import hpdcache_pkg::*;
 
                                     //  Send a miss request to the memory (write-allocate)
                                     st2_mshr_alloc_o = 1'b1;
-                                    st2_mshr_alloc_need_rsp_o = st1_req_need_rsp_i;
                                     st2_mshr_alloc_wback_o = 1'b1;
-                                    st2_mshr_alloc_dirty_o = 1'b1;
 
-                                    //  If the request comes from the replay table, free the
-                                    //  corresponding RTAB entry
-                                    st1_rtab_commit_o = st1_req_rtab_i;
+                                    //  No available slot in the Coalesce Buffer:
+                                    //  - Put the write operation into the replay table (but the
+                                    //    read miss is triggered before hand to save some time)
+                                    if (st1_mshr_cbuf_full_i) begin
+                                        st2_mshr_alloc_need_rsp_o = 1'b0;
+                                        st2_mshr_alloc_dirty_o = 1'b0;
+                                        st1_rtab_alloc = 1'b1;
+                                        st1_rtab_write_miss_o = 1'b1;
+                                    end
+
+                                    //  The write can be completely process (coalesce buffer
+                                    //  available):
+                                    //  - Indicate to the MSHR that a response to the core is needed
+                                    //  - Indicate a commit to RTAB if the request comes from it
+                                    else begin
+                                        st2_mshr_alloc_need_rsp_o = st1_req_need_rsp_i;
+                                        st2_mshr_alloc_dirty_o = 1'b1;
+                                        st1_rtab_commit_o = st1_req_rtab_i;
+                                    end
 
                                     //  Performance event
                                     evt_cache_write_miss_o = 1'b1;
-                                    evt_write_req_o        = 1'b1;
+                                    evt_write_req_o = ~st1_mshr_cbuf_full_i;
                                 end
                             end
                             //  }}}
