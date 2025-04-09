@@ -1,7 +1,7 @@
 package:
   name: hpdcache
   authors:
-    - "César Fuguet <cesar.fuguettortolero@cea.fr>"
+    - "César Fuguet <cesar.fuguet@univ-grenoble-alpes.fr>"
 
 export_include_dirs:
   - rtl/include

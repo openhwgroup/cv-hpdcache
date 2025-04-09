@@ -1,6 +1,7 @@
 /*
- *  Copyright 2023 CEA*
+ *  Copyright 2023-2024 CEA*
  *  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+ *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
  *
