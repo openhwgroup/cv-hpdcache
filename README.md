@@ -29,6 +29,10 @@ The HPDcache is an open-source High-Performance, Multi-requester, Out-of-Order L
     <td>Contains a HPDcache standalone testbench for validation of the RTL</td>
   </tr>
   <tr>
+    <td>rtl/fv/lnt</td>
+    <td>Contains a formal HPDcache specification written in LNT</td>
+  </tr>
+  <tr>
     <td>docs</td>
     <td>Contains documentation of the HPDcache</td>
   </tr>
