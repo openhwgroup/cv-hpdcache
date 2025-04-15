@@ -285,7 +285,15 @@ import hpdcache_pkg::*;
     hpdcache_req_tid_t     cmo_req_tid;
     hpdcache_req_data_t    cmo_req_wdata;
     logic                  cmo_req_need_rsp;
+    logic                  cmo_dirty_set_en;
+    hpdcache_set_t         cmo_dirty_min_set;
+    hpdcache_set_t         cmo_dirty_max_set;
+    logic                  cmo_valid_set_en;
+    hpdcache_set_t         cmo_valid_min_set;
+    hpdcache_set_t         cmo_valid_max_set;
     logic                  cmo_wbuf_flush_all;
+    logic                  cmo_flush_all;
+    logic                  cmo_inval_all;
     logic                  cmo_dir_check_nline;
     hpdcache_set_t         cmo_dir_check_nline_set;
     hpdcache_tag_t         cmo_dir_check_nline_tag;
@@ -609,7 +617,15 @@ import hpdcache_pkg::*;
         .cmo_req_sid_o                      (cmo_req_sid),
         .cmo_req_tid_o                      (cmo_req_tid),
         .cmo_req_need_rsp_o                 (cmo_req_need_rsp),
+        .cmo_dirty_set_en_o                 (cmo_dirty_set_en),
+        .cmo_dirty_min_set_o                (cmo_dirty_min_set),
+        .cmo_dirty_max_set_o                (cmo_dirty_max_set),
+        .cmo_valid_set_en_o                 (cmo_valid_set_en),
+        .cmo_valid_min_set_o                (cmo_valid_min_set),
+        .cmo_valid_max_set_o                (cmo_valid_max_set),
         .cmo_wbuf_flush_all_i               (cmo_wbuf_flush_all),
+        .cmo_flush_all_i                    (cmo_flush_all),
+        .cmo_inval_all_i                    (cmo_inval_all),
         .cmo_dir_check_nline_i              (cmo_dir_check_nline),
         .cmo_dir_check_nline_set_i          (cmo_dir_check_nline_set),
         .cmo_dir_check_nline_tag_i          (cmo_dir_check_nline_tag),
@@ -949,6 +965,15 @@ import hpdcache_pkg::*;
         .req_tid_i                     (cmo_req_tid),
         .req_need_rsp_i                (cmo_req_need_rsp),
         .req_wait_o                    (cmo_wait),
+
+        .dirty_set_en_i                (cmo_dirty_set_en),
+        .dirty_min_set_i               (cmo_dirty_min_set),
+        .dirty_max_set_i               (cmo_dirty_max_set),
+        .valid_set_en_i                (cmo_valid_set_en),
+        .valid_min_set_i               (cmo_valid_min_set),
+        .valid_max_set_i               (cmo_valid_max_set),
+        .flush_all_o                   (cmo_flush_all),
+        .inval_all_o                   (cmo_inval_all),
 
         .core_rsp_ready_i              (cmo_core_rsp_ready),
         .core_rsp_valid_o              (cmo_core_rsp_valid),

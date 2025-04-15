@@ -210,7 +210,15 @@ import hpdcache_pkg::*;
     output hpdcache_req_sid_t     cmo_req_sid_o,
     output hpdcache_req_tid_t     cmo_req_tid_o,
     output logic                  cmo_req_need_rsp_o,
+    output logic                  cmo_dirty_set_en_o,
+    output hpdcache_set_t         cmo_dirty_min_set_o,
+    output hpdcache_set_t         cmo_dirty_max_set_o,
+    output logic                  cmo_valid_set_en_o,
+    output hpdcache_set_t         cmo_valid_min_set_o,
+    output hpdcache_set_t         cmo_valid_max_set_o,
     input  logic                  cmo_wbuf_flush_all_i,
+    input  logic                  cmo_flush_all_i,
+    input  logic                  cmo_inval_all_i,
     input  logic                  cmo_dir_check_nline_i,
     input  hpdcache_set_t         cmo_dir_check_nline_set_i,
     input  hpdcache_tag_t         cmo_dir_check_nline_tag_i,
@@ -1082,6 +1090,118 @@ import hpdcache_pkg::*;
                                                   is_cmo_flush_inval_by_nline(st1_req.op);
     assign cmo_req_op_o.is_flush_inval_all      = st1_req_is_cmo_flush &
                                                   is_cmo_flush_inval_all(st1_req.op);
+    //  }}}
+
+    //  Dirty/valid cachelines tracking to accelerate flushes and invalidations triggerd by CMOs
+    //  {{{
+    hpdcache_set_t cmo_dirty_min_set_q, cmo_dirty_min_set_d;
+    hpdcache_set_t cmo_dirty_max_set_q, cmo_dirty_max_set_d;
+    logic cmo_dirty_set_en_q, cmo_dirty_set_en_d;
+
+    always_comb
+    begin : cmo_dirty_min_max_set_comb
+        automatic int unsigned _min;
+        automatic int unsigned _max;
+        unique if (st2_dir_updt_q && st2_dir_updt_dirty_q) begin
+            //  Cacheline updated by the pipeline
+            if (cmo_dirty_set_en_q) begin
+                _min = hpdcache_min(st2_dir_updt_set_q, unsigned'(cmo_dirty_min_set_q));
+                _max = hpdcache_max(st2_dir_updt_set_q, unsigned'(cmo_dirty_max_set_q));
+            end else begin
+                _min = unsigned'(st2_dir_updt_set_q);
+                _max = unsigned'(st2_dir_updt_set_q);
+            end
+        end else if (refill_write_dir_i && refill_dir_entry_i.dirty) begin
+            //  Cacheline directly written during refill
+            if (cmo_dirty_set_en_q) begin
+                _min = hpdcache_min(refill_set_i, unsigned'(cmo_dirty_min_set_q));
+                _max = hpdcache_max(refill_set_i, unsigned'(cmo_dirty_max_set_q));
+            end else begin
+                _min = unsigned'(refill_set_i);
+                _max = unsigned'(refill_set_i);
+            end
+        end else begin
+            _min = unsigned'(cmo_dirty_min_set_q);
+            _max = unsigned'(cmo_dirty_max_set_q);
+        end
+        cmo_dirty_min_set_d = hpdcache_set_t'(_min);
+        cmo_dirty_max_set_d = hpdcache_set_t'(_max);
+    end
+
+    always_comb
+    begin : cmo_dirty_set_en_comb
+        unique if (
+            (st2_dir_updt_q && st2_dir_updt_dirty_q) ||
+            (refill_write_dir_i && refill_dir_entry_i.dirty))
+        begin
+            cmo_dirty_set_en_d = 1'b1;
+        end else if (cmo_flush_all_i) begin
+            cmo_dirty_set_en_d = 1'b0;
+        end else begin
+            cmo_dirty_set_en_d = cmo_dirty_set_en_q;
+        end
+    end
+
+    hpdcache_set_t cmo_valid_min_set_q, cmo_valid_min_set_d;
+    hpdcache_set_t cmo_valid_max_set_q, cmo_valid_max_set_d;
+    logic cmo_valid_set_en_q, cmo_valid_set_en_d;
+
+    always_comb
+    begin : cmo_valid_min_max_set_comb
+        automatic int unsigned _min;
+        automatic int unsigned _max;
+        unique if (refill_write_dir_i && refill_dir_entry_i.valid) begin
+            if (cmo_valid_set_en_q) begin
+                _min = hpdcache_min(refill_set_i, cmo_valid_min_set_q);
+                _max = hpdcache_max(refill_set_i, cmo_valid_max_set_q);
+            end else begin
+                _min = unsigned'(refill_set_i);
+                _max = unsigned'(refill_set_i);
+            end
+        end else begin
+            _min = unsigned'(cmo_valid_min_set_q);
+            _max = unsigned'(cmo_valid_max_set_q);
+        end
+        cmo_valid_min_set_d = hpdcache_set_t'(_min);
+        cmo_valid_max_set_d = hpdcache_set_t'(_max);
+    end
+
+    always_comb
+    begin : cmo_valid_set_en_comb
+        unique if (refill_write_dir_i && refill_dir_entry_i.valid) begin
+            cmo_valid_set_en_d = 1'b1;
+        end else if (cmo_inval_all_i) begin
+            cmo_valid_set_en_d = 1'b0;
+        end else begin
+            cmo_valid_set_en_d = cmo_valid_set_en_q;
+        end
+    end
+
+    always_ff @(posedge clk_i or negedge rst_ni)
+    begin : cmo_dirty_valid_ff
+        if (!rst_ni) begin
+            cmo_dirty_set_en_q <= 1'b0;
+            cmo_dirty_min_set_q <= 0;
+            cmo_dirty_max_set_q <= 0;
+            cmo_valid_set_en_q <= 1'b0;
+            cmo_valid_min_set_q <= 0;
+            cmo_valid_min_set_q <= 0;
+        end else begin
+            cmo_dirty_set_en_q <= cmo_dirty_set_en_d;
+            cmo_dirty_min_set_q <= cmo_dirty_min_set_d;
+            cmo_dirty_max_set_q <= cmo_dirty_max_set_d;
+            cmo_valid_set_en_q <= cmo_valid_set_en_d;
+            cmo_valid_min_set_q <= cmo_valid_min_set_d;
+            cmo_valid_max_set_q <= cmo_valid_max_set_d;
+        end
+    end
+
+    assign cmo_dirty_set_en_o = cmo_dirty_set_en_q;
+    assign cmo_dirty_min_set_o = cmo_dirty_min_set_q;
+    assign cmo_dirty_max_set_o = cmo_dirty_max_set_q;
+    assign cmo_valid_set_en_o = cmo_valid_set_en_q;
+    assign cmo_valid_min_set_o = cmo_valid_min_set_q;
+    assign cmo_valid_max_set_o = cmo_valid_max_set_q;
     //  }}}
 
     //  Flush controller outputs
