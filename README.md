@@ -22,7 +22,7 @@ The HPDcache is an open-source High-Performance, Multi-requester, Out-of-Order L
   </tr>
   <tr>
     <td>rtl/lint</td>
-    <td>Contains a linter wrapper and a Mafile to run a lint tool on the RTL</td>
+    <td>Contains a linter wrapper and a Makefile to run a lint tool on the RTL</td>
   </tr>
   <tr>
     <td>rtl/tb</td>
