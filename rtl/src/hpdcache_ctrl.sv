@@ -1101,36 +1101,36 @@ import hpdcache_pkg::*;
 
         always_comb
         begin : cmo_dirty_min_max_set_comb
-            automatic hpdcache_uint32 _min;
-            automatic hpdcache_uint32 _max;
+            automatic hpdcache_uint32 v_min;
+            automatic hpdcache_uint32 v_max;
             unique if (st2_dir_updt_q && st2_dir_updt_dirty_q) begin
                 //  Cacheline updated by the pipeline
                 if (cmo_dirty_set_en_q) begin
-                    _min = hpdcache_min(hpdcache_uint32'(st2_dir_updt_set_q),
+                    v_min = hpdcache_min(hpdcache_uint32'(st2_dir_updt_set_q),
                         hpdcache_uint32'(cmo_dirty_min_set_q));
-                    _max = hpdcache_max(hpdcache_uint32'(st2_dir_updt_set_q),
+                    v_max = hpdcache_max(hpdcache_uint32'(st2_dir_updt_set_q),
                         hpdcache_uint32'(cmo_dirty_max_set_q));
                 end else begin
-                    _min = hpdcache_uint32'(st2_dir_updt_set_q);
-                    _max = hpdcache_uint32'(st2_dir_updt_set_q);
+                    v_min = hpdcache_uint32'(st2_dir_updt_set_q);
+                    v_max = hpdcache_uint32'(st2_dir_updt_set_q);
                 end
             end else if (refill_write_dir_i && refill_dir_entry_i.dirty) begin
                 //  Cacheline directly written during refill
                 if (cmo_dirty_set_en_q) begin
-                    _min = hpdcache_min(hpdcache_uint32'(refill_set_i),
+                    v_min = hpdcache_min(hpdcache_uint32'(refill_set_i),
                         hpdcache_uint32'(cmo_dirty_min_set_q));
-                    _max = hpdcache_max(hpdcache_uint32'(refill_set_i),
+                    v_max = hpdcache_max(hpdcache_uint32'(refill_set_i),
                         hpdcache_uint32'(cmo_dirty_max_set_q));
                 end else begin
-                    _min = hpdcache_uint32'(refill_set_i);
-                    _max = hpdcache_uint32'(refill_set_i);
+                    v_min = hpdcache_uint32'(refill_set_i);
+                    v_max = hpdcache_uint32'(refill_set_i);
                 end
             end else begin
-                _min = hpdcache_uint32'(cmo_dirty_min_set_q);
-                _max = hpdcache_uint32'(cmo_dirty_max_set_q);
+                v_min = hpdcache_uint32'(cmo_dirty_min_set_q);
+                v_max = hpdcache_uint32'(cmo_dirty_max_set_q);
             end
-            cmo_dirty_min_set_d = hpdcache_set_t'(_min);
-            cmo_dirty_max_set_d = hpdcache_set_t'(_max);
+            cmo_dirty_min_set_d = hpdcache_set_t'(v_min);
+            cmo_dirty_max_set_d = hpdcache_set_t'(v_max);
         end
 
         always_comb
@@ -1175,24 +1175,24 @@ import hpdcache_pkg::*;
 
     always_comb
     begin : cmo_valid_min_max_set_comb
-        automatic hpdcache_uint32 _min;
-        automatic hpdcache_uint32 _max;
+        automatic hpdcache_uint32 v_min;
+        automatic hpdcache_uint32 v_max;
         unique if (refill_write_dir_i && refill_dir_entry_i.valid) begin
             if (cmo_valid_set_en_q) begin
-                _min = hpdcache_min(hpdcache_uint32'(refill_set_i),
+                v_min = hpdcache_min(hpdcache_uint32'(refill_set_i),
                     hpdcache_uint32'(cmo_valid_min_set_q));
-                _max = hpdcache_max(hpdcache_uint32'(refill_set_i),
+                v_max = hpdcache_max(hpdcache_uint32'(refill_set_i),
                     hpdcache_uint32'(cmo_valid_max_set_q));
             end else begin
-                _min = hpdcache_uint32'(refill_set_i);
-                _max = hpdcache_uint32'(refill_set_i);
+                v_min = hpdcache_uint32'(refill_set_i);
+                v_max = hpdcache_uint32'(refill_set_i);
             end
         end else begin
-            _min = hpdcache_uint32'(cmo_valid_min_set_q);
-            _max = hpdcache_uint32'(cmo_valid_max_set_q);
+            v_min = hpdcache_uint32'(cmo_valid_min_set_q);
+            v_max = hpdcache_uint32'(cmo_valid_max_set_q);
         end
-        cmo_valid_min_set_d = hpdcache_set_t'(_min);
-        cmo_valid_max_set_d = hpdcache_set_t'(_max);
+        cmo_valid_min_set_d = hpdcache_set_t'(v_min);
+        cmo_valid_max_set_d = hpdcache_set_t'(v_max);
     end
 
     always_comb
