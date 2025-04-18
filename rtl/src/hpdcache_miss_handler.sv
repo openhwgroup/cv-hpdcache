@@ -656,39 +656,45 @@ import hpdcache_pkg::*;
     //  Multiplexing has a byte granularity
     //  REFILL_REQ_RATIO is always greater or equal to 1
     //  Use `accessBytes` bytes long signals
-    logic [HPDcacheCfg.accessBytes-1:0]      dirty_be;
-    logic [HPDcacheCfg.accessBytes-1:0][7:0] dirty_data;
     logic [HPDcacheCfg.accessBytes-1:0][7:0] clean_data;
-    logic [HPDcacheCfg.accessBytes-1:0][7:0] refill_data;
 
-    // Reshape the signals
-    assign dirty_be   = {REFILL_REQ_RATIO{refill_dirty_be}};
-    assign dirty_data = {REFILL_REQ_RATIO{refill_dirty_wdata}};
     assign clean_data = refill_fifo_resp_data_rdata;
 
-    //  Iterate on all `accessBytes` bytes
-    for (genvar i = 0; i < HPDcacheCfg.accessBytes; i++) begin : gen_refill_mux
-        logic dirty_sel;
-        //  Locate each byte to be replaced in the refill data
-        //  The i-th byte is replaced if:
-        //  1) The refill counter is pointing to the correct refill data slice AND
-        //  2) The refill has dirty data to be coalesced AND
-        //  3) The i-th byte is dirty
-        if (REFILL_REQ_RATIO > 1) begin : gen_refill_sel_diffsize
-            always_comb begin
-                automatic hpdcache_uint v_current_rsp;
-                v_current_rsp = i / HPDcacheCfg.reqDataBytes;
+    if (HPDcacheCfg.u.wbEn) begin : gen_refill_dirty_data
+        logic [HPDcacheCfg.accessBytes-1:0]      dirty_be;
+        logic [HPDcacheCfg.accessBytes-1:0][7:0] dirty_data;
+        logic [HPDcacheCfg.accessBytes-1:0][7:0] refill_data;
 
-                dirty_sel = refill_dirty_valid && dirty_be[i] &&
-                            v_current_rsp == refill_core_rsp_word[$clog2(REFILL_REQ_RATIO)-1:0];
+        assign dirty_be   = {REFILL_REQ_RATIO{refill_dirty_be}};
+        assign dirty_data = {REFILL_REQ_RATIO{refill_dirty_wdata}};
+
+        //  Iterate on all `accessBytes` bytes
+        for (genvar i = 0; i < HPDcacheCfg.accessBytes; i++) begin : gen_refill_mux
+            logic dirty_sel;
+            //  Locate each byte to be replaced in the refill data
+            //  The i-th byte is replaced if:
+            //  1) The refill counter is pointing to the correct refill data slice AND
+            //  2) The refill has dirty data to be coalesced AND
+            //  3) The i-th byte is dirty
+            if (REFILL_REQ_RATIO > 1) begin : gen_refill_sel_diffsize
+                always_comb begin
+                    automatic hpdcache_uint v_current_rsp;
+                    v_current_rsp = i / HPDcacheCfg.reqDataBytes;
+
+                    dirty_sel = refill_dirty_valid && dirty_be[i] &&
+                                v_current_rsp == refill_core_rsp_word[$clog2(REFILL_REQ_RATIO)-1:0];
+                end
+            end else begin : gen_refill_sel_eqsize
+                assign dirty_sel = refill_dirty_valid && dirty_be[i];
             end
-        end else begin : gen_refill_sel_eqsize
-            assign dirty_sel = refill_dirty_valid && dirty_be[i];
+            assign refill_data[i] = dirty_sel ? dirty_data[i] : clean_data[i];
         end
-        assign refill_data[i] = dirty_sel ? dirty_data[i] : clean_data[i];
+        assign refill_data_o = hpdcache_refill_data_t'(refill_data);
+
+    end else begin : gen_refill_no_dirty_data
+        // Reshape data to the expected type
+        assign refill_data_o = hpdcache_refill_data_t'(clean_data);
     end
-    // Reshape data to the expected type
-    assign refill_data_o = hpdcache_refill_data_t'(refill_data);
 
     //      The DATA fifo is only used for refill responses
     assign refill_fifo_resp_data_w = mem_resp_valid_i &
@@ -822,33 +828,38 @@ import hpdcache_pkg::*;
 
     //  Coalesce Buffer
     //  {{{
+    if (HPDcacheCfg.u.wbEn) begin : gen_wb_cbuf
+        logic cbuf_alloc, cbuf_ack;
 
-    logic cbuf_alloc, cbuf_ack;
+        assign cbuf_alloc = mshr_alloc_dirty_i && mshr_alloc;
+        assign cbuf_ack   = refill_dirty && (refill_fsm_q == REFILL_WRITE) && (refill_cnt_q == 0);
 
-    assign cbuf_alloc = mshr_alloc_dirty_i && mshr_alloc;
-    assign cbuf_ack   = refill_dirty && (refill_fsm_q == REFILL_WRITE) && (refill_cnt_q == 0);
+        hpdcache_cbuf #(
+            .HPDcacheCfg         (HPDcacheCfg),
+            .hpdcache_req_data_t (hpdcache_req_data_t),
+            .hpdcache_req_be_t   (hpdcache_req_be_t),
+            .cbuf_id_t           (cbuf_id_t)
+        ) hpdcache_cbuf_i(
+            .clk_i,
+            .rst_ni,
 
-    hpdcache_cbuf #(
-        .HPDcacheCfg         (HPDcacheCfg),
-        .hpdcache_req_data_t (hpdcache_req_data_t),
-        .hpdcache_req_be_t   (hpdcache_req_be_t),
-        .cbuf_id_t           (cbuf_id_t)
-    ) hpdcache_cbuf_i (
-        .clk_i,
-        .rst_ni,
+            .alloc_i       (cbuf_alloc),
+            .alloc_wdata_i (mshr_alloc_wdata_i),
+            .alloc_be_i    (mshr_alloc_be_i),
+            .alloc_id_o    (mshr_alloc_cbuf_id),
+            .alloc_full_o  (mshr_alloc_cbuf_full_o),
 
-        .alloc_i       (cbuf_alloc),
-        .alloc_wdata_i (mshr_alloc_wdata_i),
-        .alloc_be_i    (mshr_alloc_be_i),
-        .alloc_id_o    (mshr_alloc_cbuf_id),
-        .alloc_full_o  (mshr_alloc_cbuf_full_o),
-
-        .ack_i         (cbuf_ack),
-        .ack_id_i      (mshr_ack_cbuf_id),
-        .ack_wdata_o   (mshr_ack_wdata),
-        .ack_be_o      (mshr_ack_be)
-    );
-
+            .ack_i         (cbuf_ack),
+            .ack_id_i      (mshr_ack_cbuf_id),
+            .ack_wdata_o   (mshr_ack_wdata),
+            .ack_be_o      (mshr_ack_be)
+        );
+    end else begin : gen_no_wb_cbuf
+        assign mshr_alloc_cbuf_id = '0;
+        assign mshr_alloc_cbuf_full_o = 1'b0;
+        assign mshr_ack_wdata = '0;
+        assign mshr_ack_be = '0;
+    end
     //  }}}
 
     //  Assertions
