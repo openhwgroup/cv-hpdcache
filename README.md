@@ -79,8 +79,9 @@ These macros ease the definition of types required by the interface of the HPDca
 
 For a complete UVM testbench of the HPDcache, please see the [HPDcache Verif](https://github.com/openhwgroup/cv-hpdcache-verif) repository.
 
-There is another simpler testbench (hence not as complete as the one above) into the `rtl/tb` subdirectory of this repository .
-This testbench is compatible with the [Verilator](https://www.veripool.org/verilator/) simulation tool.
+There is another testbench (not as complete as the one above) written in SystemC into the `rtl/tb` subdirectory of this repository.
+This testbench is compatible with the [Verilator](https://www.veripool.org/verilator/) simulation tool. Thus, it accepts a fully open-source simulation flow.
+For more information about the SystemC testbench, read its dedicated [README](rtl/tb/README.md).
 
 
 ## HPDcache Publications & Tutorials
