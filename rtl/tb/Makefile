@@ -55,6 +55,7 @@ TRACE               ?= 0
 BUILD_DIR           := build
 LOG_DIR             := logs
 COV_DIR             := coverage
+COV_HTML_DIR        := coverage_html
 VERILATE_LOG        := $(BUILD_DIR)/verilate.log
 BUILD_LOG           := $(BUILD_DIR)/build.log
 
@@ -97,24 +98,39 @@ VERILATOR_FLAGS     += -Wall -Wno-fatal \
                        --report-unoptflat \
                        --pins-bv 2 \
                        -O3 -I$(HPDCACHE_DIR)/rtl/src \
-                       --x-assign unique --x-initial unique \
-                       $(if $(filter 1,$(DISABLE_TRACE)),\
-                                    $(info make: Tracing support disabled), \
-                                    $(info make: Tracing support enabled) \
-                                    --trace --trace-structs) \
-                       $(if $(filter 1,$(DISABLE_ASSERT)),\
-                                    $(info make: Assertion support disabled), \
-                                    $(info make: Assertion support enabled) \
-                                    --assert) \
-                       $(if $(filter 1,$(PROF)),\
-                                    $(info make: Profiling support enabled) \
-                                    --prof-cfuncs -CFLAGS "-g -pg", \
-                                    $(info make: Profiling support disabled) \
-                                    -CFLAGS "-O3") \
-                       $(if $(filter 1,$(COV)),\
-                                    $(info make: Coverage support enabled) --coverage, \
-                                    $(info make: Coverage support disabled)) \
-                       $(CONF_DEFINES)
+                       --x-assign unique --x-initial unique
+
+ifneq ($(DISABLE_TRACE),1)
+$(info "make: Tracing support enabled")
+VERILATOR_FLAGS += --trace --trace-structs
+else
+$(info "make: Tracing support disabled")
+endif
+
+ifneq ($(DISABLE_ASSERT),1)
+$(info "make: Assertions support enabled")
+VERILATOR_FLAGS += --assert
+else
+$(info "make: Assertions support disabled")
+endif
+
+ifeq ($(PROF),1)
+$(info "make: Profiling support enabled")
+VERILATOR_FLAGS += --prof-cfuncs -CFLAGS "-g -pg"
+else
+$(info "make: Profiling support disabled")
+VERILATOR_FLAGS += -CFLAGS "-O3"
+endif
+
+ifeq ($(COV),1)
+$(shell mkdir -p $(COV_DIR))
+$(info "make: Coverage support enabled")
+VERILATOR_FLAGS += --coverage
+else
+$(info "make: Coverage support disabled")
+endif
+
+VERILATOR_FLAGS     += $(CONF_DEFINES)
 
 VERILATOR_MAKEFLAGS += USER_CPPFLAGS="$(USER_CPPFLAGS)" \
                        USER_LDFLAGS="-Wl,-rpath,$(SYSTEMC_LIBDIR)" \
@@ -202,7 +218,6 @@ export help_message
 help:
 	$(Q)$(ECHO) "$${help_message}"
 
-
 .PHONY: $(RUN_LOG)
 $(RUN_LOG):
 	$(Q)$(ECHO) "make: run (LOG: $@)"
@@ -219,12 +234,6 @@ debug: build
 	$(Q)$(MKDIR) $(LOG_DIR)
 	$(Q)$(RM) $(TRACE_FILE)
 	$(Q)$(GDB) $(BUILD_DIR)/V$(DUT) -ex "b sc_main" -ex "run $(VERILATOR_RUNFLAGS)"
-
-.PHONY: cov
-cov: $(COV_MERGEFILE)
-	$(Q)$(ECHO) "make: compile coverage data"
-	$(Q)$(MKDIR) $(COV_DIR)
-	$(Q)$(VERILATOR_COV) --annotate $(COV_DIR)/result $<
 
 .PHONY: nonreg
 nonreg: nonregression
@@ -245,10 +254,22 @@ nonregression:
 	        -nowarn $(LOG_DIR)/nonreg_$(DATE_TIME)/$(SEQUENCE)_*.log \
 	        |& tee $(LOG_DIR)/nonreg_$(DATE_TIME)/nonreg.scan.log
 
-$(COV_MERGEFILE): $(filter-out $(COV_MERGEFILE), $(wildcard $(COV_DIR)/*.dat))
+.PHONY: cov
+cov: $(COV_MERGEFILE)
+	$(Q)$(ECHO) "make: compile coverage data"
+	$(Q)$(MKDIR) $(COV_DIR)
+	$(Q)$(VERILATOR_COV) --annotate $(COV_DIR)/result $<
+
+$(COV_MERGEFILE) $(COV_MERGEFILE).info: $(filter-out $(COV_MERGEFILE), $(wildcard $(COV_DIR)/*.dat))
 	$(Q)$(MKDIR) $(COV_DIR)
 	$(Q)$(ECHO) "Merging coverage data into the $@ file"
-	$(Q)$(VERILATOR_COV) --write $@ $^
+	$(Q)$(VERILATOR_COV) --write $@ --write-info $@.info $^
+
+.PHONY: cov_html
+cov_html: cov $(COV_HTML_DIR)/index.html
+
+$(COV_HTML_DIR)/index.html: $(COV_MERGEFILE).info
+	genhtml --branch-coverage --function-coverage -o coverage_html $<
 
 $(VERILATE_LOG): print_config $(SVLOG_SOURCES) $(TB_TOP).cpp
 	$(Q)$(ECHO) "Verilating the RTL sources... (LOG: $@)"
@@ -283,7 +304,7 @@ clean_log:
 
 clean_cover:
 	$(Q)$(ECHO) "Cleaning coverage directory..."
-	$(Q)$(RM) -r $(COV_DIR)
+	$(Q)$(RM) -r $(COV_DIR) $(COV_HTML_DIR)
 
 clean_all: clean clean_log clean_cover
 distclean: clean_all
