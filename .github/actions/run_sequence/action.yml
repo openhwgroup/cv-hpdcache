@@ -41,7 +41,7 @@ inputs:
   config:
     description: 'File with DUT parameters'
     required: true
-    default: 'default_config.mk'
+    default: 'configs/default_config.mk'
 
 runs:
   using: "composite"
