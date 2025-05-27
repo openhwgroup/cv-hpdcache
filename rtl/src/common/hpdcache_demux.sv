@@ -54,16 +54,19 @@ module hpdcache_demux
 );
 //  }}}
 
-    generate
+    if (ONE_HOT_SEL) begin : gen_onehot_sel
         always_comb
         begin : demux_comb
             for (int unsigned i = 0; i < NOUTPUT; i++) begin
-                if (!ONE_HOT_SEL) begin
-                    data_o[i] = (sel_t'(i) == sel_i) ? data_i : '0;
-                end else begin
-                    data_o[i] =  sel_i[i]            ? data_i : '0;
-                end
+                data_o[i] = sel_i[i] ? data_i : '0;
             end
         end
-    endgenerate
+    end else begin : gen_bin_sel
+        always_comb
+        begin : demux_comb
+            for (int unsigned i = 0; i < NOUTPUT; i++) begin
+                data_o[i] = (sel_t'(i) == sel_i) ? data_i : '0;
+            end
+        end
+    end
 endmodule
