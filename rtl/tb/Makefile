@@ -75,7 +75,7 @@ CONF_DEFINES =
 ifdef CONFIG
 include $(CONFIG)
 else
-include default_config.mk
+include configs/default_config.mk
 endif
 
 include rtl_conf.mk
