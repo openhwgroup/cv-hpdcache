@@ -93,7 +93,7 @@ jobs:
           seqname: 'random'
           ntrans: '10000'
           ntests: '64'
-          config: 'default_config.mk'
+          config: 'configs/default_config.mk'
 
   run_random_long:
     runs-on: ubuntu-latest
@@ -108,7 +108,7 @@ jobs:
           seqname: 'random'
           ntrans: '80000'
           ntests: '8'
-          config: 'default_config.mk'
+          config: 'configs/default_config.mk'
 
   run_single_addr:
     runs-on: ubuntu-latest
@@ -123,7 +123,7 @@ jobs:
           seqname: 'single_addr'
           ntrans: '20000'
           ntests: '16'
-          config: 'default_config.mk'
+          config: 'configs/default_config.mk'
 
   run_random_short_hpc:
     runs-on: ubuntu-latest
@@ -138,7 +138,7 @@ jobs:
           seqname: 'random'
           ntrans: '10000'
           ntests: '64'
-          config: 'hpc_config.mk'
+          config: 'configs/hpc_config.mk'
 
   run_random_long_hpc:
     runs-on: ubuntu-latest
@@ -153,7 +153,7 @@ jobs:
           seqname: 'random'
           ntrans: '80000'
           ntests: '8'
-          config: 'hpc_config.mk'
+          config: 'configs/hpc_config.mk'
 
   run_single_addr_hpc:
     runs-on: ubuntu-latest
@@ -168,4 +168,34 @@ jobs:
           seqname: 'single_addr'
           ntrans: '20000'
           ntests: '16'
-          config: 'hpc_config.mk'
+          config: 'configs/hpc_config.mk'
+
+  run_random_short_embedded:
+    runs-on: ubuntu-latest
+    name: run_random_short_embedded
+    needs: build
+    steps:
+      - uses: actions/checkout@master
+
+      - id: run_random_short_sequence
+        uses: ./.github/actions/run_sequence
+        with:
+          seqname: 'random'
+          ntrans: '10000'
+          ntests: '64'
+          config: 'configs/embedded_config.mk'
+
+  run_random_long_embedded:
+    runs-on: ubuntu-latest
+    name: run_random_long_embedded
+    needs: build
+    steps:
+      - uses: actions/checkout@master
+
+      - id: run_random_long_sequence
+        uses: ./.github/actions/run_sequence
+        with:
+          seqname: 'random'
+          ntrans: '80000'
+          ntests: '8'
+          config: 'configs/embedded_config.mk'
