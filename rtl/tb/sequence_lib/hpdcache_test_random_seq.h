@@ -140,8 +140,8 @@ private:
     scv_smart_ptr<sc_bv<HPDCACHE_REQ_DATA_WIDTH> > data;
     scv_smart_ptr<sc_bv<HPDCACHE_REQ_DATA_WIDTH> > size;
     scv_smart_ptr<bool> need_rsp_rnd;
-    const unsigned int REQ_DATA_BYTES = HPDCACHE_REQ_DATA_WIDTH/8;
-    const unsigned int LOG2_REQ_DATA_BYTES = HPDCACHE_TEST_DEFS_LOG2(REQ_DATA_BYTES);
+    static constexpr unsigned int REQ_DATA_BYTES = HPDCACHE_REQ_DATA_WIDTH/8;
+    static constexpr unsigned int LOG2_REQ_DATA_BYTES = HPDCACHE_TEST_DEFS_LOG2(REQ_DATA_BYTES);
 
 #if SC_VERSION_MAJOR < 3
     SC_HAS_PROCESS(hpdcache_test_random_seq);
