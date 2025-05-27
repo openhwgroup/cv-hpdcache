@@ -131,6 +131,8 @@ public:
         need_rsp_distribution.push(false, 5);
         need_rsp_distribution.push(true, 95);
         need_rsp_rnd->set_mode(need_rsp_distribution);
+
+        size->keep_only(0, LOG2_REQ_DATA_BYTES);
     }
 
 private:
@@ -138,7 +140,8 @@ private:
     scv_smart_ptr<sc_bv<HPDCACHE_REQ_DATA_WIDTH> > data;
     scv_smart_ptr<sc_bv<HPDCACHE_REQ_DATA_WIDTH> > size;
     scv_smart_ptr<bool> need_rsp_rnd;
-    const unsigned int HPDCACHE_REQ_DATA_BYTES = HPDCACHE_REQ_DATA_WIDTH/8;
+    const unsigned int REQ_DATA_BYTES = HPDCACHE_REQ_DATA_WIDTH/8;
+    const unsigned int LOG2_REQ_DATA_BYTES = HPDCACHE_TEST_DEFS_LOG2(REQ_DATA_BYTES);
 
 #if SC_VERSION_MAJOR < 3
     SC_HAS_PROCESS(hpdcache_test_random_seq);
@@ -152,11 +155,13 @@ private:
 
     inline uint32_t create_random_size(bool is_amo)
     {
-        if (!is_amo) size->keep_only(0, 3);
-        else         size->keep_only(2, 3);
-
+        uint32_t ret;
         size->next();
-        return size->read().to_uint();
+        ret = size->read().to_uint();
+        if (is_amo) {
+            return (ret >= 3) ? 3 : 2;
+        }
+        return ret;
     }
 
     std::shared_ptr<hpdcache_test_transaction_req> create_random_transaction()
@@ -227,7 +232,7 @@ private:
             need_rsp_rnd->next();
             t->req_need_rsp = need_rsp_rnd->read();
         } else {
-            uint32_t offset = address % HPDCACHE_REQ_DATA_BYTES;
+            uint32_t offset = address % REQ_DATA_BYTES;
             t->req_be          = ((1UL << bytes) - 1) << offset;
             t->req_size        = sz;
             t->req_uncacheable = seg[segptr->read()].is_uncached() ? 1 : 0;
@@ -253,7 +258,7 @@ private:
         uint32_t sz      = create_random_size(true);
         uint32_t bytes   = 1 << sz;
         uint64_t address = (addr / bytes) * bytes;
-        uint32_t offset  = address % HPDCACHE_REQ_DATA_BYTES;
+        uint32_t offset  = address % REQ_DATA_BYTES;
 
         t = acquire_transaction<hpdcache_test_transaction_req>();
         t->req_op          = hpdcache_test_transaction_req::HPDCACHE_REQ_AMO_SC;
