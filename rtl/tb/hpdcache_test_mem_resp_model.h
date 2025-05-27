@@ -127,12 +127,12 @@ private:
         hpdcache_test_transaction_mem_read_resp resp;
 
         //  consume the request from the request ports
-        req.addr      = mem_req_read_addr_i.read().to_uint();
-        req.len       = mem_req_read_len_i.read().to_uint();
-        req.size      = mem_req_read_size_i.read().to_uint();
-        req.id        = mem_req_read_id_i.read().to_uint();
-        req.command   = mem_req_read_command_i.read().to_uint();
-        req.atomic    = mem_req_read_atomic_i.read().to_uint();
+        req.addr = mem_req_read_addr_i.read().to_uint();
+        req.len = mem_req_read_len_i.read().to_uint();
+        req.size = mem_req_read_size_i.read().to_uint();
+        req.id = mem_req_read_id_i.read().to_uint();
+        req.command = mem_req_read_command_i.read().to_uint();
+        req.atomic = mem_req_read_atomic_i.read().to_uint();
         req.cacheable = mem_req_read_cacheable_i.read();
         sb_mem_read_req_o.write(req); // send request to scoreboard
 
@@ -145,7 +145,7 @@ private:
 
         //  check if the address is in an error segment. If it is, send a
         //  response with the error flag asserted
-        uint64_t addr     = req.addr;
+        uint64_t addr = req.addr;
         uint64_t end_addr = addr + (1ULL << req.size);
         if (within_error_region(addr, end_addr)) {
             for (int i = 0; i < (req.len + 1); i++) {
@@ -163,9 +163,9 @@ private:
 
         if (req.is_ldex()) {
             const uint64_t n  = 1 << req.size;
-            excl_buf_m[req.id].valid     = true;
+            excl_buf_m[req.id].valid = true;
             excl_buf_m[req.id].base_addr = addr;
-            excl_buf_m[req.id].end_addr  = addr + n;
+            excl_buf_m[req.id].end_addr = addr + n;
         }
 
         for (int i = 0; i < (req.len + 1); i++) {
@@ -362,6 +362,13 @@ private:
     {
         mem_req_read_ready_o.write(false);
         for (;;) {
+            // FIXME: workaround for SystemC scheduler bug ???
+            //        In some simulations, this function start being executed on
+            //        rising edges of the clock, but it shall be executed in
+            //        falling edges (as specified in the corresponding sensitivity
+            //        list)
+            if (clk_i.read()) wait();
+
             if (mem_req_read_valid_i.read()) {
                 readOperation();
             } else {
