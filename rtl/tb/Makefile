@@ -255,15 +255,20 @@ nonregression:
 	        |& tee $(LOG_DIR)/nonreg_$(DATE_TIME)/nonreg.scan.log
 
 .PHONY: cov
-cov: $(COV_MERGEFILE)
+cov: $(COV_MERGEFILE) $(COV_MERGEFILE).info
 	$(Q)$(ECHO) "make: compile coverage data"
 	$(Q)$(MKDIR) $(COV_DIR)
-	$(Q)$(VERILATOR_COV) --annotate $(COV_DIR)/result $<
+	$(Q)$(VERILATOR_COV) --annotate-points --annotate $(COV_DIR)/result $<
 
-$(COV_MERGEFILE) $(COV_MERGEFILE).info: $(filter-out $(COV_MERGEFILE), $(wildcard $(COV_DIR)/*.dat))
+$(COV_MERGEFILE): $(filter-out $(COV_MERGEFILE), $(wildcard $(COV_DIR)/*.dat))
 	$(Q)$(MKDIR) $(COV_DIR)
 	$(Q)$(ECHO) "Merging coverage data into the $@ file"
-	$(Q)$(VERILATOR_COV) --write $@ --write-info $@.info $^
+	$(Q)$(VERILATOR_COV) --annotate-points --write $@ $^
+
+$(COV_MERGEFILE).info: $(filter-out $(COV_MERGEFILE), $(wildcard $(COV_DIR)/*.dat))
+	$(Q)$(MKDIR) $(COV_DIR)
+	$(Q)$(ECHO) "Merging coverage data into the $@ file"
+	$(Q)$(VERILATOR_COV) --annotate-points --write-info $@ $^
 
 .PHONY: cov_html
 cov_html: cov $(COV_HTML_DIR)/index.html
