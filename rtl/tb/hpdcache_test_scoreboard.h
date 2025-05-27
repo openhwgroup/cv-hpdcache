@@ -250,9 +250,9 @@ private:
     std::shared_ptr<hpdcache_test_sequence> seq;
     std::shared_ptr<hpdcache_test_mem_resp_model_base> mem_resp_model;
 
-    static constexpr unsigned int CORE_REQ_WORDS      = HPDCACHE_REQ_DATA_WIDTH/64;
-    static constexpr unsigned int CORE_REQ_WORD_BYTES = 8;
-    static constexpr unsigned int CORE_REQ_BYTES      = CORE_REQ_WORDS*CORE_REQ_WORD_BYTES;
+    static constexpr unsigned int CORE_REQ_WORDS = HPDCACHE_REQ_WORDS;
+    static constexpr unsigned int CORE_REQ_WORD_BYTES = HPDCACHE_WORD_WIDTH/8;
+    static constexpr unsigned int CORE_REQ_BYTES = CORE_REQ_WORDS*CORE_REQ_WORD_BYTES;
 
     struct inflight_entry_t {
         uint64_t time;
@@ -494,8 +494,10 @@ private:
             e.op             = req.req_op.to_uint();
             if (req.is_store() || req.is_amo_sc() || req.is_amo()) {
                 for (int i = 0; i < CORE_REQ_WORDS; i++) {
-                    e.wdata[i] = req.req_wdata.range((i + 1)*64 - 1, i*64).to_uint64();
-                    e.be[i]    = req.req_be.range((i + 1)*8 - 1, i*8).to_uint();
+                    e.wdata[i] = req.req_wdata.range((i + 1)*HPDCACHE_WORD_WIDTH - 1,
+                            i*HPDCACHE_WORD_WIDTH).to_uint64();
+                    e.be[i] = req.req_be.range((i + 1)*CORE_REQ_WORD_BYTES - 1,
+                            i*CORE_REQ_WORD_BYTES).to_uint();
                 }
             }
 
@@ -518,7 +520,7 @@ private:
                         if (e.rv[i]) {
                             std::stringstream ss;
                             ss << "check response for @0x"
-                               << std::hex << aligned_addr + i*8 << std::dec
+                               << std::hex << aligned_addr + i*CORE_REQ_WORD_BYTES << std::dec
                                << " / expected = 0x"
                                << std::hex << e.rdata[i] << std::dec
                                << " / valid = 0x"
@@ -606,7 +608,7 @@ private:
                         if (e.be[i]) {
                             std::stringstream ss;
                             ss << "store sb.mem @0x"
-                               << std::hex << aligned_addr + i*8 << std::dec
+                               << std::hex << aligned_addr + i*CORE_REQ_WORD_BYTES << std::dec
                                << " = 0x"
                                << std::hex << e.wdata[i] << std::dec
                                << " / be = 0x"
@@ -674,7 +676,8 @@ private:
                 //  check the response status for SC operations
                 bool sc_ok;
                 if (e.is_amo_sc) {
-                    uint64_t sc_resp = resp.rsp_rdata.range((_word + 1)*64 - 1, _word*64).to_uint64();
+                    uint64_t sc_resp = resp.rsp_rdata.range((_word + 1)*HPDCACHE_WORD_WIDTH - 1,
+                            _word*HPDCACHE_WORD_WIDTH).to_uint64();
                     if (e.bytes == 4) {
                         sc_resp = (uint32_t)sc_resp;
                     }
@@ -684,7 +687,7 @@ private:
                         ram_m->write(
                                 reinterpret_cast<const uint8_t*>(&e.wdata[_word]),
                                 reinterpret_cast<const uint8_t*>(&e.be[_word]),
-                                8, align_to(e.addr, 8));
+                                CORE_REQ_WORD_BYTES, align_to(e.addr, CORE_REQ_WORD_BYTES));
 
                         //  check response status
                         if (sc_resp != 0) {
@@ -699,7 +702,8 @@ private:
                 if (e.is_read || e.is_amo || e.is_amo_lr) {
                     uint64_t rdata[CORE_REQ_WORDS];
                     for (int i = 0; i < CORE_REQ_WORDS; i++) {
-                        rdata[i] = resp.rsp_rdata.range((i + 1)*64 - 1, i*64).to_uint64();
+                        rdata[i] = resp.rsp_rdata.range((i + 1)*HPDCACHE_WORD_WIDTH - 1,
+                                i*HPDCACHE_WORD_WIDTH).to_uint64();
                     }
 
                     //  check the received data
@@ -707,9 +711,9 @@ private:
                     for (int i = _byte; i < (_byte + e.bytes); i++) {
                         const uint8_t recv = reinterpret_cast<const uint8_t*>(rdata)[i];
                         const uint8_t expc = reinterpret_cast<const uint8_t*>(e.rdata)[i];
-                        const uint8_t rv   = reinterpret_cast<const uint8_t*>(e.rv)[i/8];
+                        const uint8_t rv   = reinterpret_cast<const uint8_t*>(e.rv)[i/CORE_REQ_WORD_BYTES];
 
-                        if ((rv >> (i % 8)) & 0x1) {
+                        if ((rv >> (i % CORE_REQ_WORD_BYTES)) & 0x1) {
                             if (recv != expc) {
                                 std::stringstream ss;
                                 ss << "response data is wrong"
@@ -728,7 +732,7 @@ private:
                     //  update the memory with the computed AMO word
                     //  {{{
                     if (e.is_amo) {
-                        unsigned offset  = (e.addr % 8) * 8;
+                        unsigned offset  = (e.addr % CORE_REQ_WORD_BYTES) * CORE_REQ_WORD_BYTES;
                         uint64_t amo_new = e.wdata[_word];
                         uint64_t amo_old = rdata[_word];
 
@@ -743,7 +747,7 @@ private:
                         ram_m->write(
                                 reinterpret_cast<uint8_t*>(&amo_res),
                                 reinterpret_cast<uint8_t*>(&amo_be),
-                                8, align_to(e.addr, 8));
+                                CORE_REQ_WORD_BYTES, align_to(e.addr, CORE_REQ_WORD_BYTES));
 
 #if DEBUG_HPDCACHE_TEST_SCOREBOARD
                         if (check_verbosity(sc_core::SC_DEBUG)) {
@@ -751,7 +755,7 @@ private:
                                 std::stringstream ss;
                                 ss << hpdcache_test_transaction_req::op_to_string(e.op)
                                    << " sb.mem @0x"
-                                   << std::hex << align_to(e.addr, 8) << std::dec
+                                   << std::hex << align_to(e.addr, CORE_REQ_WORD_BYTES) << std::dec
                                    << " = 0x"
                                    << std::hex << amo_res << std::dec
                                    << " / be = 0x"
