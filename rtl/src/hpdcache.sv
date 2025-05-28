@@ -1308,6 +1308,9 @@ import hpdcache_pkg::*;
     if (HPDcacheCfg.u.clWords <= 1) begin : gen_cacheline_words_assertion
         $fatal(1, "cacheline words shall be greater than 1");
     end
+    if (HPDcacheCfg.clWidth < HPDcacheCfg.u.memDataWidth) begin : gen_cacheline_mem_data_assertion
+        $fatal(1, "cacheline width shall be g.e. to memory interface data width");
+    end
     if (HPDcacheCfg.u.memDataWidth < HPDcacheCfg.reqDataWidth) begin : gen_mem_data_width_assertion
         $fatal(1, "memory interface data width shall be g.e. to req data width");
     end
@@ -1318,6 +1321,10 @@ import hpdcache_pkg::*;
     if (HPDcacheCfg.u.wtEn && (2**(HPDcacheCfg.u.memIdWidth - 1) < HPDcacheCfg.u.wbufDirEntries))
     begin : gen_mem_id_wbuf_width_assertion
         $fatal(1, "insufficient ID bits on the mem interface to transport writes");
+    end
+    if (HPDcacheCfg.u.wtEn && (HPDcacheCfg.wbufDataWidth > HPDcacheCfg.u.memDataWidth))
+    begin : gen_mem_data_wbuf_width_assertion
+        $fatal(1, "write buffer data width shall be l.e. to mem interface data width");
     end
     if (HPDcacheCfg.u.wbEn &&
         (2**(HPDcacheCfg.u.memIdWidth - 1) < (HPDcacheCfg.u.flushEntries + 1)))
