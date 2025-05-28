@@ -183,17 +183,14 @@ import hpdcache_pkg::*;
     output hpdcache_req_sid_t     uc_req_sid_o,
     output hpdcache_req_tid_t     uc_req_tid_o,
     output logic                  uc_req_need_rsp_o,
+    output hpdcache_way_vector_t  uc_req_dir_hit_way_o,
     input  logic                  uc_wbuf_flush_all_i,
-    input  logic                  uc_dir_amo_match_i,
-    input  hpdcache_set_t         uc_dir_amo_match_set_i,
-    input  hpdcache_tag_t         uc_dir_amo_match_tag_i,
-    input  logic                  uc_dir_amo_updt_sel_victim_i,
-    output hpdcache_way_vector_t  uc_dir_amo_hit_way_o,
     input  logic                  uc_data_amo_write_i,
     input  logic                  uc_data_amo_write_enable_i,
     input  hpdcache_set_t         uc_data_amo_write_set_i,
     input  hpdcache_req_size_t    uc_data_amo_write_size_i,
     input  hpdcache_word_t        uc_data_amo_write_word_i,
+    input  hpdcache_way_vector_t  uc_data_amo_write_way_i,
     input  hpdcache_req_data_t    uc_data_amo_write_data_i,
     input  hpdcache_req_be_t      uc_data_amo_write_be_i,
     output logic                  uc_core_rsp_ready_o,
@@ -244,6 +241,9 @@ import hpdcache_pkg::*;
     input  logic                  cmo_core_rsp_valid_i,
     input  hpdcache_rsp_t         cmo_core_rsp_i,
 
+    input  logic                  mshr_empty_i,
+    input  logic                  flush_empty_i,
+
     output logic                  rtab_empty_o,
     output logic                  ctrl_empty_o,
 
@@ -271,6 +271,7 @@ import hpdcache_pkg::*;
     //  Definition of internal registers
     //  {{{
     typedef logic [$clog2(HPDcacheCfg.u.rtabEntries)-1:0] rtab_ptr_t;
+    typedef logic [$clog2(HPDcacheCfg.u.rtabEntries):0]   rtab_cnt_t;
 
     typedef struct packed {
         hpdcache_req_t req;
@@ -393,6 +394,7 @@ import hpdcache_pkg::*;
     hpdcache_rtab_deps_t     st1_rtab_deps;
     logic                    st1_rtab_check;
     logic                    st1_rtab_check_hit;
+    logic                    st1_no_pend_trans;
 
     // Pipeline Stage 1/2 (depending on lowLatency setting)
     logic                    core_rsp_valid;
@@ -405,6 +407,9 @@ import hpdcache_pkg::*;
 
     logic                    rtab_full;
     logic                    rtab_fence;
+    rtab_cnt_t               rtab_usage;
+
+    logic                    rtab_no_pend_trans;
 
     logic                    hpdcache_init_ready;
 
@@ -596,6 +601,7 @@ import hpdcache_pkg::*;
         .st1_req_cachedir_updt_sel_victim_o (st1_req_updt_sel_victim),
         .st1_req_cachedata_write_o          (st1_req_cachedata_write),
         .st1_req_cachedata_write_enable_o   (st1_req_cachedata_write_enable),
+        .st1_no_pend_trans_i                (st1_no_pend_trans),
 
         .st2_mshr_alloc_i                   (st2_mshr_alloc_q),
         .st2_mshr_alloc_is_prefetch_i       (st2_mshr_alloc_is_prefetch_q),
@@ -644,6 +650,7 @@ import hpdcache_pkg::*;
         .st1_rtab_dir_fetch_o               (st1_rtab_deps.dir_fetch),
         .st1_rtab_flush_hit_o               (st1_rtab_deps.flush_hit),
         .st1_rtab_flush_not_ready_o         (st1_rtab_deps.flush_not_ready),
+        .st1_rtab_pend_trans_o              (st1_rtab_deps.pend_trans),
 
         .cachedir_hit_i                     (cachedir_hit_o),
         .cachedir_init_ready_i              (hpdcache_init_ready),
@@ -687,6 +694,18 @@ import hpdcache_pkg::*;
         .evt_stall_o
     );
 
+    // No pending transaction across different handlers
+    assign st1_no_pend_trans = ~(st2_mshr_alloc_q | st2_dir_updt_q)
+                               & (rtab_empty_o | (rtab_usage == rtab_cnt_t'(1) & st1_req_rtab_q))
+                               & wbuf_empty_i
+                               & mshr_empty_i
+                               & flush_empty_i;
+    assign rtab_no_pend_trans =  ctrl_empty_o
+                               & (rtab_empty_o | (rtab_usage == rtab_cnt_t'(1)))
+                               & wbuf_empty_i
+                               & mshr_empty_i
+                               & flush_empty_i;
+
     //  pipeline is empty
     assign ctrl_empty_o = ~(st1_req_valid_q | st2_mshr_alloc_q | st2_dir_updt_q);
 
@@ -724,6 +743,7 @@ import hpdcache_pkg::*;
         .hpdcache_way_t                     (hpdcache_way_t),
         .hpdcache_req_addr_t                (hpdcache_req_addr_t),
         .rtab_ptr_t                         (rtab_ptr_t),
+        .rtab_cnt_t                         (rtab_cnt_t),
         .rtab_entry_t                       (rtab_entry_t)
     ) hpdcache_rtab_i(
         .clk_i,
@@ -732,6 +752,7 @@ import hpdcache_pkg::*;
         .empty_o                            (rtab_empty_o),
         .full_o                             (rtab_full),
         .fence_o                            (rtab_fence),
+        .usage_o                            (rtab_usage),
 
         .check_i                            (st1_rtab_check),
         .check_nline_i                      (st1_req_nline),
@@ -772,7 +793,9 @@ import hpdcache_pkg::*;
         .flush_ack_nline_i                  (flush_ack_nline_i),
         .flush_ready_i                      (flush_alloc_ready_i),
 
-        .cfg_single_entry_i                 (cfg_rtab_single_entry_i)
+        .cfg_single_entry_i                 (cfg_rtab_single_entry_i),
+
+        .no_pend_trans_i                    (rtab_no_pend_trans)
     );
     //  }}}
 
@@ -923,12 +946,6 @@ import hpdcache_pkg::*;
         .dir_updt_dirty_i              (st2_dir_updt_dirty_q),
         .dir_updt_fetch_i              (st2_dir_updt_fetch_q),
 
-        .dir_amo_match_i               (uc_dir_amo_match_i),
-        .dir_amo_match_set_i           (uc_dir_amo_match_set_i),
-        .dir_amo_match_tag_i           (uc_dir_amo_match_tag_i),
-        .dir_amo_updt_sel_victim_i     (uc_dir_amo_updt_sel_victim_i),
-        .dir_amo_hit_way_o             (uc_dir_amo_hit_way_o),
-
         .dir_refill_i                  (refill_write_dir_i),
         .dir_refill_set_i              (refill_set_i),
         .dir_refill_way_i              (refill_way_i),
@@ -993,6 +1010,7 @@ import hpdcache_pkg::*;
         .data_amo_write_set_i          (uc_data_amo_write_set_i),
         .data_amo_write_size_i         (uc_data_amo_write_size_i),
         .data_amo_write_word_i         (uc_data_amo_write_word_i),
+        .data_amo_write_way_i          (uc_data_amo_write_way_i),
         .data_amo_write_data_i         (uc_data_amo_write_data_i),
         .data_amo_write_be_i           (uc_data_amo_write_be_i),
 
@@ -1055,6 +1073,7 @@ import hpdcache_pkg::*;
            uc_req_sid_o              = st1_req.sid,
            uc_req_tid_o              = st1_req.tid,
            uc_req_need_rsp_o         = st1_req.need_rsp,
+           uc_req_dir_hit_way_o      = st1_dir_hit_way,
            uc_req_op_o.is_ld         = st1_req_is_load,
            uc_req_op_o.is_st         = st1_req_is_store,
            uc_req_op_o.is_amo_lr     = st1_req_is_amo_lr,

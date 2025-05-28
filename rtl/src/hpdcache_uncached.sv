@@ -83,6 +83,7 @@ import hpdcache_pkg::*;
     input  hpdcache_req_sid_t     req_sid_i,
     input  hpdcache_req_tid_t     req_tid_i,
     input  logic                  req_need_rsp_i,
+    input  hpdcache_way_vector_t  req_hit_way_i,
     //  }}}
 
     //  Write buffer interface
@@ -92,17 +93,12 @@ import hpdcache_pkg::*;
 
     //  AMO Cache Interface
     //  {{{
-    output logic                  dir_amo_match_o,
-    output hpdcache_set_t         dir_amo_match_set_o,
-    output hpdcache_tag_t         dir_amo_match_tag_o,
-    output logic                  dir_amo_updt_sel_victim_o,
-    input  hpdcache_way_vector_t  dir_amo_hit_way_i,
-
     output logic                  data_amo_write_o,
     output logic                  data_amo_write_enable_o,
     output hpdcache_set_t         data_amo_write_set_o,
     output hpdcache_req_size_t    data_amo_write_size_o,
     output hpdcache_word_t        data_amo_write_word_o,
+    output hpdcache_way_vector_t  data_amo_write_way_o,
     output hpdcache_req_data_t    data_amo_write_data_o,
     output hpdcache_req_be_t      data_amo_write_be_o,
     // }}}
@@ -170,7 +166,6 @@ import hpdcache_pkg::*;
         UC_MEM_WDATA_REQ,
         UC_MEM_WAIT_RSP,
         UC_CORE_RSP,
-        UC_AMO_READ_DIR,
         UC_AMO_WRITE_DATA
     } hpdcache_uc_fsm_t;
 
@@ -233,33 +228,35 @@ import hpdcache_pkg::*;
 
 //  Internal signals and registers
 //  {{{
-    hpdcache_uc_fsm_t   uc_fsm_q, uc_fsm_d;
-    hpdcache_uc_op_t    req_op_q;
-    hpdcache_req_addr_t req_addr_q;
-    hpdcache_req_size_t req_size_q;
-    hpdcache_req_data_t req_data_q;
-    hpdcache_req_be_t   req_be_q;
-    logic               req_uc_q;
-    hpdcache_req_sid_t  req_sid_q;
-    hpdcache_req_tid_t  req_tid_q;
-    logic               req_need_rsp_q;
-    logic               no_pend_trans;
+    hpdcache_uc_fsm_t     uc_fsm_q, uc_fsm_d;
+    hpdcache_uc_op_t      req_op_q;
+    hpdcache_req_addr_t   req_addr_q;
+    hpdcache_req_size_t   req_size_q;
+    hpdcache_req_data_t   req_data_q;
+    hpdcache_req_be_t     req_be_q;
+    logic                 req_uc_q;
+    hpdcache_req_sid_t    req_sid_q;
+    hpdcache_req_tid_t    req_tid_q;
+    logic                 req_need_rsp_q;
+    hpdcache_way_vector_t req_hit_way_q;
+    logic                 req_hit;
+    logic                 no_pend_trans;
 
-    logic               uc_sc_retcode_q, uc_sc_retcode_d;
+    logic                 uc_sc_retcode_q, uc_sc_retcode_d;
 
-    hpdcache_req_data_t rsp_rdata_q, rsp_rdata_d;
-    logic               rsp_error_set, rsp_error_rst;
-    logic               rsp_error_q;
-    logic               mem_resp_write_valid_q, mem_resp_write_valid_d;
-    logic               mem_resp_read_valid_q, mem_resp_read_valid_d;
+    hpdcache_req_data_t   rsp_rdata_q, rsp_rdata_d;
+    logic                 rsp_error_set, rsp_error_rst;
+    logic                 rsp_error_q;
+    logic                 mem_resp_write_valid_q, mem_resp_write_valid_d;
+    logic                 mem_resp_read_valid_q, mem_resp_read_valid_d;
 
-    hpdcache_req_data_t mem_req_write_data;
-    logic [63:0]        amo_req_ld_data;
-    logic [63:0]        amo_ld_data;
-    logic [63:0]        amo_req_st_data;
-    logic [63:0]        amo_st_data;
-    logic [63:0]        amo_result;
-    logic [63:0]        amo_write_data;
+    hpdcache_req_data_t   mem_req_write_data;
+    logic [63:0]          amo_req_ld_data;
+    logic [63:0]          amo_ld_data;
+    logic [63:0]          amo_req_st_data;
+    logic [63:0]          amo_st_data;
+    logic [63:0]          amo_result;
+    logic [63:0]          amo_write_data;
 //  }}}
 
 //  LR/SC reservation buffer logic
@@ -308,11 +305,10 @@ import hpdcache_pkg::*;
                                                   (lrsc_rsrv_word  == lrsc_uc_word);
 //  }}}
 
-    assign no_pend_trans = wbuf_empty_i &&
-                           mshr_empty_i &&
-                           rtab_empty_i &&
-                           ctrl_empty_i &&
+    assign no_pend_trans = ctrl_empty_i &&
                            flush_empty_i;
+
+    assign req_hit = |req_hit_way_q;
 
 //  Uncacheable request FSM
 //  {{{
@@ -535,10 +531,10 @@ import hpdcache_pkg::*;
                                 lrsc_uc_reset = 1'b1;
                             end
 
-                            if (req_uc_q || rd_error) begin
+                            if (req_uc_q || rd_error || !req_hit) begin
                                 uc_fsm_d = UC_CORE_RSP;
                             end else begin
-                                uc_fsm_d = UC_AMO_READ_DIR;
+                                uc_fsm_d = UC_AMO_WRITE_DATA;
                             end
                         end
                     end
@@ -549,10 +545,10 @@ import hpdcache_pkg::*;
                             is_atomic = mem_resp_write_i.mem_resp_w_is_atomic && !wr_error;
                             uc_sc_retcode_d = is_atomic ? AMO_SC_SUCCESS : AMO_SC_FAILURE;
 
-                            if (req_uc_q || !is_atomic) begin
+                            if (req_uc_q || !is_atomic || !req_hit) begin
                                 uc_fsm_d = UC_CORE_RSP;
                             end else begin
-                                uc_fsm_d = UC_AMO_READ_DIR;
+                                uc_fsm_d = UC_AMO_WRITE_DATA;
                             end
                         end
                     end
@@ -570,10 +566,12 @@ import hpdcache_pkg::*;
                             (mem_resp_read_valid_i && mem_resp_write_valid_q) ||
                             (mem_resp_read_valid_q && mem_resp_write_valid_i))
                         begin
-                            if (req_uc_q || rsp_error_q || rd_error || wr_error) begin
+                            if (req_uc_q || rsp_error_q || rd_error || wr_error ||
+                                !req_hit)
+                            begin
                                 uc_fsm_d = UC_CORE_RSP;
                             end else begin
-                                uc_fsm_d = UC_AMO_READ_DIR;
+                                uc_fsm_d = UC_AMO_WRITE_DATA;
                             end
                         end
                     end
@@ -590,13 +588,6 @@ import hpdcache_pkg::*;
                 end else begin
                     uc_fsm_d = UC_CORE_RSP;
                 end
-            end
-            //  }}}
-
-            //  Check for a cache hit on the AMO target address
-            //  {{{
-            UC_AMO_READ_DIR: begin
-                uc_fsm_d = UC_AMO_WRITE_DATA;
             end
             //  }}}
 
@@ -653,18 +644,13 @@ import hpdcache_pkg::*;
         .result_o            (amo_result)
     );
 
-    assign dir_amo_match_o = (uc_fsm_q == UC_AMO_READ_DIR);
-    assign dir_amo_match_set_o = req_addr_q[HPDcacheCfg.clOffsetWidth +: HPDcacheCfg.setWidth];
-    assign dir_amo_match_tag_o = req_addr_q[(HPDcacheCfg.clOffsetWidth + HPDcacheCfg.setWidth) +:
-                                            HPDcacheCfg.tagWidth];
-    assign dir_amo_updt_sel_victim_o = (uc_fsm_q == UC_AMO_WRITE_DATA);
-
     assign data_amo_write_o = (uc_fsm_q == UC_AMO_WRITE_DATA);
-    assign data_amo_write_enable_o = |dir_amo_hit_way_i;
+    assign data_amo_write_enable_o = req_hit;
     assign data_amo_write_set_o = req_addr_q[HPDcacheCfg.clOffsetWidth +: HPDcacheCfg.setWidth];
     assign data_amo_write_size_o = req_size_q;
     assign data_amo_write_word_o = req_addr_q[HPDcacheCfg.wordByteIdxWidth +:
                                               HPDcacheCfg.clWordIdxWidth];
+    assign data_amo_write_way_o = req_hit_way_q;
     assign data_amo_write_be_o = req_be_q;
 
     assign amo_write_data = prepare_amo_data_result(amo_result, req_size_q);
@@ -905,6 +891,7 @@ import hpdcache_pkg::*;
             req_size_q <= req_size_i;
             req_uc_q <= req_uc_i;
             req_need_rsp_q <= req_need_rsp_i;
+            req_hit_way_q <= req_hit_way_i;
         end
     end
 //  }}}
