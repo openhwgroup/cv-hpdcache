@@ -882,17 +882,29 @@ import hpdcache_pkg::*;
 //  Set cache request registers
 //  {{{
     always_ff @(posedge clk_i)
-    begin : req_ff
+    begin : req_data_ff
         if (req_valid_i && req_ready_o) begin
-            req_op_q        <= req_op_i;
-            req_addr_q      <= req_addr_i;
-            req_size_q      <= req_size_i;
-            req_data_q      <= req_data_i;
-            req_be_q        <= req_be_i;
-            req_uc_q        <= req_uc_i;
-            req_sid_q       <= req_sid_i;
-            req_tid_q       <= req_tid_i;
-            req_need_rsp_q  <= req_need_rsp_i;
+            req_data_q <= req_data_i;
+            req_be_q <= req_be_i;
+            req_sid_q <= req_sid_i;
+            req_tid_q <= req_tid_i;
+        end
+    end
+
+    always_ff @(posedge clk_i or negedge rst_ni)
+    begin : req_ctrl_ff
+        if (!rst_ni) begin
+            req_op_q <= '0;
+            req_addr_q <= '0;
+            req_size_q <= '0;
+            req_uc_q <= 1'b0;
+            req_need_rsp_q <= req_need_rsp_i;
+        end else if (req_valid_i && req_ready_o) begin
+            req_op_q <= req_op_i;
+            req_addr_q <= req_addr_i;
+            req_size_q <= req_size_i;
+            req_uc_q <= req_uc_i;
+            req_need_rsp_q <= req_need_rsp_i;
         end
     end
 //  }}}
