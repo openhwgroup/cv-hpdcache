@@ -101,33 +101,33 @@ VERILATOR_FLAGS     += -Wall -Wno-fatal \
                        --x-assign unique --x-initial unique
 
 ifneq ($(DISABLE_TRACE),1)
-$(info "make: Tracing support enabled")
+$(info make: Tracing support enabled)
 VERILATOR_FLAGS += --trace --trace-structs
 else
-$(info "make: Tracing support disabled")
+$(info make: Tracing support disabled)
 endif
 
 ifneq ($(DISABLE_ASSERT),1)
-$(info "make: Assertions support enabled")
+$(info make: Assertions support enabled)
 VERILATOR_FLAGS += --assert
 else
-$(info "make: Assertions support disabled")
+$(info make: Assertions support disabled)
 endif
 
 ifeq ($(PROF),1)
-$(info "make: Profiling support enabled")
+$(info make: Profiling support enabled)
 VERILATOR_FLAGS += --prof-cfuncs -CFLAGS "-g -pg"
 else
-$(info "make: Profiling support disabled")
+$(info make: Profiling support disabled)
 VERILATOR_FLAGS += -CFLAGS "-O3"
 endif
 
 ifeq ($(COV),1)
 $(shell mkdir -p $(COV_DIR))
-$(info "make: Coverage support enabled")
+$(info make: Coverage support enabled)
 VERILATOR_FLAGS += --coverage
 else
-$(info "make: Coverage support disabled")
+$(info make: Coverage support disabled)
 endif
 
 VERILATOR_FLAGS     += $(CONF_DEFINES)
