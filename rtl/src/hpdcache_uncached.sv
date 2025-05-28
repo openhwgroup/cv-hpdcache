@@ -308,10 +308,7 @@ import hpdcache_pkg::*;
                                                   (lrsc_rsrv_word  == lrsc_uc_word);
 //  }}}
 
-    assign no_pend_trans = wbuf_empty_i &&
-                           mshr_empty_i &&
-                           rtab_empty_i &&
-                           ctrl_empty_i &&
+    assign no_pend_trans = ctrl_empty_i &&
                            flush_empty_i;
 
 //  Uncacheable request FSM
