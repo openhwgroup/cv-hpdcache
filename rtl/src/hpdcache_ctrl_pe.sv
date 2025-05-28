@@ -103,6 +103,7 @@ import hpdcache_pkg::*;
     input  logic                   st1_mshr_hit_i,
     input  logic                   st1_mshr_full_i,
     input  logic                   st1_mshr_cbuf_full_i,
+    input  logic                   st1_no_pend_trans_i,
     //   }}}
 
     //   Pipeline stage 2
@@ -154,6 +155,7 @@ import hpdcache_pkg::*;
     output logic                   st1_rtab_dir_fetch_o,
     output logic                   st1_rtab_flush_hit_o,
     output logic                   st1_rtab_flush_not_ready_o,
+    output logic                   st1_rtab_pend_trans_o,
     //   }}}
 
     //   Cache directory
@@ -342,6 +344,7 @@ import hpdcache_pkg::*;
         st1_rtab_dir_fetch_o                = 1'b0;
         st1_rtab_flush_hit_o                = 1'b0;
         st1_rtab_flush_not_ready_o          = 1'b0;
+        st1_rtab_pend_trans_o               = 1'b0;
 
         evt_cache_write_miss_o              = 1'b0;
         evt_cache_read_miss_o               = 1'b0;
@@ -463,11 +466,24 @@ import hpdcache_pkg::*;
                 //  Uncacheable load, store or AMO request
                 //  {{{
                 else if (st1_req_is_uncacheable_i) begin
-                    uc_req_valid_o = 1'b1;
-                    st1_nop        = 1'b1;
+                    //  There are pending transactions which must be completed
+                    if (!st1_no_pend_trans_i) begin
+                        st1_rtab_alloc = 1'b1;
+                        st1_rtab_pend_trans_o = 1'b1;
+                        st1_nop = 1'b1;
+                    end
 
-                    //  Performance event
-                    evt_uncached_req_o = 1'b1;
+                    else begin
+                        uc_req_valid_o = 1'b1;
+                        st1_nop        = 1'b1;
+
+                        //  If the request comes from the replay table, free the
+                        //  corresponding RTAB entry
+                        st1_rtab_commit_o = st1_req_rtab_i;
+
+                        //  Performance event
+                        evt_uncached_req_o = 1'b1;
+                    end
                 end
                 //  }}}
 
@@ -477,19 +493,14 @@ import hpdcache_pkg::*;
                     //  AMO cacheable request
                     //  {{{
                     if (st1_req_is_amo_i) begin
-                        //  Flush required but the controller is not ready
-                        if (cachedir_hit_i && st1_dir_hit_dirty_i && !st1_flush_alloc_ready_i)
-                        begin
-                            st1_rtab_alloc = 1'b1;
-                            st1_rtab_flush_not_ready_o = 1'b1;
-                            st1_nop = 1'b1;
-                        end
 
-                        //  Pending miss on the same line
-                        else if (st1_mshr_hit_i) begin
-                            //  Put the request in the replay table
+                        //  There are pending transactions which must be completed
+                        //  We are implicitly checking that the flush controller is ready
+                        //  and that there is no MSHR hit, as we are expecting them to be
+                        //  empty.
+                        if (!st1_no_pend_trans_i) begin
                             st1_rtab_alloc = 1'b1;
-                            st1_rtab_mshr_hit_o = 1'b1;
+                            st1_rtab_pend_trans_o = 1'b1;
                             st1_nop = 1'b1;
                         end
 
@@ -520,6 +531,9 @@ import hpdcache_pkg::*;
                                 //  If the cacheline has been pre-allocated for a pending miss, keep
                                 //  the fetch bit set
                                 st2_dir_updt_fetch_o = st1_dir_hit_fetch_i;
+
+                                //  Update victim selection for the accessed set
+                                st1_req_cachedir_updt_sel_victim_o = 1'b1;
                             end
 
                             //  Performance event

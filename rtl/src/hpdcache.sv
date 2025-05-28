@@ -257,17 +257,14 @@ import hpdcache_pkg::*;
     hpdcache_req_sid_t     uc_req_sid;
     hpdcache_req_tid_t     uc_req_tid;
     logic                  uc_req_need_rsp;
+    hpdcache_way_vector_t  uc_req_dir_hit_way;
     logic                  uc_wbuf_flush_all;
-    logic                  uc_dir_amo_match;
-    hpdcache_set_t         uc_dir_amo_match_set;
-    hpdcache_tag_t         uc_dir_amo_match_tag;
-    logic                  uc_dir_amo_updt_sel_victim;
-    hpdcache_way_vector_t  uc_dir_amo_hit_way;
     logic                  uc_data_amo_write;
     logic                  uc_data_amo_write_enable;
     hpdcache_set_t         uc_data_amo_write_set;
     hpdcache_req_size_t    uc_data_amo_write_size;
     hpdcache_word_t        uc_data_amo_write_word;
+    hpdcache_way_vector_t  uc_data_amo_write_way;
     hpdcache_req_data_t    uc_data_amo_write_data;
     hpdcache_req_be_t      uc_data_amo_write_be;
     logic                  uc_lrsc_snoop;
@@ -591,17 +588,14 @@ import hpdcache_pkg::*;
         .uc_req_sid_o                       (uc_req_sid),
         .uc_req_tid_o                       (uc_req_tid),
         .uc_req_need_rsp_o                  (uc_req_need_rsp),
+        .uc_req_dir_hit_way_o                   (uc_req_dir_hit_way),
         .uc_wbuf_flush_all_i                (uc_wbuf_flush_all),
-        .uc_dir_amo_match_i                 (uc_dir_amo_match),
-        .uc_dir_amo_match_set_i             (uc_dir_amo_match_set),
-        .uc_dir_amo_match_tag_i             (uc_dir_amo_match_tag),
-        .uc_dir_amo_updt_sel_victim_i       (uc_dir_amo_updt_sel_victim),
-        .uc_dir_amo_hit_way_o               (uc_dir_amo_hit_way),
         .uc_data_amo_write_i                (uc_data_amo_write),
         .uc_data_amo_write_enable_i         (uc_data_amo_write_enable),
         .uc_data_amo_write_set_i            (uc_data_amo_write_set),
         .uc_data_amo_write_size_i           (uc_data_amo_write_size),
         .uc_data_amo_write_word_i           (uc_data_amo_write_word),
+        .uc_data_amo_write_way_i            (uc_data_amo_write_way),
         .uc_data_amo_write_data_i           (uc_data_amo_write_data),
         .uc_data_amo_write_be_i             (uc_data_amo_write_be),
         .uc_core_rsp_ready_o                (uc_core_rsp_ready),
@@ -650,6 +644,9 @@ import hpdcache_pkg::*;
         .cmo_core_rsp_ready_o               (cmo_core_rsp_ready),
         .cmo_core_rsp_valid_i               (cmo_core_rsp_valid),
         .cmo_core_rsp_i                     (cmo_core_rsp),
+
+        .mshr_empty_i                       (miss_mshr_empty),
+        .flush_empty_i                      (flush_empty),
 
         .rtab_empty_o                       (rtab_empty),
         .ctrl_empty_o                       (ctrl_empty),
@@ -879,20 +876,16 @@ import hpdcache_pkg::*;
         .req_sid_i                     (uc_req_sid),
         .req_tid_i                     (uc_req_tid),
         .req_need_rsp_i                (uc_req_need_rsp),
+        .req_hit_way_i                 (uc_req_dir_hit_way),
 
         .wbuf_flush_all_o              (uc_wbuf_flush_all),
-
-        .dir_amo_match_o               (uc_dir_amo_match),
-        .dir_amo_match_set_o           (uc_dir_amo_match_set),
-        .dir_amo_match_tag_o           (uc_dir_amo_match_tag),
-        .dir_amo_updt_sel_victim_o     (uc_dir_amo_updt_sel_victim),
-        .dir_amo_hit_way_i             (uc_dir_amo_hit_way),
 
         .data_amo_write_o              (uc_data_amo_write),
         .data_amo_write_enable_o       (uc_data_amo_write_enable),
         .data_amo_write_set_o          (uc_data_amo_write_set),
         .data_amo_write_size_o         (uc_data_amo_write_size),
         .data_amo_write_word_o         (uc_data_amo_write_word),
+        .data_amo_write_way_o          (uc_data_amo_write_way),
         .data_amo_write_data_o         (uc_data_amo_write_data),
         .data_amo_write_be_o           (uc_data_amo_write_be),
 

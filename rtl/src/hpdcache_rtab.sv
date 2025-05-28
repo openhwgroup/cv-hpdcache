@@ -37,6 +37,7 @@ import hpdcache_pkg::*;
     parameter type hpdcache_req_addr_t = logic,
 
     parameter type rtab_ptr_t = logic,
+    parameter type rtab_cnt_t = logic,
     parameter type rtab_entry_t = logic
 )
 //  }}}
@@ -52,6 +53,7 @@ import hpdcache_pkg::*;
     output logic                  empty_o,  // RTAB is empty
     output logic                  full_o,   // RTAB is full
     output logic                  fence_o,  // There is a pending instruction with fence in the RTAB
+    output rtab_cnt_t             usage_o,  // Usage counter
 
     //  Check RTAB signals
     //     This interface allows to check if there is an address-overlapping
@@ -108,7 +110,10 @@ import hpdcache_pkg::*;
     input  logic                  flush_ready_i,      // Flush controller is available
 
     //  Configuration parameters
-    input  logic                  cfg_single_entry_i // Enable only one entry of the table
+    input  logic                  cfg_single_entry_i, // Enable only one entry of the table
+
+    //  Global control signals
+    input  logic                  no_pend_trans_i
 );
 //  }}}
 
@@ -198,6 +203,7 @@ import hpdcache_pkg::*;
     hpdcache_req_addr_t [N-1:0]  addr;
     logic               [N-1:0]  is_read_bv;
     logic               [N-1:0]  is_amo_bv;
+    logic               [N-1:0]  is_uc_bv;
     logic               [N-1:0]  fence_bv;
     logic               [N-1:0]  check_hit;
     logic               [N-1:0]  match_check_nline;
@@ -241,6 +247,14 @@ import hpdcache_pkg::*;
     assign empty_o = &(~valid_q);
     assign  full_o = &( valid_q) | (|valid_q & cfg_single_entry_i);
     assign fence_o = |fence_bv;
+
+    //  usage
+    hpdcache_popcount #(
+        .N (N)
+    ) popcount (
+        .val_i (valid_q),
+        .val_o (usage_o)
+    );
 //  }}}
 
 //  Check interface
@@ -252,9 +266,10 @@ import hpdcache_pkg::*;
         assign is_read_bv[gen_i] = is_load(req_q[gen_i].req.op) |
                                    is_cmo_prefetch(req_q[gen_i].req.op);
         assign is_amo_bv[gen_i] = is_amo(req_q[gen_i].req.op);
+        assign is_uc_bv[gen_i] = req_q[gen_i].req.pma.uncacheable;
     end
 
-    assign fence_bv         = valid_q & is_amo_bv;
+    assign fence_bv         = valid_q & (is_amo_bv | is_uc_bv);
     assign check_hit        = valid_q & match_check_nline;
     assign check_hit_o      = |check_hit;
     assign match_check_tail = check_hit & tail_q;
@@ -409,6 +424,11 @@ import hpdcache_pkg::*;
             deps_rst[i].flush_hit = flush_ack_i & match_flush_nline[i];
             deps_rst[i].flush_not_ready = flush_ready_i;
             //  }}}
+
+            //  Update pending transaction dependency
+            //  {{{
+            deps_rst[i].pend_trans = no_pend_trans_i;
+            // }}}
         end
     end
 //  }}}
