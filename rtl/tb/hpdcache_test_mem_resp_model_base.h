@@ -140,9 +140,8 @@ protected:
 public:
 
     hpdcache_test_mem_resp_model_base(const std::string &nm) :
-            read_resp_fifo(HPDCACHE_MSHR_SETS*HPDCACHE_MSHR_WAYS),
-            write_resp_fifo(HPDCACHE_WBUF_DIR_ENTRIES)
-
+            read_resp_fifo(2),
+            write_resp_fifo(2)
     {
         std::string mem_model_name;
         mem_model_name = mem_model_name + "_" + nm;
