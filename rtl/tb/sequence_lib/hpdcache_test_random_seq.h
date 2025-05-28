@@ -57,14 +57,8 @@ public:
         seg[2].set_base           (0x80008000ULL);
         seg[2].set_length         (0x00004000ULL);
         seg[2].set_uncached       (false);
-        seg[2].set_wr_policy_hint (hpdcache_test_memory_segment::WR_POLICY_WT);
-
-        /*FIXME this is a workaround because currently the WB policy does not support AMOs*/
-#if CONF_HPDCACHE_WT_ENABLE
         seg[2].set_amo_supported  (true);
-#else
-        seg[2].set_amo_supported  (false);
-#endif
+        seg[2].set_wr_policy_hint (hpdcache_test_memory_segment::WR_POLICY_WT);
 
         seg[3].set_base           (0xC000C000ULL);
         seg[3].set_length         (0x00004000ULL);
