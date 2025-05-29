@@ -495,31 +495,14 @@ import hpdcache_pkg::*;
                     if (st1_req_is_amo_i) begin
 
                         //  There are pending transactions which must be completed
+                        //  We are implicitly checking that the flush controller is ready
+                        //  and that there is no MSHR hit, as we are expecting them to be
+                        //  empty.
                         if (!st1_no_pend_trans_i) begin
                             st1_rtab_alloc = 1'b1;
                             st1_rtab_pend_trans_o = 1'b1;
                             st1_nop = 1'b1;
                         end
-
-                        /* The previous check is a catch all
-
-                        //  Flush required but the controller is not ready
-                        else if (cachedir_hit_i && st1_dir_hit_dirty_i && !st1_flush_alloc_ready_i)
-                        begin
-                            st1_rtab_alloc = 1'b1;
-                            st1_rtab_flush_not_ready_o = 1'b1;
-                            st1_nop = 1'b1;
-                        end
-
-                        //  Pending miss on the same line
-                        else if (st1_mshr_hit_i) begin
-                            //  Put the request in the replay table
-                            st1_rtab_alloc = 1'b1;
-                            st1_rtab_mshr_hit_o = 1'b1;
-                            st1_nop = 1'b1;
-                        end
-
-                        */
 
                         //  Process the AMO request
                         else begin
