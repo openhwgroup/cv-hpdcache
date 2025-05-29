@@ -651,6 +651,9 @@ import hpdcache_pkg::*;
         .cmo_core_rsp_valid_i               (cmo_core_rsp_valid),
         .cmo_core_rsp_i                     (cmo_core_rsp),
 
+        .mshr_empty_i                       (miss_mshr_empty),
+        .flush_empty_i                      (flush_empty),
+
         .rtab_empty_o                       (rtab_empty),
         .ctrl_empty_o                       (ctrl_empty),
 
