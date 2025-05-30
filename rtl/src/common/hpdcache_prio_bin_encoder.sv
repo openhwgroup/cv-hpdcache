@@ -20,7 +20,7 @@ module hpdcache_prio_bin_encoder
     //  Parameters
 #(
     parameter  int unsigned N = 0,
-    localparam int unsigned N_LOG2 = $clog2(N)
+    localparam int unsigned N_LOG2 = N > 1 ? $clog2(N) : 1
 )
     //  Ports
 (
