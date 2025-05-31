@@ -1211,7 +1211,7 @@ import hpdcache_pkg::*;
         if (!rst_ni) begin
             cmo_valid_set_en_q <= 1'b0;
             cmo_valid_min_set_q <= 0;
-            cmo_valid_min_set_q <= 0;
+            cmo_valid_max_set_q <= 0;
         end else begin
             cmo_valid_set_en_q <= cmo_valid_set_en_d;
             cmo_valid_min_set_q <= cmo_valid_min_set_d;
