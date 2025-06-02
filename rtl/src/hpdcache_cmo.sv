@@ -137,7 +137,7 @@ import hpdcache_pkg::*;
 //  Definition of constants and types
 //  {{{
     typedef enum {
-        CMOH_IDLE,
+        CMOH_IDLE = 0,
         CMOH_FENCE_WAIT_WBUF_RTAB_EMPTY,
         CMOH_WAIT_MSHR_RTAB_EMPTY,
         CMOH_INVAL_CHECK_NLINE,
@@ -268,8 +268,6 @@ import hpdcache_pkg::*;
         core_rsp_send_d = core_rsp_send_q;
 
         req_ready_o = 1'b0;
-
-        cmoh_fsm_d = cmoh_fsm_q;
 
         unique case (cmoh_fsm_q)
             CMOH_IDLE: begin
