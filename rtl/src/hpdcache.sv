@@ -588,7 +588,7 @@ import hpdcache_pkg::*;
         .uc_req_sid_o                       (uc_req_sid),
         .uc_req_tid_o                       (uc_req_tid),
         .uc_req_need_rsp_o                  (uc_req_need_rsp),
-        .uc_req_dir_hit_way_o                   (uc_req_dir_hit_way),
+        .uc_req_dir_hit_way_o               (uc_req_dir_hit_way),
         .uc_wbuf_flush_all_i                (uc_wbuf_flush_all),
         .uc_data_amo_write_i                (uc_data_amo_write),
         .uc_data_amo_write_enable_i         (uc_data_amo_write_enable),
