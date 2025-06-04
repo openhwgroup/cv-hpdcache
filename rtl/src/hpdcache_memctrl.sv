@@ -84,12 +84,6 @@ import hpdcache_pkg::*;
     input  logic                                dir_updt_dirty_i,
     input  logic                                dir_updt_fetch_i,
 
-    input  logic                                dir_amo_match_i,
-    input  hpdcache_set_t                       dir_amo_match_set_i,
-    input  hpdcache_tag_t                       dir_amo_match_tag_i,
-    input  logic                                dir_amo_updt_sel_victim_i,
-    output hpdcache_way_vector_t                dir_amo_hit_way_o,
-
     input  logic                                dir_refill_i,
     input  hpdcache_set_t                       dir_refill_set_i,
     input  hpdcache_way_vector_t                dir_refill_way_i,
@@ -157,6 +151,7 @@ import hpdcache_pkg::*;
     input  hpdcache_set_t                       data_amo_write_set_i,
     input  hpdcache_req_size_t                  data_amo_write_size_i,
     input  hpdcache_word_t                      data_amo_write_word_i,
+    input  hpdcache_way_vector_t                data_amo_write_way_i,
     input  hpdcache_req_data_t                  data_amo_write_data_i,
     input  hpdcache_req_be_t                    data_amo_write_be_i,
 
@@ -465,14 +460,6 @@ import hpdcache_pkg::*;
                 dir_wentry  = '0;
             end
 
-            //  Cache directory AMO match tag -> hit
-            dir_amo_match_i: begin
-                dir_addr    = dir_amo_match_set_i;
-                dir_cs      = '1;
-                dir_we      = '0;
-                dir_wentry  = '0;
-            end
-
             //  Cache directory update
             dir_refill_i: begin
                 dir_addr    = dir_refill_set_i;
@@ -563,7 +550,6 @@ import hpdcache_pkg::*;
     //  {{{
     hpdcache_tag_t [HPDcacheCfg.u.ways-1:0] dir_tags;
     hpdcache_way_vector_t req_hit;
-    hpdcache_way_vector_t amo_hit;
     hpdcache_way_vector_t cmo_hit;
     hpdcache_way_vector_t inval_hit;
 
@@ -572,12 +558,10 @@ import hpdcache_pkg::*;
         assign dir_tags[gen_i] = dir_rentry[gen_i].tag;
 
         assign req_hit[gen_i]   = (dir_tags[gen_i] == dir_match_tag_i);
-        assign amo_hit[gen_i]   = (dir_tags[gen_i] == dir_amo_match_tag_i);
         assign cmo_hit[gen_i]   = (dir_tags[gen_i] == dir_cmo_check_nline_tag_i);
         assign inval_hit[gen_i] = (dir_tags[gen_i] == dir_inval_tag);
 
         assign dir_hit_way_o[gen_i]                 = dir_valid[gen_i] & req_hit[gen_i];
-        assign dir_amo_hit_way_o[gen_i]             = dir_valid[gen_i] & amo_hit[gen_i];
         assign dir_cmo_check_nline_hit_way_o[gen_i] = dir_valid[gen_i] & cmo_hit[gen_i];
         assign dir_inval_hit_way[gen_i]             = dir_valid[gen_i] & inval_hit[gen_i];
     end
@@ -634,12 +618,10 @@ import hpdcache_pkg::*;
     hpdcache_set_t        updt_sel_victim_set;
 
     assign updt_sel_victim = dir_updt_sel_victim_i |
-                             dir_refill_updt_sel_victim_i |
-                             dir_amo_updt_sel_victim_i;
+                             dir_refill_updt_sel_victim_i;
 
     assign updt_sel_victim_way = dir_updt_sel_victim_i        ? dir_hit_way_o :
-                                 dir_refill_updt_sel_victim_i ? dir_refill_way_i :
-                                 dir_amo_hit_way_o;
+                                 dir_refill_way_i;
 
     assign updt_sel_victim_set = dir_refill_updt_sel_victim_i ? dir_refill_set_i :
                                  dir_req_set_q;
@@ -766,7 +748,7 @@ import hpdcache_pkg::*;
     //  Multiplex between read and write access on the data RAM
     assign data_way = data_refill_i     ? data_refill_way_i :
                       data_flush_read_i ? data_flush_read_way_i :
-                      data_amo_write_i  ? dir_amo_hit_way_o :
+                      data_amo_write_i ?  data_amo_write_way_i :
                       data_req_read_i   ? data_req_read_way_i :
                                           data_req_write_way_i;
 
@@ -900,7 +882,7 @@ import hpdcache_pkg::*;
     //  next cycle (hit logic)
     always_ff @(posedge clk_i)
     begin : req_read_ff
-        if (dir_match_i || dir_amo_match_i || dir_cmo_check_nline_i || dir_inval_check_i) begin
+        if (dir_match_i || dir_cmo_check_nline_i || dir_inval_check_i) begin
             dir_req_set_q <= dir_addr;
         end
         if (dir_cmo_check_entry_i) begin
@@ -979,7 +961,6 @@ import hpdcache_pkg::*;
 
     concurrent_dir_access_assert: assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
             $onehot0({dir_match_i,
-                      dir_amo_match_i,
                       dir_refill_i,
                       dir_inval_check_i,
                       dir_inval_write_i,
