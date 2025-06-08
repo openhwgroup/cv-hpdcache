@@ -859,12 +859,6 @@ import hpdcache_pkg::*;
         .clk_i,
         .rst_ni,
 
-        .wbuf_empty_i                  (wbuf_empty_o),
-        .mshr_empty_i                  (miss_mshr_empty),
-        .rtab_empty_i                  (rtab_empty),
-        .ctrl_empty_i                  (ctrl_empty),
-        .flush_empty_i                 (flush_empty),
-
         .req_valid_i                   (uc_req_valid),
         .req_ready_o                   (uc_ready),
         .req_op_i                      (uc_req_op),

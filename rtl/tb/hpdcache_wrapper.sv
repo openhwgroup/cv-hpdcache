@@ -369,11 +369,20 @@ import hpdcache_pkg::*;
 
     //  Assertions/Coverage
     //  {{{
-    //  pragma translate_off
+`ifndef HPDCACHE_ASSERT_OFF
     wbuf_not_ready_cover: cover property (
-        @(posedge clk_i) i_hpdcache.hpdcache_ctrl_i.wbuf_write_o &
-                        ~i_hpdcache.hpdcache_ctrl_i.wbuf_write_ready_i);
-    //  pragma translate_on
+        @(posedge clk_i) disable iff (rst_ni !== 1'b1)
+                i_hpdcache.hpdcache_ctrl_i.wbuf_write_o &
+                ~i_hpdcache.hpdcache_ctrl_i.wbuf_write_ready_i);
+    uncacheable_rtab_pend_trans_cover: cover property (
+        @(posedge clk_i) disable iff (rst_ni !== 1'b1)
+                i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.st1_rtab_pend_trans_o &
+                i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.st1_req_is_uncacheable_i);
+    amo_rtab_pend_trans_cover: cover property (
+        @(posedge clk_i) disable iff (rst_ni !== 1'b1)
+                i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.st1_rtab_pend_trans_o &
+                i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.st1_req_is_amo_i);
+`endif
     //  }}}
 
 endmodule

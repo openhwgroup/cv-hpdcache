@@ -53,7 +53,6 @@ import hpdcache_pkg::*;
     output logic                  empty_o,  // RTAB is empty
     output logic                  full_o,   // RTAB is full
     output logic                  fence_o,  // There is a pending instruction with fence in the RTAB
-    output rtab_cnt_t             usage_o,  // Usage counter
 
     //  Check RTAB signals
     //     This interface allows to check if there is an address-overlapping
@@ -214,6 +213,7 @@ import hpdcache_pkg::*;
     logic               [N-1:0]  match_refill_way;
     logic               [N-1:0]  match_flush_nline;
 
+    logic                        fence_only;
     logic               [N-1:0]  free;
     logic               [N-1:0]  free_alloc;
     logic                        alloc;
@@ -247,14 +247,6 @@ import hpdcache_pkg::*;
     assign empty_o = &(~valid_q);
     assign  full_o = &( valid_q) | (|valid_q & cfg_single_entry_i);
     assign fence_o = |fence_bv;
-
-    //  usage
-    hpdcache_popcount #(
-        .N (N)
-    ) popcount (
-        .val_i (valid_q),
-        .val_o (usage_o)
-    );
 //  }}}
 
 //  Check interface
@@ -270,6 +262,7 @@ import hpdcache_pkg::*;
     end
 
     assign fence_bv         = valid_q & (is_amo_bv | is_uc_bv);
+    assign fence_only       = (fence_bv == valid_q);
     assign check_hit        = valid_q & match_check_nline;
     assign check_hit_o      = |check_hit;
     assign match_check_tail = check_hit & tail_q;
@@ -427,7 +420,7 @@ import hpdcache_pkg::*;
 
             //  Update pending transaction dependency
             //  {{{
-            deps_rst[i].pend_trans = no_pend_trans_i;
+            deps_rst[i].pend_trans = no_pend_trans_i & fence_only;
             // }}}
         end
     end
@@ -705,6 +698,10 @@ import hpdcache_pkg::*;
     assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
             alloc_and_link_i |-> ~cfg_single_entry_i) else
                     $error("rtab: trying to link a request in single entry mode");
+
+    assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
+            $onehot0(fence_bv)) else
+                    $error("rtab: more than one pending operation with fence semantics");
 `endif
 //  }}}
 endmodule

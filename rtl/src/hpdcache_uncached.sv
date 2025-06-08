@@ -61,15 +61,6 @@ import hpdcache_pkg::*;
     input  logic                  clk_i,
     input  logic                  rst_ni,
 
-    //  Global control signals
-    //  {{{
-    input  logic                  wbuf_empty_i,
-    input  logic                  mshr_empty_i,
-    input  logic                  rtab_empty_i,
-    input  logic                  ctrl_empty_i,
-    input  logic                  flush_empty_i,
-    //  }}}
-
     //  Cache-side request interface
     //  {{{
     input  logic                  req_valid_i,
@@ -160,7 +151,6 @@ import hpdcache_pkg::*;
 
     typedef enum {
         UC_IDLE,
-        UC_WAIT_PENDING,
         UC_MEM_REQ,
         UC_MEM_W_REQ,
         UC_MEM_WDATA_REQ,
@@ -240,7 +230,6 @@ import hpdcache_pkg::*;
     logic                 req_need_rsp_q;
     hpdcache_way_vector_t req_hit_way_q;
     logic                 req_hit;
-    logic                 no_pend_trans;
 
     logic                 uc_sc_retcode_q, uc_sc_retcode_d;
 
@@ -305,9 +294,6 @@ import hpdcache_pkg::*;
                                                   (lrsc_rsrv_word  == lrsc_uc_word);
 //  }}}
 
-    assign no_pend_trans = ctrl_empty_i &&
-                           flush_empty_i;
-
     assign req_hit = |req_hit_way_q;
 
 //  Uncacheable request FSM
@@ -337,11 +323,7 @@ import hpdcache_pkg::*;
                     unique case (1'b1)
                         req_op_i.is_ld,
                         req_op_i.is_st: begin
-                            if (no_pend_trans) begin
-                                uc_fsm_d = UC_MEM_REQ;
-                            end else begin
-                                uc_fsm_d = UC_WAIT_PENDING;
-                            end
+                            uc_fsm_d = UC_MEM_REQ;
                         end
 
                         req_op_i.is_amo_swap,
@@ -361,11 +343,7 @@ import hpdcache_pkg::*;
                                 rsp_error_set = 1'b1;
                                 uc_fsm_d = UC_CORE_RSP;
                             end else begin
-                                if (no_pend_trans) begin
-                                    uc_fsm_d = UC_MEM_REQ;
-                                end else begin
-                                    uc_fsm_d = UC_WAIT_PENDING;
-                                end
+                                uc_fsm_d = UC_MEM_REQ;
                             end
                         end
 
@@ -379,11 +357,7 @@ import hpdcache_pkg::*;
 
                                 //  SC with valid reservation
                                 if (lrsc_uc_hit) begin
-                                    if (no_pend_trans) begin
-                                        uc_fsm_d = UC_MEM_REQ;
-                                    end else begin
-                                        uc_fsm_d = UC_WAIT_PENDING;
-                                    end
+                                    uc_fsm_d = UC_MEM_REQ;
                                 end
                                 //  SC with no valid reservation, thus respond with the failure code
                                 else begin
@@ -400,17 +374,6 @@ import hpdcache_pkg::*;
                             end
                         end
                     endcase
-                end
-            end
-            //  }}}
-
-            //  Wait for all pending transactions to be completed
-            //  {{{
-            UC_WAIT_PENDING: begin
-                if (no_pend_trans) begin
-                    uc_fsm_d = UC_MEM_REQ;
-                end else begin
-                    uc_fsm_d = UC_WAIT_PENDING;
                 end
             end
             //  }}}
