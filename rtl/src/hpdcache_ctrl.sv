@@ -407,9 +407,10 @@ import hpdcache_pkg::*;
 
     logic                    rtab_full;
     logic                    rtab_fence;
-    rtab_cnt_t               rtab_usage;
-
     logic                    rtab_no_pend_trans;
+
+    logic                    st1_empty;
+    logic                    st2_empty;
 
     logic                    hpdcache_init_ready;
 
@@ -695,19 +696,20 @@ import hpdcache_pkg::*;
     );
 
     // No pending transaction across different handlers
-    assign st1_no_pend_trans = ~(st2_mshr_alloc_q | st2_dir_updt_q)
-                               & (rtab_empty_o | (rtab_usage == rtab_cnt_t'(1) & st1_req_rtab_q))
+    assign st1_no_pend_trans = st2_empty
+                               & rtab_empty_o
                                & wbuf_empty_i
                                & mshr_empty_i
                                & flush_empty_i;
-    assign rtab_no_pend_trans =  ctrl_empty_o
-                               & (rtab_empty_o | (rtab_usage == rtab_cnt_t'(1)))
+    assign rtab_no_pend_trans = ctrl_empty_o
                                & wbuf_empty_i
                                & mshr_empty_i
                                & flush_empty_i;
 
     //  pipeline is empty
-    assign ctrl_empty_o = ~(st1_req_valid_q | st2_mshr_alloc_q | st2_dir_updt_q);
+    assign st1_empty = ~st1_req_valid_q;
+    assign st2_empty = ~(st2_mshr_alloc_q | st2_dir_updt_q | st2_flush_alloc_q);
+    assign ctrl_empty_o = st1_empty & st2_empty;
 
     //  no available victim cacheline (all pre-allocated for replacement)
     assign st1_dir_victim_unavailable = ~(|st1_dir_victim_way);
@@ -752,7 +754,6 @@ import hpdcache_pkg::*;
         .empty_o                            (rtab_empty_o),
         .full_o                             (rtab_full),
         .fence_o                            (rtab_fence),
-        .usage_o                            (rtab_usage),
 
         .check_i                            (st1_rtab_check),
         .check_nline_i                      (st1_req_nline),

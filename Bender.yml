@@ -22,7 +22,6 @@ sources:
   - rtl/src/common/hpdcache_1hot_to_binary.sv
   - rtl/src/common/hpdcache_prio_1hot_encoder.sv
   - rtl/src/common/hpdcache_prio_bin_encoder.sv
-  - rtl/src/common/hpdcache_popcount.sv
   - rtl/src/common/hpdcache_sram.sv
   - rtl/src/common/hpdcache_sram_wbyteenable.sv
   - rtl/src/common/hpdcache_sram_wmask.sv
