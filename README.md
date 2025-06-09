@@ -21,6 +21,10 @@ The HPDcache is an open-source High-Performance, Multi-requester, Out-of-Order L
     <td>Contains the SystemVerilog RTL sources of the HPDcache</td>
   </tr>
   <tr>
+    <td>rtl/syn</td>
+    <td>Contains a synthesis flow based on Yosys</td>
+  </tr>
+  <tr>
     <td>rtl/lint</td>
     <td>Contains a linter wrapper and a Makefile to run a lint tool on the RTL</td>
   </tr>
