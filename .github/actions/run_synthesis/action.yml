@@ -8,29 +8,10 @@
 #  Description  GitHub Action to run a synthesis using Yosys
 ##
 name: 'Run synthesis sequence'
-  #inputs:
-  #  seqname:
-  #    description: 'Name of the test sequence'
-  #    required: true
-  #    default: 'random'
-  #
-  #  ntrans:
-  #    description: 'Number of transactions in the sequence'
-  #    required: true
-  #    default: '5000'
-  #
-  #  ntests:
-  #    description: 'Number of separate tests'
-  #    required: true
-  #    default: '32'
-  #
-  #  config:
-  #    description: 'File with DUT parameters'
-  #    required: true
-  #    default: 'configs/default_config.mk'
 
 runs:
   using: "composite"
+
   steps:
     #  Install Dependencies
     - name: Install Dependencies
@@ -55,8 +36,7 @@ runs:
         cd rtl/syn
         make syn
 
-    - name: Upload area report
-      uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v4
       with:
-        name: area-report
+        name: area.rpt
         path: rtl/syn/report/area.rpt

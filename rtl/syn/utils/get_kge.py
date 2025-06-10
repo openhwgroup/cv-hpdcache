@@ -58,7 +58,7 @@ def get_kge(report_path, weighted_dict):
             except (IndexError, ValueError):
                 raise RuntimeError('{}:{} Cell {} matched but was misformatted'
                                    .format(report_path, line_idx + 1, data[0]))
-    print("Area in kGE (without SRAM) = ", round(ge/1000, 2))
+    print(round(ge/1000, 2))
 
 
 def main():

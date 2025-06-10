@@ -1,0 +1,79 @@
+##
+#  Copyright 2025 Inria
+#  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
+##
+##
+#  Author        Cesar Fuguet
+#  Date          June, 2025
+#  Description   GitHub Action to comment a PR
+##
+name: HPDcache PR Comment CI
+on:
+  pull_request_target:
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - 'CODEOWNERS'
+      - 'LICENSE'
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      #  Install Dependencies
+      - name: Install Dependencies
+        shell: bash
+        run: |
+          ./.github/scripts/install_deps_ubuntu.sh
+
+  #  Report the area in PRs
+  report_area:
+    name: Report area
+    runs-on: ubuntu-latest
+    permissions:
+      pull-request: write
+      issues: write
+    needs: build
+    steps:
+      - uses: actions/checkout@master
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: area.rpt
+
+      #  Get area
+      - name: Get area
+        id: get_area
+        shell: bash
+        run: |
+          area=$(awk -F ':' '/Chip area/{gsub(" ","", $2) ; print $2}' area.rpt)
+          echo "area=${area}" >> $GITHUB_OUTPUT
+
+      #  Get Kiligate Equivalent area
+      - name: Get area KGE
+        id: get_area_kge
+        shell: bash
+        run: |
+          YOSYS_CELLS_LIB=third-party/ORFS/flow/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib
+          area_kge=$(python3 utils/get_kge.py ${YOSYS_CELLS_LIB} area.rpt)
+          echo "area_kge=${area_kge}" >> $GITHUB_OUTPUT
+
+      #  Comment the pull request with the area
+      - name: Comment PR
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const area = ${{ steps.get_area.outputs.area }}
+            const area_kge = ${{ steps.get_area_kge.outputs.area_kge }}
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `area=${area} / area (KGE without SRAM)=${area_kge}`
+            })

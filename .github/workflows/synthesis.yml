@@ -55,6 +55,9 @@ jobs:
   run_synthesis:
     runs-on: ubuntu-latest
     name: run_synthesis
+    permissions:
+      pull-requests: write
+      issues: write
     needs: build
     steps:
       - uses: actions/checkout@master

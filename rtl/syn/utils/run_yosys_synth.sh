@@ -47,11 +47,4 @@ if [[ "x${errors}" != "x" ]] ; then
     exit 1
 fi
 
-if [[ -e ${YOSYS_REPORT_OUTDIR}/area.rpt ]] ; then
-    python3 utils/get_kge.py ${YOSYS_CELLS_LIB} ${YOSYS_REPORT_OUTDIR}/area.rpt
-else
-    echo "ERROR: area report not found"
-    exit 1
-fi
-
 exit 0
