@@ -54,3 +54,9 @@ runs:
         . .github/scripts/env_syn.sh
         cd rtl/syn
         make syn
+
+    - name: Upload area report
+      uses: actions/upload-artifact@v4
+      with:
+        name: area-report
+        path: rtl/syn/report/area.rpt
