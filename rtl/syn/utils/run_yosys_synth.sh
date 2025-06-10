@@ -19,6 +19,7 @@ export YOSYS_LOG_OUTDIR=log
 export YOSYS_TOP_MODULE=hpdcache_wrapper
 export YOSYS_RTL_FILELIST=${YOSYS_TOP_MODULE}.Flist
 export YOSYS_BLACKBOX_MODULES="n:*fakeram45_64x64*"
+export YOSYS_KEEP_MODULES=
 export YOSYS_CELLS_LIB_PATH=third-party/ORFS/flow/platforms/nangate45/lib
 export YOSYS_CELLS_LIB=${YOSYS_CELLS_LIB_PATH}/NangateOpenCellLibrary_typical.lib
 export YOSYS_MACROS_LIB=${YOSYS_CELLS_LIB_PATH}/fakeram45_64x64.lib

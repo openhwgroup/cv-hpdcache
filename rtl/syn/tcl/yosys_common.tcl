@@ -13,6 +13,7 @@ set param_report_dir $::env(YOSYS_REPORT_OUTDIR)
 set param_top $::env(YOSYS_TOP_MODULE)
 set param_filelist $::env(YOSYS_RTL_FILELIST)
 set param_blackboxes $::env(YOSYS_BLACKBOX_MODULES)
+set param_keep_modules $::env(YOSYS_KEEP_MODULES)
 set param_synth_flatten $::env(YOSYS_FLATTEN_HIER)
 set param_synth_timing_run 1
 set param_synth_clk_period $::env(YOSYS_CLOCK_PERIOD)
