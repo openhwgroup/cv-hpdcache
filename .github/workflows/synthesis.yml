@@ -61,3 +61,28 @@ jobs:
 
       - id: run_synthesis
         uses: ./.github/actions/run_synthesis
+
+
+  #  Commit the synthesis report
+  commit_syn_report:
+    runs-on: ubuntu-latest
+    name: commit_syn_report
+    needs: run_synthesis
+    steps:
+      - uses: actions/checkout@master
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Update synthesis report
+        shell: bash
+        run: |
+          grep "Chip area for module '\hpdcache_wrapper'" rtl/syn/report/area.rpt >> rtl/syn/area_tracking.txt
+          git add rtl/syn/area_tracking.txt
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git commit -m 'github-actions[bot] - syn: update area tracking file'
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          branch: ${{ github.head_ref }}
