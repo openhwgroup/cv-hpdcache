@@ -28,11 +28,15 @@ if { [info exists param_blackboxes] } {
         yosys setattr -set keep_hierarchy 1 {*}$sel
     }
 }
+if { [info exists param_keep_modules] } {
+    foreach sel ${param_keep_modules} {
+        yosys log "Keep module ${sel}"
+        yosys select -list {*}$sel
+        yosys setattr -set keep_hierarchy 1 {*}$sel
+    }
+}
 yosys hierarchy -check -top ${param_top}
 yosys proc
-if { ${param_synth_flatten} } {
-    yosys flatten
-}
 yosys write_verilog -noattr ${param_netlist_dir}/${param_top}.premap.v
 yosys opt_expr
 yosys opt_clean
@@ -59,8 +63,13 @@ yosys log "======== Yosys End Synthetize ========\n"
 
 yosys log "======== Yosys Generic Mapping ========"
 yosys techmap
-yosys opt
-yosys dfflibmap -liberty ${param_synth_cell_lib_path}
+yosys opt -fast
+yosys clean -purge
+
+if { ${param_synth_flatten} } {
+    yosys flatten
+}
+
 yosys opt
 yosys opt_dff -sat -nodffe -nosdff
 yosys clean
@@ -74,6 +83,7 @@ if { ${param_synth_timing_run} } {
   set abc_args "${abc_args} -constr ${param_synth_abc_sdc_file_in}"
   set abc_args "${abc_args} -D ${yosys_abc_clk_period}"
 }
+yosys dfflibmap -liberty ${param_synth_cell_lib_path}
 yosys "abc ${abc_args}"
 yosys clean
 yosys check
