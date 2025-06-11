@@ -848,6 +848,7 @@ import hpdcache_pkg::*;
             req_size_q <= '0;
             req_uc_q <= 1'b0;
             req_need_rsp_q <= 1'b0;
+            req_hit_way_q <= '0;
         end else if (req_valid_i && req_ready_o) begin
             req_op_q <= req_op_i;
             req_addr_q <= req_addr_i;
