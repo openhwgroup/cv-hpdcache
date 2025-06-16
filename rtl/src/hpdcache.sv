@@ -1117,7 +1117,9 @@ import hpdcache_pkg::*;
 
         .mem_req_read_ready_i,
         .mem_req_read_valid_o,
-        .mem_req_read_o        (mem_req_read_o)
+        .mem_req_read_o        (mem_req_read_o),
+
+        .gnt_index_o           (/*unused*/)
     );
 
     //      Read response interface
