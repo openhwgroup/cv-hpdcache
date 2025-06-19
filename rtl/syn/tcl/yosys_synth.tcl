@@ -11,6 +11,7 @@ source tcl/yosys_common.tcl
 yosys log "======== Yosys Parse RTL Sources ========"
 yosys read_slang -F ${param_filelist}
 yosys setattr -set top 1 ${param_top}
+yosys setattr -unset init
 yosys log "======== Yosys End Parse RTL Sources ========\n"
 
 yosys log "======== Yosys Parse Liberty Files ========"
