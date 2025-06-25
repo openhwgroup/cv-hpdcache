@@ -45,8 +45,8 @@ SHELL               := bash
 Q                   ?= @
 NTRANSACTIONS       ?= 10000
 TIMEOUT             ?= $$(( $(NTRANSACTIONS)*1000 ))
-SEQUENCE            ?= from_file 
-FILE				?= test_tommy.txt
+SEQUENCE            ?= random 
+FILE				?= test_file.txt
 LOG_LEVEL           ?= 1
 SEED                ?= 1234
 ERROR_LIMIT         ?= 0
@@ -177,7 +177,7 @@ verilate: $(VERILATE_LOG)
 build: $(BUILD_LOG)
 run: $(RUN_LOG)
 
-miniz.o: miniz.c miniz.h
+$(MINIZ).o: $(MINIZ).c $(MINIZ).h
 	$(CC) -c -g -o $@ $<
 
 define help_message
@@ -207,7 +207,7 @@ run <options>                Execute the specified test sequence on the
                              testbench
 
     [SEQUENCE=$(SEQUENCE)] - test sequence
-    [FILE=$(FILE)] - fichier pour les tests sauvegardés
+    [FILE=$(FILE)] - file for saved tests
     [TRACE=$(TRACE)] - generate waveform (on VCD format)
     [TIMEOUT=$(TIMEOUT)] - maximum nb of run cycles
     [LOG_LEVEL=$(LOG_LEVEL)] - level of log verbosity (low = 0, 1, 2, high = 3)
@@ -296,14 +296,14 @@ cov_html: cov $(COV_HTML_DIR)/index.html
 $(COV_HTML_DIR)/index.html: $(COV_MERGEFILE).info
 	genhtml --branch-coverage --function-coverage -o coverage_html $<
 
-$(VERILATE_LOG): print_config $(SVLOG_SOURCES) miniz.o $(TB_TOP).cpp
+$(VERILATE_LOG): print_config $(SVLOG_SOURCES) $(MINIZ).o $(TB_TOP).cpp
 	$(Q)$(ECHO) "Verilating the RTL sources... (LOG: $@)"
 	$(Q)$(MKDIR) $(dir $@)
 	$(Q)$(VERILATOR) --sc $(VERILATOR_FLAGS) -Mdir $(BUILD_DIR) \
 	        $(if $(filter $(DISABLE_WAIVERS),1),,scripts/verilate_waivers.vlt) \
 	        +incdir+$(HPDCACHE_DIR)/rtl/include \
 	        $(SVLOG_SOURCES) \
-	        --exe $(TB_TOP).cpp --top-module $(DUT) ../miniz.o >& $@
+	        --exe $(TB_TOP).cpp --top-module $(DUT) ../$(MINIZ).o >& $@
 	$(Q)$(ECHO) "VERILATE FINISHED" >> $@
 	$(Q)$(SCANLOG) -pat scripts/scan_patterns/verilate_patterns.pat \
 	        -nowarn $@ |& tee $@.scan

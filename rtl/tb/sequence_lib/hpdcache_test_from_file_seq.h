@@ -49,9 +49,6 @@ private:
     
     File_reader *my_file;
     hpdcache_test_sequence::hpdcache_test_memory_segment seg;
-    scv_smart_ptr<sc_bv<HPDCACHE_REQ_DATA_WIDTH> > data;
-    scv_smart_ptr<req_data_t> size;
-    const unsigned int HPDCACHE_REQ_DATA_BYTES = HPDCACHE_REQ_DATA_WIDTH/8;
 
 
 #if SC_VERSION_MAJOR < 3
@@ -76,12 +73,6 @@ public:
         hpdcache_test_sequence::op->keep_only(hpdcache_test_transaction_req::HPDCACHE_REQ_LOAD);
     }
 
-    inline sc_bv<HPDCACHE_REQ_DATA_WIDTH> create_random_data()
-    {
-        data->next();
-        return data->read();
-    }
-
     void run()
     {
 #if HPDCACHE_TEST_SEQUENCE_ENABLE_ERROR_SEGMENTS
@@ -103,11 +94,7 @@ public:
             );
         }
 #endif
-        scv_smart_ptr<int> lrsc_inbetween_instrs;
-        lrsc_inbetween_instrs->keep_only(0, 10);
-        lrsc_inbetween_instrs->next();
         int delay_transaction;
-        delay->next();
         while (!my_file->is_finish()) 
         {
             std::shared_ptr<hpdcache_test_transaction_req> t;
@@ -117,16 +104,11 @@ public:
             t = acquire_transaction<hpdcache_test_transaction_req>();
             t->req_tid = allocate_id();
             delay_transaction = my_file->read_transaction(t);
-            if (t != nullptr){
-                send_transaction(t, delay_transaction);
-            } else{
-                std::cerr<<"Null pointer but file is not finish ERROR\n";
-            }
+            send_transaction(t, delay_transaction);
         }
-        std::cout<<"J'ai fini le fichier\n";
         //  ask the driver to stop
         transaction_fifo_o->write(nullptr);
-        my_file->my_close(); // remplacer par my_close
+        my_file->my_close(); 
     }
 };
 #endif  // __HPDCACHE_TEST_FROM_FILE_SEQ_H__ 

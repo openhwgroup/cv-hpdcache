@@ -20,35 +20,22 @@ class File_reader
 {
 private:
     bool bool_finish = false;
-    mz_stream *strm = nullptr;
+    mz_stream *stream = nullptr;
 
 public:
 
     int file_descriptor;
-    char buf[MAX_SIZE_BUFFER * 20]; // * 20 car ça semble être la maximum de compression que l'on peut avoir
+    char buf[MAX_SIZE_BUFFER * 20]; // * 20 because it seems to be the maximum size after decompression
     int end_buffer;
     int read_buffer;
 
 
     File_reader(std::string file_name)
     {
-    //    set_file(parse_name(file_name, "/"));
         set_file(file_name);
         init_buf();
     }
-   /* 
-    std::string parse_name(std::string s, std::string delimiter) {
-        size_t pos_start = 0, pos_end, delim_len = delimiter.length();
-        std::string token;
-        std::vector<std::string> res;
 
-        while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos) {
-            token = s.substr (pos_start, pos_end - pos_start);
-            pos_start = pos_end + delim_len;
-        }
-        return token;
-    }
-   */
     /**
      * @brief Open a file and check if it can be read. If not, this function does an exit()
      *
@@ -92,94 +79,75 @@ public:
         std::cout << " fini\n";
     }
 
-    int decompress_data_from_file() {
-        int flush = MZ_SYNC_FLUSH;
+    /**
+     * @brief Allocate memory for the streaming used by the decompression
+     */
+    void init_stream(){
+        stream = (mz_stream *) calloc(1, sizeof(mz_stream));
+        if (!stream){    
+            Logger::warning("Error on allocation of memory for the stream\n");
+            exit(1);
+        }
+        if (mz_inflateInit(stream) != MZ_OK) {
+            Logger::warning("Error on the initialisation of the decompression\n");
+            exit(1);
+        }
+    }
+
+    /**
+     * @brief This function is used to decompress data from the file. It use miniz and read the file by chunk when it's necessary
+     *
+     */
+    void decompress_data_from_file() {
         int ret;
-        size_t buffer_size = MAX_SIZE_BUFFER;  // Taille du buffer pour chaque "chunk" (64 Ko ici)
-        unsigned char *in_buffer = (unsigned char *) malloc(buffer_size);  // Buffer pour les données compressées lues
-        unsigned char *out_buffer = (unsigned char *) malloc(buffer_size);  // Buffer pour les données décompressées
-        memset(in_buffer, 0, buffer_size);
-        memset(out_buffer, 0, buffer_size);
+        unsigned char *in_buffer = (unsigned char *) calloc(1, MAX_SIZE_BUFFER);  // Buffer for compressed data 
+        unsigned char *out_buffer = (unsigned char *) calloc(1, MAX_SIZE_BUFFER);  // Buffer where we decompress data
         
         if (!in_buffer || !out_buffer) {
-            perror("Erreur allocation mémoire");
+            Logger::warning("Error on allocation of memory");
             exit(1);
         }
 
-        // Initialiser le flux de décompression
-
-        if (! strm){
-            strm = (mz_stream *) malloc(sizeof (mz_stream));
-            memset(strm, 0, sizeof(mz_stream));
-            if (!strm){    
-                fprintf(stderr, "Erreur d'allocation poour le stream\n");
-                exit(1);
-            }
-            ret = mz_inflateInit(strm);
-            if (ret != MZ_OK) {
-                fprintf(stderr, "Erreur d'initialisation de la décompression: %d\n", ret);
-                free(in_buffer);
-                free(out_buffer);
-                exit(1);
-            }
+        if (! stream){ // we do this only the first time it's call 
+            init_stream();
         }
 
-        strm->avail_in = 0;  // Nombre d'octets d'entrée
-        strm->next_in = NULL; // Pointeur sur les données d'entrée
-        strm->avail_out = 0;  // Nombre d'octets de sortie
-        strm->next_out = NULL; // Pointeur sur le buffer de sortie
+        stream->avail_in = 0;  // number of bytes on the entry 
+        stream->next_in = NULL; // buffer for the entry 
+        stream->avail_out = 0; // number of bytes on the exit 
+        stream->next_out = NULL; // buffer for the exit 
 
-        end_buffer = 0;
-        size_t total_read = 0;
-        // Lire un bloc de données compressées
-        strm->avail_in = read(file_descriptor, in_buffer, buffer_size);
-        /*
-           if (ferror(file_descriptor)) {
-           fprintf(stderr, "Erreur de lecture du fichier\n");
-           free(in_buffer);
-           free(out_buffer);
-           mz_inflateEnd(&strm);
-           return -1;
-           }
-           */
-        strm->next_in = in_buffer;
+        stream->avail_in = read(file_descriptor, in_buffer, MAX_SIZE_BUFFER);
+        stream->next_in = in_buffer;
         ssize_t have = 0;
-        // Décompresser le bloc de données
         do {
-            strm->avail_out = buffer_size;
-            strm->next_out = out_buffer;
-            ret = mz_inflate(strm, flush);
+            stream->avail_out = MAX_SIZE_BUFFER;
+            stream->next_out = out_buffer;
+            ret = mz_inflate(stream, MZ_SYNC_FLUSH); // This decompress data and store it in stream->next_out
             if (ret == MZ_STREAM_ERROR) {
-                fprintf(stderr, "Erreur lors de la décompression\n");
-                free(in_buffer);
-                free(out_buffer);
-                mz_inflateEnd(strm);
+                Logger::warning("Error during decompression\n");
                 exit(1);
             }
-            have = buffer_size - strm->avail_out;
+            have = MAX_SIZE_BUFFER - stream->avail_out;
             if (have > 0) {
                 memcpy(&(buf[end_buffer]), out_buffer, have);
                 end_buffer += have;
             }
-        } while ( strm->avail_in > 0);  // Continue tant qu'il y a encore des données décompressées à écrire
+        } while ( stream->avail_in > 0); // compressed data can be larger than the size of the buffer on exit, so we maybe need to multiple decompression in order 
+                                         // to have all data
 
         bool_finish = (ret == MZ_STREAM_END);
-        // Terminer la décompression et libérer les ressources
         if (bool_finish) {
-            ret = mz_inflateEnd(strm);
-            std::cout<<"c'est fini\n";
-            std::flush(std::cout);
+            ret = mz_inflateEnd(stream);
             if (ret != MZ_OK) {
-                fprintf(stderr, "Erreur lors de la fermeture du flux de décompression\n");
+                Logger::warning("Error when closing the stream of decompression\n");
                 exit(1);
             }
-            free(strm);
+            free(stream);
         }
         free(in_buffer);
         free(out_buffer);
-        
-        return 0;  // Décompression réussie
-}
+    }
 
 
     /**
@@ -194,8 +162,9 @@ public:
             return;
         }
         if ( read_buffer == end_buffer){
-            decompress_data_from_file();
+            end_buffer = 0;
             read_buffer = 0;
+            decompress_data_from_file();
         }
         *((char *) pointer) = buf[read_buffer];
         read_buffer++;
@@ -263,8 +232,7 @@ public:
     }
 
     /**
-     * @brief This function set boolean value of the transaction, all value are stored in 1 byte
-     *        
+     * @brief This function set boolean value of the transaction, all value are stored in 1 bit
      *
      * @param result a pointer on a transaction 
      */
@@ -283,9 +251,9 @@ public:
     }
 
     /**
-     * @brief This function can extranct the value of 1 bit in a byte 
+     * @brief This function can extract the value of 1 bit in a byte 
      *
-     * @param to_read a value store in a signle byte 
+     * @param to_read a value store in a sigle byte 
      * @param position The position of the bit in the byte. Consider bit 8 is heavyweighti bit and bit 1 is the lightweight bit
      * @return true if bit value is 1, else false 
      */
@@ -319,12 +287,12 @@ public:
     int read_transaction(std::shared_ptr<hpdcache_test_transaction_req> transaction)
     {
         int delay;
-        read_delay(&delay);
-        transaction->req_addr = read_address(); // lit 8 octets
-        transaction->req_op = read_type_transaction(); // lit 1 octet
-        transaction->req_size = read_size(); // lit 1 octet
-        read_boolean(transaction); // lit 1 octet
-        transaction->req_wdata = read_value();
+        read_delay(&delay); // read 4 byte
+        transaction->req_addr = read_address(); // read 8 bytes
+        transaction->req_op = read_type_transaction(); // read 1 byte
+        transaction->req_size = read_size(); // read 1 byte
+        read_boolean(transaction); // read 1 byte
+        transaction->req_wdata = read_value(); // read 8 byte
         return delay;
     }
 
@@ -335,6 +303,12 @@ public:
 
 };
 
+/**
+ * @class File_writer
+ * @brief This class is used for debug purpose. It's a singleton who allow us to store an execution of other mode ( random write etc )
+ * in the format for reader class in order to test it. For the moment it doesn't compress data. To use this, CREATE_FILE need to be set at te compilation
+ *
+ */
 class File_writer
 { 
 private:
@@ -379,14 +353,12 @@ public:
                 break;
             }
         }
-            // address -> 8 octets car machine 64 bits
     }
 
     void write_type_transaction( std::shared_ptr<hpdcache_test_transaction_req> t) 
     {
-        // type -> 1 octets ou 6 bits si ça marche Il y a 21 type actuellement.
         unsigned op = t->req_op.to_uint();
-        file->write((char *) (&op), 1 ); // 1 octet
+        file->write((char *) (&op), 1 ); 
     }
 
     void write_size(std::shared_ptr<hpdcache_test_transaction_req> t) 

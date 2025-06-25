@@ -28,7 +28,6 @@
 
 #include <sstream>
 #include <verilated.h>
-#include <bits/stdc++.h>
 
 #include "transaction.h"
 #include "hpdcache_test_defs.h"
