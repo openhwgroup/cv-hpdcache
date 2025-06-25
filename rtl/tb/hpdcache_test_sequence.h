@@ -30,6 +30,7 @@
 #include "scv.h"
 #include "hpdcache_test_defs.h"
 #include "sequence.h"
+#include "hpd_cache_file_gestion.h"
 #include "hpdcache_test_transaction.h"
 #include "hpdcache_test_mem_resp_model_base.h"
 
@@ -212,6 +213,7 @@ public:
         return mem_resp_model;
     }
 
+
     void send_transaction(std::shared_ptr<hpdcache_test_transaction_req> t, int delay = 1)
     {
         // send transaction to the driver
@@ -219,6 +221,10 @@ public:
 
         // wait and consume driver acknowledgement (this is blocking)
         transaction_ret_i.read();
+          
+        #ifdef CREATE_FILE
+        instance_file_writter()->write_in_file(t, &delay);
+        #endif
 
         // release the previously used transaction object
         release_transaction<hpdcache_test_transaction_req>(t);

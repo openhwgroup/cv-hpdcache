@@ -47,6 +47,7 @@
 #include "sequence_lib/hpdcache_test_random_seq.h"
 #include "sequence_lib/hpdcache_test_read_seq.h"
 #include "sequence_lib/hpdcache_test_write_seq.h"
+#include "sequence_lib/hpdcache_test_from_file_seq.h"
 #include "sequence_lib/hpdcache_test_unique_set_seq.h"
 
 class hpdcache_test
@@ -57,6 +58,7 @@ public:
     size_t error_limit;
     bool trace_on;
     std::string trace_name;
+    std::string file_name;
 
 private:
     std::string covname;
@@ -282,6 +284,11 @@ public:
         }
         end = std::chrono::system_clock::now();
         std::cout << "Finishing the simulation..." << std::endl;
+        
+        #ifdef CREATE_FILE
+        instance_file_writter()->close_file();
+        #endif
+
 
         int ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         std::cout << "Simulation wall clock time (sec): "
@@ -307,6 +314,8 @@ public:
             seq = std::make_shared<hpdcache_test_write_seq>("write");
         } else if (seq_name == "unique_set") {
             seq = std::make_shared<hpdcache_test_unique_set_seq>("unique_set");
+        } else if (seq_name == "from_file") {
+            seq = std::make_shared<hpdcache_test_from_file_seq>("from_file", file_name);
         } else {
             std::cout << "error: sequence " << seq_name << " not found" << std::endl;
             exit(EXIT_FAILURE);
@@ -452,11 +461,12 @@ int sc_main(int argc, char** argv)
             {"trace",       required_argument, 0, 't' },
             {"coverage",    required_argument, 0, 'c' },
             {"sequence",    required_argument, 0, 's' },
+            {"file",    required_argument, 0, 'f' },
             {0,             0                , 0,  0  }
         };
 
         option_index = 0;
-        c = getopt_long(argc, argv, "hm:n:r:c:l:t:s:e:", long_options, &option_index);
+        c = getopt_long(argc, argv, "hm:n:r:c:l:t:f:s:e:", long_options, &option_index);
         if (c == -1) break;
 
         switch (c) {
@@ -507,6 +517,12 @@ int sc_main(int argc, char** argv)
             }
             case 's':
                 test.set_sequence(optarg);
+                break;
+            case 'f':
+                test.file_name = optarg;
+                #ifdef CREATE_FILE
+                instance_file_writter()->open_file(optarg);
+                #endif
                 break;
             case 'e':
                 test.error_limit = atoll(optarg);
