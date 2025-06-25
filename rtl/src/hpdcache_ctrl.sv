@@ -1263,7 +1263,7 @@ import hpdcache_pkg::*;
         assign core_rsp_tid = st1_req.tid;
     end else begin : gen_st2_core_rsp_ff
         //  When not lowLatency, delay all responses to the core by one cycle (stage 2)
-        always_ff @(posedge clk_i or negedge rst_ni)
+        always_ff @(posedge clk_i)
         begin : st2_core_rsp_ff
             core_rsp_valid <= st1_rsp_valid;
             core_rsp_aborted <= st1_rsp_aborted;
