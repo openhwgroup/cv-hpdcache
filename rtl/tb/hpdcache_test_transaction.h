@@ -28,6 +28,8 @@
 
 #include <sstream>
 #include <verilated.h>
+#include <bits/stdc++.h>
+
 #include "transaction.h"
 #include "hpdcache_test_defs.h"
 
@@ -103,9 +105,19 @@ public:
         req_abort          = false;
     }
 
+    bool get_need_resp() const
+    {
+        return req_need_rsp;
+    }
+
     bool is_aborted() const
     {
         return req_abort;
+    }
+
+    bool is_phys_indexed() const
+    {
+        return req_phys_indexed;
     }
 
     bool is_uncacheable() const
@@ -238,7 +250,7 @@ public:
             default                             : return "UNKNOWN";
         }
     }
-
+    
     const std::string to_string() const
     {
         std::stringstream os;
@@ -260,8 +272,8 @@ public:
                 contains_data = true;
                 break;
         }
-
         os << "CORE_REQ / @ = " << req_addr.to_string(SC_HEX)
+
            << " / " << op_to_string(op)
            << " / SID = 0x" << std::hex << req_sid.to_uint() << std::dec
            << " / TID = 0x" << std::hex << req_tid.to_uint() << std::dec
