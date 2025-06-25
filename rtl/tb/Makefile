@@ -130,7 +130,7 @@ endif
 
 ifeq ($(PROF),1)
 $(info make: Profiling support enabled)
-VERILATOR_FLAGS += --prof-cfuncs -CFLAGS "-g -pg" -g
+VERILATOR_FLAGS += --prof-cfuncs -CFLAGS "-g -pg" 
 else
 $(info make: Profiling support disabled)
 VERILATOR_FLAGS += -CFLAGS "-O3"
