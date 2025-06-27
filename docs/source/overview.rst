@@ -23,7 +23,7 @@
 Overview
 ========
 
-This HPDcache is the responsible for serving data accesses issued by a RISC-V core, tightly-coupled accelerators and hardware memory prefetchers.
+This HPDcache is responsible for serving data accesses issued by a RISC-V core, tightly-coupled accelerators and hardware memory prefetchers.
 All these "clients" are called requesters.
 
 The HPDcache implements a hardware pipeline capable of serving one request per cycle.

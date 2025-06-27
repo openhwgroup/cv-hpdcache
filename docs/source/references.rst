@@ -24,11 +24,11 @@
 References
 ==========
 
-.. [RISCVUP2019] The RISC-V Instruction Set Manual, Volume I: Unpriviledged ISA,
+.. [RISCVUP2019] The RISC-V Instruction Set Manual, Volume I: Unprivileged ISA,
    A. Waterman and K. Asanovic, 2019,
    https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf
 
-.. [RISCVP2019] The RISC-V Instruction Set Manual, Volume II: Priviledged
+.. [RISCVP2019] The RISC-V Instruction Set Manual, Volume II: Privileged
    Architecture,
    A. Waterman, K. Asanovic, and J. Hauser, 2021,
    https://github.com/riscv/riscv-isa-manual/releases/download/Priv-v1.12/riscv-privileged-20211203.pdf

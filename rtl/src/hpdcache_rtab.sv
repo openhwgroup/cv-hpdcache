@@ -677,7 +677,7 @@ import hpdcache_pkg::*;
 
     assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
             pop_commit_i |-> valid_q[pop_commit_ptr_i]) else
-                    $error("rtab: commiting an invalid entry");
+                    $error("rtab: committing an invalid entry");
 
     assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
             pop_rback_i |-> valid_q[pop_rback_ptr_i]) else

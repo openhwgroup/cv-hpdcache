@@ -20,7 +20,7 @@
 /*
  *  Authors       : Cesar Fuguet
  *  Creation Date : June, 2022
- *  Description   : Dcache Memory Reponse Demultiplexer
+ *  Description   : Dcache Memory Response Demultiplexer
  *  History       :
  */
 module hpdcache_l15_resp_demux

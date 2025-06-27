@@ -21,7 +21,7 @@
  *  Authors       : Cesar Fuguet
  *  Creation Date : April, 2023
  *  Description   : Generic parameters package for the HPDcache. All parameters
- *                  can be overriden by Verilog preprocessor definitions.
+ *                  can be overridden by Verilog preprocessor definitions.
  *  History       :
  */
 `ifdef PITON_ARIANE
@@ -78,7 +78,7 @@ package hpdcache_params_pkg;
     `endif
 
     `ifdef PITON_ARIANE
-        localparam int unsigned PARAM_CL_WORDS = `CONFIG_L1D_CACHELINE_WIDTH/PARAM_WORD_WIDTH; //16 Bytes per cache-line harcoded
+        localparam int unsigned PARAM_CL_WORDS = `CONFIG_L1D_CACHELINE_WIDTH/PARAM_WORD_WIDTH; //16 Bytes per cache-line hardcoded
     `else
         localparam int unsigned PARAM_CL_WORDS = `CONF_HPDCACHE_CL_WORDS;
     `endif

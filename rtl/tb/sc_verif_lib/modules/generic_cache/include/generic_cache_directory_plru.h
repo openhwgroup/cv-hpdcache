@@ -101,7 +101,7 @@ public:
         //  look for a non-recently used way (plru bit unset)
         for (size_t way = 0; way < ways_m; way++) {
             if (!getCachePlru(way, set)) {
-                //  get victim entry informations
+                //  get victim entry information
                 if (victim_tag != nullptr) {
                     *victim_tag = getCacheTag(way, set);
                 }

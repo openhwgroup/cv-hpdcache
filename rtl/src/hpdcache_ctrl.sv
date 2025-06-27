@@ -1112,7 +1112,7 @@ import hpdcache_pkg::*;
                                                   is_cmo_flush_inval_all(st1_req.op);
     //  }}}
 
-    //  Dirty/valid cachelines tracking to accelerate flushes and invalidations triggerd by CMOs
+    //  Dirty/valid cachelines tracking to accelerate flushes and invalidations triggered by CMOs
     //  {{{
     if (HPDcacheCfg.u.wbEn) begin : gen_cmo_dirty_set
         hpdcache_set_t cmo_dirty_min_set_q, cmo_dirty_min_set_d;
