@@ -1,12 +1,10 @@
 /**
- *  Copyright 2023,2024 CEA*
- *  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
  *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
  *
  *  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
- *  may not use this file except in compliance with the License, or, at your
+ *  may not use this trace except in compliance with the License, or, at your
  *  option, the Apache License version 2.0. You may obtain a copy of the
  *  License at
  *
@@ -19,9 +17,9 @@
  *  under the License.
  */
 /**
- *  Author     : Cesar Fuguet
- *  Date       : October, 2024
- *  Description: Class definition of the HPDCACHE test random sequence
+ *  Author     : Tommy PRATS 
+ *  Date       : June, 2025
+ *  Description: Class definition of the HPDCACHE test from trace 
  */
 #ifndef __HPDCACHE_TEST_FROM_FILE_SEQ_H__
 #define __HPDCACHE_TEST_FROM_FILE_SEQ_H__
@@ -33,21 +31,21 @@
 #include "scv.h"
 #include "hpdcache_test_defs.h"
 #include "hpdcache_test_sequence.h"
-#include "hpdcache_file_gestion.h"
+#include "hpdcache_trace_manager.h"
 
 #define HPDCACHE_TEST_SEQUENCE_ENABLE_ERROR_SEGMENTS 1
 
 /**
- * @class hpdcache_test_from_file_seq
- * @brief This class allow to run test by reading transaction directly from a binary file  
+ * @class hpdcache_test_from_trace_seq
+ * @brief This class allow to run test by reading transaction directly from a binary trace  
  *
  */
-class hpdcache_test_from_file_seq : public hpdcache_test_sequence
+class hpdcache_test_exec_trace_seq : public hpdcache_test_sequence
 {
 private:
     typedef sc_bv<HPDCACHE_REQ_DATA_WIDTH> req_data_t;
     
-    File_reader *my_file;
+    Trace_reader *my_trace;
     hpdcache_test_sequence::hpdcache_test_memory_segment seg;
 
 
@@ -57,9 +55,9 @@ private:
 
 public:
 
-    hpdcache_test_from_file_seq(sc_core::sc_module_name nm, std::string file_name) : hpdcache_test_sequence(nm, "from_file_seq")
+    hpdcache_test_exec_trace_seq(sc_core::sc_module_name nm, std::string trace_name) : hpdcache_test_sequence(nm, "from_trace_seq")
     {
-        my_file =  new File_reader(file_name);
+        my_trace =  new Trace_reader(trace_name);
         SC_THREAD(run);
         sensitive << clk_i.pos();
 
@@ -95,7 +93,7 @@ public:
         }
 #endif
         int delay_transaction;
-        while (!my_file->is_finish()) 
+        while (!my_trace->is_finish()) 
         {
             std::shared_ptr<hpdcache_test_transaction_req> t;
             while (!is_available_id()){
@@ -103,12 +101,12 @@ public:
             }
             t = acquire_transaction<hpdcache_test_transaction_req>();
             t->req_tid = allocate_id();
-            delay_transaction = my_file->read_transaction(t);
+            delay_transaction = my_trace->read_transaction(t);
             send_transaction(t, delay_transaction);
         }
         //  ask the driver to stop
         transaction_fifo_o->write(nullptr);
-        my_file->my_close(); 
+        my_trace->my_close(); 
     }
 };
 #endif  // __HPDCACHE_TEST_FROM_FILE_SEQ_H__ 

@@ -60,16 +60,10 @@ COV_HTML_DIR        := coverage_html
 VERILATE_LOG        := $(BUILD_DIR)/verilate.log
 BUILD_LOG           := $(BUILD_DIR)/build.log
 
-ifneq ($(SEQUENCE),from_file)
-	RUN_LOG             ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED).log
-	TRACE_FILE          ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED).vcd
-	COV_FILE            ?= $(COV_DIR)/cov_$(SEQUENCE)_$(SEED).dat
-else
-	NAME_FILE=$(notdir $(FILE))
-	RUN_LOG             ?= $(LOG_DIR)/run_$(SEQUENCE)_$(NAME_FILE).log
-	TRACE_FILE          ?= $(LOG_DIR)/run_$(SEQUENCE)_$(NAME_FILE).vcd
-	COV_FILE            ?= $(COV_DIR)/cov_$(SEQUENCE)_$(NAME_FILE).dat
-endif
+
+RUN_LOG             ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(NAME_FILE).log
+TRACE_FILE          ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(NAME_FILE).vcd
+COV_FILE            ?= $(COV_DIR)/cov_$(SEQUENCE)_$(SEED)$(NAME_FILE).dat
 COV_MERGEFILE       ?= $(COV_DIR)/cov_result.dat
 DATE_TIME           ?= $(shell date "+%Y_%m_%d-%H%M")
 
@@ -95,8 +89,7 @@ USER_CPPFLAGS       += -I$(TB_DIR) \
                        -DDEBUG_HPDCACHE_TEST_SCOREBOARD=1 \
                        -DDEBUG_HPDCACHE_TEST_MEM_RESP_MODEL=1 \
                        $(if $(filter 1,$(DEBUG)),-DDEBUG) \
-                       $(CONF_DEFINES) \
-					   -g 
+                       $(CONF_DEFINES)
 
 ifdef CREATE_FILE
 USER_CPPFLAGS   += -DCREATE_FILE=1
@@ -112,7 +105,7 @@ VERILATOR_FLAGS     += -Wall -Wno-fatal \
                        --report-unoptflat \
                        --pins-bv 2 \
                        -O3 -I$(HPDCACHE_DIR)/rtl/src \
-                       --x-assign unique --x-initial unique \
+                       --x-assign unique --x-initial unique
 
 ifneq ($(DISABLE_TRACE),1)
 $(info make: Tracing support enabled)
@@ -130,7 +123,7 @@ endif
 
 ifeq ($(PROF),1)
 $(info make: Profiling support enabled)
-VERILATOR_FLAGS += --prof-cfuncs -CFLAGS "-g -pg" 
+VERILATOR_FLAGS += --prof-cfuncs -CFLAGS "-g -pg"
 else
 $(info make: Profiling support disabled)
 VERILATOR_FLAGS += -CFLAGS "-O3"
@@ -148,7 +141,7 @@ VERILATOR_FLAGS     += $(CONF_DEFINES)
 
 VERILATOR_MAKEFLAGS += USER_CPPFLAGS="$(USER_CPPFLAGS)" \
                        USER_LDFLAGS="-Wl,-rpath,$(SYSTEMC_LIBDIR)" \
-                       USER_LDLIBS="-lscv" \
+                       USER_LDLIBS="-lscv"
 
 VERILATOR_RUNFLAGS  += +verilator+seed+$(SEED) \
                        +verilator+rand+reset+1 \
@@ -161,11 +154,10 @@ VERILATOR_RUNFLAGS  += +verilator+seed+$(SEED) \
                        -r $(SEED) \
                        -e $(ERROR_LIMIT) \
                        $(if $(filter 1,$(TRACE)), +trace -t $(TRACE_FILE)) \
-                       $(if $(filter 1,$(COV)),-c $(COV_FILE)) \
+                       $(if $(filter 1,$(COV)),-c $(COV_FILE))
 
 TB_TOP              := hpdcache_tb
 DUT                 := hpdcache_wrapper
-
 
 export SC_COPYRIGHT_MESSAGE=DISABLE
 
@@ -308,7 +300,6 @@ $(VERILATE_LOG): print_config $(SVLOG_SOURCES) $(MINIZ).o $(TB_TOP).cpp
 	$(Q)$(SCANLOG) -pat scripts/scan_patterns/verilate_patterns.pat \
 	        -nowarn $@ |& tee $@.scan
 	$(Q)$(ECHO) "Verilate done"
-
 
 $(BUILD_LOG): print_config $(VERILATE_LOG) $(TB_TOP).cpp 
 	$(Q)$(ECHO) "Build the testbench... (LOG: $@)"

@@ -36,7 +36,7 @@ function get_size_from_my_plugin {
 
 if [[ $# -ne 2 ]]
 then 
-    echo "usage : <log de notre plugin en ascii non compresse> <log de hpdcache>"
+    echo "usage : <trace of our plugin in ascii not compressed> <log of hpdcache>"
     exit 1
 fi
 my_log=$1
@@ -46,12 +46,12 @@ nb_ligne_us=$(cat $my_log | wc -l)
 nb_ligne_them=$(cat $exec_log | grep SB.NB_CORE_REQ | cut -d':' -f 2)
 if [[ $nb_ligne_us -ne $nb_ligne_them ]]
 then
-    print_in_red "pas le même nombre de ligne"
+    print_in_red " not the same number of lines"
     exit 1
 else
-    print_in_green "bon nombre de lignes"
+    print_in_green  "same number of lines"
 fi
-compteur=0
+counter=0
 tempfile=$(mktemp)
 cat $exec_log | grep CORE_REQ | grep -v SB.NB_CORE_REQ > $tempfile
 while read -u 5 line_us
@@ -65,22 +65,22 @@ do read -u 6 line_them
     get_size_from_my_plugin "$line_us" size_my_plugin
     if [[ $((16#$adress_exec_log)) -ne $adress_my_plugin ]]
     then
-        print_in_red "différence d'adresses sur la ligne $compteur ligne plugin $line_us ligne cache $line_them"
+        print_in_red "diff on address at line $counter :line plugin $line_us line cache $line_them"
     fi
     if [[ $type_op_exec_log -ne $type_op_my_plugin ]]
     then
-        print_in_red "différence de type sur la ligne $compteur ligne plugin $line_us ligne cache $line_them"
+        print_in_red "diff on type at line $counter :line plugin $line_us line cache $line_them"
     fi
     if [[ $size_my_plugin -ne $size_execlog ]]
     then
-        print_in_red "différence de taille sur la ligne $compteur ligne plugin $line_us ligne cache $line_them"
+        print_in_red "diff on size at line $counter :line plugin $line_us line cache $line_them"
         echo $size_execlog $size_my_plugin
     fi
-    compteur=`expr $compteur + 1`
+    counter=`expr $counter + 1`
 
 done 5<${my_log} 6<$tempfile
 
 rm $tempfile
 
-print_in_green "C'est fini"
+print_in_green "Test finish"
 exit 0

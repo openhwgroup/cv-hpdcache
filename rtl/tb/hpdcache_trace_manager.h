@@ -1,3 +1,27 @@
+/**
+ *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
+ *
+ *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
+ *
+ *  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
+ *  may not use this trace except in compliance with the License, or, at your
+ *  option, the Apache License version 2.0. You may obtain a copy of the
+ *  License at
+ *
+ *  https://solderpad.org/licenses/SHL-2.1/
+ *
+ *  Unless required by applicable law or agreed to in writing, any work
+ *  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
+ */
+/**
+ *  Author     : Tommy PRATS 
+ *  Date       : June, 2025
+ *  Description: Class definition of the reader/writer of trace 
+ */
+
 #ifndef __HPD_CACHE_FILE_GESTION__
 #define __HPD_CACHE_FILE_GESTION__
 
@@ -16,7 +40,7 @@ extern "C" {
 
 #define MAX_SIZE_BUFFER 5000000
 
-class File_reader
+class Trace_reader
 {
 private:
     bool bool_finish = false;
@@ -24,31 +48,30 @@ private:
 
 public:
 
-    int file_descriptor;
+    int trace_descriptor;
     char buf[MAX_SIZE_BUFFER * 20]; // * 20 because it seems to be the maximum size after decompression
     int end_buffer;
     int read_buffer;
 
 
-    File_reader(std::string file_name)
+    Trace_reader(std::string trace_name)
     {
-        set_file(file_name);
+        set_trace(trace_name);
         init_buf();
     }
 
     /**
-     * @brief Open a file and check if it can be read. If not, this function does an exit()
+     * @brief Open a trace and check if it can be read. If not, this function does an exit()
      *
-     * @param file_name The name of the file  
+     * @param trace_name The name of the trace  
      */
-    void set_file(std::string file_name)
+    void set_trace(std::string trace_name)
     {
-        file_descriptor = open(file_name.c_str(), O_RDONLY);
-        if (file_descriptor <= 0){
-            Logger::warning("Le fichier " + file_name + " n'a pas pu être ouvert");
+        trace_descriptor = open(trace_name.c_str(), O_RDONLY);
+        if (trace_descriptor <= 0){
+            Logger::warning("The trace " + trace_name + " can't be open");
             exit(EXIT_FAILURE);
         }
-        Logger::info("Le fichier a bien était lu dans la version compress \n");
         init_buf();
     }
 
@@ -65,7 +88,7 @@ public:
      */
     static void display_binary(unsigned value){ 
         unsigned tmp = value;
-        std::cout<<"\nJ'ai lu " << tmp << "soit :";
+        std::cout<<"\nI read " << tmp << " in binary :";
         for (int i = 8 ; i > 0; i--){
             tmp = value;
             tmp = tmp << (8 - i);
@@ -76,7 +99,7 @@ public:
                 std::cout << "0";
             }
         }
-        std::cout << " fini\n";
+        std::cout << "\n";
     }
 
     /**
@@ -95,10 +118,10 @@ public:
     }
 
     /**
-     * @brief This function is used to decompress data from the file. It use miniz and read the file by chunk when it's necessary
+     * @brief This function is used to decompress data from the trace. It use miniz and read the trace by chunk when it's necessary
      *
      */
-    void decompress_data_from_file() {
+    void decompress_data_from_trace() {
         int ret;
         unsigned char *in_buffer = (unsigned char *) calloc(1, MAX_SIZE_BUFFER);  // Buffer for compressed data 
         unsigned char *out_buffer = (unsigned char *) calloc(1, MAX_SIZE_BUFFER);  // Buffer where we decompress data
@@ -117,7 +140,7 @@ public:
         stream->avail_out = 0; // number of bytes on the exit 
         stream->next_out = NULL; // buffer for the exit 
 
-        stream->avail_in = read(file_descriptor, in_buffer, MAX_SIZE_BUFFER);
+        stream->avail_in = read(trace_descriptor, in_buffer, MAX_SIZE_BUFFER);
         stream->next_in = in_buffer;
         ssize_t have = 0;
         do {
@@ -151,26 +174,26 @@ public:
 
 
     /**
-     * @brief This function read the  buffer who contains the file
-     *        By edge effect, read the file if it's necessary.
+     * @brief This function read the  buffer who contains the trace
+     *        By edge effect, read the trace if it's necessary.
      *
-     * @param pointer A pointer on any type where the size next bytes will became the content of the file 
+     * @param pointer A pointer on any type where the size next bytes will became the content of the trace 
      * @param size The number of bytes to read
      */
-    void get_content_of_file(void * pointer, int size){
+    void get_content_of_trace(void * pointer, int size){
         if (size == 0){
             return;
         }
         if ( read_buffer == end_buffer){
             end_buffer = 0;
             read_buffer = 0;
-            decompress_data_from_file();
+            decompress_data_from_trace();
             /*
             if (compress_data){
-                decompress_data_from_file();
+                decompress_data_from_trace();
             } else{
-                end_buffer = read(file_descriptor, buf, MAX_SIZE_BUFFER); 
-                // check if we read all the file. It's useful only if size of the file is a multiple of MAX_SIZE_BUFFER
+                end_buffer = read(trace_descriptor, buf, MAX_SIZE_BUFFER); 
+                // check if we read all the trace. It's useful only if size of the trace is a multiple of MAX_SIZE_BUFFER
                 off_t current = lseek(fd, 0, SEEK_CUR); 
                 off_t end     = lseek(fd, 0, SEEK_END);
                 lseek(fd, current, SEEK_SET); 
@@ -182,11 +205,11 @@ public:
         }
         *((char *) pointer) = buf[read_buffer];
         read_buffer++;
-        get_content_of_file(pointer + 1, size - 1);
+        get_content_of_trace(pointer + 1, size - 1);
     }
    
     /**
-     * @brief This function check if all the file has been read
+     * @brief This function check if all the trace has been read
      */
     bool is_finish()
     {
@@ -200,7 +223,7 @@ public:
             case 32:
             {
                 uint32_t address_32 = 0;
-                get_content_of_file(&address_32, sizeof(uint32_t));
+                get_content_of_trace(&address_32, sizeof(uint32_t));
                 return address_32;
             }
             case 64:
@@ -210,7 +233,7 @@ public:
                     case 1: // 64 bits
                     {
                         uint64_t address_64= 0;
-                        get_content_of_file(&address_64, sizeof(uint64_t));
+                        get_content_of_trace(&address_64, sizeof(uint64_t));
                         return address_64;
                     }
                     case 2: // 128 bits
@@ -234,14 +257,14 @@ public:
     inline unsigned read_type_transaction()
     {
         char result = 0;
-        get_content_of_file(&result, 1);
+        get_content_of_trace(&result, 1);
         return *((unsigned *) &result);
     }
     
     inline unsigned read_size(uint8_t *size_value)
     {
         char result = 0;
-        get_content_of_file(&result, 1);
+        get_content_of_trace(&result, 1);
         *size_value = result >> 4;
         result <<= 4;
         result >>= 4;
@@ -256,7 +279,7 @@ public:
     void read_boolean(std::shared_ptr<hpdcache_test_transaction_req> result)
     {
         unsigned tmp = 0;
-        get_content_of_file(&tmp, 1);
+        get_content_of_trace(&tmp, 1);
         if (Logger::is_debug_enabled()){
             //display_binary(tmp);
         }
@@ -288,17 +311,17 @@ public:
         return ! *((char *)&i);
     }
 
-    uint64_t get_adress(uint8_t size, uint64_t adress_on_real_computer)
+    uint64_t get_address(uint8_t size, uint64_t address_on_real_computer)
     {
-        size  <<= 2; // mutliplie par 4
+        size  <<= 2; // multiply by 4
         if (size > HPDCACHE_REQ_DATA_WIDTH){
             Logger::warning("A value larger than the cache witdh need to be store");
             exit(1);
         }
         if ( ! is_big_endian()){
-            return adress_on_real_computer + HPDCACHE_REQ_DATA_WIDTH - size;
+            return address_on_real_computer + HPDCACHE_REQ_DATA_WIDTH - size;
         } else {
-            return adress_on_real_computer;
+            return address_on_real_computer;
         }
 
     }
@@ -308,28 +331,28 @@ public:
        switch (size_value_store){
             case 0:
                 uint8_t result8;
-                get_content_of_file( &(result8), sizeof(uint8_t));
+                get_content_of_trace( &(result8), sizeof(uint8_t));
                 transaction->req_wdata = result8;
                 break;
             case 1:
                 uint16_t result16;
-                get_content_of_file( &(result16),sizeof(uint16_t));
+                get_content_of_trace( &(result16),sizeof(uint16_t));
                 transaction->req_wdata = result16;
                 break;
             case 2:
                 uint32_t result32;
-                get_content_of_file( &(result32), sizeof(uint32_t));
+                get_content_of_trace( &(result32), sizeof(uint32_t));
                 transaction->req_wdata = result32;
                 break;
             case 3:
                 uint64_t result64;
-                get_content_of_file( &(result64), sizeof(uint64_t));
+                get_content_of_trace( &(result64), sizeof(uint64_t));
                 transaction->req_wdata = result64;
                 break;
             case 4:
                 uint64_t result128;
-                //get_adress();
-                get_content_of_file( &(result128), sizeof(uint64_t));
+                //get_address();
+                get_content_of_trace( &(result128), sizeof(uint64_t));
                 transaction->req_wdata = result128;
                 break;
 
@@ -340,11 +363,11 @@ public:
 
     void read_delay(int * delay)
     {
-        get_content_of_file(delay, sizeof(int));
+        get_content_of_trace(delay, sizeof(int));
     }
 
     /**
-     * @brief Read a transaction in a binary file 
+     * @brief Read a transaction in a binary trace 
      *
      * @param transaction A pointer on a well formed transaction for the core previously allowed
      * @return  the delay to wait before sending the transaction
@@ -366,34 +389,34 @@ public:
 
     void my_close()
     {
-        close(file_descriptor);
+        close(trace_descriptor);
     }
 
 };
 
 /**
- * @class File_writer
+ * @class Trace_writer
  * @brief This class is used for debug purpose. It's a singleton who allow us to store an execution of other mode ( random write etc )
  * in the format for reader class in order to test it. For the moment it doesn't compress data. To use this, CREATE_FILE need to be set at te compilation
  *
  */
-class File_writer
+class Trace_writer
 { 
 private:
-    std::ofstream *file;
+    std::ofstream *trace;
     static std::mutex mutex_;
-    static File_writer* is_instance; 
+    static Trace_writer* is_instance; 
 public:
 
 
-    void write_adress(std::shared_ptr<hpdcache_test_transaction_req> t) 
+    void write_address(std::shared_ptr<hpdcache_test_transaction_req> t) 
     {
         switch (HPDCACHE_WORD_WIDTH)
         {
             case 32:
             {
                 uint32_t address_32 = t->req_addr.to_uint64();
-                file->write((char*)(&(address_32)), sizeof(uint32_t));
+                trace->write((char*)(&(address_32)), sizeof(uint32_t));
                 break;
             }
             case 64:
@@ -403,7 +426,7 @@ public:
                     case 1: // 64 bits
                     {
                         uint64_t address_64 = t->req_addr.to_uint64();
-                        file->write((char*)(&(address_64)), sizeof(uint64_t));
+                        trace->write((char*)(&(address_64)), sizeof(uint64_t));
                         break;
                     }
                     case 2: // 128 bits
@@ -426,13 +449,13 @@ public:
     void write_type_transaction( std::shared_ptr<hpdcache_test_transaction_req> t) 
     {
         unsigned op = t->req_op.to_uint();
-        file->write((char *) (&op), 1 ); 
+        trace->write((char *) (&op), 1 ); 
     }
 
     void write_size(std::shared_ptr<hpdcache_test_transaction_req> t) 
     {
         unsigned op = t->req_size.to_uint();
-        file->write((char *) (&op), 1);
+        trace->write((char *) (&op), 1);
     }
 
     void write_boolean(std::shared_ptr<hpdcache_test_transaction_req> t) 
@@ -446,7 +469,7 @@ public:
         if (Logger::is_debug_enabled()){
             //display_binary(bool_value);
         }
-        file->write((char *) (&bool_value), 1);
+        trace->write((char *) (&bool_value), 1);
     }
     
     unsigned construct_bool_in_one_byte(const bool to_add, unsigned result) 
@@ -458,44 +481,44 @@ public:
         return result;
     }
 
-    void open_file(std::string file_name)
+    void open_trace(std::string trace_name)
     {
 
-        file = new std::ofstream(file_name, std::ios_base::binary | std::ios::trunc);
+        trace = new std::ofstream(trace_name, std::ios_base::binary | std::ios::trunc);
     }
 
-    void close_file()
+    void close_trace()
     {
-        file->close();
+        trace->close();
     }
 
     void write_delay(int *delay)
     {
-        file->write( (char *) delay, sizeof(int)); 
+        trace->write( (char *) delay, sizeof(int)); 
     }
 
 
 
-    void write_in_file(std::shared_ptr<hpdcache_test_transaction_req> t, int *delay) 
+    void write_in_trace(std::shared_ptr<hpdcache_test_transaction_req> t, int *delay) 
     {
         write_delay(delay);
-        write_adress(t);
+        write_address(t);
         write_type_transaction(t);
         write_size(t);
         write_boolean(t);
         return;
     }
 };
-File_writer *is_instance = nullptr; 
+Trace_writer *is_instance = nullptr; 
 std::mutex mutex_;
 
-File_writer* instance_file_writter()
+Trace_writer* instance_trace_writter()
 {
     std::lock_guard<std::mutex> lock(mutex_);
     if (is_instance){
         return is_instance;
     }
-    is_instance = new File_writer();
+    is_instance = new Trace_writer();
     return is_instance;
 }
 

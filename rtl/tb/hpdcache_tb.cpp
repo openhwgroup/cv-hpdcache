@@ -47,7 +47,7 @@
 #include "sequence_lib/hpdcache_test_random_seq.h"
 #include "sequence_lib/hpdcache_test_read_seq.h"
 #include "sequence_lib/hpdcache_test_write_seq.h"
-#include "sequence_lib/hpdcache_test_from_file_seq.h"
+#include "sequence_lib/hpdcache_test_exec_trace_seq.h"
 #include "sequence_lib/hpdcache_test_unique_set_seq.h"
 
 class hpdcache_test
@@ -286,7 +286,7 @@ public:
         std::cout << "Finishing the simulation..." << std::endl;
         
         #ifdef CREATE_FILE
-        instance_file_writter()->close_file();
+        instance_trace_writter()->close_file();
         #endif
 
 
@@ -315,7 +315,7 @@ public:
         } else if (seq_name == "unique_set") {
             seq = std::make_shared<hpdcache_test_unique_set_seq>("unique_set");
         } else if (seq_name == "from_file") {
-            seq = std::make_shared<hpdcache_test_from_file_seq>("from_file", file_name);
+            seq = std::make_shared<hpdcache_test_exec_trace_seq>("from_file", file_name);
         } else {
             std::cout << "error: sequence " << seq_name << " not found" << std::endl;
             exit(EXIT_FAILURE);
@@ -521,7 +521,7 @@ int sc_main(int argc, char** argv)
             case 'f':
                 test.file_name = optarg;
                 #ifdef CREATE_FILE
-                instance_file_writter()->open_file(optarg);
+                instance_trace_writter()->open_file(optarg);
                 #endif
                 break;
             case 'e':
