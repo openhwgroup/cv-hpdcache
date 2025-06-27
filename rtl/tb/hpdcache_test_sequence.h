@@ -30,7 +30,7 @@
 #include "scv.h"
 #include "hpdcache_test_defs.h"
 #include "sequence.h"
-#include "hpdcache_file_gestion.h"
+#include "hpdcache_trace_manager.h"
 #include "hpdcache_test_transaction.h"
 #include "hpdcache_test_mem_resp_model_base.h"
 

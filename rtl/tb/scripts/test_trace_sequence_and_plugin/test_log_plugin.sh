@@ -57,7 +57,7 @@ function get_size_from_execlog {
 
 if [[ $# -ne 2 ]]
 then 
-    echo "usage : <log de notre plugin en ascii non compresse> <log du plugin execlog>"
+    echo "usage : <trace of our plugin in ascii not compressed> <log of execlog plugin>"
     exit 1
 fi
 my_log=$1
@@ -67,10 +67,10 @@ nb_ligne_us=$(cat $my_log | wc -l)
 nb_ligne_them=$(cat $exec_log | wc -l)
 if [[ $nb_ligne_us -ne $nb_ligne_them ]]
 then
-    print_in_red "pas le même nombre de ligne"
+    print_in_red " not the same number of lines"
     exit 1
 else
-    print_in_green "bon nombre de lignes"
+    print_in_green  "same number of lines"
 fi
 
 while read -u 5 line_us
@@ -84,20 +84,20 @@ do read -u 6 line_them
     get_size_from_execlog "$line_them" size_execlog
     if [[ $adress_exec_log -ne $adress_my_plugin ]]
     then
-        print_in_red "différence d'adresses"
+        print_in_red "diff in address is found"
     fi
     if [[ $type_op_exec_log -ne $type_op_my_plugin ]]
     then
-        print_in_red "différence de type"
+        print_in_red "diff in type is found"
     fi
     if [[ $size_my_plugin -ne $size_execlog ]]
     then
-        print_in_red "différence de taille"
+        print_in_red "diff in size is found"
         echo $size_execlog $size_my_plugin
     fi
 
 done 5<${my_log} 6<${exec_log}
 
 
-print_in_green "C'est fini"
+print_in_green "Test finish"
 exit 0

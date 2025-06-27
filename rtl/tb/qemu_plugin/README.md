@@ -1,4 +1,12 @@
+## Author
+
+**Tommy PRATS**
+[tommy.prats@etu.univ-grenoble-alpes.fr](mailto:tommy.prats@etu.univ-grenoble-alpes.fr)
+
 # HOW TO INSTALL THIS PLUGIN
+
+For this plugin, you need miniz. Because it's already in this directory, you can just get files from here. 
+Miniz is also available here : https://github.com/richgel999/miniz
 
 In order to use the plugin, you need to put this directory in qemu. The path is qemu/contrib/plugins.
 In qemu/contrib/plugins you will find a file named "meson.build". In order to compiler this plugin, you just need to add "qemu_plugin" in contrib_plugin array. and, because this plugin need miniz to work, you need to add dependencies for this plugin. To do that :
@@ -53,5 +61,4 @@ This plugin is compatible with 32 and 64 bits. His purpose is to create trace of
 		 # true ->  We compress data with miniz to gain space on the disk
 		 # false -> data are just write directly in te file
 
-You can contact me [here](mailto:tommy.prats@etu.univ-grenoble-alpes.fr)
 
