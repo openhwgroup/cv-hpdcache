@@ -93,7 +93,8 @@ public:
         }
 #endif
         int delay_transaction;
-        while (!my_trace->is_finish()) 
+        size_t n = 0;
+        while (!my_trace->is_finish() && n < this->max_transactions ) 
         {
             std::shared_ptr<hpdcache_test_transaction_req> t;
             while (!is_available_id()){
@@ -103,6 +104,7 @@ public:
             t->req_tid = allocate_id();
             delay_transaction = my_trace->read_transaction(t);
             send_transaction(t, delay_transaction);
+            n++;
         }
         //  ask the driver to stop
         transaction_fifo_o->write(nullptr);
