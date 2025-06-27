@@ -1,4 +1,2 @@
 build/
 logs/
-launch.sh
-.clangd
