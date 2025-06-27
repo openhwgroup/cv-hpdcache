@@ -256,7 +256,7 @@ import hpdcache_pkg::*;
     end
     //  }}}
 
-    //  Hardware prefetcher arbiter betweem engines
+    //  Hardware prefetcher arbiter between engines
     //  {{{
     hwpf_stride_arb #(
         .NUM_HW_PREFETCH          (NUM_HW_PREFETCH),

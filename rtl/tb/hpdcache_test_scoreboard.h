@@ -565,7 +565,7 @@ private:
                     e.is_error = e.is_error && addr_match;
 
                     //  If there is a previous reservation (previous LR) on the address
-                    //  accessed by a SC operation, then the acccess MAY be atomic. The
+                    //  accessed by a SC operation, then the access MAY be atomic. The
                     //  scoreboard needs to wait for the acknowledgement from the memory to
                     //  actually know the atomicity of the access.
                     e.is_atomic = addr_match;
@@ -806,13 +806,13 @@ private:
             for (const auto &cr : inflight_m) {
                 const inflight_entry_t &_cr = cr.second;
                 if (get_nline(_cr.addr) == get_nline(req.addr)) {
-                    //  get first occurence
+                    //  get first occurrence
                     if (core_req == nullptr) {
                         core_req = &_cr;
                         continue;
                     }
 
-                    //  if multiple occurences, get the oldest
+                    //  if multiple occurrences, get the oldest
                     if (_cr.time < core_req->time) {
                         core_req = &_cr;
                     }
@@ -1009,13 +1009,13 @@ private:
             for (const auto &cr : inflight_m) {
                 const inflight_entry_t &_cr = cr.second;
                 if (get_nline(_cr.addr) == get_nline(req.addr)) {
-                    //  get first occurence
+                    //  get first occurrence
                     if (core_req == nullptr) {
                         core_req = &_cr;
                         continue;
                     }
 
-                    //  if multiple occurences, get the oldest
+                    //  if multiple occurrences, get the oldest
                     if (_cr.time < core_req->time) {
                         core_req = &_cr;
                     }

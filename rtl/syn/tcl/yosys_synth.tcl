@@ -20,7 +20,7 @@ foreach file ${param_synth_macros_lib_path} {
 }
 yosys log "======== Yosys End Parse Liberty Files ========\n"
 
-yosys log "======== Yosys Synthetize ========"
+yosys log "======== Yosys Synthesize ========"
 if { [info exists param_blackboxes] } {
     foreach sel ${param_blackboxes} {
         yosys log "Blackboxing the module ${sel}"
@@ -60,7 +60,7 @@ yosys share
 yosys opt -full
 yosys clean -purge
 yosys check
-yosys log "======== Yosys End Synthetize ========\n"
+yosys log "======== Yosys End Synthesize ========\n"
 
 yosys log "======== Yosys Generic Mapping ========"
 yosys techmap

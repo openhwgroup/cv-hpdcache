@@ -896,8 +896,9 @@ The RTAB implements the following operations:
 |                          | to an existing linked list       |
 +--------------------------+----------------------------------+
 | ``rtab_pop_try``         | Get a ready request from one of  |
-|                          | the linked list (wihout actually |
-|                          | removing it from the list)       |
+|                          | the linked list (without         |
+|                          | actually removing it from the    |
+|                          | list)                            |
 +--------------------------+----------------------------------+
 | ``rtab_pop_commit``      | Actually remove a popped request |
 |                          | from the list                    |
@@ -1098,7 +1099,7 @@ replayed (dependencies have been resolved).
    }
 
 
-The following function is called by the miss hander and the write buffer on the
+The following function is called by the miss handler and the write buffer on the
 completion of any pending transaction. It allows to update the dependency bits
 of any matching request (with the same cacheline address) in the RTAB.
 
