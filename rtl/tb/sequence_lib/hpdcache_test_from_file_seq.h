@@ -33,7 +33,7 @@
 #include "scv.h"
 #include "hpdcache_test_defs.h"
 #include "hpdcache_test_sequence.h"
-#include "hpd_cache_file_gestion.h"
+#include "hpdcache_file_gestion.h"
 
 #define HPDCACHE_TEST_SEQUENCE_ENABLE_ERROR_SEGMENTS 1
 
@@ -112,4 +112,3 @@ public:
     }
 };
 #endif  // __HPDCACHE_TEST_FROM_FILE_SEQ_H__ 
-

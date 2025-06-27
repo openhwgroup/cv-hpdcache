@@ -30,7 +30,7 @@
 #include "scv.h"
 #include "hpdcache_test_defs.h"
 #include "sequence.h"
-#include "hpd_cache_file_gestion.h"
+#include "hpdcache_file_gestion.h"
 #include "hpdcache_test_transaction.h"
 #include "hpdcache_test_mem_resp_model_base.h"
 
@@ -228,7 +228,6 @@ public:
 
         // release the previously used transaction object
         release_transaction<hpdcache_test_transaction_req>(t);
-
         // add some delay between two consecutive commands
         for (int i = 0; i < delay; i++) wait();
     }
