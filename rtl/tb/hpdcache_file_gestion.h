@@ -14,7 +14,7 @@ extern "C" {
 #include "hpdcache_test_transaction.h"
 
 
-#define MAX_SIZE_BUFFER 5000 
+#define MAX_SIZE_BUFFER 5000000
 
 class File_reader
 {
@@ -165,6 +165,20 @@ public:
             end_buffer = 0;
             read_buffer = 0;
             decompress_data_from_file();
+            /*
+            if (compress_data){
+                decompress_data_from_file();
+            } else{
+                end_buffer = read(file_descriptor, buf, MAX_SIZE_BUFFER); 
+                // check if we read all the file. It's useful only if size of the file is a multiple of MAX_SIZE_BUFFER
+                off_t current = lseek(fd, 0, SEEK_CUR); 
+                off_t end     = lseek(fd, 0, SEEK_END);
+                lseek(fd, current, SEEK_SET); 
+                if (current == end || end_buffer < MAX_SIZE_BUFFER) {
+                    bool_finish = true;
+                }
+            }
+            */
         }
         *((char *) pointer) = buf[read_buffer];
         read_buffer++;
@@ -224,10 +238,13 @@ public:
         return *((unsigned *) &result);
     }
     
-    inline unsigned read_size()
+    inline unsigned read_size(uint8_t *size_value)
     {
         char result = 0;
         get_content_of_file(&result, 1);
+        *size_value = result >> 4;
+        result <<= 4;
+        result >>= 4;
         return *((unsigned *) &result);
     }
 
@@ -265,11 +282,59 @@ public:
 
     }
 
-    uint64_t read_value()
+    inline int is_big_endian()
     {
-       uint64_t result;
-       get_content_of_file(&result, sizeof(uint64_t));
-       return *((uint64_t *) &result);
+        int i=1;
+        return ! *((char *)&i);
+    }
+
+    uint64_t get_adress(uint8_t size, uint64_t adress_on_real_computer)
+    {
+        size  <<= 2; // mutliplie par 4
+        if (size > HPDCACHE_REQ_DATA_WIDTH){
+            Logger::warning("A value larger than the cache witdh need to be store");
+            exit(1);
+        }
+        if ( ! is_big_endian()){
+            return adress_on_real_computer + HPDCACHE_REQ_DATA_WIDTH - size;
+        } else {
+            return adress_on_real_computer;
+        }
+
+    }
+
+    void read_value(std::shared_ptr<hpdcache_test_transaction_req> transaction, uint8_t size_value_store)
+    {
+       switch (size_value_store){
+            case 0:
+                uint8_t result8;
+                get_content_of_file( &(result8), sizeof(uint8_t));
+                transaction->req_wdata = result8;
+                break;
+            case 1:
+                uint16_t result16;
+                get_content_of_file( &(result16),sizeof(uint16_t));
+                transaction->req_wdata = result16;
+                break;
+            case 2:
+                uint32_t result32;
+                get_content_of_file( &(result32), sizeof(uint32_t));
+                transaction->req_wdata = result32;
+                break;
+            case 3:
+                uint64_t result64;
+                get_content_of_file( &(result64), sizeof(uint64_t));
+                transaction->req_wdata = result64;
+                break;
+            case 4:
+                uint64_t result128;
+                //get_adress();
+                get_content_of_file( &(result128), sizeof(uint64_t));
+                transaction->req_wdata = result128;
+                break;
+
+       }
+       return; 
 
     }
 
@@ -287,12 +352,15 @@ public:
     int read_transaction(std::shared_ptr<hpdcache_test_transaction_req> transaction)
     {
         int delay;
+        uint8_t size_value_store;
         read_delay(&delay); // read 4 byte
         transaction->req_addr = read_address(); // read 8 bytes
         transaction->req_op = read_type_transaction(); // read 1 byte
-        transaction->req_size = read_size(); // read 1 byte
+        transaction->req_size = read_size(&size_value_store); // read 1 byte
         read_boolean(transaction); // read 1 byte
-        transaction->req_wdata = read_value(); // read 8 byte
+        if (transaction->req_op == hpdcache_test_transaction_req::HPDCACHE_REQ_STORE ){ // TODO Add more instructions supported in this sequence
+            read_value(transaction, size_value_store ); // read 8 byte
+        }
         return delay;
     }
 
