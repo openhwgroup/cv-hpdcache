@@ -1,5 +1,4 @@
 build/
 logs/
 launch.sh
-Makefile 
 .clangd
