@@ -52,6 +52,7 @@ SEED                ?= 1234
 ERROR_LIMIT         ?= 0
 NTESTS              ?= 128
 TRACE               ?= 0
+TRACE_FILE_TO_READ  ?= trace_qemu
 
 BUILD_DIR           := build
 LOG_DIR             := logs
@@ -60,10 +61,11 @@ COV_HTML_DIR        := coverage_html
 VERILATE_LOG        := $(BUILD_DIR)/verilate.log
 BUILD_LOG           := $(BUILD_DIR)/build.log
 
+SUFFIX=$(notdir $(TRACE_FILE_TO_READ))
 
-RUN_LOG             ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(NAME_FILE).log
-TRACE_FILE          ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(NAME_FILE).vcd
-COV_FILE            ?= $(COV_DIR)/cov_$(SEQUENCE)_$(SEED)$(NAME_FILE).dat
+RUN_LOG             ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(SUFFIX).log
+TRACE_FILE          ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(SUFFIX).vcd
+COV_FILE            ?= $(COV_DIR)/cov_$(SEQUENCE)_$(SEED)$(SUFFIX).dat
 COV_MERGEFILE       ?= $(COV_DIR)/cov_result.dat
 DATE_TIME           ?= $(shell date "+%Y_%m_%d-%H%M")
 
@@ -143,12 +145,15 @@ VERILATOR_MAKEFLAGS += USER_CPPFLAGS="$(USER_CPPFLAGS)" \
                        USER_LDFLAGS="-Wl,-rpath,$(SYSTEMC_LIBDIR)" \
                        USER_LDLIBS="-lscv"
 
+
+
+
 VERILATOR_RUNFLAGS  += +verilator+seed+$(SEED) \
                        +verilator+rand+reset+1 \
                        +verilator+error+limit+50 \
                        -m $(TIMEOUT) \
                        -n $(NTRANSACTIONS) \
-                       -f $(FILE) \
+                       -f $(TRACE_FILE_TO_READ) \
                        -s $(SEQUENCE) \
                        -l $(LOG_LEVEL) \
                        -r $(SEED) \
@@ -199,7 +204,7 @@ run <options>                Execute the specified test sequence on the
                              testbench
 
     [SEQUENCE=$(SEQUENCE)] - test sequence
-    [FILE=$(FILE)] - file for saved tests
+    [TRACE_FILE_TO_READ=$(TRACE_FILE_TO_READ)] - file for saved trace from QEMu. Use it with SEQUENCE=from_file
     [TRACE=$(TRACE)] - generate waveform (on VCD format)
     [TIMEOUT=$(TIMEOUT)] - maximum nb of run cycles
     [LOG_LEVEL=$(LOG_LEVEL)] - level of log verbosity (low = 0, 1, 2, high = 3)
@@ -363,4 +368,3 @@ print_config:
 	@printf "CONF_HPDCACHE_WT_ENABLE=$(CONF_HPDCACHE_WT_ENABLE)\n"
 	@printf "CONF_HPDCACHE_WB_ENABLE=$(CONF_HPDCACHE_WB_ENABLE)\n"
 	@printf "CONF_HPDCACHE_LOW_LATENCY=$(CONF_HPDCACHE_LOW_LATENCY)\n"
-	@printf "CREATE_FILE=$(CREATE_FILE)\n"
