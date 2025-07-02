@@ -276,18 +276,20 @@ public:
      *
      * @param result a pointer on a transaction 
      */
-    void read_boolean(std::shared_ptr<hpdcache_test_transaction_req> result)
+    void read_boolean_and_type(std::shared_ptr<hpdcache_test_transaction_req> result)
     {
         unsigned tmp = 0;
         get_content_of_trace(&tmp, 1);
         if (Logger::is_debug_enabled()){
             //display_binary(tmp);
         }
-        result->req_need_rsp = get_bit(tmp, 5);
-        result->req_phys_indexed = get_bit(tmp, 4);
-        result->req_uncacheable = get_bit(tmp, 3);
-        result->req_io = get_bit(tmp, 2);
-        result->req_abort = get_bit(tmp, 1);
+        uint8_t type_operation = tmp >> 2;
+        result->req_op = (unsigned) type_operation;
+        result->req_need_rsp = get_bit(tmp, 2);
+        result->req_uncacheable = get_bit(tmp, 1);
+        result->req_phys_indexed = true; 
+        result->req_io = result->req_uncacheable; 
+        result->req_abort = false; 
     }
 
     /**
@@ -361,9 +363,9 @@ public:
 
     }
 
-    void read_delay(int * delay)
+    void read_delay(uint8_t * delay)
     {
-        get_content_of_trace(delay, sizeof(int));
+        get_content_of_trace(delay, sizeof(uint8_t));
     }
 
     /**
@@ -374,13 +376,11 @@ public:
      */
     int read_transaction(std::shared_ptr<hpdcache_test_transaction_req> transaction)
     {
-        int delay;
-        uint8_t size_value_store;
-        read_delay(&delay); // read 4 byte
-        transaction->req_addr = read_address(); // read 8 bytes
-        transaction->req_op = read_type_transaction(); // read 1 byte
-        transaction->req_size = read_size(&size_value_store); // read 1 byte
-        read_boolean(transaction); // read 1 byte
+        uint8_t size_value_store, delay;
+        read_delay(&delay); // read 1 byte
+        transaction->req_addr = read_address(); // read ( HPDCACHE_WORD_WIDTH * HPDCACHE_REQ_WORDS ) / 8 bytes
+        transaction->req_size = read_size(&size_value_store); // read 1 byte for value and address
+        read_boolean_and_type(transaction); // read 1 byte
         if (transaction->req_op == hpdcache_test_transaction_req::HPDCACHE_REQ_STORE ){ // TODO Add more instructions supported in this sequence
             read_value(transaction, size_value_store ); // read 8 byte
         }

@@ -1,3 +1,27 @@
+/**
+ *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
+ *
+ *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
+ *
+ *  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
+ *  may not use this trace except in compliance with the License, or, at your
+ *  option, the Apache License version 2.0. You may obtain a copy of the
+ *  License at
+ *
+ *  https://solderpad.org/licenses/SHL-2.1/
+ *
+ *  Unless required by applicable law or agreed to in writing, any work
+ *  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
+ */
+/**
+ *  Author     : Tommy PRATS 
+ *  Date       : June, 2025
+ *  Description:  Plugin to extract information from QEMU.
+ */
+
 #include <stdio.h>
 #include <inttypes.h>
 #include <qemu-plugin.h>
@@ -26,6 +50,8 @@ bool is_64_bits; // we use this to know how many bits are used to decribe an adr
 char buffer_compress[SIZE_BUFFER]; // A buffer to store data collected by the plugin. We write it by chunk in the file
 int buffer_begin; // an index in the buffer  
 bool need_to_compress = true; // true -> we encrypt the data; false -> data are stored whitout compression
+bool write_data = true; // TODO ask to Fred 
+
 
 int file_descriptor; // The file where we store data 
 mz_stream *stream = NULL; // We use this to compress data
@@ -209,9 +235,9 @@ static void write_boolean(uint8_t value)
     write_buffer((char *) (&value), 1);
 }
 
-static void write_delay(int *delay)
+static void write_delay(uint8_t *delay)
 {
-    write_buffer((char *) (delay), sizeof(int));
+    write_buffer((char *) (delay), sizeof(uint8_t));
 }
 
 
@@ -278,15 +304,22 @@ static void close_file(void)
  * @param time_elapsed the number of instruction who happened before this instruction excluding all memory access
  * @param value an integer on 8 bytes representing the value for a store 
  */
-static void write_in_file(bool is_store, uint64_t adress, uint8_t size, int time_elapsed, qemu_plugin_mem_value value ) 
+static void write_in_file(bool is_store, uint64_t adress, uint8_t size, uint8_t time_elapsed, qemu_plugin_mem_value value, uint8_t cacheable) 
 {
-    write_delay(&time_elapsed);
-    write_adress(&adress);
-    write_type_transaction(is_store);
-    write_size(&size, value.type);
-    write_boolean(16); // -> NEED_RSP
+    write_delay(&time_elapsed); // 1 byte
+    write_adress(&adress); // 8 bytes
+    write_size(&size, value.type); // 1 byte
+    uint8_t boolean_value_and_type = 2; // need response
     if (is_store){
-        write_value(value);
+        boolean_value_and_type |= (1 << 2); // store
+        boolean_value_and_type -= 2;
+    }
+    boolean_value_and_type |= cacheable;
+    
+//    write_type_transaction(is_store);
+    write_boolean(boolean_value_and_type); // 1 byte
+    if (is_store){
+        write_value(value); // 8 bytes
     }
     return;
 }
@@ -304,19 +337,35 @@ static void mem_cb(unsigned int vcpu_index,
         qemu_plugin_meminfo_t info,
         uint64_t vaddr,
         void *userdata) {
-    
     size_t size = qemu_plugin_mem_size_shift(info);
     struct qemu_plugin_hwaddr *hwaddr = qemu_plugin_get_hwaddr(info, vaddr);
+    uint8_t uncacheable = 0;
     if (hwaddr) {
         vaddr = qemu_plugin_hwaddr_phys_addr(hwaddr);
+        if ((vaddr >= 0x10000000 && vaddr < 0x10000100) ||  // UART
+            (vaddr >= 0x10001000 && vaddr < 0x10009000) ||  // VirtIO MMIO
+            (vaddr >= 0x00100000 && vaddr < 0x00102000) ||  // Test + RTC
+            (vaddr >= 0x10100000 && vaddr < 0x10100018) ||  // fw_cfg
+            (vaddr >= 0x02000000 && vaddr < 0x02010000) ||  // CLINT
+            (vaddr >= 0x0c000000 && vaddr < 0x0c600000) ||  // PLIC
+            (vaddr >= 0x20000000 && vaddr < 0x24000000) ||  // Flash banks
+            (vaddr >= 0x30000000 && vaddr < 0x40000000) ||  // PCIe
+            (vaddr >= 0x04000000 && vaddr < 0x06000000))    // Platform bus
+        {
+            uncacheable = 1;
+        }
     }
     char my_string[75];
     const char *type = qemu_plugin_mem_is_store(info) ? "store" : "load";
     qemu_plugin_mem_value value_store = qemu_plugin_mem_get_value(info);
+    
+    if (! write_data ) { // TODO ask to Fred what instruction trigger this
+        return;
+    }
 
     switch (mode){
         case WRITE_BINARY:
-            write_in_file(qemu_plugin_mem_is_store(info), vaddr, size, current_instruction, value_store);
+            write_in_file(qemu_plugin_mem_is_store(info), vaddr, size, current_instruction, value_store, uncacheable);
             break;
         case WRITE_ASCII:
             snprintf(my_string, 75, "%d [MEM] %-5s vcpu=%u addr=0x%" PRIx64 " size=%zu value=%lu\n", 
@@ -327,9 +376,6 @@ static void mem_cb(unsigned int vcpu_index,
             break;
     }
     current_instruction = 0; // reboot the counter of instruction who are not a memory access
-    if (vaddr == 0x100000){
-        exit(1);
-    }
 }
 
 /**
