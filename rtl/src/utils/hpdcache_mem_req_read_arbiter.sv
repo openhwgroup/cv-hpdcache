@@ -29,7 +29,7 @@ module hpdcache_mem_req_read_arbiter
 #(
     parameter int unsigned N = 0,
     parameter type hpdcache_mem_req_t = logic,
-    localparam type gnt_index_t = logic[(N > 1 ? $clog2(N) : 0):0]
+    localparam type gnt_index_t = logic[(N > 1 ? $clog2(N) - 1 : 0):0]
 )
 //  }}}
 
