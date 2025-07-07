@@ -249,7 +249,6 @@ jobs:
             echo ::set-output name=exit_code::1
           fi
           if (( $(echo "$nb_write_miss > $prev_write"  | bc -l) ))
-          if [ "$res" -eq 1 ]
           then
             echo -e  "\033[31mThe percentage of miss on write has grow\033[0m"
             echo ::set-output name=exit_code::2
