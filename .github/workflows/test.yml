@@ -243,17 +243,18 @@ jobs:
           nb_cycle_execution=$(cat $file  | grep SB.NB_CYCLES | tr -s " " | cut -d " " -f 3)
 
           echo "read = $nb_read_miss write = $nb_write_miss "
-          if [[ $(awk -v n1="$nb_read_miss" -v n2=$prev_read 'BEGIN {print (n1 > n2) ? "1" :"0"}') -eq 1 ]]
+          if (( $(echo "$nb_read_miss > $prev_read"  | bc -l) ))
           then
             echo -e  "\033[31mThe percentage of miss on read has grow\033[0m"
             echo ::set-output name=exit_code::1
           fi
-          if [[ $(awk -v n1="$nb_write_miss" -v n2=$prev_write 'BEGIN {print (n1 > n2) ? "1" :"0"}') -eq 1 ]]
+          if (( $(echo "$nb_write_miss > $prev_write"  | bc -l) ))
+          if [ "$res" -eq 1 ]
           then
             echo -e  "\033[31mThe percentage of miss on write has grow\033[0m"
             echo ::set-output name=exit_code::2
           fi
-          if [[ $(awk -v n1="$nb_cycle_execution" -v n2=$prev_cycle 'BEGIN {print (n1 > n2) ? "1" :"0"}') -eq 1 ]]
+          if (( $(echo "$nb_cycle_execution > $prev_cycle"  | bc -l) ))
           then
             echo -e  "\033[31mThe number of cycle has grow\033[0m"
             echo ::set-output name=exit_code::3
@@ -264,6 +265,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "ça passe "
           PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
 
           COMMENT=" Pipeline has failed due to a decrease in performance."
