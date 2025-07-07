@@ -234,15 +234,16 @@ jobs:
         continue-on-error: true
         run: |
           file=$(find . -name *from_file*.log)
-          prev_data=$(cat current_perf.txt)
-          prev_cycle=$(echo $prev_data | grep cycle | cut -d "=" -f 2)
-          prev_read=$(echo $prev_data | grep read | cut -d "=" -f 2)
-          prev_write=$(echo $prev_data | grep write | cut -d "=" -f 2)
+          file_prev="current_perf.txt"
+          prev_cycle=$(cat $file_prev | grep "cycle" | cut -d "=" -f 2)
+          prev_read=$(cat $file_prev | grep "read" | cut -d "=" -f 2)
+          prev_write=$(cat $file_prev| grep "write" | cut -d "=" -f 2)
           nb_read_miss=$(cat $file | grep "Read miss rate" | tr -s " " | cut -d " " -f 5)
           nb_write_miss=$(cat $file | grep "Write miss rate" | tr -s " " | cut -d " " -f 5)
           nb_cycle_execution=$(cat $file  | grep SB.NB_CYCLES | tr -s " " | cut -d " " -f 3)
 
-          echo "read = $nb_read_miss write = $nb_write_miss "
+          echo "read = $nb_read_miss write = $nb_write_miss  cycles = $nb_cycle_execution"
+          echo "read_prev = $prev_read write_prev = $prev_write cycle = $prev_cycle"
           if (( $(echo "$nb_read_miss > $prev_read"  | bc -l) ))
           then
             echo -e  "\033[31mThe percentage of miss on read has grow\033[0m"
