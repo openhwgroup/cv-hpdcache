@@ -230,3 +230,47 @@ jobs:
           ntests: '1'
           filename: 'trace_qemu'
           config: 'configs/default_config.mk'
+      - name: verify_perf
+        continue-on-error: true
+        run: |
+          file=$(find . -name *from_file*.log)
+          prev_data=$(cat current_perf.txt)
+          prev_cycle=$(echo $prev_data | grep cycle | cut -d "=" -f 2)
+          prev_read=$(echo $prev_data | grep read | cut -d "=" -f 2)
+          prev_write=$(echo $prev_data | grep write | cut -d "=" -f 2)
+          nb_read_miss=$(cat $file | grep "Read miss rate" | tr -s " " | cut -d " " -f 5)
+          nb_write_miss=$(cat $file | grep "Write miss rate" | tr -s " " | cut -d " " -f 5)
+          nb_cycle_execution=$(cat $file  | grep SB.NB_CYCLES | tr -s " " | cut -d " " -f 3)
+
+          echo "read = $nb_read_miss write = $nb_write_miss "
+          if [[ $(awk -v n1="$nb_read_miss" -v n2=$prev_read 'BEGIN {print (n1 > n2) ? "1" :"0"}') -eq 1 ]]
+          then
+            echo -e  "\033[31mThe percentage of miss on read has grow\033[0m"
+            echo ::set-output name=exit_code::1
+          fi
+          if [[ $(awk -v n1="$nb_write_miss" -v n2=$prev_write 'BEGIN {print (n1 > n2) ? "1" :"0"}') -eq 1 ]]
+          then
+            echo -e  "\033[31mThe percentage of miss on write has grow\033[0m"
+            echo ::set-output name=exit_code::2
+          fi
+          if [[ $(awk -v n1="$nb_cycle_execution" -v n2=$prev_cycle 'BEGIN {print (n1 > n2) ? "1" :"0"}') -eq 1 ]]
+          then
+            echo -e  "\033[31mThe number of cycle has grow\033[0m"
+            echo ::set-output name=exit_code::3
+          fi
+
+      - name: Put a comment 
+        if: failure()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+
+          COMMENT=" Pipeline has failed due to a decrease in performance."
+
+          curl -s -H "Authorization: token $GITHUB_TOKEN" \
+               -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"body\": \"$COMMENT\"}" \
+               "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER/comments"
+
