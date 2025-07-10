@@ -252,7 +252,8 @@ nonregression:
 	$(Q)$(SCANLOG) -pat scripts/scan_patterns/run_patterns.pat \
 	        -att scripts/scan_patterns/run_attributes.pat \
 	        -nowarn $(LOG_DIR)/nonreg_$(DATE_TIME)/$(SEQUENCE)_*.log \
-	        |& tee $(LOG_DIR)/nonreg_$(DATE_TIME)/nonreg.scan.log
+	        2>&1 | tee $(LOG_DIR)/nonreg_$(DATE_TIME)/nonreg.scan.log ; \
+	        exit $${PIPESTATUS[0]}
 
 .PHONY: cov
 cov: $(COV_MERGEFILE) $(COV_MERGEFILE).info
