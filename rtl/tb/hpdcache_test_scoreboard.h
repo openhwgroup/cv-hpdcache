@@ -328,6 +328,11 @@ private:
         return addr >> HPDCACHE_CL_OFFSET_WIDTH;
     }
 
+    static inline uint64_t get_offset(uint64_t addr)
+    {
+        return addr & ((1ULL << HPDCACHE_CL_OFFSET_WIDTH) - 1);
+    }
+
     typedef std::map  <uint32_t, inflight_entry_t>          inflight_map_t;
     typedef std::pair <uint32_t, inflight_entry_t>          inflight_map_pair_t;
     typedef std::map  <uint64_t, inflight_mem_entry_t>      inflight_mem_map_t;
@@ -553,10 +558,26 @@ private:
 
             //  Manage invalidation of the LR/SC reservation buffer
             if (req.is_amo() || req.is_amo_sc() || req.is_store()) {
+                uint64_t lrsc_rsrv_nline;
+                uint64_t lrsc_rsrv_word;
+                uint64_t lrsc_entry_nline;
+                uint64_t lrsc_entry_words;
+                uint64_t lrsc_entry_base;
+                uint64_t lrsc_entry_end;
                 bool addr_match;
 
-                //  Compute if the SC address matches the one of a previous LR reservation
-                addr_match = lrsc_buf_m.valid && ((e.addr >> 3) == (lrsc_buf_m.base_addr >> 3));
+                //  Compute if the address matches the one of a previous LR reservation
+                lrsc_rsrv_nline = get_nline(lrsc_buf_m.base_addr);
+                lrsc_rsrv_word  = get_offset(lrsc_buf_m.base_addr) >> 3;
+                lrsc_entry_nline = get_nline(e.addr);
+                lrsc_entry_words = e.bytes < 8 ? 1 : e.bytes >> 3;
+                lrsc_entry_base = get_offset(e.addr) >> 3;
+                lrsc_entry_end = lrsc_entry_base + lrsc_entry_words;
+
+                addr_match = lrsc_buf_m.valid                      &&
+                             (lrsc_rsrv_nline == lrsc_entry_nline) &&
+                             (lrsc_rsrv_word  >= lrsc_entry_base)  &&
+                             (lrsc_rsrv_word  <  lrsc_entry_end);
 
                 if (req.is_amo_sc()) {
                     //  SC can get an error response only if there is a valid
