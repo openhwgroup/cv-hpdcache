@@ -69,6 +69,7 @@ runs:
         fi
 
     - name: Change best perf
+      shell: bash
       run: |
         file_prev="${{ inputs.trace_perf }}"
         file=$(find . -name "*from_file*.log")
@@ -114,6 +115,7 @@ runs:
       if: failure()
       env:
         TOKEN: ${{ inputs.github_token }}
+      shell: bash
       run: |
         PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
 
