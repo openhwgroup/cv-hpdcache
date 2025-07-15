@@ -21,99 +21,107 @@
 #  Date       : October, 2024
 #  Description: GitHub Action to run a given test sequence on the Verilator TB
 ##
-name: 'Run sequence'
+name: 'Evaluate trace'
 inputs:
   trace_perf:
     description: 'Name of the file with current performance'
     required: true
     default: 'trace_qemu'
+
   config:
     description: 'Config of the HPDcache'
     required: true
     default: 'default'
 
+  github_token:
+    description: 'GitHub token'
+    required: true
+
 runs:
   using: "composite"
-  
   steps:
-      - name: verify_perf
-        run: |
-          file=$(find . -name *from_file*.log)
-          file_prev= ${{ inputs.trace_perf }}
-          prev_cycle=$(cat $file_prev | grep "cycle" | cut -d "=" -f 2)
-          prev_read=$(cat $file_prev | grep "read" | cut -d "=" -f 2)
-          prev_write=$(cat $file_prev| grep "write" | cut -d "=" -f 2)
-          nb_read_miss=$(cat $file | grep "Read miss rate" | tr -s " " | cut -d " " -f 5)
-          nb_write_miss=$(cat $file | grep "Write miss rate" | tr -s " " | cut -d " " -f 5)
-          nb_cycle_execution=$(cat $file  | grep SB.NB_CYCLES | tr -s " " | cut -d " " -f 3)
+    - name: verify_perf
+      shell: bash
+      run: |
+        file=$(find . -name "*from_file*.log")
+        file_prev="${{ inputs.trace_perf }}"
+        prev_cycle=$(cat $file_prev | grep "cycle" | cut -d "=" -f 2)
+        prev_read=$(cat $file_prev | grep "read" | cut -d "=" -f 2)
+        prev_write=$(cat $file_prev| grep "write" | cut -d "=" -f 2)
+        nb_read_miss=$(cat $file | grep "Read miss rate" | tr -s " " | cut -d " " -f 5)
+        nb_write_miss=$(cat $file | grep "Write miss rate" | tr -s " " | cut -d " " -f 5)
+        nb_cycle_execution=$(cat $file  | grep SB.NB_CYCLES | tr -s " " | cut -d " " -f 3)
 
-          if (( $(echo "$nb_read_miss > $prev_read"  | bc -l) ))
-          then
-            echo -e  "\033[31mThe percentage of miss on read has grow\033[0m"
-            exit 1
-          fi
-          if (( $(echo "$nb_write_miss > $prev_write"  | bc -l) ))
-          then
-            echo -e  "\033[31mThe percentage of miss on write has grow\033[0m"
-            exit 2
-          fi
-          if (( $(echo "$nb_cycle_execution > $prev_cycle"  | bc -l) ))
-          then
-            echo -e  "\033[31mThe number of cycle has grow\033[0m"
-            exit 3
-          fi
+        if (( $(echo "$nb_read_miss > $prev_read"  | bc -l) ))
+        then
+          echo -e  "\033[31mThe percentage of miss on read has grow\033[0m"
+          exit 1
+        fi
+        if (( $(echo "$nb_write_miss > $prev_write"  | bc -l) ))
+        then
+          echo -e  "\033[31mThe percentage of miss on write has grow\033[0m"
+          exit 2
+        fi
+        if (( $(echo "$nb_cycle_execution > $prev_cycle"  | bc -l) ))
+        then
+          echo -e  "\033[31mThe number of cycle has grow\033[0m"
+          exit 3
+        fi
 
-      - name: Change best perf
-        run: |
-          file_prev= ${{ inputs.trace_perf }}
-          file=$(find . -name *from_file*.log)
-          
-          prev_cycle=$(cat $file_prev | grep "cycle" | cut -d "=" -f 2)
-          prev_read=$(cat $file_prev | grep "read" | cut -d "=" -f 2)
-          prev_write=$(cat $file_prev| grep "write" | cut -d "=" -f 2)
-          nb_read_miss=$(cat $file | grep "Read miss rate" | tr -s " " | cut -d " " -f 5)
-          nb_write_miss=$(cat $file | grep "Write miss rate" | tr -s " " | cut -d " " -f 5)
-          nb_cycle_execution=$(cat $file  | grep SB.NB_CYCLES | tr -s " " | cut -d " " -f 3)
-          x=0
-          if (( $(echo "$nb_read_miss < $prev_read"  | bc -l) ))
-          then
-            x=1
-            sed -i -E "s/read.*/read=$nb_read_miss/" $file_prev 
-          fi
-          if (( $(echo "$nb_write_miss < $prev_write"  | bc -l) ))
-          then
-            x=1
-            sed -i -E "s/write.*/write=$nb_write_miss/" $file_prev 
-          fi
-          if (( $(echo "$nb_cycle_execution < $prev_cycle"  | bc -l) ))
-          then
-            x=1
-            sed -i -E "s/cycle.*/cycle=$nb_cycle_execution/" $file_prev 
-          fi
-          rm $file
-          if [[ $x -eq 1 ]]
-          then
-            exit 0  
-          fi
-          git config --local user.email "test@github.com"
-          git config --local user.name "GitHub Action test"
-          git add ./$file_prev
-          git commit -m "new best perf on ${{ inputs.config }} "
+    - name: Change best perf
+      run: |
+        file_prev="${{ inputs.trace_perf }}"
+        file=$(find . -name "*from_file*.log")
+        
+        prev_cycle=$(cat $file_prev | grep "cycle" | cut -d "=" -f 2)
+        prev_read=$(cat $file_prev | grep "read" | cut -d "=" -f 2)
+        prev_write=$(cat $file_prev| grep "write" | cut -d "=" -f 2)
+        nb_read_miss=$(cat $file | grep "Read miss rate" | tr -s " " | cut -d " " -f 5)
+        nb_write_miss=$(cat $file | grep "Write miss rate" | tr -s " " | cut -d " " -f 5)
+        nb_cycle_execution=$(cat $file  | grep SB.NB_CYCLES | tr -s " " | cut -d " " -f 3)
+        x=0
+        if (( $(echo "$nb_read_miss < $prev_read"  | bc -l) ))
+        then
+          x=1
+          sed -i -E "s/read.*/read=$nb_read_miss/" $file_prev 
+        fi
+        if (( $(echo "$nb_write_miss < $prev_write"  | bc -l) ))
+        then
+          x=1
+          sed -i -E "s/write.*/write=$nb_write_miss/" $file_prev 
+        fi
+        if (( $(echo "$nb_cycle_execution < $prev_cycle"  | bc -l) ))
+        then
+          x=1
+          sed -i -E "s/cycle.*/cycle=$nb_cycle_execution/" $file_prev 
+        fi
+        rm $file
+        if [[ $x -eq 0 ]]
+        then
+          exit 0  
+        fi
+        git config --local user.email "test@github.com"
+        git config --local user.name "GitHub Action test"
+        git add ./$file_prev
+        git commit -m "new best perf on ${{ inputs.config }} "
+    
+    - name: Push changes # push the output folder to your repo
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ inputs.github_token }}
 
-      - name: Push changes # push the output folder to your repo
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Put a comment 
+      if: failure()
+      env:
+        TOKEN: ${{ inputs.github_token }}
+      run: |
+        PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
 
-      - name: Put a comment 
-        if: failure()
-        run: |
-          PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+        COMMENT=" Pipeline has failed due to a decrease in performance in ${{ inputs.config }}."
 
-          COMMENT=" Pipeline has failed due to a decrease in performance in ${{ inputs.config }}."
+        curl -s -H "Authorization: token $TOKEN" \
+             -H "Content-Type: application/json" \
+             -X POST \
+             -d "{\"body\": \"$COMMENT\"}" \
+             "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER/comments"
 
-          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-               -H "Content-Type: application/json" \
-               -X POST \
-               -d "{\"body\": \"$COMMENT\"}" \
-               "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER/comments"

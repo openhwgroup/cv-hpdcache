@@ -228,7 +228,7 @@ jobs:
           seqname: 'from_file'
           ntrans: '800000'
           ntests: '1'
-          filename: 'trace_qemu_default'
+          filename: 'trace_qemu'
           config: 'configs/default_config.mk'
 
       - id: verify_perf
@@ -236,6 +236,7 @@ jobs:
         with:
           config: 'default'
           trace_perf: 'current_perf_default.txt'
+          github_token: "${{ secrets.GITHUB_TOKEN }}"
 
   run_trace_HPC:
     runs-on: ubuntu-latest
@@ -250,7 +251,7 @@ jobs:
           seqname: 'from_file'
           ntrans: '800000'
           ntests: '1'
-          filename: 'trace_qemu_hpc'
+          filename: 'trace_qemu'
           config: 'configs/hpc_config.mk'
 
       - id: verify_perf
@@ -258,3 +259,4 @@ jobs:
         with:
           config: 'HPC'
           trace_perf: 'current_perf_HPC.txt'
+          github_token: "${{ secrets.GITHUB_TOKEN }}"
