@@ -258,5 +258,5 @@ jobs:
         uses: ./.github/actions/evaluate_trace
         with:
           config: 'HPC'
-          trace_perf: 'current_perf_HPC.txt'
+          trace_perf: 'current_perf_hpc.txt'
           github_token: "${{ secrets.GITHUB_TOKEN }}"

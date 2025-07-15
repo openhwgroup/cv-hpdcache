@@ -99,14 +99,17 @@ runs:
         rm $file
         if [[ $x -eq 0 ]]
         then
-          exit 0  
+          echo "skip_push=true" >> $GITHUB_ENV
+          exit 0
         fi
+        echo "skip_push=false" >> $GITHUB_ENV
         git config --local user.email "test@github.com"
         git config --local user.name "GitHub Action test"
         git add ./$file_prev
         git commit -m "new best perf on ${{ inputs.config }} "
     
     - name: Push changes # push the output folder to your repo
+      if: env.skip_push != 'true'
       uses: ad-m/github-push-action@master
       with:
         github_token: ${{ inputs.github_token }}
