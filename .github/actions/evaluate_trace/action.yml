@@ -103,6 +103,7 @@ runs:
           exit 0
         fi
         echo "skip_push=false" >> $GITHUB_ENV
+        echo -e "\n$(date +%Y%m%d) $file_prev" >> $file_prev
         git config --local user.email "test@github.com"
         git config --local user.name "GitHub Action test"
         git add ./$file_prev

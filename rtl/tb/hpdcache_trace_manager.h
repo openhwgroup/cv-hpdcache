@@ -221,37 +221,6 @@ public:
         uint64_t address_64= 0;
         get_content_of_trace(&address_64, sizeof(uint64_t));
         return address_64;
-        switch (HPDCACHE_WORD_WIDTH)
-        {
-            case 32:
-            {
-                uint32_t address_32 = 0;
-                get_content_of_trace(&address_32, sizeof(uint32_t));
-                return address_32;
-            }
-            case 64:
-            {
-                switch ( HPDCACHE_REQ_WORDS)
-                {
-                    case 1: // 64 bits
-                    {
-                    }
-                    case 2: // 128 bits
-                    {
-                        break;
-                    }
-                    case 4: // 256 bits
-                    {
-                        break;
-                    }
-                }
-            }
-            default:
-            {
-                break;
-            }
-        }
-        return 0;
     }
 
     inline unsigned read_type_transaction()
