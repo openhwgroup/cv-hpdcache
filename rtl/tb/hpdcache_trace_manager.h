@@ -218,6 +218,9 @@ public:
 
     uint64_t read_address()
     {
+        uint64_t address_64= 0;
+        get_content_of_trace(&address_64, sizeof(uint64_t));
+        return address_64;
         switch (HPDCACHE_WORD_WIDTH)
         {
             case 32:
@@ -232,9 +235,6 @@ public:
                 {
                     case 1: // 64 bits
                     {
-                        uint64_t address_64= 0;
-                        get_content_of_trace(&address_64, sizeof(uint64_t));
-                        return address_64;
                     }
                     case 2: // 128 bits
                     {
