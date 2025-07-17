@@ -182,12 +182,12 @@ public:
      * @brief This function read the  buffer who contains the trace
      *        By edge effect, read the trace if it's necessary.
      *
-     * @param pointer A pointer on any type where the size next bytes will became the content of the
-     *                trace
+     * @param ptr A pointer on any type where the size next bytes will became the content of the
+     *            trace
      *
      * @param size The number of bytes to read
      */
-    void get_content_of_trace(void * pointer, int size)
+    void get_content_of_trace(void *ptr, int size)
     {
         if (size == 0) {
             return;
@@ -211,9 +211,9 @@ public:
             }
             */
         }
-        *((char *) pointer) = buf[read_buffer];
+        *((char*)ptr) = buf[read_buffer];
         read_buffer++;
-        get_content_of_trace(pointer + 1, size - 1);
+        get_content_of_trace((char*)ptr + 1, size - 1);
     }
 
     /**
@@ -226,7 +226,7 @@ public:
 
     uint64_t read_address()
     {
-        uint64_t address_64= 0;
+        uint64_t address_64 = 0;
         get_content_of_trace(&address_64, sizeof(uint64_t));
         return address_64;
     }
@@ -234,14 +234,14 @@ public:
     inline unsigned read_type_transaction()
     {
         char result = 0;
-        get_content_of_trace(&result, 1);
+        get_content_of_trace(&result, sizeof(char));
         return *((unsigned *) &result);
     }
 
     inline unsigned read_size(uint8_t *size_value)
     {
         char result = 0;
-        get_content_of_trace(&result, 1);
+        get_content_of_trace(&result, sizeof(char));
         *size_value = result >> 4;
         result <<= 4;
         result >>= 4;
@@ -255,11 +255,9 @@ public:
      */
     void read_boolean_and_type(std::shared_ptr<hpdcache_test_transaction_req> result)
     {
-        unsigned tmp = 0;
-        get_content_of_trace(&tmp, 1);
-        if (Logger::is_debug_enabled()) {
-            //display_binary(tmp);
-        }
+        uint8_t tmp = 0;
+        get_content_of_trace(&tmp, sizeof(uint8_t));
+
         uint8_t type_operation = tmp >> 2;
         result->req_op = (unsigned) type_operation;
         result->req_need_rsp = get_bit(tmp, 2);

@@ -43,7 +43,7 @@ SCANLOG             := $(TB_DIR)/scripts/scan_logs.pl -listwarnings -listerrors
 SHELL               := bash
 
 Q                   ?= @
-NTRANSACTIONS       ?= 10000
+NTRANSACTIONS       ?= $(if $(filter from_trace,$(SEQUENCE)),-1,10000)
 TIMEOUT             ?= $$(( $(NTRANSACTIONS)*1000 ))
 SEQUENCE            ?= random
 LOG_LEVEL           ?= 1
@@ -60,7 +60,7 @@ COV_DIR             := $(TB_DIR)/coverage
 COV_HTML_DIR        := $(TB_DIR)/coverage_html
 VERILATE_LOG        := $(BUILD_DIR)/verilate.log
 BUILD_LOG           := $(BUILD_DIR)/build.log
-LOG_SUFFIX           = $(if $(filter from_file,$(SEQUENCE)),_$(notdir $(TRACE_FILE_TO_READ)))
+LOG_SUFFIX           = $(if $(filter from_trace,$(SEQUENCE)),_$(notdir $(TRACE_FILE_TO_READ)))
 RUN_LOG             ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(LOG_SUFFIX).log
 TRACE_FILE          ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(LOG_SUFFIX).vcd
 COV_FILE            ?= $(COV_DIR)/cov_$(SEQUENCE)_$(SEED)$(LOG_SUFFIX).dat
@@ -195,7 +195,7 @@ run <options>                Execute the specified test sequence on the
                              testbench
 
     [SEQUENCE=$(SEQUENCE)] - test sequence
-    [TRACE_FILE_TO_READ=$(TRACE_FILE_TO_READ)] - file for saved trace from QEMu. Use it with SEQUENCE=from_file
+    [TRACE_FILE_TO_READ=$(TRACE_FILE_TO_READ)] - file for saved trace from QEMu. Use it with SEQUENCE=from_trace
     [TRACE=$(TRACE)] - generate waveform (on VCD format)
     [TIMEOUT=$(TIMEOUT)] - maximum nb of run cycles
     [LOG_LEVEL=$(LOG_LEVEL)] - level of log verbosity (low = 0, 1, 2, high = 3)
