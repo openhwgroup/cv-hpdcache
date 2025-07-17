@@ -25,13 +25,13 @@
 ##
 -include user_conf.mk
 
-TB_DIR              := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-HPDCACHE_DIR        ?= $(TB_DIR)/../..
-
 ifndef SYSTEMC_LIBDIR
 $(error "SYSTEMC_LIBDIR not defined")
 endif
-MINIZ=miniz
+
+TB_DIR              := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+HPDCACHE_DIR        ?= $(TB_DIR)/../..
+MINIZ_DIR           := $(TB_DIR)/thirdparty/miniz
 VERILATOR           ?= verilator
 VERILATOR_COV       ?= verilator_coverage
 TOUCH               := touch
@@ -45,19 +45,20 @@ SHELL               := bash
 Q                   ?= @
 NTRANSACTIONS       ?= 10000
 TIMEOUT             ?= $$(( $(NTRANSACTIONS)*1000 ))
-SEQUENCE            ?= random 
-FILE				?= test_file.txt
+SEQUENCE            ?= random
+FILE                ?= test_file.txt
 LOG_LEVEL           ?= 1
 SEED                ?= 1234
 ERROR_LIMIT         ?= 0
 NTESTS              ?= 128
 TRACE               ?= 0
 TRACE_FILE_TO_READ  ?= trace_qemu
+CONFIG              ?= configs/default_config.mk
 
-BUILD_DIR           := build
-LOG_DIR             := logs
-COV_DIR             := coverage
-COV_HTML_DIR        := coverage_html
+BUILD_DIR           := $(TB_DIR)/build
+LOG_DIR             := $(TB_DIR)/logs
+COV_DIR             := $(TB_DIR)/coverage
+COV_HTML_DIR        := $(TB_DIR)/coverage_html
 VERILATE_LOG        := $(BUILD_DIR)/verilate.log
 BUILD_LOG           := $(BUILD_DIR)/build.log
 
@@ -76,25 +77,21 @@ export PERL5LIB        := $(TB_DIR)/scripts/perl5
 
 CONF_DEFINES =
 
-ifdef CONFIG
 include $(CONFIG)
-else
-include configs/default_config.mk
-endif
-
 include rtl_conf.mk
 
-USER_CPPFLAGS       += -I$(TB_DIR) \
+USER_CPPFLAGS       += -I$(TB_DIR)/include \
                        -I$(TB_DIR)/sc_verif_lib/include \
                        -I$(TB_DIR)/sc_verif_lib/modules/generic_cache/include \
                        -I$(TB_DIR)/sc_verif_lib/modules/mem_model/include \
+                       -I$(MINIZ_DIR) \
                        -DDEBUG_HPDCACHE_TEST_SCOREBOARD=1 \
                        -DDEBUG_HPDCACHE_TEST_MEM_RESP_MODEL=1 \
                        $(if $(filter 1,$(DEBUG)),-DDEBUG) \
                        $(CONF_DEFINES)
 
 ifdef CREATE_FILE
-USER_CPPFLAGS   += -DCREATE_FILE=1
+USER_CPPFLAGS       += -DCREATE_FILE=1
 endif
 
 
@@ -174,8 +171,9 @@ verilate: $(VERILATE_LOG)
 build: $(BUILD_LOG)
 run: $(RUN_LOG)
 
-$(MINIZ).o: $(MINIZ).c $(MINIZ).h
-	$(CC) -c -g -o $@ $<
+$(BUILD_DIR)/miniz.o: $(MINIZ_DIR)/miniz.c $(MINIZ_DIR)/miniz.h
+	$(Q)$(MKDIR) $(dir $@)
+	$(Q)$(CC) -I$(MINIZ_DIR) -c -g -o $@ $<
 
 define help_message
 help: make [target] [arguments]
@@ -294,20 +292,20 @@ cov_html: cov $(COV_HTML_DIR)/index.html
 $(COV_HTML_DIR)/index.html: $(COV_MERGEFILE).info
 	genhtml --branch-coverage --function-coverage -o coverage_html $<
 
-$(VERILATE_LOG): print_config $(SVLOG_SOURCES) $(MINIZ).o $(TB_TOP).cpp
+$(VERILATE_LOG): print_config $(SVLOG_SOURCES) $(BUILD_DIR)/miniz.o $(TB_TOP).cpp
 	$(Q)$(ECHO) "Verilating the RTL sources... (LOG: $@)"
 	$(Q)$(MKDIR) $(dir $@)
 	$(Q)$(VERILATOR) --sc $(VERILATOR_FLAGS) -Mdir $(BUILD_DIR) \
 	        $(if $(filter $(DISABLE_WAIVERS),1),,scripts/verilate_waivers.vlt) \
 	        +incdir+$(HPDCACHE_DIR)/rtl/include \
 	        $(SVLOG_SOURCES) \
-	        --exe $(TB_TOP).cpp --top-module $(DUT) ../$(MINIZ).o >& $@
+	        --exe $(TB_TOP).cpp --top-module $(DUT) $(BUILD_DIR)/miniz.o >& $@
 	$(Q)$(ECHO) "VERILATE FINISHED" >> $@
 	$(Q)$(SCANLOG) -pat scripts/scan_patterns/verilate_patterns.pat \
 	        -nowarn $@ |& tee $@.scan
 	$(Q)$(ECHO) "Verilate done"
 
-$(BUILD_LOG): print_config $(VERILATE_LOG) $(TB_TOP).cpp 
+$(BUILD_LOG): print_config $(VERILATE_LOG) $(TB_TOP).cpp
 	$(Q)$(ECHO) "Build the testbench... (LOG: $@)"
 	$(Q)$(MKDIR) $(dir $@)
 	$(Q)$(MAKE) -C $(BUILD_DIR) -f "V$(DUT).mk" "V$(DUT)" $(VERILATOR_MAKEFLAGS) >& $@

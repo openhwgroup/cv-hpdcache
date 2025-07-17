@@ -30,7 +30,6 @@
 #include "scv.h"
 #include "hpdcache_test_defs.h"
 #include "sequence.h"
-#include "hpdcache_trace_manager.h"
 #include "hpdcache_test_transaction.h"
 #include "hpdcache_test_mem_resp_model_base.h"
 
@@ -221,7 +220,7 @@ public:
 
         // wait and consume driver acknowledgement (this is blocking)
         transaction_ret_i.read();
-          
+
         #ifdef CREATE_FILE
         instance_file_writter()->write_in_file(t, &delay);
         #endif
