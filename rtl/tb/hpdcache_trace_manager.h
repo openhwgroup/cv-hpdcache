@@ -380,39 +380,9 @@ public:
 
     void write_address(std::shared_ptr<hpdcache_test_transaction_req> t) 
     {
-        switch (HPDCACHE_WORD_WIDTH)
-        {
-            case 32:
-            {
-                uint32_t address_32 = t->req_addr.to_uint64();
-                trace->write((char*)(&(address_32)), sizeof(uint32_t));
-                break;
-            }
-            case 64:
-            {
-                switch ( HPDCACHE_REQ_WORDS)
-                {
-                    case 1: // 64 bits
-                    {
-                        uint64_t address_64 = t->req_addr.to_uint64();
-                        trace->write((char*)(&(address_64)), sizeof(uint64_t));
-                        break;
-                    }
-                    case 2: // 128 bits
-                    {
-                        break;
-                    }
-                    case 4: // 256 bits
-                    {
-                        break;
-                    }
-                }
-            }
-            default:
-            {
-                break;
-            }
-        }
+        uint64_t address_64 = t->req_addr.to_uint64();
+        trace->write((char*)(&(address_64)), sizeof(uint64_t));
+        return;
     }
 
     void write_type_transaction( std::shared_ptr<hpdcache_test_transaction_req> t) 

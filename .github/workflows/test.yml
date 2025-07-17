@@ -215,9 +215,9 @@ jobs:
           ntests: '16'
           config: 'configs/embedded_config.mk'
 
-  run_trace_default_config:
+  run_trace:
     runs-on: ubuntu-latest
-    name: run_trace_default_config
+    name: run_trace
     needs: build
     steps:
       - uses: actions/checkout@master
@@ -238,9 +238,9 @@ jobs:
           trace_perf: 'current_perf_default.txt'
           github_token: "${{ secrets.GITHUB_TOKEN }}"
 
-  run_trace_HPC:
+  run_trace_hpc:
     runs-on: ubuntu-latest
-    name: run_trace_HPC_config
+    name: run_trace_hpc
     needs: build
     steps:
       - uses: actions/checkout@master

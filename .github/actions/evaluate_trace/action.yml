@@ -1,5 +1,6 @@
 ##
-#  Copyright 2023,2024 Cesar Fuguet
+#  Copyright 2025 Tommy PRATS 
+#  Copyright 2025 Inria
 #
 #  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
 #
@@ -17,10 +18,11 @@
 #  under the License.
 ##
 ##
-#  Author     : Cesar Fuguet
-#  Date       : October, 2024
-#  Description: GitHub Action to run a given test sequence on the Verilator TB
+#  Author     : Tommy PRATS 
+#  Date       : July, 2025
+#  Description: GitHub Action to check performance and send message if it decrease or push new best perf 
 ##
+
 name: 'Evaluate trace'
 inputs:
   trace_perf:
