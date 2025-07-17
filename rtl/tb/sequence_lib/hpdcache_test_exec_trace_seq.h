@@ -45,7 +45,7 @@ class hpdcache_test_exec_trace_seq : public hpdcache_test_sequence
 private:
     typedef sc_bv<HPDCACHE_REQ_DATA_WIDTH> req_data_t;
 
-    Trace_reader *my_trace;
+    trace_reader *my_trace;
     hpdcache_test_sequence::hpdcache_test_memory_segment seg;
 
 
@@ -57,7 +57,7 @@ public:
 
     hpdcache_test_exec_trace_seq(sc_core::sc_module_name nm, std::string trace_name) : hpdcache_test_sequence(nm, "from_trace_seq")
     {
-        my_trace =  new Trace_reader(trace_name);
+        my_trace =  new trace_reader(trace_name);
         SC_THREAD(run);
         sensitive << clk_i.pos();
 

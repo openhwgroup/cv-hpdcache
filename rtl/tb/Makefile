@@ -46,13 +46,12 @@ Q                   ?= @
 NTRANSACTIONS       ?= 10000
 TIMEOUT             ?= $$(( $(NTRANSACTIONS)*1000 ))
 SEQUENCE            ?= random
-FILE                ?= test_file.txt
 LOG_LEVEL           ?= 1
 SEED                ?= 1234
 ERROR_LIMIT         ?= 0
 NTESTS              ?= 128
 TRACE               ?= 0
-TRACE_FILE_TO_READ  ?= trace_qemu
+TRACE_FILE_TO_READ  ?= test_exec_traces/trace_qemu
 CONFIG              ?= configs/default_config.mk
 
 BUILD_DIR           := $(TB_DIR)/build
@@ -61,12 +60,10 @@ COV_DIR             := $(TB_DIR)/coverage
 COV_HTML_DIR        := $(TB_DIR)/coverage_html
 VERILATE_LOG        := $(BUILD_DIR)/verilate.log
 BUILD_LOG           := $(BUILD_DIR)/build.log
-
-SUFFIX=$(notdir $(TRACE_FILE_TO_READ))
-
-RUN_LOG             ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(SUFFIX).log
-TRACE_FILE          ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(SUFFIX).vcd
-COV_FILE            ?= $(COV_DIR)/cov_$(SEQUENCE)_$(SEED)$(SUFFIX).dat
+LOG_SUFFIX           = $(if $(filter from_file,$(SEQUENCE)),_$(notdir $(TRACE_FILE_TO_READ)))
+RUN_LOG             ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(LOG_SUFFIX).log
+TRACE_FILE          ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(LOG_SUFFIX).vcd
+COV_FILE            ?= $(COV_DIR)/cov_$(SEQUENCE)_$(SEED)$(LOG_SUFFIX).dat
 COV_MERGEFILE       ?= $(COV_DIR)/cov_result.dat
 DATE_TIME           ?= $(shell date "+%Y_%m_%d-%H%M")
 
