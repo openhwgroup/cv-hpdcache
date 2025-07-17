@@ -168,10 +168,6 @@ verilate: $(VERILATE_LOG)
 build: $(BUILD_LOG)
 run: $(RUN_LOG)
 
-$(BUILD_DIR)/miniz.o: $(MINIZ_DIR)/miniz.c $(MINIZ_DIR)/miniz.h
-	$(Q)$(MKDIR) $(dir $@)
-	$(Q)$(CC) -I$(MINIZ_DIR) -c -g -o $@ $<
-
 define help_message
 help: make [target] [arguments]
 
@@ -310,6 +306,10 @@ $(BUILD_LOG): print_config $(VERILATE_LOG) $(TB_TOP).cpp
 	$(Q)$(SCANLOG) -pat scripts/scan_patterns/build_patterns.pat \
 	        -nowarn $@ |& tee $@.scan
 	$(Q)$(ECHO) "Build done"
+
+$(BUILD_DIR)/miniz.o: $(MINIZ_DIR)/miniz.c $(MINIZ_DIR)/miniz.h
+	$(Q)$(MKDIR) $(dir $@)
+	$(Q)$(CC) -I$(MINIZ_DIR) -c -g -o $@ $<
 
 .PHONY: clean clean_log clean_cover clean_all distclean
 clean:
