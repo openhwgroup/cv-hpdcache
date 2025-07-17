@@ -1,26 +1,12 @@
 ##
-#  Copyright 2025 Tommy PRATS 
 #  Copyright 2025 Inria
-#
 #  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
-#
-#  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
-#  may not use this file except in compliance with the License, or, at your
-#  option, the Apache License version 2.0. You may obtain a copy of the
-#  License at
-#
-#  https://solderpad.org/licenses/SHL-2.1/
-#
-#  Unless required by applicable law or agreed to in writing, any work
-#  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
-#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-#  License for the specific language governing permissions and limitations
-#  under the License.
 ##
 ##
-#  Author     : Tommy PRATS 
+#  Author     : Tommy PRATS
 #  Date       : July, 2025
-#  Description: GitHub Action to check performance and send message if it decrease or push new best perf 
+#  Description: GitHub Action to check performance and send message if it
+#               decrease or push new best perf
 ##
 
 name: 'Evaluate trace'
@@ -28,12 +14,10 @@ inputs:
   trace_perf:
     description: 'Name of the file with current performance'
     required: true
-    default: 'trace_qemu'
 
   config:
     description: 'Config of the HPDcache'
     required: true
-    default: 'default'
 
   github_token:
     description: 'GitHub token'
@@ -45,8 +29,9 @@ runs:
     - name: verify_perf
       shell: bash
       run: |
-        file=$(find . -name "*from_file*.log")
+        cd rtl/tb
         file_prev="${{ inputs.trace_perf }}"
+        file=$(find . -name "*from_trace*.log")
         prev_cycle=$(cat $file_prev | grep "cycle" | cut -d "=" -f 2)
         prev_read=$(cat $file_prev | grep "read" | cut -d "=" -f 2)
         prev_write=$(cat $file_prev| grep "write" | cut -d "=" -f 2)
@@ -73,9 +58,9 @@ runs:
     - name: Change best perf
       shell: bash
       run: |
+        cd rtl/tb
         file_prev="${{ inputs.trace_perf }}"
-        file=$(find . -name "*from_file*.log")
-        
+        file=$(find . -name "*from_trace*.log")
         prev_cycle=$(cat $file_prev | grep "cycle" | cut -d "=" -f 2)
         prev_read=$(cat $file_prev | grep "read" | cut -d "=" -f 2)
         prev_write=$(cat $file_prev| grep "write" | cut -d "=" -f 2)
@@ -86,17 +71,17 @@ runs:
         if (( $(echo "$nb_read_miss < $prev_read"  | bc -l) ))
         then
           x=1
-          sed -i -E "s/read.*/read=$nb_read_miss/" $file_prev 
+          sed -i -E "s/read.*/read=$nb_read_miss/" $file_prev
         fi
         if (( $(echo "$nb_write_miss < $prev_write"  | bc -l) ))
         then
           x=1
-          sed -i -E "s/write.*/write=$nb_write_miss/" $file_prev 
+          sed -i -E "s/write.*/write=$nb_write_miss/" $file_prev
         fi
         if (( $(echo "$nb_cycle_execution < $prev_cycle"  | bc -l) ))
         then
           x=1
-          sed -i -E "s/cycle.*/cycle=$nb_cycle_execution/" $file_prev 
+          sed -i -E "s/cycle.*/cycle=$nb_cycle_execution/" $file_prev
         fi
         rm $file
         if [[ $x -eq 0 ]]
@@ -106,18 +91,18 @@ runs:
         fi
         echo "skip_push=false" >> $GITHUB_ENV
         echo -e "\n$(date +%Y%m%d) $file_prev" >> $file_prev
-        git config --local user.email "test@github.com"
+        git config --local user.email "ci@github.com"
         git config --local user.name "GitHub Action test"
         git add ./$file_prev
         git commit -m "new best perf on ${{ inputs.config }} "
-    
+
     - name: Push changes # push the output folder to your repo
       if: env.skip_push != 'true'
       uses: ad-m/github-push-action@master
       with:
         github_token: ${{ inputs.github_token }}
 
-    - name: Put a comment 
+    - name: Put a comment
       if: failure()
       env:
         TOKEN: ${{ inputs.github_token }}

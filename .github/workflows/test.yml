@@ -1,20 +1,6 @@
 ##
-#  Copyright 2023,2024 Cesar Fuguet
-#
+#  Copyright 2025 Inria
 #  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
-#
-#  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
-#  may not use this file except in compliance with the License, or, at your
-#  option, the Apache License version 2.0. You may obtain a copy of the
-#  License at
-#
-#  https://solderpad.org/licenses/SHL-2.1/
-#
-#  Unless required by applicable law or agreed to in writing, any work
-#  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
-#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-#  License for the specific language governing permissions and limitations
-#  under the License.
 ##
 ##
 #  Author     : Cesar Fuguet
@@ -222,20 +208,20 @@ jobs:
     steps:
       - uses: actions/checkout@master
 
-      - id: run_trace_sequence 
+      - id: run_from_trace_sequence
         uses: ./.github/actions/run_sequence
         with:
-          seqname: 'from_file'
+          seqname: 'from_trace'
           ntrans: '800000'
           ntests: '1'
-          filename: 'trace_qemu'
+          filename: 'traces_lib/trace_qemu'
           config: 'configs/default_config.mk'
 
       - id: verify_perf
         uses: ./.github/actions/evaluate_trace
         with:
-          config: 'default'
-          trace_perf: 'current_perf_default.txt'
+          config: 'configs/default_config.mk'
+          trace_perf: 'perf_log/current_perf_default.txt'
           github_token: "${{ secrets.GITHUB_TOKEN }}"
 
   run_trace_hpc:
@@ -245,18 +231,18 @@ jobs:
     steps:
       - uses: actions/checkout@master
 
-      - id: run_trace_sequence 
+      - id: run_from_trace_sequence
         uses: ./.github/actions/run_sequence
         with:
-          seqname: 'from_file'
+          seqname: 'from_trace'
           ntrans: '800000'
           ntests: '1'
-          filename: 'trace_qemu'
+          filename: 'traces_lib/trace_qemu'
           config: 'configs/hpc_config.mk'
 
       - id: verify_perf
         uses: ./.github/actions/evaluate_trace
         with:
-          config: 'HPC'
-          trace_perf: 'current_perf_hpc.txt'
+          config: 'configs/hpc_config.mk'
+          trace_perf: 'perf_log/current_perf_hpc.txt'
           github_token: "${{ secrets.GITHUB_TOKEN }}"
