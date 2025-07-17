@@ -51,7 +51,7 @@ SEED                ?= 1234
 ERROR_LIMIT         ?= 0
 NTESTS              ?= 128
 TRACE               ?= 0
-TRACE_FILE_TO_READ  ?= test_exec_traces/trace_qemu
+TRACE_FILE_TO_READ  ?= traces_lib/trace_qemu
 CONFIG              ?= configs/default_config.mk
 
 BUILD_DIR           := $(TB_DIR)/build
