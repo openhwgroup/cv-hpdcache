@@ -215,3 +215,48 @@ jobs:
           ntests: '16'
           config: 'configs/embedded_config.mk'
 
+  run_trace:
+    runs-on: ubuntu-latest
+    name: run_trace
+    needs: build
+    steps:
+      - uses: actions/checkout@master
+
+      - id: run_trace_sequence 
+        uses: ./.github/actions/run_sequence
+        with:
+          seqname: 'from_file'
+          ntrans: '800000'
+          ntests: '1'
+          filename: 'trace_qemu'
+          config: 'configs/default_config.mk'
+
+      - id: verify_perf
+        uses: ./.github/actions/evaluate_trace
+        with:
+          config: 'default'
+          trace_perf: 'current_perf_default.txt'
+          github_token: "${{ secrets.GITHUB_TOKEN }}"
+
+  run_trace_hpc:
+    runs-on: ubuntu-latest
+    name: run_trace_hpc
+    needs: build
+    steps:
+      - uses: actions/checkout@master
+
+      - id: run_trace_sequence 
+        uses: ./.github/actions/run_sequence
+        with:
+          seqname: 'from_file'
+          ntrans: '800000'
+          ntests: '1'
+          filename: 'trace_qemu'
+          config: 'configs/hpc_config.mk'
+
+      - id: verify_perf
+        uses: ./.github/actions/evaluate_trace
+        with:
+          config: 'HPC'
+          trace_perf: 'current_perf_hpc.txt'
+          github_token: "${{ secrets.GITHUB_TOKEN }}"

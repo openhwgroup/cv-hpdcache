@@ -33,6 +33,11 @@ inputs:
     required: true
     default: '5000'
 
+  filename:
+    description: 'Trace file to read the sequence'
+    required: false
+    default: 'trace_qemu'
+
   ntests:
     description: 'Number of separate tests'
     required: true
@@ -109,7 +114,8 @@ runs:
         make nonregression \
             SEQUENCE=${{ inputs.seqname }} \
             NTESTS=${{ inputs.ntests }} \
-            NTRANSACTIONS=${{ inputs.ntrans }}
+            NTRANSACTIONS=${{ inputs.ntrans }} \
+            TRACE_FILE_TO_READ=${{ inputs.filename }}
 
     - name: Archive nonregression logs
       if: ${{ failure () && steps.run-tb.conclusion == 'failure' }}

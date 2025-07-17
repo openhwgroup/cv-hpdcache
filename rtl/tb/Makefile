@@ -31,7 +31,7 @@ HPDCACHE_DIR        ?= $(TB_DIR)/../..
 ifndef SYSTEMC_LIBDIR
 $(error "SYSTEMC_LIBDIR not defined")
 endif
-
+MINIZ=miniz
 VERILATOR           ?= verilator
 VERILATOR_COV       ?= verilator_coverage
 TOUCH               := touch
@@ -45,12 +45,14 @@ SHELL               := bash
 Q                   ?= @
 NTRANSACTIONS       ?= 10000
 TIMEOUT             ?= $$(( $(NTRANSACTIONS)*1000 ))
-SEQUENCE            ?= random
+SEQUENCE            ?= random 
+FILE				?= test_file.txt
 LOG_LEVEL           ?= 1
 SEED                ?= 1234
 ERROR_LIMIT         ?= 0
 NTESTS              ?= 128
 TRACE               ?= 0
+TRACE_FILE_TO_READ  ?= trace_qemu
 
 BUILD_DIR           := build
 LOG_DIR             := logs
@@ -59,9 +61,11 @@ COV_HTML_DIR        := coverage_html
 VERILATE_LOG        := $(BUILD_DIR)/verilate.log
 BUILD_LOG           := $(BUILD_DIR)/build.log
 
-RUN_LOG             ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED).log
-TRACE_FILE          ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED).vcd
-COV_FILE            ?= $(COV_DIR)/cov_$(SEQUENCE)_$(SEED).dat
+SUFFIX=$(notdir $(TRACE_FILE_TO_READ))
+
+RUN_LOG             ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(SUFFIX).log
+TRACE_FILE          ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(SUFFIX).vcd
+COV_FILE            ?= $(COV_DIR)/cov_$(SEQUENCE)_$(SEED)$(SUFFIX).dat
 COV_MERGEFILE       ?= $(COV_DIR)/cov_result.dat
 DATE_TIME           ?= $(shell date "+%Y_%m_%d-%H%M")
 
@@ -88,6 +92,11 @@ USER_CPPFLAGS       += -I$(TB_DIR) \
                        -DDEBUG_HPDCACHE_TEST_MEM_RESP_MODEL=1 \
                        $(if $(filter 1,$(DEBUG)),-DDEBUG) \
                        $(CONF_DEFINES)
+
+ifdef CREATE_FILE
+USER_CPPFLAGS   += -DCREATE_FILE=1
+endif
+
 
 VERILATOR_FLAGS     += -Wall -Wno-fatal \
                        -Werror-PINMISSING \
@@ -136,11 +145,15 @@ VERILATOR_MAKEFLAGS += USER_CPPFLAGS="$(USER_CPPFLAGS)" \
                        USER_LDFLAGS="-Wl,-rpath,$(SYSTEMC_LIBDIR)" \
                        USER_LDLIBS="-lscv"
 
+
+
+
 VERILATOR_RUNFLAGS  += +verilator+seed+$(SEED) \
                        +verilator+rand+reset+1 \
                        +verilator+error+limit+50 \
                        -m $(TIMEOUT) \
                        -n $(NTRANSACTIONS) \
+                       -f $(TRACE_FILE_TO_READ) \
                        -s $(SEQUENCE) \
                        -l $(LOG_LEVEL) \
                        -r $(SEED) \
@@ -160,6 +173,9 @@ all: help
 verilate: $(VERILATE_LOG)
 build: $(BUILD_LOG)
 run: $(RUN_LOG)
+
+$(MINIZ).o: $(MINIZ).c $(MINIZ).h
+	$(CC) -c -g -o $@ $<
 
 define help_message
 help: make [target] [arguments]
@@ -188,6 +204,7 @@ run <options>                Execute the specified test sequence on the
                              testbench
 
     [SEQUENCE=$(SEQUENCE)] - test sequence
+    [TRACE_FILE_TO_READ=$(TRACE_FILE_TO_READ)] - file for saved trace from QEMu. Use it with SEQUENCE=from_file
     [TRACE=$(TRACE)] - generate waveform (on VCD format)
     [TIMEOUT=$(TIMEOUT)] - maximum nb of run cycles
     [LOG_LEVEL=$(LOG_LEVEL)] - level of log verbosity (low = 0, 1, 2, high = 3)
@@ -277,20 +294,20 @@ cov_html: cov $(COV_HTML_DIR)/index.html
 $(COV_HTML_DIR)/index.html: $(COV_MERGEFILE).info
 	genhtml --branch-coverage --function-coverage -o coverage_html $<
 
-$(VERILATE_LOG): print_config $(SVLOG_SOURCES) $(TB_TOP).cpp
+$(VERILATE_LOG): print_config $(SVLOG_SOURCES) $(MINIZ).o $(TB_TOP).cpp
 	$(Q)$(ECHO) "Verilating the RTL sources... (LOG: $@)"
 	$(Q)$(MKDIR) $(dir $@)
 	$(Q)$(VERILATOR) --sc $(VERILATOR_FLAGS) -Mdir $(BUILD_DIR) \
 	        $(if $(filter $(DISABLE_WAIVERS),1),,scripts/verilate_waivers.vlt) \
 	        +incdir+$(HPDCACHE_DIR)/rtl/include \
 	        $(SVLOG_SOURCES) \
-	        --exe $(TB_TOP).cpp --top-module $(DUT) >& $@
+	        --exe $(TB_TOP).cpp --top-module $(DUT) ../$(MINIZ).o >& $@
 	$(Q)$(ECHO) "VERILATE FINISHED" >> $@
 	$(Q)$(SCANLOG) -pat scripts/scan_patterns/verilate_patterns.pat \
 	        -nowarn $@ |& tee $@.scan
 	$(Q)$(ECHO) "Verilate done"
 
-$(BUILD_LOG): print_config $(VERILATE_LOG) $(TB_TOP).cpp
+$(BUILD_LOG): print_config $(VERILATE_LOG) $(TB_TOP).cpp 
 	$(Q)$(ECHO) "Build the testbench... (LOG: $@)"
 	$(Q)$(MKDIR) $(dir $@)
 	$(Q)$(MAKE) -C $(BUILD_DIR) -f "V$(DUT).mk" "V$(DUT)" $(VERILATOR_MAKEFLAGS) >& $@
