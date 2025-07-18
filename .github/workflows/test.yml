@@ -214,7 +214,7 @@ jobs:
           seqname: 'from_trace'
           ntrans: '800000'
           ntests: '1'
-          filename: 'traces_lib/trace_qemu'
+          filename: 'traces_lib/trace_spmv_2000x2000_0p001.bin.gz'
           config: 'configs/default_config.mk'
 
       - id: verify_perf
@@ -237,7 +237,7 @@ jobs:
           seqname: 'from_trace'
           ntrans: '800000'
           ntests: '1'
-          filename: 'traces_lib/trace_qemu'
+          filename: 'traces_lib/trace_spmv_2000x2000_0p001.bin.gz'
           config: 'configs/hpc_config.mk'
 
       - id: verify_perf

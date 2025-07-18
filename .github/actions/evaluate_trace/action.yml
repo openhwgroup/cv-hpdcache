@@ -41,17 +41,17 @@ runs:
 
         if (( $(echo "$nb_read_miss > $prev_read"  | bc -l) ))
         then
-          echo -e  "\033[31mThe percentage of miss on read has grow\033[0m"
+          echo -e  "\033[31mThe percentage of read misses increased\033[0m"
           exit 1
         fi
         if (( $(echo "$nb_write_miss > $prev_write"  | bc -l) ))
         then
-          echo -e  "\033[31mThe percentage of miss on write has grow\033[0m"
+          echo -e  "\033[31mThe percentage of write misses increased\033[0m"
           exit 2
         fi
         if (( $(echo "$nb_cycle_execution > $prev_cycle"  | bc -l) ))
         then
-          echo -e  "\033[31mThe number of cycle has grow\033[0m"
+          echo -e  "\033[31mTest execution latency increased\033[0m"
           exit 3
         fi
 
