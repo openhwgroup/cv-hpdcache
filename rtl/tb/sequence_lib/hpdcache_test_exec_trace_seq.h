@@ -50,7 +50,7 @@ private:
 
 
 #if SC_VERSION_MAJOR < 3
-    SC_HAS_PROCESS(hpdcache_test_read_seq);
+    SC_HAS_PROCESS(hpdcache_test_exec_trace_seq);
 #endif
 
 public:
