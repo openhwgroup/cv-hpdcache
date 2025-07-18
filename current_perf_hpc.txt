@@ -1,3 +1,0 @@
-nb_cycle=2564562
-nb_read_miss=0.000551433
-nb_write_miss=0.0112503
