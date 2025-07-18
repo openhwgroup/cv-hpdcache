@@ -97,7 +97,7 @@ runs:
             SEQUENCE=${{ inputs.seqname }} \
             NTESTS=${{ inputs.ntests }} \
             NTRANSACTIONS=${{ inputs.ntrans }} \
-            TRACE_FILE_TO_READ=${{ inputs.filename }}
+            TRACE_SEQ_FILE=${{ inputs.filename }}
 
     - name: Archive nonregression logs
       if: ${{ failure () && steps.run-tb.conclusion == 'failure' }}

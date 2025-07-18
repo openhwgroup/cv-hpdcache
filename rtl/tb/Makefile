@@ -51,7 +51,7 @@ SEED                ?= 1234
 ERROR_LIMIT         ?= 0
 NTESTS              ?= 128
 TRACE               ?= 0
-TRACE_FILE_TO_READ  ?= traces_lib/trace_qemu
+TRACE_SEQ_FILE      ?=
 CONFIG              ?= configs/default_config.mk
 
 BUILD_DIR           := $(TB_DIR)/build
@@ -60,7 +60,8 @@ COV_DIR             := $(TB_DIR)/coverage
 COV_HTML_DIR        := $(TB_DIR)/coverage_html
 VERILATE_LOG        := $(BUILD_DIR)/verilate.log
 BUILD_LOG           := $(BUILD_DIR)/build.log
-LOG_SUFFIX           = $(if $(filter from_trace,$(SEQUENCE)),_$(notdir $(TRACE_FILE_TO_READ)))
+TRACE_LOG_SUFFIX     = $(if $(TRACE_SEQ_FILE),_$(notdir $(TRACE_SEQ_FILE)))
+LOG_SUFFIX           = $(if $(filter from_trace,$(SEQUENCE)),$(TRACE_LOG_SUFFIX))
 RUN_LOG             ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(LOG_SUFFIX).log
 TRACE_FILE          ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(LOG_SUFFIX).vcd
 COV_FILE            ?= $(COV_DIR)/cov_$(SEQUENCE)_$(SEED)$(LOG_SUFFIX).dat
@@ -147,7 +148,7 @@ VERILATOR_RUNFLAGS  += +verilator+seed+$(SEED) \
                        +verilator+error+limit+50 \
                        -m $(TIMEOUT) \
                        -n $(NTRANSACTIONS) \
-                       -f $(TRACE_FILE_TO_READ) \
+                       -f $(TRACE_SEQ_FILE) \
                        -s $(SEQUENCE) \
                        -l $(LOG_LEVEL) \
                        -r $(SEED) \
@@ -195,7 +196,7 @@ run <options>                Execute the specified test sequence on the
                              testbench
 
     [SEQUENCE=$(SEQUENCE)] - test sequence
-    [TRACE_FILE_TO_READ=$(TRACE_FILE_TO_READ)] - file for saved trace from QEMu. Use it with SEQUENCE=from_trace
+    [TRACE_SEQ_FILE=<path_to_file>] - execution trace file. Use it with SEQUENCE=from_trace
     [TRACE=$(TRACE)] - generate waveform (on VCD format)
     [TIMEOUT=$(TIMEOUT)] - maximum nb of run cycles
     [LOG_LEVEL=$(LOG_LEVEL)] - level of log verbosity (low = 0, 1, 2, high = 3)
