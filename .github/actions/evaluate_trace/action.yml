@@ -32,24 +32,24 @@ runs:
         cd rtl/tb
         file_prev="${{ inputs.trace_perf }}"
         file=$(find . -name "*from_trace*.log")
-        prev_cycle=$(cat $file_prev | grep "cycle" | cut -d "=" -f 2)
+        prev_cycle=$(cat $file_prev | grep "cycles" | cut -d "=" -f 2)
         prev_read=$(cat $file_prev | grep "read" | cut -d "=" -f 2)
         prev_write=$(cat $file_prev| grep "write" | cut -d "=" -f 2)
-        nb_read_miss=$(cat $file | grep "Read miss rate" | tr -s " " | cut -d " " -f 5)
-        nb_write_miss=$(cat $file | grep "Write miss rate" | tr -s " " | cut -d " " -f 5)
-        nb_cycle_execution=$(cat $file  | grep SB.NB_CYCLES | tr -s " " | cut -d " " -f 3)
+        read_miss_rate=$(cat $file | grep "Read miss rate" | tr -s " " | cut -d " " -f 5)
+        write_miss_rate=$(cat $file | grep "Write miss rate" | tr -s " " | cut -d " " -f 5)
+        cycles=$(cat $file  | grep SB.NB_CYCLES | tr -s " " | cut -d " " -f 3)
 
-        if (( $(echo "$nb_read_miss > $prev_read"  | bc -l) ))
+        if (( $(echo "$read_miss_rate > $prev_read"  | bc -l) ))
         then
           echo -e  "\033[31mThe percentage of read misses increased\033[0m"
           exit 1
         fi
-        if (( $(echo "$nb_write_miss > $prev_write"  | bc -l) ))
+        if (( $(echo "$write_miss_rate > $prev_write"  | bc -l) ))
         then
           echo -e  "\033[31mThe percentage of write misses increased\033[0m"
           exit 2
         fi
-        if (( $(echo "$nb_cycle_execution > $prev_cycle"  | bc -l) ))
+        if (( $(echo "$cycles > $prev_cycle"  | bc -l) ))
         then
           echo -e  "\033[31mTest execution latency increased\033[0m"
           exit 3
@@ -61,27 +61,27 @@ runs:
         cd rtl/tb
         file_prev="${{ inputs.trace_perf }}"
         file=$(find . -name "*from_trace*.log")
-        prev_cycle=$(cat $file_prev | grep "cycle" | cut -d "=" -f 2)
+        prev_cycle=$(cat $file_prev | grep "cycles" | cut -d "=" -f 2)
         prev_read=$(cat $file_prev | grep "read" | cut -d "=" -f 2)
         prev_write=$(cat $file_prev| grep "write" | cut -d "=" -f 2)
-        nb_read_miss=$(cat $file | grep "Read miss rate" | tr -s " " | cut -d " " -f 5)
-        nb_write_miss=$(cat $file | grep "Write miss rate" | tr -s " " | cut -d " " -f 5)
-        nb_cycle_execution=$(cat $file  | grep SB.NB_CYCLES | tr -s " " | cut -d " " -f 3)
+        read_miss_rate=$(cat $file | grep "Read miss rate" | tr -s " " | cut -d " " -f 5)
+        write_miss_rate=$(cat $file | grep "Write miss rate" | tr -s " " | cut -d " " -f 5)
+        cycles=$(cat $file  | grep SB.NB_CYCLES | tr -s " " | cut -d " " -f 3)
         x=0
-        if (( $(echo "$nb_read_miss < $prev_read"  | bc -l) ))
+        if (( $(echo "$read_miss_rate < $prev_read"  | bc -l) ))
         then
           x=1
-          sed -i -E "s/read.*/read=$nb_read_miss/" $file_prev
+          sed -i -E "s/read.*/read=$read_miss_rate/" $file_prev
         fi
-        if (( $(echo "$nb_write_miss < $prev_write"  | bc -l) ))
+        if (( $(echo "$write_miss_rate < $prev_write"  | bc -l) ))
         then
           x=1
-          sed -i -E "s/write.*/write=$nb_write_miss/" $file_prev
+          sed -i -E "s/write.*/write=$write_miss_rate/" $file_prev
         fi
-        if (( $(echo "$nb_cycle_execution < $prev_cycle"  | bc -l) ))
+        if (( $(echo "$cycles < $prev_cycle"  | bc -l) ))
         then
           x=1
-          sed -i -E "s/cycle.*/cycle=$nb_cycle_execution/" $file_prev
+          sed -i -E "s/cycles.*/cycles=$cycles/" $file_prev
         fi
         rm $file
         if [[ $x -eq 0 ]]
