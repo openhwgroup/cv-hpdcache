@@ -45,14 +45,14 @@ SHELL               := bash
 Q                   ?= @
 NTRANSACTIONS       ?= 10000
 TIMEOUT             ?= $$(( $(NTRANSACTIONS)*1000 ))
-SEQUENCE            ?= random 
+SEQUENCE            ?= random
 FILE				?= test_file.txt
 LOG_LEVEL           ?= 1
 SEED                ?= 1234
 ERROR_LIMIT         ?= 0
 NTESTS              ?= 128
 TRACE               ?= 0
-TRACE_FILE_TO_READ  ?= trace_qemu
+TRACE_FILE_TO_READ  ?=
 
 BUILD_DIR           := build
 LOG_DIR             := logs
@@ -61,7 +61,7 @@ COV_HTML_DIR        := coverage_html
 VERILATE_LOG        := $(BUILD_DIR)/verilate.log
 BUILD_LOG           := $(BUILD_DIR)/build.log
 
-SUFFIX=$(notdir $(TRACE_FILE_TO_READ))
+SUFFIX               =$(notdir $(TRACE_FILE_TO_READ))
 
 RUN_LOG             ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(SUFFIX).log
 TRACE_FILE          ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(SUFFIX).vcd
@@ -307,7 +307,7 @@ $(VERILATE_LOG): print_config $(SVLOG_SOURCES) $(MINIZ).o $(TB_TOP).cpp
 	        -nowarn $@ |& tee $@.scan
 	$(Q)$(ECHO) "Verilate done"
 
-$(BUILD_LOG): print_config $(VERILATE_LOG) $(TB_TOP).cpp 
+$(BUILD_LOG): print_config $(VERILATE_LOG) $(TB_TOP).cpp
 	$(Q)$(ECHO) "Build the testbench... (LOG: $@)"
 	$(Q)$(MKDIR) $(dir $@)
 	$(Q)$(MAKE) -C $(BUILD_DIR) -f "V$(DUT).mk" "V$(DUT)" $(VERILATOR_MAKEFLAGS) >& $@
