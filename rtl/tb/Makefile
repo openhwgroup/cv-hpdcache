@@ -148,7 +148,7 @@ VERILATOR_RUNFLAGS  += +verilator+seed+$(SEED) \
                        +verilator+error+limit+50 \
                        -m $(TIMEOUT) \
                        -n $(NTRANSACTIONS) \
-                       -f $(TRACE_SEQ_FILE) \
+                       $(if $(filter from_trace,$(SEQUENCE)),-f $(TRACE_SEQ_FILE)) \
                        -s $(SEQUENCE) \
                        -l $(LOG_LEVEL) \
                        -r $(SEED) \
