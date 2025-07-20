@@ -30,22 +30,19 @@
 class Transaction
 {
 public:
-    Transaction() : __id(0) {}
+    Transaction()
+      : __id(0)
+    {
+    }
     virtual ~Transaction() {}
     virtual const std::string to_string() const = 0;
 
-    void set_id(uint64_t id)
-    {
-        __id = id;
-    };
+    void set_id(uint64_t id) { __id = id; };
 
-    uint64_t get_id() {
-        return __id;
-    };
+    uint64_t get_id() { return __id; };
 
 protected:
     uint64_t __id; // transaction ID
 };
 
 #endif /* __TRANSACTION_H__ */
-

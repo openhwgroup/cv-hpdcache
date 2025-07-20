@@ -27,32 +27,32 @@
 #define __HPDCACHE_TEST_AGENT_H__
 
 #include <iostream>
-#include <sstream>
 #include <list>
+#include <sstream>
 #include <systemc>
 #include <verilated.h>
 
 #include "agent.h"
-#include "sequence.h"
-#include "hpdcache_test_driver.h"
 #include "hpdcache_test_defs.h"
+#include "hpdcache_test_driver.h"
 #include "logger.h"
+#include "sequence.h"
 
 class hpdcache_test_agent : public Agent
 {
 public:
-    sc_out <bool>                                core_req_valid_o;
-    sc_in  <bool>                                core_req_ready_i;
-    sc_out <sc_bv<HPDCACHE_CORE_REQ_WIDTH> >     core_req_o;
-    sc_out <sc_bv<HPDCACHE_TAG_WIDTH> >          core_req_tag_o;
-    sc_out <sc_bv<HPDCACHE_REQ_PMA_WIDTH> >      core_req_pma_o;
-    sc_out <bool>                                core_req_abort_o;
+    sc_out<bool> core_req_valid_o;
+    sc_in<bool> core_req_ready_i;
+    sc_out<sc_bv<HPDCACHE_CORE_REQ_WIDTH>> core_req_o;
+    sc_out<sc_bv<HPDCACHE_TAG_WIDTH>> core_req_tag_o;
+    sc_out<sc_bv<HPDCACHE_REQ_PMA_WIDTH>> core_req_pma_o;
+    sc_out<bool> core_req_abort_o;
 
-    sc_in  <bool>                                core_rsp_valid_i;
-    sc_in  <sc_bv<HPDCACHE_CORE_RSP_WIDTH> >     core_rsp_i;
+    sc_in<bool> core_rsp_valid_i;
+    sc_in<sc_bv<HPDCACHE_CORE_RSP_WIDTH>> core_rsp_i;
 
-    sc_fifo_out<hpdcache_test_transaction_req>   sb_core_req_o;
-    sc_fifo_out<hpdcache_test_transaction_resp>  sb_core_resp_o;
+    sc_fifo_out<hpdcache_test_transaction_req> sb_core_req_o;
+    sc_fifo_out<hpdcache_test_transaction_resp> sb_core_resp_o;
 
     hpdcache_test_agent(sc_core::sc_module_name nm)
       : Agent(nm)
@@ -72,29 +72,27 @@ public:
         driver_name = std::string(nm) + "_driver";
 
         driver = std::make_shared<hpdcache_test_driver>(driver_name.c_str());
-        driver->clk_i              (Agent::clk_i);
-        driver->rst_ni             (Agent::rst_ni);
+        driver->clk_i(Agent::clk_i);
+        driver->rst_ni(Agent::rst_ni);
 
-        driver->core_req_valid_o   (core_req_valid_o);
-        driver->core_req_ready_i   (core_req_ready_i);
-        driver->core_req_o         (core_req_o);
-        driver->core_req_tag_o     (core_req_tag_o);
-        driver->core_req_pma_o     (core_req_pma_o);
-        driver->core_req_abort_o   (core_req_abort_o);
+        driver->core_req_valid_o(core_req_valid_o);
+        driver->core_req_ready_i(core_req_ready_i);
+        driver->core_req_o(core_req_o);
+        driver->core_req_tag_o(core_req_tag_o);
+        driver->core_req_pma_o(core_req_pma_o);
+        driver->core_req_abort_o(core_req_abort_o);
 
-        driver->core_rsp_valid_i   (core_rsp_valid_i);
-        driver->core_rsp_i         (core_rsp_i);
+        driver->core_rsp_valid_i(core_rsp_valid_i);
+        driver->core_rsp_i(core_rsp_i);
 
-        driver->sb_core_req_o      (sb_core_req_o);
-        driver->sb_core_resp_o     (sb_core_resp_o);
+        driver->sb_core_req_o(sb_core_req_o);
+        driver->sb_core_resp_o(sb_core_resp_o);
 
-        driver->transaction_fifo_i (Agent::transaction_fifo);
-        driver->transaction_ret_o  (Agent::transaction_ret);
+        driver->transaction_fifo_i(Agent::transaction_fifo);
+        driver->transaction_ret_o(Agent::transaction_ret);
     }
 
-    ~hpdcache_test_agent()
-    {
-    }
+    ~hpdcache_test_agent() {}
 
 private:
     std::shared_ptr<hpdcache_test_driver> driver;

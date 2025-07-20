@@ -26,79 +26,78 @@
 #ifndef __HPDCACHE_TEST_MEM_RESP_MODEL_H__
 #define __HPDCACHE_TEST_MEM_RESP_MODEL_H__
 
-#include <systemc>
-#include <map>
-#include <iostream>
-#include <scv.h>
 #include "hpdcache_test_defs.h"
 #include "hpdcache_test_mem_resp_model_base.h"
-#include "mem_model.h"
 #include "logger.h"
+#include "mem_model.h"
+#include <iostream>
+#include <map>
+#include <scv.h>
+#include <systemc>
 
 #define DEBUG_HPDCACHE_TEST_MEM_RESP_MODEL 1
 
-class hpdcache_test_mem_resp_model : public sc_module, public hpdcache_test_mem_resp_model_base
+class hpdcache_test_mem_resp_model
+  : public sc_module
+  , public hpdcache_test_mem_resp_model_base
 {
 public:
+    sc_in<bool> clk_i;
+    sc_in<bool> rst_ni;
 
-    sc_in<bool>                                            clk_i;
-    sc_in<bool>                                            rst_ni;
+    sc_out<bool> mem_req_read_ready_o;
+    sc_in<bool> mem_req_read_valid_i;
+    sc_in<sc_bv<HPDCACHE_MEM_ADDR_WIDTH>> mem_req_read_addr_i;
+    sc_in<sc_bv<8>> mem_req_read_len_i;
+    sc_in<sc_bv<3>> mem_req_read_size_i;
+    sc_in<sc_bv<HPDCACHE_MEM_ID_WIDTH>> mem_req_read_id_i;
+    sc_in<sc_bv<2>> mem_req_read_command_i;
+    sc_in<sc_bv<4>> mem_req_read_atomic_i;
+    sc_in<bool> mem_req_read_cacheable_i;
 
-    sc_out<bool>                                           mem_req_read_ready_o;
-    sc_in<bool>                                            mem_req_read_valid_i;
-    sc_in<sc_bv<HPDCACHE_MEM_ADDR_WIDTH> >                 mem_req_read_addr_i;
-    sc_in<sc_bv<8> >                                       mem_req_read_len_i;
-    sc_in<sc_bv<3> >                                       mem_req_read_size_i;
-    sc_in<sc_bv<HPDCACHE_MEM_ID_WIDTH> >                   mem_req_read_id_i;
-    sc_in<sc_bv<2> >                                       mem_req_read_command_i;
-    sc_in<sc_bv<4> >                                       mem_req_read_atomic_i;
-    sc_in<bool>                                            mem_req_read_cacheable_i;
+    sc_in<bool> mem_resp_read_ready_i;
+    sc_out<bool> mem_resp_read_valid_o;
+    sc_out<sc_bv<2>> mem_resp_read_error_o;
+    sc_out<sc_bv<HPDCACHE_MEM_ID_WIDTH>> mem_resp_read_id_o;
+    sc_out<sc_bv<HPDCACHE_MEM_DATA_WIDTH>> mem_resp_read_data_o;
+    sc_out<bool> mem_resp_read_last_o;
 
-    sc_in<bool>                                            mem_resp_read_ready_i;
-    sc_out<bool>                                           mem_resp_read_valid_o;
-    sc_out<sc_bv<2> >                                      mem_resp_read_error_o;
-    sc_out<sc_bv<HPDCACHE_MEM_ID_WIDTH> >                  mem_resp_read_id_o;
-    sc_out<sc_bv<HPDCACHE_MEM_DATA_WIDTH> >                mem_resp_read_data_o;
-    sc_out<bool>                                           mem_resp_read_last_o;
+    sc_out<bool> mem_req_write_ready_o;
+    sc_in<bool> mem_req_write_valid_i;
+    sc_in<sc_bv<HPDCACHE_MEM_ADDR_WIDTH>> mem_req_write_addr_i;
+    sc_in<sc_bv<8>> mem_req_write_len_i;
+    sc_in<sc_bv<3>> mem_req_write_size_i;
+    sc_in<sc_bv<HPDCACHE_MEM_ID_WIDTH>> mem_req_write_id_i;
+    sc_in<sc_bv<2>> mem_req_write_command_i;
+    sc_in<sc_bv<4>> mem_req_write_atomic_i;
+    sc_in<bool> mem_req_write_cacheable_i;
 
-    sc_out<bool>                                           mem_req_write_ready_o;
-    sc_in<bool>                                            mem_req_write_valid_i;
-    sc_in<sc_bv<HPDCACHE_MEM_ADDR_WIDTH> >                 mem_req_write_addr_i;
-    sc_in<sc_bv<8> >                                       mem_req_write_len_i;
-    sc_in<sc_bv<3> >                                       mem_req_write_size_i;
-    sc_in<sc_bv<HPDCACHE_MEM_ID_WIDTH> >                   mem_req_write_id_i;
-    sc_in<sc_bv<2> >                                       mem_req_write_command_i;
-    sc_in<sc_bv<4> >                                       mem_req_write_atomic_i;
-    sc_in<bool>                                            mem_req_write_cacheable_i;
+    sc_out<bool> mem_req_write_data_ready_o;
+    sc_in<bool> mem_req_write_data_valid_i;
+    sc_in<sc_bv<HPDCACHE_MEM_DATA_WIDTH>> mem_req_write_data_i;
+    sc_in<sc_bv<HPDCACHE_MEM_DATA_WIDTH / 8>> mem_req_write_be_i;
+    sc_in<bool> mem_req_write_last_i;
 
-    sc_out<bool>                                           mem_req_write_data_ready_o;
-    sc_in<bool>                                            mem_req_write_data_valid_i;
-    sc_in<sc_bv<HPDCACHE_MEM_DATA_WIDTH> >                 mem_req_write_data_i;
-    sc_in<sc_bv<HPDCACHE_MEM_DATA_WIDTH/8> >               mem_req_write_be_i;
-    sc_in<bool>                                            mem_req_write_last_i;
+    sc_in<bool> mem_resp_write_ready_i;
+    sc_out<bool> mem_resp_write_valid_o;
+    sc_out<bool> mem_resp_write_is_atomic_o;
+    sc_out<sc_bv<2>> mem_resp_write_error_o;
+    sc_out<sc_bv<HPDCACHE_MEM_ID_WIDTH>> mem_resp_write_id_o;
 
-    sc_in<bool>                                            mem_resp_write_ready_i;
-    sc_out<bool>                                           mem_resp_write_valid_o;
-    sc_out<bool>                                           mem_resp_write_is_atomic_o;
-    sc_out<sc_bv<2> >                                      mem_resp_write_error_o;
-    sc_out<sc_bv<HPDCACHE_MEM_ID_WIDTH> >                  mem_resp_write_id_o;
-
-    sc_fifo_out<hpdcache_test_transaction_mem_read_req>    sb_mem_read_req_o;
-    sc_fifo_out<hpdcache_test_transaction_mem_read_resp>   sb_mem_read_resp_o;
-    sc_fifo_out<hpdcache_test_transaction_mem_write_req>   sb_mem_write_req_o;
-    sc_fifo_out<hpdcache_test_transaction_mem_write_resp>  sb_mem_write_resp_o;
+    sc_fifo_out<hpdcache_test_transaction_mem_read_req> sb_mem_read_req_o;
+    sc_fifo_out<hpdcache_test_transaction_mem_read_resp> sb_mem_read_resp_o;
+    sc_fifo_out<hpdcache_test_transaction_mem_write_req> sb_mem_write_req_o;
+    sc_fifo_out<hpdcache_test_transaction_mem_write_resp> sb_mem_write_resp_o;
 
 private:
-
 #if SC_VERSION_MAJOR < 3
     SC_HAS_PROCESS(hpdcache_test_mem_resp_model);
 #endif
 
 public:
-
-    hpdcache_test_mem_resp_model(sc_module_name nm) :
-            sc_module(nm),
-            hpdcache_test_mem_resp_model_base(std::string(nm))
+    hpdcache_test_mem_resp_model(sc_module_name nm)
+      : sc_module(nm)
+      , hpdcache_test_mem_resp_model_base(std::string(nm))
     {
         SC_THREAD(read_process);
         sensitive << clk_i.neg();
@@ -120,10 +119,9 @@ public:
     }
 
 private:
-
     void readOperation()
     {
-        hpdcache_test_transaction_mem_read_req  req;
+        hpdcache_test_transaction_mem_read_req req;
         hpdcache_test_transaction_mem_read_resp resp;
 
         //  consume the request from the request ports
@@ -158,11 +156,11 @@ private:
         }
 
         //  do the read operation on the memory array
-        size_t words = (1 << req.size)/8;
+        size_t words = (1 << req.size) / 8;
         if (words == 0) words = 1;
 
         if (req.is_ldex()) {
-            const uint64_t n  = 1 << req.size;
+            const uint64_t n = 1 << req.size;
             excl_buf_m[req.id].valid = true;
             excl_buf_m[req.id].base_addr = addr;
             excl_buf_m[req.id].end_addr = addr + n;
@@ -173,15 +171,14 @@ private:
                 uint64_t word_addr = (addr >> 3) + w;
                 uint64_t ld_data = memory_m->readMemory(word_addr);
                 uint64_t r = word_addr % MEM_NOC_DATA_WORDS;
-                resp.data.range((r + 1)*64 - 1, r*64) = ld_data;
+                resp.data.range((r + 1) * 64 - 1, r * 64) = ld_data;
 
 #if DEBUG_HPDCACHE_TEST_MEM_RESP_MODEL
                 if (check_verbosity(sc_core::SC_DEBUG)) {
                     std::cout << sc_time_stamp().to_string()
-                              << " / MEM_RESP_MODEL_DEBUG: reading memory"
-                              << " / address = 0x"   << std::hex << word_addr*8 << std::dec
-                              << " / load data = 0x" << std::hex << ld_data     << std::dec
-                              << std::endl;
+                              << " / MEM_RESP_MODEL_DEBUG: reading memory" << " / address = 0x"
+                              << std::hex << word_addr * 8 << std::dec << " / load data = 0x"
+                              << std::hex << ld_data << std::dec << std::endl;
                 }
 #endif
             }
@@ -201,15 +198,15 @@ private:
         hpdcache_test_transaction_mem_write_resp resp;
 
         unsigned int command = req.command;
-        unsigned bytes       = (1ULL << req.size);
-        uint64_t addr        = req.addr;
-        uint64_t end_addr    = addr + bytes;
-        uint64_t word_addr   = addr >> 3;
-        bool     excl_ok     = false;
+        unsigned bytes = (1ULL << req.size);
+        uint64_t addr = req.addr;
+        uint64_t end_addr = addr + bytes;
+        uint64_t word_addr = addr >> 3;
+        bool excl_ok = false;
 
         unsigned int atop = req.atomic;
-        bool       is_amo = ((command == hpdcache_mem_command_e::HPDCACHE_MEM_ATOMIC) &&
-                             (atop    != hpdcache_mem_atomic_e::HPDCACHE_MEM_ATOMIC_STEX));
+        bool is_amo = ((command == hpdcache_mem_command_e::HPDCACHE_MEM_ATOMIC)
+                       && (atop != hpdcache_mem_atomic_e::HPDCACHE_MEM_ATOMIC_STEX));
 
         //  check if the address is in an error segment. If it is, send a
         //  response with the error flag asserted
@@ -248,53 +245,54 @@ private:
             unsigned offset = (addr % 8) * 8;
 
             ld_data = memory_m->readMemory(word_addr);
-            st_data = req.data.range((word + 1)*64 - 1, word*64).to_uint64();
+            st_data = req.data.range((word + 1) * 64 - 1, word * 64).to_uint64();
             if (bytes == 4) {
                 ld_data = static_cast<uint32_t>(ld_data >> offset);
                 st_data = static_cast<uint32_t>(st_data >> offset);
             }
-            amo_result = compute_amo(static_cast<hpdcache_mem_atomic_e>(atop), ld_data, st_data, bytes);
+            amo_result =
+                compute_amo(static_cast<hpdcache_mem_atomic_e>(atop), ld_data, st_data, bytes);
             if (offset) {
-                ld_data    <<= offset;
-                st_data    <<= offset;
+                ld_data <<= offset;
+                st_data <<= offset;
                 amo_result <<= offset;
             }
 
 #if DEBUG_HPDCACHE_TEST_MEM_RESP_MODEL
             if (check_verbosity(sc_core::SC_DEBUG)) {
                 std::cout << sc_time_stamp().to_string()
-                          << " / MEM_RESP_MODEL_DEBUG: computing amo word"
-                          << " / load data = 0x"  << std::hex << ld_data    << std::dec
-                          << " / store data = 0x" << std::hex << st_data    << std::dec
-                          << " / amo result = 0x" << std::hex << amo_result << std::dec
-                          << std::endl;
+                          << " / MEM_RESP_MODEL_DEBUG: computing amo word" << " / load data = 0x"
+                          << std::hex << ld_data << std::dec << " / store data = 0x" << std::hex
+                          << st_data << std::dec << " / amo result = 0x" << std::hex << amo_result
+                          << std::dec << std::endl;
             }
 #endif
         }
 
         //  compute the number of words to write
         if (!req.is_stex() || excl_ok) {
-            size_t words = bytes/8;
+            size_t words = bytes / 8;
             if (words == 0) words = 1;
 
             //  do the write operation on the memory array
             for (int w = 0; w < words; w++) {
                 unsigned int i = word + w;
-                uint8_t be = req.be.range((i + 1)*8 - 1, i*8).to_uint();
+                uint8_t be = req.be.range((i + 1) * 8 - 1, i * 8).to_uint();
 
                 //  skip the write operation if the byte enable is all 0
                 if (be == 0) continue;
 
-                st_data = is_amo ? amo_result : req.data.range((i + 1)*64 - 1, i*64).to_uint64();
+                st_data =
+                    is_amo ? amo_result : req.data.range((i + 1) * 64 - 1, i * 64).to_uint64();
                 memory_m->writeMemory(word_addr + w, st_data, mem_model::beToMask(be));
 
 #if DEBUG_HPDCACHE_TEST_MEM_RESP_MODEL
                 if (check_verbosity(sc_core::SC_DEBUG)) {
                     std::cout << sc_time_stamp().to_string()
-                              << " / MEM_RESP_MODEL_DEBUG: writing memory"
-                              << " / address = 0x"    << std::hex << ((word_addr + w)*8) << std::dec
-                              << " / store data = 0x" << std::hex << st_data             << std::dec
-                              << " / store be = 0x"   << std::hex << (uint32_t)be        << std::dec
+                              << " / MEM_RESP_MODEL_DEBUG: writing memory" << " / address = 0x"
+                              << std::hex << ((word_addr + w) * 8) << std::dec
+                              << " / store data = 0x" << std::hex << st_data << std::dec
+                              << " / store be = 0x" << std::hex << (uint32_t)be << std::dec
                               << std::endl;
                 }
 #endif
@@ -304,7 +302,7 @@ private:
             if (is_amo) {
                 hpdcache_test_transaction_mem_read_resp read_resp;
                 read_resp.data = 0;
-                read_resp.data.range((word + 1)*64 - 1, word*64) = ld_data;
+                read_resp.data.range((word + 1) * 64 - 1, word * 64) = ld_data;
                 read_resp.error = 0;
                 read_resp.id = req.id;
                 read_resp.last = true;
@@ -334,7 +332,8 @@ private:
             mem_resp_read_id_o.write(read_resp.id);
             mem_resp_read_data_o.write(read_resp.data);
             mem_resp_read_last_o.write(read_resp.last);
-            do wait(); while (!mem_resp_read_ready_i.read());
+            do wait();
+            while (!mem_resp_read_ready_i.read());
             mem_resp_read_valid_o.write(false);
         }
     }
@@ -353,7 +352,8 @@ private:
             mem_resp_write_is_atomic_o.write(resp.is_atomic);
             mem_resp_write_error_o.write(resp.error);
             mem_resp_write_id_o.write(resp.id);
-            do wait(); while (!mem_resp_write_ready_i.read());
+            do wait();
+            while (!mem_resp_write_ready_i.read());
             mem_resp_write_valid_o.write(false);
         }
     }

@@ -25,30 +25,30 @@
 #ifndef __SEQUENCE_H__
 #define __SEQUENCE_H__
 
-#include <systemc>
-#include <memory>
 #include "transaction_pool.h"
+#include <memory>
+#include <systemc>
 
 class Transaction;
 
 class Sequence : public sc_core::sc_module
 {
 public:
-    sc_core::sc_in<bool>                               clk_i;
-    sc_core::sc_in<bool>                               rst_ni;
+    sc_core::sc_in<bool> clk_i;
+    sc_core::sc_in<bool> rst_ni;
     sc_core::sc_fifo_out<std::shared_ptr<Transaction>> transaction_fifo_o;
-    sc_core::sc_fifo_in<uint64_t>                      transaction_ret_i;
+    sc_core::sc_fifo_in<uint64_t> transaction_ret_i;
 
     Sequence(sc_core::sc_module_name nm)
-        : sc_module(nm)
-        , clk_i("clk_i")
-        , rst_ni("rst_ni")
-        , transaction_fifo_o("transaction_fifo_o")
-        , transaction_ret_i("transaction_ret_i")
+      : sc_module(nm)
+      , clk_i("clk_i")
+      , rst_ni("rst_ni")
+      , transaction_fifo_o("transaction_fifo_o")
+      , transaction_ret_i("transaction_ret_i")
     {
     }
 
-    virtual ~Sequence() {};
+    virtual ~Sequence(){};
 
     template<typename T>
     std::shared_ptr<T> acquire_transaction()
@@ -63,7 +63,7 @@ public:
     {
         std::shared_ptr<T> ret = transaction_pool.acquire_transaction<T>();
         uint64_t id = ret->get_id();
-        *ret = init; // copy
+        *ret = init;     // copy
         ret->set_id(id); // restore new id
         return ret;
     }
@@ -79,4 +79,3 @@ protected:
 };
 
 #endif // __SEQUENCE_H__
-
