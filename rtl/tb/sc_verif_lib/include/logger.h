@@ -34,57 +34,43 @@ private:
     static int log_level;
 
 public:
-    enum {
-        LOG_NONE    = 0,
+    enum
+    {
+        LOG_NONE = 0,
 
-        LOG_LOW     = 1,
-        LOG_MEDIUM  = 2,
-        LOG_HIGH    = 3,
+        LOG_LOW = 1,
+        LOG_MEDIUM = 2,
+        LOG_HIGH = 3,
 
         LOG_WARNING = LOG_LOW,
-        LOG_INFO    = LOG_MEDIUM,
-        LOG_DEBUG   = LOG_HIGH
+        LOG_INFO = LOG_MEDIUM,
+        LOG_DEBUG = LOG_HIGH
     } log_level_e;
 
-    Logger()          {}
+    Logger() {}
     virtual ~Logger() {}
 
-    static void set_log_level(int level)
-    {
-        log_level = level;
-    }
+    static void set_log_level(int level) { log_level = level; }
 
-    static int get_log_level()
-    {
-        return log_level;
-    }
+    static int get_log_level() { return log_level; }
 
-    static int is_warning_enabled()
-    {
-        return log_level >= LOG_WARNING;
-    }
+    static int is_warning_enabled() { return log_level >= LOG_WARNING; }
 
-    static int is_info_enabled()
-    {
-        return log_level >= LOG_INFO;
-    }
+    static int is_info_enabled() { return log_level >= LOG_INFO; }
 
-    static int is_debug_enabled()
-    {
-        return log_level >= LOG_DEBUG;
-    }
+    static int is_debug_enabled() { return log_level >= LOG_DEBUG; }
 
-    static void info(const std::string &msg)
+    static void info(const std::string& msg)
     {
         if (log_level >= LOG_INFO) std::cout << msg;
     }
 
-    static void warning(const std::string &msg)
+    static void warning(const std::string& msg)
     {
         if (log_level >= LOG_WARNING) std::cout << msg;
     }
 
-    static void debug(const std::string &msg)
+    static void debug(const std::string& msg)
     {
         if (log_level >= LOG_DEBUG) std::cout << msg;
     }

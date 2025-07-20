@@ -60,7 +60,7 @@ COV_DIR             := $(TB_DIR)/coverage
 COV_HTML_DIR        := $(TB_DIR)/coverage_html
 VERILATE_LOG        := $(BUILD_DIR)/verilate.log
 BUILD_LOG           := $(BUILD_DIR)/build.log
-TRACE_LOG_SUFFIX     = $(if $(TRACE_SEQ_FILE),_$(notdir $(TRACE_SEQ_FILE)))
+TRACE_LOG_SUFFIX     = $(if $(TRACE_SEQ_FILE),_$(notdir $(TRACE_SEQ_FILE:.bin.gz=)))
 LOG_SUFFIX           = $(if $(filter from_trace,$(SEQUENCE)),$(TRACE_LOG_SUFFIX))
 RUN_LOG             ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(LOG_SUFFIX).log
 TRACE_FILE          ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(LOG_SUFFIX).vcd

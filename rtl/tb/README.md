@@ -31,6 +31,12 @@ You need to set the following environment variables (bash: `$ export`, csh: `$ s
 - Add the bin/ subdirectory of the Verilator installation into your PATH
   (e.g. `$ export PATH=<verilator-install-dir>/bin:${PATH}`)
 
+In addition to above packages, the C++ code of this testbench is and shall be
+formatted using the clang-format tool. The .clang-format file contains the
+configuration.
+
+- [ClangFormat](https://clang.llvm.org/docs/ClangFormat.html)
+
 ## Usage
 
 Show the help message of the testbench:
