@@ -28,6 +28,7 @@
 #include <systemc>
 #include <chrono>
 #include <memory>
+#include <fstream>
 #include <getopt.h>
 #include <map>
 
@@ -284,11 +285,10 @@ public:
         }
         end = std::chrono::system_clock::now();
         std::cout << "Finishing the simulation..." << std::endl;
-        
-        #ifdef CREATE_FILE
-        instance_trace_writter()->close_file();
-        #endif
 
+#ifdef CREATE_FILE
+        instance_trace_writter()->close_file();
+#endif
 
         int ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         std::cout << "Simulation wall clock time (sec): "
@@ -518,12 +518,19 @@ int sc_main(int argc, char** argv)
             case 's':
                 test.set_sequence(optarg);
                 break;
-            case 'f':
+            case 'f': {
                 test.file_name = optarg;
-                #ifdef CREATE_FILE
+#ifndef CREATE_FILE
+                std::ifstream traceFile(test.file_name, std::ifstream::in);
+                if (!traceFile.good()) {
+                    std::cout << "error: trace file cannot be accessed" << std::endl;
+                    exit(EXIT_FAILURE);
+                }
+#else
                 instance_trace_writter()->open_file(optarg);
-                #endif
+#endif
                 break;
+            }
             case 'e':
                 test.error_limit = atoll(optarg);
                 break;
