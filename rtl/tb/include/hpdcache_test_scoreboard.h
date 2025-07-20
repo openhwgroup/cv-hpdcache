@@ -407,8 +407,8 @@ private:
             inflight_map_t::const_iterator it = inflight_m.find(req_id);
             if (it != inflight_m.end()) {
                 std::stringstream ss;
-                ss << "core request ID " << "0x" << std::hex << req_id << std::dec
-                   << " matches an inflight request";
+                ss << "core request ID "
+                   << "0x" << std::hex << req_id << std::dec << " matches an inflight request";
                 print_error(ss.str());
                 continue;
             }
@@ -642,7 +642,8 @@ private:
             inflight_map_t::const_iterator it = inflight_m.find(resp.rsp_tid.to_uint());
             if (it == inflight_m.end()) {
                 std::stringstream ss;
-                ss << "core response ID " << "0x" << std::hex << resp.rsp_tid.to_uint() << std::dec
+                ss << "core response ID "
+                   << "0x" << std::hex << resp.rsp_tid.to_uint() << std::dec
                    << " does not match any inflight request";
                 print_error(ss.str());
                 continue;
@@ -714,10 +715,10 @@ private:
                         if ((rv >> (i % CORE_REQ_WORD_BYTES)) & 0x1) {
                             if (recv != expc) {
                                 std::stringstream ss;
-                                ss << "response data is wrong" << " / @0x" << std::hex
-                                   << aligned_addr + i << std::dec << " / actual = 0x" << std::hex
-                                   << (unsigned)recv << std::dec << " / expected = 0x" << std::hex
-                                   << (unsigned)expc << std::dec;
+                                ss << "response data is wrong"
+                                   << " / @0x" << std::hex << aligned_addr + i << std::dec
+                                   << " / actual = 0x" << std::hex << (unsigned)recv << std::dec
+                                   << " / expected = 0x" << std::hex << (unsigned)expc << std::dec;
                                 print_error(ss.str());
                             }
                         }
@@ -788,8 +789,8 @@ private:
             inflight_mem_map_t::const_iterator it = inflight_mem_read_m.find(req_id);
             if (it != inflight_mem_read_m.end()) {
                 std::stringstream ss;
-                ss << "memory read request ID " << "0x" << std::hex << req_id << std::dec
-                   << " matches an inflight request";
+                ss << "memory read request ID "
+                   << "0x" << std::hex << req_id << std::dec << " matches an inflight request";
                 print_error(ss.str());
                 continue;
             }
@@ -851,7 +852,8 @@ private:
             inflight_mem_map_t::const_iterator it = inflight_mem_read_m.find(resp.id);
             if (it == inflight_mem_read_m.end()) {
                 std::stringstream ss;
-                ss << "memory read response ID " << "0x" << std::hex << resp.id << std::dec
+                ss << "memory read response ID "
+                   << "0x" << std::hex << resp.id << std::dec
                    << " does not match any inflight request";
                 print_error(ss.str());
                 continue;
@@ -986,8 +988,8 @@ private:
             inflight_mem_map_t::const_iterator it = inflight_mem_write_m.find(req_id);
             if (it != inflight_mem_write_m.end()) {
                 std::stringstream ss;
-                ss << "memory write request ID " << "0x" << std::hex << req_id << std::dec
-                   << " matches an inflight request";
+                ss << "memory write request ID "
+                   << "0x" << std::hex << req_id << std::dec << " matches an inflight request";
                 print_error(ss.str());
                 continue;
             }
@@ -1069,7 +1071,8 @@ private:
             inflight_mem_map_t::const_iterator it = inflight_mem_write_m.find(resp.id);
             if (it == inflight_mem_write_m.end()) {
                 std::stringstream ss;
-                ss << "memory write response ID " << "0x" << std::hex << resp.id << std::dec
+                ss << "memory write response ID "
+                   << "0x" << std::hex << resp.id << std::dec
                    << " does not match any inflight request";
                 print_error(ss.str());
                 continue;

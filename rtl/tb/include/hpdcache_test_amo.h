@@ -32,9 +32,13 @@ class hpdcache_test_transaction_req;
 class hpdcache_test_amo
 {
 protected:
-    hpdcache_test_amo() { /* empty */ }
+    hpdcache_test_amo()
+    { /* empty */
+    }
 
-    ~hpdcache_test_amo() { /* empty */ }
+    ~hpdcache_test_amo()
+    { /* empty */
+    }
 
 public:
     static uint64_t compute_amo(unsigned atop, uint64_t ld_data, uint64_t st_data, unsigned bytes)

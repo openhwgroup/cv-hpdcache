@@ -176,9 +176,10 @@ private:
 #if DEBUG_HPDCACHE_TEST_MEM_RESP_MODEL
                 if (check_verbosity(sc_core::SC_DEBUG)) {
                     std::cout << sc_time_stamp().to_string()
-                              << " / MEM_RESP_MODEL_DEBUG: reading memory" << " / address = 0x"
-                              << std::hex << word_addr * 8 << std::dec << " / load data = 0x"
-                              << std::hex << ld_data << std::dec << std::endl;
+                              << " / MEM_RESP_MODEL_DEBUG: reading memory"
+                              << " / address = 0x" << std::hex << word_addr * 8 << std::dec
+                              << " / load data = 0x" << std::hex << ld_data << std::dec
+                              << std::endl;
                 }
 #endif
             }
@@ -261,10 +262,11 @@ private:
 #if DEBUG_HPDCACHE_TEST_MEM_RESP_MODEL
             if (check_verbosity(sc_core::SC_DEBUG)) {
                 std::cout << sc_time_stamp().to_string()
-                          << " / MEM_RESP_MODEL_DEBUG: computing amo word" << " / load data = 0x"
-                          << std::hex << ld_data << std::dec << " / store data = 0x" << std::hex
-                          << st_data << std::dec << " / amo result = 0x" << std::hex << amo_result
-                          << std::dec << std::endl;
+                          << " / MEM_RESP_MODEL_DEBUG: computing amo word"
+                          << " / load data = 0x" << std::hex << ld_data << std::dec
+                          << " / store data = 0x" << std::hex << st_data << std::dec
+                          << " / amo result = 0x" << std::hex << amo_result << std::dec
+                          << std::endl;
             }
 #endif
         }
@@ -289,8 +291,8 @@ private:
 #if DEBUG_HPDCACHE_TEST_MEM_RESP_MODEL
                 if (check_verbosity(sc_core::SC_DEBUG)) {
                     std::cout << sc_time_stamp().to_string()
-                              << " / MEM_RESP_MODEL_DEBUG: writing memory" << " / address = 0x"
-                              << std::hex << ((word_addr + w) * 8) << std::dec
+                              << " / MEM_RESP_MODEL_DEBUG: writing memory"
+                              << " / address = 0x" << std::hex << ((word_addr + w) * 8) << std::dec
                               << " / store data = 0x" << std::hex << st_data << std::dec
                               << " / store be = 0x" << std::hex << (uint32_t)be << std::dec
                               << std::endl;

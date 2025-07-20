@@ -63,9 +63,9 @@ public:
         ;
 
 #ifdef DEBUG_GENERIC_CACHE_DATA
-        std::cout << "DEBUG: cache data : writing " << "0x" << std::hex
-                  << getCacheData(way, set, word) << std::dec << " / set = " << set
-                  << " / way = " << way << " / word = " << word << std::endl;
+        std::cout << "DEBUG: cache data : writing "
+                  << "0x" << std::hex << getCacheData(way, set, word) << std::dec
+                  << " / set = " << set << " / way = " << way << " / word = " << word << std::endl;
 #endif
     }
 
@@ -74,8 +74,9 @@ public:
         uint64_t ret = getCacheData(way, set, word);
 
 #ifdef DEBUG_GENERIC_CACHE_DATA
-        std::cout << "DEBUG: cache data : reading " << "0x" << std::hex << ret << std::dec
-                  << " / set = " << set << " / way = " << way << " / word = " << word << std::endl;
+        std::cout << "DEBUG: cache data : reading "
+                  << "0x" << std::hex << ret << std::dec << " / set = " << set << " / way = " << way
+                  << " / word = " << word << std::endl;
 #endif
 
         return ret;

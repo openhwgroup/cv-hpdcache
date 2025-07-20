@@ -75,8 +75,9 @@ protected:
         {
             std::stringstream os;
 
-            os << "MEM_WRITE" << " / ADDR = 0x" << std::hex << addr << std::dec << " / LEN = 0d"
-               << std::dec << len << std::dec << " / ID = 0x" << std::hex << id << std::dec;
+            os << "MEM_WRITE"
+               << " / ADDR = 0x" << std::hex << addr << std::dec << " / LEN = 0d" << std::dec << len
+               << std::dec << " / ID = 0x" << std::hex << id << std::dec;
             return os.str();
         }
 
@@ -98,8 +99,9 @@ protected:
         {
             std::stringstream os;
 
-            os << "MEM_WRITE_DATA" << " / DATA = 0x" << std::hex << data << std::dec << " / BE = 0x"
-               << std::hex << be << std::dec << (last ? " / LAST" : "");
+            os << "MEM_WRITE_DATA"
+               << " / DATA = 0x" << std::hex << data << std::dec << " / BE = 0x" << std::hex << be
+               << std::dec << (last ? " / LAST" : "");
             return os.str();
         }
 

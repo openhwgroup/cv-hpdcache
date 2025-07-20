@@ -18,7 +18,8 @@ on:
       - 'LICENSE'
 
 jobs:
-  lint:
+  lint-verilog:
+    name: lint-verilog
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
@@ -38,3 +39,35 @@ jobs:
           extra_args: |
             --waiver_files=rtl/lint/verible.waiver
             --check_syntax=true
+
+  lint-cpp:
+    name: lint-cpp
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      # Install Dependencies
+      - name: Install dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-15
+
+      # Check C++ code formatting
+      - name: Check C++ code formatting
+        shell: bash
+        run: |
+          echo "starting test"
+          (
+            find rtl/tb \
+              \( -not -path "rtl/tb/thirdparty/*" -and \
+                 -not -path "rtl/tb/build/*" -and \
+                  \( -name '*.cpp' -or -name '*.c' -or -name '*.h' \) \
+              \) \
+              -exec clang-format-15 --style=file:rtl/tb/.clang-format -Werror -n {} \;
+          ) |& tee clang-format.log
+          echo "find done"
+          checkerrors=$(grep 'error:' clang-format.log)
+          echo "errors: x${checkerrors}x"
+          #[[ -n "${checkerrors}" ]] && exit 1 ;
+          exit 0 ;

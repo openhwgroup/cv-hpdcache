@@ -563,8 +563,9 @@ public:
     {
         std::stringstream os;
 
-        os << "MEM_WRITE_RESP" << " / ID = 0x" << std::hex << id << std::dec
-           << (error != 0 ? " / ERROR" : "") << (is_atomic ? " / ATOMIC" : "");
+        os << "MEM_WRITE_RESP"
+           << " / ID = 0x" << std::hex << id << std::dec << (error != 0 ? " / ERROR" : "")
+           << (is_atomic ? " / ATOMIC" : "");
         return os.str();
     }
 
