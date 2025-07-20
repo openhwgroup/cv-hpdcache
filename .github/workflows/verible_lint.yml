@@ -57,17 +57,5 @@ jobs:
       - name: Check C++ code formatting
         shell: bash
         run: |
-          echo "starting test"
-          (
-            find rtl/tb \
-              \( -not -path "rtl/tb/thirdparty/*" -and \
-                 -not -path "rtl/tb/build/*" -and \
-                  \( -name '*.cpp' -or -name '*.c' -or -name '*.h' \) \
-              \) \
-              -exec clang-format-15 --style=file:rtl/tb/.clang-format -Werror -n {} \;
-          ) |& tee clang-format.log
-          echo "find done"
-          checkerrors=$(grep 'error:' clang-format.log)
-          echo "errors: x${checkerrors}x"
-          #[[ -n "${checkerrors}" ]] && exit 1 ;
-          exit 0 ;
+          echo "Checking C++ code style"
+          bash .github/scripts/check_cpp_style.sh
