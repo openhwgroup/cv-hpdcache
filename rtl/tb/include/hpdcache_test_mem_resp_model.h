@@ -372,7 +372,11 @@ private:
                 while (!mem_resp_read_ready_i.read());
                 mem_resp_read_valid_o.write(false);
                 between_valid_delay->next();
-                for (int j = 0; j < between_valid_delay->read(); j++) wait();
+                if (i < read_resp.len_data)
+                {
+                    for (int j = 0; j < between_valid_delay->read(); j++) wait();
+                    between_valid_delay->next();
+                }
             }
             delete tmp;
         }
