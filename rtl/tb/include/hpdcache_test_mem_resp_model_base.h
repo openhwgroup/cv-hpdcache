@@ -115,7 +115,7 @@ protected:
     };
 
     sc_fifo<mem_write_req_flit_t> write_req_fifo;
-    sc_fifo<mem_write_req_data_flit_t>                write_req_data_fifo;
+    sc_fifo<mem_write_req_data_flit_t> write_req_data_fifo;
     tlm_utils::peq_with_get<hpdcache_test_transaction_mem_read_resp> read_resp_peq;
     tlm_utils::peq_with_get<hpdcache_test_transaction_mem_write_resp> write_resp_peq;
 
@@ -176,9 +176,9 @@ public:
         wb_delay_distribution.push(pair<int, int>(3, 8), 90);
         wb_delay_distribution.push(pair<int, int>(9, 64), 2);
         wb_valid_delay->set_mode(wb_delay_distribution);
-        
+
         scv_bag<pair<int, int>> between_delay_distribution;
-        between_delay_distribution.push(pair<int,int>(1,  10),  100);
+        between_delay_distribution.push(pair<int, int>(1, 10), 100);
         between_valid_delay->set_mode(between_delay_distribution);
     }
 
@@ -218,10 +218,10 @@ public:
     {
         wb_valid_delay->set_mode(dist);
     }
-    
+
     scv_smart_ptr<int> get_between_valid_delay_distribution() { return between_valid_delay; }
-    
-    void set_between_valid_delay_distribution(scv_bag<pair<int, int>> &dist)
+
+    void set_between_valid_delay_distribution(scv_bag<pair<int, int>>& dist)
     {
         between_valid_delay->set_mode(dist);
     }
