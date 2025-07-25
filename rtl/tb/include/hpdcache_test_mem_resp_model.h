@@ -124,7 +124,8 @@ private:
     void readOperation()
     {
         hpdcache_test_transaction_mem_read_req req;
-        hpdcache_test_transaction_mem_read_resp* resp = new hpdcache_test_transaction_mem_read_resp();
+        hpdcache_test_transaction_mem_read_resp* resp =
+            new hpdcache_test_transaction_mem_read_resp();
 
         //  consume the request from the request ports
         req.addr = mem_req_read_addr_i.read().to_uint();
@@ -223,7 +224,8 @@ private:
             if (is_amo) {
                 sc_core::sc_time time2 = sc_core::sc_time(rd_valid_delay->read(), SC_NS);
                 rd_valid_delay->next();
-                hpdcache_test_transaction_mem_read_resp* read_resp = new hpdcache_test_transaction_mem_read_resp();
+                hpdcache_test_transaction_mem_read_resp* read_resp =
+                    new hpdcache_test_transaction_mem_read_resp();
                 read_resp->data = 0;
                 read_resp->error = 0;
                 read_resp->id = req.id;
@@ -232,7 +234,8 @@ private:
                 read_resp_peq.notify(*read_resp, time2);
             }
 
-            hpdcache_test_transaction_mem_write_resp* resp_ptr = new hpdcache_test_transaction_mem_write_resp();
+            hpdcache_test_transaction_mem_write_resp* resp_ptr =
+                new hpdcache_test_transaction_mem_write_resp();
             resp.is_atomic = 0;
             resp.error = 1;
             resp.id = req.id;
@@ -317,7 +320,8 @@ private:
             if (is_amo) {
                 sc_core::sc_time time2 = sc_core::sc_time(rd_valid_delay->read(), SC_NS);
                 rd_valid_delay->next();
-                hpdcache_test_transaction_mem_read_resp* read_resp = new hpdcache_test_transaction_mem_read_resp();
+                hpdcache_test_transaction_mem_read_resp* read_resp =
+                    new hpdcache_test_transaction_mem_read_resp();
                 read_resp->data = 0;
                 sc_bv<HPDCACHE_MEM_DATA_WIDTH> new_data;
                 new_data.range((word + 1) * 64 - 1, word * 64) = ld_data;
@@ -334,7 +338,8 @@ private:
         resp.is_atomic = req.is_stex() && excl_ok;
         resp.error = 0;
         resp.id = req.id;
-        hpdcache_test_transaction_mem_write_resp* resp_ptr = new hpdcache_test_transaction_mem_write_resp();
+        hpdcache_test_transaction_mem_write_resp* resp_ptr =
+            new hpdcache_test_transaction_mem_write_resp();
         *resp_ptr = resp;
         write_resp_peq.notify(*resp_ptr, time);
     }
@@ -345,18 +350,16 @@ private:
         hpdcache_test_transaction_mem_read_resp read_resp;
         hpdcache_test_transaction_mem_read_resp* tmp;
 
-        for(;;){
+        for (;;) {
             while ((tmp = read_resp_peq.get_next_transaction()) == NULL) wait();
             read_resp = *tmp;
-            for (int i = 0; i < (read_resp.len_data + 1); i++)
-            {
+            for (int i = 0; i < (read_resp.len_data + 1); i++) {
                 hpdcache_test_transaction_mem_read_resp read_resp_tmp;
                 read_resp_tmp.error = read_resp.error;
                 read_resp_tmp.data = 0;
                 read_resp_tmp.id = read_resp.id;
                 read_resp_tmp.last = (i == read_resp.len_data);
-                if (read_resp.my_data.size() > i)
-                { 
+                if (read_resp.my_data.size() > i) {
                     read_resp_tmp.data = read_resp.my_data.at(i);
                 }
                 sb_mem_read_resp_o.write(read_resp_tmp); // send response to scoreboard
@@ -380,7 +383,7 @@ private:
         mem_resp_write_valid_o.write(false);
         hpdcache_test_transaction_mem_write_resp resp;
         hpdcache_test_transaction_mem_write_resp* tmp;
-        for(;;){
+        for (;;) {
             while ((tmp = write_resp_peq.get_next_transaction()) == NULL) wait();
             wb_valid_delay->next();
             for (int i = 0; i < wb_valid_delay->read(); i++) wait();
