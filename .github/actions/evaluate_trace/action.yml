@@ -54,11 +54,11 @@ runs:
           echo -e  "\033[31mTest execution latency increased\033[0m"
           exit 3
         fi
-        if (( $(echo "$read_miss_rate > $prev_read"  | bc -l) ))
+        if (( $(echo "$read_miss_rate < $prev_read"  | bc -l) ))
         then
           echo -e  "\033[32mThe percentage of read misses decreased\033[0m"
         fi
-        if (( $(echo "$write_miss_rate > $prev_write"  | bc -l) ))
+        if (( $(echo "$write_miss_rate < $prev_write"  | bc -l) ))
         then
           echo -e  "\033[32mThe percentage of write misses decreased\033[0m"
         fi
