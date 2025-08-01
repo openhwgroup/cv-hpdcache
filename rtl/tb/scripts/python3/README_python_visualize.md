@@ -5,7 +5,6 @@ You can run it from a virtual environement. For this
     python3 -m venv <name of your directory>
     source <name of your directory>/bin/activate
     pip install -U matplotlib
-    pip install PyQt6
 ```
 
 To exit the virtual environnement :

@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from  sys import argv
 from os import path
+from os import mkdir
 import re
 import subprocess 
 
@@ -40,7 +41,7 @@ def get_nb_miss( content_file : str, is_read : bool) -> float:
     result : float = float(matches[0].split(" ")[-1])
     return result
 
-def display_data(nb_cycles : list[float], read_miss : list[float], write_miss : list[float]) -> None:
+def display_data(nb_cycles : list[float], read_miss : list[float], write_miss : list[float], file_name : str) -> None:
     configs : list[str] = ['Config 1', 'Config 2']
     colors : list[str] = ['blue', 'red']
     names : list[str] = ['Number of cycles', 'Read Miss', 'Write miss']
@@ -65,7 +66,9 @@ def display_data(nb_cycles : list[float], read_miss : list[float], write_miss : 
         axes[i].set_xticklabels(configs)
 
     plt.tight_layout()
-    plt.show()
+    if not path.isdir('plots'):
+        mkdir("plots")
+    plt.savefig(f"plots/{file_name}.png")
 
 def main(parameter: list[str]) -> None:
     if len(parameter) != 2 :
@@ -86,7 +89,7 @@ def main(parameter: list[str]) -> None:
         read_miss.append(get_nb_miss(result.stdout, True))
         write_miss.append(get_nb_miss(result.stdout, False))
 
-    display_data(nb_cycles, read_miss, write_miss)
+    display_data(nb_cycles, read_miss, write_miss, file_name.split("/")[-1])
     return
 
 if  __name__ == "__main__":
