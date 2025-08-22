@@ -54,67 +54,17 @@ runs:
           echo -e  "\033[31mTest execution latency increased\033[0m"
           exit 3
         fi
-
-    - name: Change best perf
-      shell: bash
-      run: |
-        cd rtl/tb
-        file_prev="${{ inputs.trace_perf }}"
-        file=$(find . -name "*from_trace*.log")
-        prev_cycle=$(cat $file_prev | grep "cycles" | cut -d "=" -f 2)
-        prev_read=$(cat $file_prev | grep "read" | cut -d "=" -f 2)
-        prev_write=$(cat $file_prev| grep "write" | cut -d "=" -f 2)
-        read_miss_rate=$(cat $file | grep "Read miss rate" | tr -s " " | cut -d " " -f 5)
-        write_miss_rate=$(cat $file | grep "Write miss rate" | tr -s " " | cut -d " " -f 5)
-        cycles=$(cat $file  | grep SB.NB_CYCLES | tr -s " " | cut -d " " -f 3)
-        x=0
         if (( $(echo "$read_miss_rate < $prev_read"  | bc -l) ))
         then
-          x=1
-          sed -i -E "s/read.*/read=$read_miss_rate/" $file_prev
+          echo -e  "\033[32mThe percentage of read misses decreased\033[0m"
         fi
         if (( $(echo "$write_miss_rate < $prev_write"  | bc -l) ))
         then
-          x=1
-          sed -i -E "s/write.*/write=$write_miss_rate/" $file_prev
+          echo -e  "\033[32mThe percentage of write misses decreased\033[0m"
         fi
         if (( $(echo "$cycles < $prev_cycle"  | bc -l) ))
         then
-          x=1
-          sed -i -E "s/cycles.*/cycles=$cycles/" $file_prev
+          echo -e  "\033[32mTest execution latency decreased\033[0m"
         fi
-        rm $file
-        if [[ $x -eq 0 ]]
-        then
-          echo "skip_push=true" >> $GITHUB_ENV
-          exit 0
-        fi
-        echo "skip_push=false" >> $GITHUB_ENV
-        echo -e "\n$(date +%Y%m%d) $file_prev" >> $file_prev
-        git config --local user.email "ci@github.com"
-        git config --local user.name "GitHub Action test"
-        git add ./$file_prev
-        git commit -m "new best perf on ${{ inputs.config }} "
 
-    - name: Push changes # push the output folder to your repo
-      if: env.skip_push != 'true'
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ inputs.github_token }}
-
-    - name: Put a comment
-      if: failure()
-      env:
-        TOKEN: ${{ inputs.github_token }}
-      shell: bash
-      run: |
-        PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
-
-        COMMENT=" Pipeline has failed due to a decrease in performance in ${{ inputs.config }}."
-
-        curl -s -H "Authorization: token $TOKEN" \
-             -H "Content-Type: application/json" \
-             -X POST \
-             -d "{\"body\": \"$COMMENT\"}" \
-             "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER/comments"
 

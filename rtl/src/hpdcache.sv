@@ -57,8 +57,10 @@ import hpdcache_pkg::*;
     parameter type hpdcache_mem_req_t = logic,
     parameter type hpdcache_mem_req_w_t = logic,
     parameter type hpdcache_mem_resp_r_t = logic,
-    parameter type hpdcache_mem_resp_w_t = logic
+    parameter type hpdcache_mem_resp_w_t = logic,
     //  }}}
+
+    localparam type hpdcache_nline_t = logic [HPDcacheCfg.nlineWidth-1:0]
 )
     //  }}}
 
@@ -144,7 +146,6 @@ import hpdcache_pkg::*;
     //  Declaration of internal types
     //  {{{
     typedef logic [HPDcacheCfg.u.paWidth-1:0] hpdcache_req_addr_t;
-    typedef logic [HPDcacheCfg.nlineWidth-1:0] hpdcache_nline_t;
     typedef logic [HPDcacheCfg.setWidth-1:0] hpdcache_set_t;
     typedef logic [HPDcacheCfg.clOffsetWidth-1:0] hpdcache_offset_t;
     typedef logic unsigned [HPDcacheCfg.clWordIdxWidth-1:0] hpdcache_word_t;
