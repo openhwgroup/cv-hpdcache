@@ -882,7 +882,17 @@ import hpdcache_pkg::*;
 //  {{{
     always_ff @(posedge clk_i)
     begin : req_ff
-        if (req_valid_i && req_ready_o) begin
+        if (!rst_ni) begin
+            req_op_q        <= '0;
+            req_addr_q      <= '0;
+            req_size_q      <= '0;
+            req_data_q      <= '0;
+            req_be_q        <= '0;
+            req_uc_q        <= '0;
+            req_sid_q       <= '0;
+            req_tid_q       <= '0;
+            req_need_rsp_q  <= '0;
+        end else if (req_valid_i && req_ready_o) begin
             req_op_q        <= req_op_i;
             req_addr_q      <= req_addr_i;
             req_size_q      <= req_size_i;
