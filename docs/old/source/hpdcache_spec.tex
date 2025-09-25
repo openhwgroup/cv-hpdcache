@@ -137,7 +137,7 @@ Nicolas Perbost.
 \minitoc
 \newpage
 
-This \acf{HPDcache} is the responsible for serving data accesses issued by a RISC-V core, tightly-coupled accelerators and hardware memory prefetchers.
+This \acf{HPDcache} is responsible for serving data accesses issued by a RISC-V core, tightly-coupled accelerators and hardware memory prefetchers.
 All these "clients" are called requesters.
 
 The \ac{HPDcache} implements a hardware pipeline capable of serving one request per cycle.
@@ -424,7 +424,7 @@ All these interfaces are synchronous to the rising edge of the global clock $\ma
   $\mathsf{HPDCACHE\_REQ\_SID}$
   & Requester
   & The identification tag for the requester.
-  It shall be identical to the index of the request port binded to that requester.
+  It shall be identical to the index of the request port bound to that requester.
   See \secref{if_req_sid}.\\
   \midrule
   $\mathsf{HPDCACHE\_REQ\_TID}$
@@ -961,7 +961,7 @@ All interfaces are synchronous to the rising edge of the same global clock (\tab
   \caption{\figlabel{valid_ready_scenarios}VALID/READY scenarios}}
 \end{figure}
 
-\paragraph{Requesters' reponse interface}\mbox{}
+\paragraph{Requesters' response interface}\mbox{}
 
 In the case of the requesters' response interfaces, there is a particularity.
 For these interfaces, it is assumed that the \textbf{READY} signal is always set to 1.
@@ -974,7 +974,7 @@ In other words, the requester must unconditionally accept the response, when it 
 
 \paragraph{Address alignment}\mbox{}
 
-In all request interfaces (Requesters' request interface, Memory miss read request interface, Memory write-buffer write request interface, Memory uncached read request interface, Memory uncached write request interface), the address transfered (\textbf{ADDR}) shall be byte-aligned to the value of the corresponding \textbf{SIZE} signal in that interface.
+In all request interfaces (Requesters' request interface, Memory miss read request interface, Memory write-buffer write request interface, Memory uncached read request interface, Memory uncached write request interface), the address transferred (\textbf{ADDR}) shall be byte-aligned to the value of the corresponding \textbf{SIZE} signal in that interface.
 
 Some examples are illustrated in \figref{req_addr_alignment}.
 In the first case, the \textbf{SIZE} value is 2 (which corresponds to $2^2=4$ bytes).
@@ -1447,7 +1447,7 @@ The blocking conditions putting a request on-hold are the following:
 \begin{description}
   \item[Case 1:] \textbf{Cacheable LOAD or PREFETCH, and there is a hit on a pending miss (hit on the \acs{MSHR})}
 
-When there is a read miss on an address (cacheline granurality) for which there is a pending read miss, then the more recent one needs to wait for the previous one to be served.
+When there is a read miss on an address (cacheline granularity) for which there is a pending read miss, then the more recent one needs to wait for the previous one to be served.
 This allows the latest one to read the data from the cache after the refill operation completes.
 
   \item[Case 2:] \textbf{Cacheable LOAD or PREFETCH, there is a miss on the cache, and there is a hit (cacheline granularity) on an opened, closed or sent entry of the \ac{WBUF}}
@@ -1769,7 +1769,7 @@ The \ac{RTAB} implements the following operations:
   \midrule
   $\mathsf{rtab\_alloc\_and\_link()}$ & Allocate a new entry and link it to an existing linked list \\
   \midrule
-  $\mathsf{rtab\_pop\_try()}$         & Get a ready request from one of the linked list (wihout actually removing it from the list) \\
+  $\mathsf{rtab\_pop\_try()}$         & Get a ready request from one of the linked list (without actually removing it from the list) \\
   \midrule
   $\mathsf{rtab\_pop\_commit()}$      & Actually remove a popped request from the list \\
   \midrule

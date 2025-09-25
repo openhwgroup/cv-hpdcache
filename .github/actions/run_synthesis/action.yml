@@ -1,0 +1,56 @@
+##
+#  Copyright 2025 Inria
+#  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
+##
+##
+#  Author       Cesar Fuguet
+#  Date         June, 2025
+#  Description  GitHub Action to run a synthesis using Yosys
+##
+name: 'Run synthesis sequence'
+  #inputs:
+  #  seqname:
+  #    description: 'Name of the test sequence'
+  #    required: true
+  #    default: 'random'
+  #
+  #  ntrans:
+  #    description: 'Number of transactions in the sequence'
+  #    required: true
+  #    default: '5000'
+  #
+  #  ntests:
+  #    description: 'Number of separate tests'
+  #    required: true
+  #    default: '32'
+  #
+  #  config:
+  #    description: 'File with DUT parameters'
+  #    required: true
+  #    default: 'configs/default_config.mk'
+
+runs:
+  using: "composite"
+  steps:
+    #  Install Dependencies
+    - name: Install Dependencies
+      shell: bash
+      run: |
+        ./.github/scripts/install_deps_ubuntu.sh
+
+    - name: Cache OSS-CAD-Suite
+      id: cache-oss-cad-suite
+      uses: actions/cache@v4
+      with:
+        path: build/oss-cad-suite
+        fail-on-cache-miss: true
+        key: ${{ runner.os }}-build-oss-cad-suite-${{ hashFiles('.github/scripts/install_oss-cad-suite.sh') }}
+
+    #  Synthesize the HPDcache RTL sources
+    - name: Synthesis the HPDcache RTL
+      id: synthesis
+      shell: bash
+      run: |
+        . .github/scripts/env_syn.sh
+        cd rtl/syn
+        make syn

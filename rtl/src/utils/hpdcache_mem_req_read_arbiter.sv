@@ -28,7 +28,8 @@ module hpdcache_mem_req_read_arbiter
 //  {{{
 #(
     parameter int unsigned N = 0,
-    parameter type hpdcache_mem_req_t = logic
+    parameter type hpdcache_mem_req_t = logic,
+    localparam type gnt_index_t = logic[(N > 1 ? $clog2(N) - 1 : 0):0]
 )
 //  }}}
 
@@ -44,7 +45,9 @@ module hpdcache_mem_req_read_arbiter
 
     input  logic                      mem_req_read_ready_i,
     output logic                      mem_req_read_valid_o,
-    output hpdcache_mem_req_t         mem_req_read_o
+    output hpdcache_mem_req_t         mem_req_read_o,
+
+    output gnt_index_t                gnt_index_o
 );
 //  }}}
 
@@ -84,6 +87,12 @@ module hpdcache_mem_req_read_arbiter
         .data_i              (mem_req_read_i),
         .sel_i               (mem_read_arb_req_gnt),
         .data_o              (mem_req_read_o)
+    );
+
+    //  Forward the grant index
+    hpdcache_1hot_to_binary #(.N(N)) i_gnt_encoder(
+        .val_i (mem_read_arb_req_gnt),
+        .val_o (gnt_index_o)
     );
 
 endmodule

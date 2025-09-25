@@ -1,20 +1,6 @@
 ##
-#  Copyright 2023,2024 Cesar Fuguet
-#
+#  Copyright 2025 Inria
 #  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
-#
-#  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
-#  may not use this file except in compliance with the License, or, at your
-#  option, the Apache License version 2.0. You may obtain a copy of the
-#  License at
-#
-#  https://solderpad.org/licenses/SHL-2.1/
-#
-#  Unless required by applicable law or agreed to in writing, any work
-#  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
-#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-#  License for the specific language governing permissions and limitations
-#  under the License.
 ##
 ##
 #  Author     : Cesar Fuguet
@@ -26,17 +12,23 @@ inputs:
   seqname:
     description: 'Name of the test sequence'
     required: true
-    default: 'random'
 
   ntrans:
     description: 'Number of transactions in the sequence'
     required: true
-    default: '5000'
+
+  filename:
+    description: 'Trace file to read the sequence'
+    required: false
+    default: 'traces_lib/trace_qemu'
 
   ntests:
     description: 'Number of separate tests'
     required: true
-    default: '32'
+
+  config:
+    description: 'File with DUT parameters'
+    required: true
 
 runs:
   using: "composite"
@@ -70,7 +62,7 @@ runs:
       run: |
         . .github/scripts/env.sh
         cd rtl/tb
-        make verilate
+        make verilate CONFIG=${{ inputs.config }}
 
     - name: Archive Verilate log
       if: ${{ failure () && steps.verilate.conclusion == 'failure' }}
@@ -85,7 +77,7 @@ runs:
       run: |
         . .github/scripts/env.sh
         cd rtl/tb
-        make build -j${PARALLEL_JOBS}
+        make build -j${PARALLEL_JOBS} CONFIG=${{ inputs.config }}
 
     - name: Archive SystemC build log
       if: ${{ failure () && steps.build-tb.conclusion == 'failure' }}
@@ -104,7 +96,8 @@ runs:
         make nonregression \
             SEQUENCE=${{ inputs.seqname }} \
             NTESTS=${{ inputs.ntests }} \
-            NTRANSACTIONS=${{ inputs.ntrans }}
+            NTRANSACTIONS=${{ inputs.ntrans }} \
+            TRACE_SEQ_FILE=${{ inputs.filename }}
 
     - name: Archive nonregression logs
       if: ${{ failure () && steps.run-tb.conclusion == 'failure' }}

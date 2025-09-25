@@ -1,6 +1,7 @@
 /*
  *  Copyright 2023 CEA*
  *  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+ *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
  *
@@ -83,12 +84,6 @@ import hpdcache_pkg::*;
     input  logic                                dir_updt_dirty_i,
     input  logic                                dir_updt_fetch_i,
 
-    input  logic                                dir_amo_match_i,
-    input  hpdcache_set_t                       dir_amo_match_set_i,
-    input  hpdcache_tag_t                       dir_amo_match_tag_i,
-    input  logic                                dir_amo_updt_sel_victim_i,
-    output hpdcache_way_vector_t                dir_amo_hit_way_o,
-
     input  logic                                dir_refill_i,
     input  hpdcache_set_t                       dir_refill_set_i,
     input  hpdcache_way_vector_t                dir_refill_way_i,
@@ -139,11 +134,13 @@ import hpdcache_pkg::*;
     input  hpdcache_set_t                       data_req_read_set_i,
     input  hpdcache_req_size_t                  data_req_read_size_i,
     input  hpdcache_word_t                      data_req_read_word_i,
+    input  hpdcache_way_vector_t                data_req_read_way_i,
     output hpdcache_req_data_t                  data_req_read_data_o,
 
     input  logic                                data_req_write_i,
     input  logic                                data_req_write_enable_i,
     input  hpdcache_set_t                       data_req_write_set_i,
+    input  hpdcache_way_vector_t                data_req_write_way_i,
     input  hpdcache_req_size_t                  data_req_write_size_i,
     input  hpdcache_word_t                      data_req_write_word_i,
     input  hpdcache_req_data_t                  data_req_write_data_i,
@@ -154,6 +151,7 @@ import hpdcache_pkg::*;
     input  hpdcache_set_t                       data_amo_write_set_i,
     input  hpdcache_req_size_t                  data_amo_write_size_i,
     input  hpdcache_word_t                      data_amo_write_word_i,
+    input  hpdcache_way_vector_t                data_amo_write_way_i,
     input  hpdcache_req_data_t                  data_amo_write_data_i,
     input  hpdcache_req_be_t                    data_amo_write_be_i,
 
@@ -238,14 +236,10 @@ import hpdcache_pkg::*;
             3'h0,
             3'h1,
             3'h2,
-            // 3'h3:    ret = hpdcache_data_row_enable_t'({ 64/HPDcacheCfg.u.wordWidth{1'b1}});
-            // 3'h4:    ret = hpdcache_data_row_enable_t'({128/HPDcacheCfg.u.wordWidth{1'b1}});
-            // 3'h5:    ret = hpdcache_data_row_enable_t'({256/HPDcacheCfg.u.wordWidth{1'b1}});
-            // default: ret = hpdcache_data_row_enable_t'({512/HPDcacheCfg.u.wordWidth{1'b1}});
-            3'h3:    ret = hpdcache_data_row_enable_t'({`UP(64/HPDcacheCfg.u.wordWidth){1'b1}});
-            3'h4:    ret = hpdcache_data_row_enable_t'({`UP(128/HPDcacheCfg.u.wordWidth){1'b1}});
-            3'h5:    ret = hpdcache_data_row_enable_t'({`UP(256/HPDcacheCfg.u.wordWidth){1'b1}});
-            default: ret = hpdcache_data_row_enable_t'({`UP(512/HPDcacheCfg.u.wordWidth){1'b1}});
+            3'h3:    ret = hpdcache_data_row_enable_t'({ 64/HPDcacheCfg.u.wordWidth{1'b1}});
+            3'h4:    ret = hpdcache_data_row_enable_t'({128/HPDcacheCfg.u.wordWidth{1'b1}});
+            3'h5:    ret = hpdcache_data_row_enable_t'({256/HPDcacheCfg.u.wordWidth{1'b1}});
+            default: ret = hpdcache_data_row_enable_t'({512/HPDcacheCfg.u.wordWidth{1'b1}});
         endcase
 
         off = HPDcacheCfg.u.accessWords > 1 ? hpdcache_uint'(word_i[0 +: OffWidth]) : 0;
@@ -466,14 +460,6 @@ import hpdcache_pkg::*;
                 dir_wentry  = '0;
             end
 
-            //  Cache directory AMO match tag -> hit
-            dir_amo_match_i: begin
-                dir_addr    = dir_amo_match_set_i;
-                dir_cs      = '1;
-                dir_we      = '0;
-                dir_wentry  = '0;
-            end
-
             //  Cache directory update
             dir_refill_i: begin
                 dir_addr    = dir_refill_set_i;
@@ -564,7 +550,6 @@ import hpdcache_pkg::*;
     //  {{{
     hpdcache_tag_t [HPDcacheCfg.u.ways-1:0] dir_tags;
     hpdcache_way_vector_t req_hit;
-    hpdcache_way_vector_t amo_hit;
     hpdcache_way_vector_t cmo_hit;
     hpdcache_way_vector_t inval_hit;
 
@@ -573,12 +558,10 @@ import hpdcache_pkg::*;
         assign dir_tags[gen_i] = dir_rentry[gen_i].tag;
 
         assign req_hit[gen_i]   = (dir_tags[gen_i] == dir_match_tag_i);
-        assign amo_hit[gen_i]   = (dir_tags[gen_i] == dir_amo_match_tag_i);
         assign cmo_hit[gen_i]   = (dir_tags[gen_i] == dir_cmo_check_nline_tag_i);
         assign inval_hit[gen_i] = (dir_tags[gen_i] == dir_inval_tag);
 
         assign dir_hit_way_o[gen_i]                 = dir_valid[gen_i] & req_hit[gen_i];
-        assign dir_amo_hit_way_o[gen_i]             = dir_valid[gen_i] & amo_hit[gen_i];
         assign dir_cmo_check_nline_hit_way_o[gen_i] = dir_valid[gen_i] & cmo_hit[gen_i];
         assign dir_inval_hit_way[gen_i]             = dir_valid[gen_i] & inval_hit[gen_i];
     end
@@ -635,12 +618,10 @@ import hpdcache_pkg::*;
     hpdcache_set_t        updt_sel_victim_set;
 
     assign updt_sel_victim = dir_updt_sel_victim_i |
-                             dir_refill_updt_sel_victim_i |
-                             dir_amo_updt_sel_victim_i;
+                             dir_refill_updt_sel_victim_i;
 
     assign updt_sel_victim_way = dir_updt_sel_victim_i        ? dir_hit_way_o :
-                                 dir_refill_updt_sel_victim_i ? dir_refill_way_i :
-                                 dir_amo_hit_way_o;
+                                 dir_refill_way_i;
 
     assign updt_sel_victim_set = dir_refill_updt_sel_victim_i ? dir_refill_set_i :
                                  dir_req_set_q;
@@ -765,10 +746,11 @@ import hpdcache_pkg::*;
     end
 
     //  Multiplex between read and write access on the data RAM
-    assign  data_way = data_refill_i     ? data_refill_way_i :
-                       data_flush_read_i ? data_flush_read_way_i :
-                       data_amo_write_i  ? dir_amo_hit_way_o :
-                                           dir_hit_way_o;
+    assign data_way = data_refill_i     ? data_refill_way_i :
+                      data_flush_read_i ? data_flush_read_way_i :
+                      data_amo_write_i ?  data_amo_write_way_i :
+                      data_req_read_i   ? data_req_read_way_i :
+                                          data_req_write_way_i;
 
     //  Decode way index
     assign data_ram_word = hpdcache_way_to_data_ram_word(data_way);
@@ -891,7 +873,7 @@ import hpdcache_pkg::*;
         .ONE_HOT_SEL (1'b1)
     ) data_read_req_word_way_mux_i(
         .data_i      (data_read_req_word),
-        .sel_i       (dir_hit_way_o),
+        .sel_i       (data_req_read_way_i),
         .data_o      (data_req_read_data_o)
     );
 
@@ -900,7 +882,7 @@ import hpdcache_pkg::*;
     //  next cycle (hit logic)
     always_ff @(posedge clk_i)
     begin : req_read_ff
-        if (dir_match_i || dir_amo_match_i || dir_cmo_check_nline_i || dir_inval_check_i) begin
+        if (dir_match_i || dir_cmo_check_nline_i || dir_inval_check_i) begin
             dir_req_set_q <= dir_addr;
         end
         if (dir_cmo_check_entry_i) begin
@@ -979,7 +961,6 @@ import hpdcache_pkg::*;
 
     concurrent_dir_access_assert: assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
             $onehot0({dir_match_i,
-                      dir_amo_match_i,
                       dir_refill_i,
                       dir_inval_check_i,
                       dir_inval_write_i,

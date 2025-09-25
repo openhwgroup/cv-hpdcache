@@ -25,31 +25,28 @@
 #ifndef __DRIVER_H__
 #define __DRIVER_H__
 
+#include "driver.h"
 #include <string>
 #include <systemc>
-#include "driver.h"
 
 class Transaction;
 
 class Driver : public sc_core::sc_module
 {
 public:
-    sc_core::sc_in       < bool >                         clk_i;
-    sc_core::sc_in       < bool >                         rst_ni;
-    sc_core::sc_fifo_in  < std::shared_ptr<Transaction> > transaction_fifo_i;
-    sc_core::sc_fifo_out < uint64_t >                     transaction_ret_o;
+    sc_core::sc_in<bool> clk_i;
+    sc_core::sc_in<bool> rst_ni;
+    sc_core::sc_fifo_in<std::shared_ptr<Transaction>> transaction_fifo_i;
+    sc_core::sc_fifo_out<uint64_t> transaction_ret_o;
 
     Driver(sc_core::sc_module_name nm)
-        : sc_module(nm)
-        , clk_i("clk_i")
-        , rst_ni("rst_ni")
-        , transaction_fifo_i("transaction_fifo_i")
-        , transaction_ret_o("transaction_ret_o")
-    {
-    };
+      : sc_module(nm)
+      , clk_i("clk_i")
+      , rst_ni("rst_ni")
+      , transaction_fifo_i("transaction_fifo_i")
+      , transaction_ret_o("transaction_ret_o"){};
 
     virtual ~Driver() {}
 };
 
 #endif // __DRIVER_H__
-

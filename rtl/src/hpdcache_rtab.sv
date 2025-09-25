@@ -1,6 +1,7 @@
 /*
  *  Copyright 2023 CEA*
  *  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+ *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
  *
@@ -36,6 +37,7 @@ import hpdcache_pkg::*;
     parameter type hpdcache_req_addr_t = logic,
 
     parameter type rtab_ptr_t = logic,
+    parameter type rtab_cnt_t = logic,
     parameter type rtab_entry_t = logic
 )
 //  }}}
@@ -107,7 +109,10 @@ import hpdcache_pkg::*;
     input  logic                  flush_ready_i,      // Flush controller is available
 
     //  Configuration parameters
-    input  logic                  cfg_single_entry_i // Enable only one entry of the table
+    input  logic                  cfg_single_entry_i, // Enable only one entry of the table
+
+    //  Global control signals
+    input  logic                  no_pend_trans_i
 );
 //  }}}
 
@@ -197,6 +202,7 @@ import hpdcache_pkg::*;
     hpdcache_req_addr_t [N-1:0]  addr;
     logic               [N-1:0]  is_read_bv;
     logic               [N-1:0]  is_amo_bv;
+    logic               [N-1:0]  is_uc_bv;
     logic               [N-1:0]  fence_bv;
     logic               [N-1:0]  check_hit;
     logic               [N-1:0]  match_check_nline;
@@ -207,6 +213,7 @@ import hpdcache_pkg::*;
     logic               [N-1:0]  match_refill_way;
     logic               [N-1:0]  match_flush_nline;
 
+    logic                        fence_only;
     logic               [N-1:0]  free;
     logic               [N-1:0]  free_alloc;
     logic                        alloc;
@@ -251,9 +258,11 @@ import hpdcache_pkg::*;
         assign is_read_bv[gen_i] = is_load(req_q[gen_i].req.op) |
                                    is_cmo_prefetch(req_q[gen_i].req.op);
         assign is_amo_bv[gen_i] = is_amo(req_q[gen_i].req.op);
+        assign is_uc_bv[gen_i] = req_q[gen_i].req.pma.uncacheable;
     end
 
-    assign fence_bv         = valid_q & is_amo_bv;
+    assign fence_bv         = valid_q & (is_amo_bv | is_uc_bv);
+    assign fence_only       = (fence_bv == valid_q);
     assign check_hit        = valid_q & match_check_nline;
     assign check_hit_o      = |check_hit;
     assign match_check_tail = check_hit & tail_q;
@@ -408,6 +417,11 @@ import hpdcache_pkg::*;
             deps_rst[i].flush_hit = flush_ack_i & match_flush_nline[i];
             deps_rst[i].flush_not_ready = flush_ready_i;
             //  }}}
+
+            //  Update pending transaction dependency
+            //  {{{
+            deps_rst[i].pend_trans = no_pend_trans_i & fence_only;
+            // }}}
         end
     end
 //  }}}
@@ -663,7 +677,7 @@ import hpdcache_pkg::*;
 
     assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
             pop_commit_i |-> valid_q[pop_commit_ptr_i]) else
-                    $error("rtab: commiting an invalid entry");
+                    $error("rtab: committing an invalid entry");
 
     assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
             pop_rback_i |-> valid_q[pop_rback_ptr_i]) else
@@ -684,6 +698,10 @@ import hpdcache_pkg::*;
     assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
             alloc_and_link_i |-> ~cfg_single_entry_i) else
                     $error("rtab: trying to link a request in single entry mode");
+
+    assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
+            $onehot0(fence_bv)) else
+                    $error("rtab: more than one pending operation with fence semantics");
 `endif
 //  }}}
 endmodule

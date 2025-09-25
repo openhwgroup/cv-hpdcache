@@ -35,7 +35,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     parameter [$clog2(NumPorts)-1:0] DcacheUncWritePort = 4, 
     parameter [$clog2(NumPorts)-1:0] DcacheAmoPort      = 5,
 
-    parameter bit              SwapEndianess = 1,
+    parameter bit              SwapEndianness = 1,
     parameter hpdcache_uint    HPDcacheMemDataWidth = 128,
     parameter bit              WriteByteMaskEnabled = 0,
     // Default value is compatible with CVA6
@@ -81,7 +81,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
 
     // Internal functions
     // {{{
-    // Swap endianess in a 8B word
+    // Swap endianness in a 8B word
     function automatic logic[7:0] swendian8B(input logic[7:0] in);
         automatic logic[7:0] out;
         for(int k=0; k<8;k++)begin
@@ -120,7 +120,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     logic                                       req_is_unc_write;
     logic                                       req_is_atomic;
     ariane_pkg::amo_t                           req_amo_op_type;
-    // Data & Byte mask sended by the request
+    // Data & Byte mask sent by the request
     logic [HPDcacheMemDataWidth-1:0]            req_wdata;
     logic [HPDcacheMemDataWidth/8-1:0]          req_wbe;
     // FSM State 
@@ -177,7 +177,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
                                                 // If WBME=0, the store req. hast to be aligned to its size (by default its aligned to WBUF entry size). 
            l15_req_o.l15_address              = (req_is_write  && ~WriteByteMaskEnabled)    ? req_wt_address : req_i.mem_req_addr,
                                                 // Swap Endiannes and replicate transfers shorter than a dword for Unc. Store requests
-           l15_req_o.l15_data                 = (SwapEndianess) ? (req_is_unc_write) ?  swendian64(repData64(req_wdata[63:0],req_wt_offset[2:0],req_wt_size[1:0]))  :
+           l15_req_o.l15_data                 = (SwapEndianness) ? (req_is_unc_write) ?  swendian64(repData64(req_wdata[63:0],req_wt_offset[2:0],req_wt_size[1:0]))  :
                                                                                                                                     swendian64(req_wdata[63:0]) : 
                                                                   (req_is_unc_write) ?  repData64(req_wdata[63:0],req_wt_offset[2:0],req_wt_size[1:0]) :
                                                                                                                                     req_wdata[63:0],
@@ -221,7 +221,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
            resp_o.mem_resp_id                 = hpdc_tid_q[l15_rtrn_i.l15_threadid],
            resp_o.mem_resp_r_last             = '1,                                                                                      // OpenPiton sends the entire data in 1 cycle
            resp_o.mem_resp_w_is_atomic        = sc_pass,               
-           resp_o.mem_resp_r_data             = (SwapEndianess) ? {swendian64(l15_rtrn_i.l15_data_3),
+           resp_o.mem_resp_r_data             = (SwapEndianness) ? {swendian64(l15_rtrn_i.l15_data_3),
                                                                     swendian64(l15_rtrn_i.l15_data_2),
                                                                     swendian64(l15_rtrn_i.l15_data_1),
                                                                     swendian64(l15_rtrn_i.l15_data_0)} :
@@ -241,7 +241,7 @@ module hpdcache_to_l15 import hpdcache_pkg::*; import wt_cache_pkg::*;
     // }}}
 
 
-    // Control of the threaids used to access to L1.5. 
+    // Control of the threads used to access to L1.5.
     // {{{
         // FSM to control the L1.5 access protocol (Requests)
         // {{{

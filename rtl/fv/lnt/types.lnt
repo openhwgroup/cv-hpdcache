@@ -1,0 +1,234 @@
+(*
+ *  Copyright 2025 INRIA
+ *
+ *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
+ *
+ *  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
+ *  may not use this file except in compliance with the License, or, at your
+ *  option, the Apache License version 2.0. You may obtain a copy of the
+ *  License at
+ *
+ *  https://solderpad.org/licenses/SHL-2.1/
+ *
+ *  Unless required by applicable law or agreed to in writing, any work
+ *  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
+ *
+ *
+ *  Authors       : Zachary Assoumani, Wendelin Serwe
+ *  Creation Date : March, 2025
+ *  Description   : HPDcache LNT formal model types 
+ *  History       :
+*)
+
+module types is
+
+-------------------------------------------------------------------------------
+-- generic types used in all components
+-------------------------------------------------------------------------------
+
+type Data is
+   -- data values (stored in the cache and memory)
+   NoData, -- for Load requests
+   D1, D2, D3, D4
+   with ==, !=
+end type
+
+-------------------------------------------------------------------------------
+
+type Addr is
+   -- addresses of the memory
+   NoAddr, -- initial values in WBUF and MSHR entries
+   A1, A2
+   with ==, !=, ord
+end type
+
+-------------------------------------------------------------------------------
+
+type Memory is
+   array [1..2] of Data
+   -- array size must be equal to MEMORY_ENTRIES
+   -- starting with index 1 enables the use of ord() to access the cell of
+   -- an address Ai, because ord(NoAddr) == 0 
+end type
+
+function MEMORY_NENTRIES : nat is
+   -- the value must correspond to the number of addresses (except NoAddr)
+   return 2
+end function
+
+-------------------------------------------------------------------------------
+
+type Operation is
+   Load, Store, Refill
+   with ==
+end type
+
+-------------------------------------------------------------------------------
+
+type SId is
+   -- Source Id
+   range 1..1 of nat
+   with ==
+end type
+
+-------------------------------------------------------------------------------
+
+type TId is
+   -- Transaction Id
+   range 1..50 of nat
+   with first, last, succ, ==
+end type
+ 
+function incr (tid: TId) : TId is
+   case tid in
+      last -> return first
+    | any -> return succ(tid)
+   end case
+end function
+
+-------------------------------------------------------------------------------
+-- types specific to the data cache
+-------------------------------------------------------------------------------
+
+type Cache_Elt is
+   Invalid, -- initial value : empty cache location
+   Elt (A: Addr, D: Data)
+   with ==, !=, get, set
+end type
+
+-------------------------------------------------------------------------------
+
+type Cache is
+   array [1..1] of Cache_Elt
+   -- array size must be equal to CACHE_NENTRIES
+end type
+
+function CACHE_NENTRIES : nat is
+   return 1
+end function
+
+-------------------------------------------------------------------------------
+
+type LRU_t is
+   -- "Pseudo Least Recently Used", sect. 3.2.1
+   -- array size must be equal to CACHE_NENTRIES
+   array [1..1] of Bool
+end type
+
+-------------------------------------------------------------------------------
+-- types specific to the replay table
+-------------------------------------------------------------------------------
+
+type RTAB_Deps is
+   -- 5 possible dependencies for putting a request on hold
+   NoDeps, MshrFull, MshrCollide, WbufFull, WbufCollide, RtabHit
+   with ==, !=
+end type
+
+-------------------------------------------------------------------------------
+
+type RTAB_Request is
+   -- a request, as received by the controller and sent to the RTAB
+   NoReq,
+   Req (o: Operation, d: Data, sid: SId, tid: TId, a: Addr)
+   with ==, get
+end type
+
+-------------------------------------------------------------------------------
+
+type RTAB_Entry is
+   NoEntry,
+   REntry (valid: Bool, -- indicates is the array location is occupied
+           deps: RTAB_Deps,
+           -- linked list structure
+           ll_head: Bool, ll_tail: Bool, ll_next: int,
+           request: RTAB_Request)
+   with get, set
+end type
+
+-------------------------------------------------------------------------------
+
+type RTAB_Array is
+   array [0..1] of RTAB_Entry
+   -- array size must be equal to RTAB_NENTRIES
+end type
+
+function RTAB_NENTRIES : int is
+   return 2
+end function
+
+-------------------------------------------------------------------------------
+-- types specific to the miss handler
+-------------------------------------------------------------------------------
+
+type MSHR_Entry is
+   MEntry (a: Addr, sid: SId, tid: TId, b: Bool)
+   -- b: waiting for a response from the memory
+   with get, set
+end type
+
+-------------------------------------------------------------------------------
+
+type MSHR_Array is
+   array [0..1] of MSHR_Entry
+   -- array size must be equal to MSHR_NENTRIES
+   with set
+end type
+
+function MSHR_NENTRIES : int is
+   return 2
+end function
+
+-------------------------------------------------------------------------------
+
+type MSHR_Buffer is
+   MBuf (arr: MSHR_Array, front: int, rear: int)
+   with get, set
+end type
+
+-------------------------------------------------------------------------------
+-- types specific to the write buffer
+-------------------------------------------------------------------------------
+
+type WBUF_State is -- sect. 3.7.3
+   Free, -- free location
+   Open, -- it has been written into
+   Pend, -- the counter is over, ready to send
+         --        /!\ here the counter is always set to 0
+         --            so the Open phase is skipped directly to Pend
+         --            (increment the counter at every STATUS ?)
+   Sent  -- sent entry, waiting for a confirmation
+   with ==, !=
+end type
+
+-------------------------------------------------------------------------------
+
+type WBUF_Entry is
+   WEntry (a: Addr, d: Data, cpt: nat, s: WBUF_State)
+   with ==, !=, get, set
+end type
+
+-------------------------------------------------------------------------------
+
+type WBUF_Array is
+   array [0..1] of WBUF_Entry
+   -- array size must be equal to WBUF_NENTRIES
+end type
+
+function WBUF_NENTRIES : int is
+   return 2
+end function
+
+-------------------------------------------------------------------------------
+
+type WBUF_Buffer is
+   WBuf (arr: WBUF_Array, front: int, rear: int)
+   with get, set
+end type
+
+-------------------------------------------------------------------------------
+
+end module

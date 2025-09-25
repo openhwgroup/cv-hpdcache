@@ -1,6 +1,7 @@
 /*
  *  Copyright 2023 CEA*
  *  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+ *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
  *
@@ -372,6 +373,7 @@ package hpdcache_pkg;
         logic dir_fetch;
         logic flush_hit;
         logic flush_not_ready;
+        logic pend_trans;
     } hpdcache_rtab_deps_t;
     //  }}}
 
@@ -388,7 +390,7 @@ package hpdcache_pkg;
         int unsigned sets;
         //  Number of ways
         int unsigned ways;
-        //  Cache-Line width (bits)
+        //  Cache-Line width (words)
         int unsigned clWords;
         //  Number of words in the request data channels (request and response)
         int unsigned reqWords;
@@ -425,6 +427,8 @@ package hpdcache_pkg;
         bit mshrRamByteEnable;
         //  MSHR uses whether FFs or SRAM
         bit mshrUseRegbank;
+        //  Store and refill coalesce buffer entries
+        int unsigned cbufEntries;
         //  Use feedthrough FIFOs from the refill handler to the core
         bit refillCoreRspFeedthrough;
         //  Depth of the refill FIFO
@@ -453,6 +457,9 @@ package hpdcache_pkg;
         bit wtEn;
         //  Enable support for the write-back policy
         bit wbEn;
+        //  Enable fast loads.
+        //  Perform loads in 1 cycle at the cost of structural hazard for stores
+        bit lowLatency;
     } hpdcache_user_cfg_t;
 
     typedef struct packed {
@@ -474,10 +481,12 @@ package hpdcache_pkg;
         int unsigned reqDataBytes;
         int unsigned mshrSetWidth;
         int unsigned mshrWayWidth;
+        int unsigned cbufEntryWidth;
         int unsigned wbufDataWidth;
         int unsigned wbufDirPtrWidth;
         int unsigned wbufDataPtrWidth;
         int unsigned accessWidth;
+        int unsigned accessBytes;
     } hpdcache_cfg_t;
 
     function automatic hpdcache_cfg_t hpdcacheBuildConfig(input hpdcache_user_cfg_t p);
@@ -501,11 +510,14 @@ package hpdcache_pkg;
         ret.mshrSetWidth = (p.mshrSets > 1) ? $clog2(p.mshrSets) : 1;
         ret.mshrWayWidth = (p.mshrWays > 1) ? $clog2(p.mshrWays) : 1;
 
+        ret.cbufEntryWidth = (p.cbufEntries > 1) ? $clog2(p.cbufEntries) : 1;
+
         ret.wbufDataWidth = ret.reqDataWidth*p.wbufWords;
         ret.wbufDirPtrWidth = $clog2(p.wbufDirEntries);
         ret.wbufDataPtrWidth = $clog2(p.wbufDataEntries);
 
         ret.accessWidth = p.accessWords * p.wordWidth;
+        ret.accessBytes = ret.accessWidth/8;
 
         return ret;
     endfunction

@@ -18,7 +18,8 @@ on:
       - 'LICENSE'
 
 jobs:
-  lint:
+  lint-verilog:
+    name: lint-verilog
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
@@ -38,3 +39,23 @@ jobs:
           extra_args: |
             --waiver_files=rtl/lint/verible.waiver
             --check_syntax=true
+
+  lint-cpp:
+    name: lint-cpp
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      # Install Dependencies
+      - name: Install dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-15
+
+      # Check C++ code formatting
+      - name: Check C++ code formatting
+        shell: bash
+        run: |
+          echo "Checking C++ code style"
+          bash .github/scripts/check_cpp_style.sh

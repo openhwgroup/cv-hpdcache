@@ -1,0 +1,135 @@
+(*
+ *  Copyright 2025 INRIA
+ *
+ *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
+ *
+ *  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
+ *  may not use this file except in compliance with the License, or, at your
+ *  option, the Apache License version 2.0. You may obtain a copy of the
+ *  License at
+ *
+ *  https://solderpad.org/licenses/SHL-2.1/
+ *
+ *  Unless required by applicable law or agreed to in writing, any work
+ *  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
+ *
+ *
+ *  Authors       : Zachary Assoumani, Wendelin Serwe
+ *  Creation Date : March, 2025
+ *  Description   : HPDcache LNT formal model main module 
+ *  History       :
+*)
+
+module main (hpdcache) is
+
+-- Gate naming pattern
+
+-- "STATUS" : synchronisation between controller and other components
+
+-- "CONTROLLER_<x>" : le controller sends data to composant <x>
+--                    with <x> in {CACHE, MSHR, RTAB, WRITEBUFFER}
+
+-- "{CMI,CRI}_{REQ,RESP}_{R,W}" :
+-- CMI : Cache Memory Interface
+-- CRI : Cache Requesters Interface
+-- REQ : Request
+-- RSP : Response
+-- R   : Read (= load)
+-- W   : Write (= store)
+
+-- "REFILL_REQ" : send back a request from the miss handler
+-- "RTAB_REQ" : send back a request from the replay table
+
+-- {WBUF, MSHR}_NOTIF : notify from the {write buffer, miss handler} to the
+--                      replay table that a dependency has been resolved
+
+-- "DEBUG" : displaying
+
+-------------------------------------------------------------------------------
+-- MAIN process
+-- parallel composition of the requester, HPDcache, and the main memory.
+-------------------------------------------------------------------------------
+
+process MAIN [CRI_REQ, CRI_RSP_R, CRI_RSP_W, -- interface CRI
+              CMI_REQ_R, CMI_REQ_W, CMI_RSP_R, CMI_RSP_W, -- interface CMI
+              RTAB_REQ, REFILL_REQ,
+              CONTROLLER_CACHE, CONTROLLER_RTAB, CONTROLLER_WRITEBUFFER,
+              CONTROLLER_MSHR: Wire,
+              STATUS: Statusgate,
+              WBUF_NOTIF, MSHR_NOTIF: Notifgate,
+              DEBUG: any] is
+   par
+      CRI_REQ, CRI_RSP_R, CRI_RSP_W ->
+         CORE [...] (1 of SId)
+    ||
+      CRI_REQ, CRI_RSP_R, CRI_RSP_W,
+      CMI_REQ_R, CMI_REQ_W, CMI_RSP_R, CMI_RSP_W ->
+         HPDCACHE [CRI_REQ, CRI_RSP_R, CRI_RSP_W,
+                   CMI_REQ_R, CMI_REQ_W, CMI_RSP_R, CMI_RSP_W,
+                   RTAB_REQ, REFILL_REQ,
+                   CONTROLLER_CACHE, CONTROLLER_RTAB, CONTROLLER_WRITEBUFFER,
+                   CONTROLLER_MSHR,
+                   STATUS, WBUF_NOTIF, MSHR_NOTIF,
+                   DEBUG]
+    ||
+      CMI_REQ_R, CMI_REQ_W, CMI_RSP_R, CMI_RSP_W ->
+         MEMORY [...]
+   end par
+end process
+
+-------------------------------------------------------------------------------
+-- requester (CPU/CORE)
+-------------------------------------------------------------------------------
+
+process CORE [CRI_REQ, CRI_RSP_R, CRI_RSP_W: Wire] (sid: SId) is
+   -- sends requests, receives responses
+   var tid: TId, a: Addr, d: Data in
+      tid := 1 of TId;
+      loop
+         alt
+         -- requests
+            CRI_REQ (Load, NoData, sid, tid, ?a) where (a != NoAddr);
+            tid := incr(tid)
+         []
+            CRI_REQ (Store, ?d, sid, tid, ?a)
+               where ((d != NoData) and (a != NoAddr));
+            tid := incr(tid)
+         []
+         -- responses from a request, along with its data and corresponding ID
+            CRI_RSP_R (?any Data, sid, ?any TId)
+         []
+            CRI_RSP_W (?any Data, sid, ?any TId)
+         end alt
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+-- main memory
+-------------------------------------------------------------------------------
+
+process MEMORY [CMI_REQ_R, CMI_REQ_W, CMI_RSP_R, CMI_RSP_W: Wire,
+                DEBUG: any] is
+   access DEBUG;
+   var M: Memory, a: Addr, sid: SId, tid: TId, wd: Data in
+      -- initialize memory : only D1 values
+      M := Memory (D1);
+      loop
+         alt
+            CMI_REQ_R (?sid, ?tid, ?a);
+            CMI_RSP_R (M[ord (a)], sid, tid, a)
+         []
+            CMI_REQ_W (?a, ?wd);
+            M[ord (a)] := wd;
+            CMI_RSP_W (a, wd)
+         end alt
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+
+end module

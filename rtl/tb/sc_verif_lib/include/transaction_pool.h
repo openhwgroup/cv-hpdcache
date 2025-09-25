@@ -25,14 +25,14 @@
 #ifndef __TRANSACTION_POOL_H__
 #define __TRANSACTION_POOL_H__
 
+#include "transaction.h"
 #include <cassert>
 #include <iostream>
-#include <sstream>
 #include <list>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <type_traits>
-#include "transaction.h"
 
 class Transaction_pool
 {
@@ -40,8 +40,10 @@ class Transaction_pool
 
 public:
     Transaction_pool(int trans_bundle_sz = 10)
-        : trans_bundle_sz(trans_bundle_sz)
-        , nb_trans(0), nb_allocated(0), nb_release(0)
+      : trans_bundle_sz(trans_bundle_sz)
+      , nb_trans(0)
+      , nb_allocated(0)
+      , nb_release(0)
     {
     }
 
@@ -50,14 +52,14 @@ public:
     {
         std::shared_ptr<Transaction> ret;
 
-        static_assert(std::is_convertible<T*,Transaction*>::value,
-                     "T must derive from Transaction");
+        static_assert(std::is_convertible<T*, Transaction*>::value,
+                      "T must derive from Transaction");
 
         // no available transaction, create some some new ones
         if (pool.empty()) {
             for (int i = 0; i < trans_bundle_sz; i++) {
                 std::shared_ptr<Transaction> t = std::make_shared<T>();
-                assert (t != nullptr);
+                assert(t != nullptr);
                 nb_allocated++;
                 pool.push_back(t);
             }
@@ -74,35 +76,35 @@ public:
     }
 
     template<typename T>
-    void release_transaction(std::shared_ptr<T> &t)
+    void release_transaction(std::shared_ptr<T>& t)
     {
-        static_assert(std::is_convertible<T*,Transaction*>::value,
-                     "T must derive from Transaction");
+        static_assert(std::is_convertible<T*, Transaction*>::value,
+                      "T must derive from Transaction");
 
         nb_release++;
         pool.push_back(std::dynamic_pointer_cast<Transaction>(t));
     }
 
-    ~Transaction_pool() {
+    ~Transaction_pool()
+    {
         std::stringstream ss;
 
         pool.clear();
 
-        ss << "TRANSACTION POOL"                                   << std::endl
+        ss << "TRANSACTION POOL" << std::endl
            << "Number of allocated transactions: " << nb_allocated << std::endl
-           << "Number of acquired transactions : " << nb_trans     << std::endl
-           << "Number of released transactions : " << nb_release   << std::endl;
+           << "Number of acquired transactions : " << nb_trans << std::endl
+           << "Number of released transactions : " << nb_release << std::endl;
 
         Logger::debug(ss.str());
     }
 
 private:
     Transaction_list pool;
-    int              trans_bundle_sz;
-    uint64_t         nb_trans;
-    uint64_t         nb_allocated;
-    uint64_t         nb_release;
+    int trans_bundle_sz;
+    uint64_t nb_trans;
+    uint64_t nb_allocated;
+    uint64_t nb_release;
 };
 
 #endif // __TRANSACTION_POOL_H__
-

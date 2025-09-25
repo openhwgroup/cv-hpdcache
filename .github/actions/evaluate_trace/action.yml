@@ -1,0 +1,70 @@
+##
+#  Copyright 2025 Inria
+#  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
+##
+##
+#  Author     : Tommy PRATS
+#  Date       : July, 2025
+#  Description: GitHub Action to check performance and send message if it
+#               decrease or push new best perf
+##
+
+name: 'Evaluate trace'
+inputs:
+  trace_perf:
+    description: 'Name of the file with current performance'
+    required: true
+
+  config:
+    description: 'Config of the HPDcache'
+    required: true
+
+  github_token:
+    description: 'GitHub token'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: verify_perf
+      shell: bash
+      run: |
+        cd rtl/tb
+        file_prev="${{ inputs.trace_perf }}"
+        file=$(find . -name "*from_trace*.log")
+        prev_cycle=$(cat $file_prev | grep "cycles" | cut -d "=" -f 2)
+        prev_read=$(cat $file_prev | grep "read" | cut -d "=" -f 2)
+        prev_write=$(cat $file_prev| grep "write" | cut -d "=" -f 2)
+        read_miss_rate=$(cat $file | grep "Read miss rate" | tr -s " " | cut -d " " -f 5)
+        write_miss_rate=$(cat $file | grep "Write miss rate" | tr -s " " | cut -d " " -f 5)
+        cycles=$(cat $file  | grep SB.NB_CYCLES | tr -s " " | cut -d " " -f 3)
+
+        if (( $(echo "$read_miss_rate > $prev_read"  | bc -l) ))
+        then
+          echo -e  "\033[31mThe percentage of read misses increased\033[0m"
+          exit 1
+        fi
+        if (( $(echo "$write_miss_rate > $prev_write"  | bc -l) ))
+        then
+          echo -e  "\033[31mThe percentage of write misses increased\033[0m"
+          exit 2
+        fi
+        if (( $(echo "$cycles > $prev_cycle"  | bc -l) ))
+        then
+          echo -e  "\033[31mTest execution latency increased\033[0m"
+          exit 3
+        fi
+        if (( $(echo "$read_miss_rate < $prev_read"  | bc -l) ))
+        then
+          echo -e  "\033[32mThe percentage of read misses decreased\033[0m"
+        fi
+        if (( $(echo "$write_miss_rate < $prev_write"  | bc -l) ))
+        then
+          echo -e  "\033[32mThe percentage of write misses decreased\033[0m"
+        fi
+        if (( $(echo "$cycles < $prev_cycle"  | bc -l) ))
+        then
+          echo -e  "\033[32mTest execution latency decreased\033[0m"
+        fi
+
+

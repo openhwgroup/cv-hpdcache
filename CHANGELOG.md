@@ -47,7 +47,7 @@ policies or both in a per-cacheline basis.
 - Support of the WB policy.
 - Configuration parameters to choose between WT or WB, or both, at synthesis time.
 - Validation testbench compatible to Verilator.
-- Add a write-policy hint field in the request to select between WT and WB, dinamically.
+- Add a write-policy hint field in the request to select between WT and WB, dynamically.
 
 ### Removed
 

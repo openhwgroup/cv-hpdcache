@@ -1,6 +1,7 @@
 /**
  *  Copyright 2023,2024 CEA*
  *  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+ *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
  *
@@ -25,17 +26,17 @@
 #ifndef __HPDCACHE_TEST_WRITE_SEQ_H__
 #define __HPDCACHE_TEST_WRITE_SEQ_H__
 
-#include <systemc>
-#include "scv.h"
 #include "hpdcache_test_defs.h"
 #include "hpdcache_test_mem_resp_model_base.h"
 #include "hpdcache_test_sequence.h"
+#include "scv.h"
+#include <systemc>
 
 class hpdcache_test_write_seq : public hpdcache_test_sequence
 {
 public:
-
-    hpdcache_test_write_seq(sc_core::sc_module_name nm) : hpdcache_test_sequence(nm, "write_seq")
+    hpdcache_test_write_seq(sc_core::sc_module_name nm)
+      : hpdcache_test_sequence(nm, "write_seq")
     {
         SC_THREAD(run);
         sensitive << clk_i.pos();
@@ -55,7 +56,7 @@ private:
     hpdcache_test_sequence::hpdcache_test_memory_segment seg;
     scv_smart_ptr<req_data_t> data;
     scv_smart_ptr<req_data_t> size;
-    const unsigned int HPDCACHE_REQ_DATA_BYTES = HPDCACHE_REQ_DATA_WIDTH/8;
+    const unsigned int HPDCACHE_REQ_DATA_BYTES = HPDCACHE_REQ_DATA_WIDTH / 8;
 
 #if SC_VERSION_MAJOR < 3
     SC_HAS_PROCESS(hpdcache_test_write_seq);
@@ -70,7 +71,7 @@ private:
     inline uint32_t create_random_size(bool is_amo)
     {
         if (!is_amo) size->keep_only(0, 3);
-        else         size->keep_only(2, 3);
+        else size->keep_only(2, 3);
 
         size->next();
         return size->read().to_uint();
@@ -108,29 +109,26 @@ private:
         addr->next();
 
         t = acquire_transaction<hpdcache_test_transaction_req>();
-        t->req_op           = op->read();
-        t->req_wdata        = create_random_data();
-        t->req_sid          = 0;
-        t->req_tid          = allocate_id();
-        t->req_abort        = false;
+        t->req_op = op->read();
+        t->req_wdata = create_random_data();
+        t->req_sid = 0;
+        t->req_tid = allocate_id();
+        t->req_abort = false;
         t->req_phys_indexed = false;
 
-        uint32_t sz = create_random_size(
-                t->is_amo() ||
-                t->is_amo_sc() ||
-                t->is_amo_lr());
+        uint32_t sz = create_random_size(t->is_amo() || t->is_amo_sc() || t->is_amo_lr());
 
-        uint64_t base    = seg.get_base();
-        uint64_t length  = seg.get_length();
-        uint32_t bytes   = 1 << sz;
+        uint64_t base = seg.get_base();
+        uint64_t length = seg.get_length();
+        uint32_t bytes = 1 << sz;
         uint64_t address = ((base + (addr->read() % length)) / bytes) * bytes;
         uint32_t offset = address % HPDCACHE_REQ_DATA_BYTES;
 
-        t->req_addr        = address;
-        t->req_be          = ((1UL << bytes) - 1) << offset;
-        t->req_size        = sz;
+        t->req_addr = address;
+        t->req_be = ((1UL << bytes) - 1) << offset;
+        t->req_size = sz;
         t->req_uncacheable = seg.is_uncached() ? 1 : 0;
-        t->req_need_rsp    = true;
+        t->req_need_rsp = true;
 
         return t;
     }
@@ -140,13 +138,13 @@ private:
         while (rst_ni == 0) wait();
 
         std::shared_ptr<hpdcache_test_mem_resp_model_base> mem_resp_model =
-                this->get_mem_resp_model();
+            this->get_mem_resp_model();
 
         scv_bag<pair<int, int>> wa_delay_distribution;
         scv_bag<pair<int, int>> wb_delay_distribution;
 
-        wa_delay_distribution.push(pair<int,int>( 0,  0), 100);
-        wb_delay_distribution.push(pair<int,int>( 0,  0), 100);
+        wa_delay_distribution.push(pair<int, int>(0, 0), 100);
+        wb_delay_distribution.push(pair<int, int>(0, 0), 100);
 
         mem_resp_model->get_ra_ready_delay_distribution()->keep_only(0);
         mem_resp_model->get_rd_valid_delay_distribution()->keep_only(16);
