@@ -109,7 +109,6 @@ public:
       , evt_stall(0)
       , seq(nullptr)
       , mem_resp_model(nullptr)
-      , sc_is_atomic(false)
       ,
 #if ENABLE_CACHE_DIR_VERIF
       cache_dir_m(std::make_shared<GenericCacheDirectoryPlru>("hpdcache_dir",
@@ -298,6 +297,7 @@ private:
         uint8_t bytes;
         bool is_uncacheable;
         bool is_error;
+        bool is_stex;
         const inflight_entry_t* core_req_ptr;
     };
 
@@ -340,7 +340,7 @@ private:
     std::shared_ptr<ram_t> ram_m;
 
     sc_fifo<inflight_entry_t> inflight_amo_req_m;
-    bool sc_is_atomic;
+    std::map<uint32_t, bool> sc_is_atomic_m;
 
 #if SC_VERSION_MAJOR < 3
     SC_HAS_PROCESS(hpdcache_test_scoreboard);
@@ -580,6 +580,7 @@ private:
                 }
             }
 
+#if !CONF_HPDCACHE_COHERENCE_ENABLE
             if (req.is_amo() || req.is_amo_lr() || (req.is_amo_sc() && e.is_atomic)) {
                 if (check_verbosity(sc_core::SC_DEBUG)) {
                     print_debug("atomic operation shall be forwarded to memory");
@@ -590,6 +591,7 @@ private:
                     continue;
                 }
             }
+#endif
 
             //  keep track of written data
             if (req.is_store() && !e.is_error) {
@@ -678,7 +680,14 @@ private:
                         sc_resp = (uint32_t)sc_resp;
                     }
 
-                    sc_ok = e.is_atomic && sc_is_atomic;
+                    // Read the is_atomic value from the map for thread-safe communication
+                    bool sc_is_atomic_val = true;
+                    auto it_atomic = sc_is_atomic_m.find(e.tid);
+                    if (it_atomic != sc_is_atomic_m.end()) {
+                        sc_is_atomic_val = it_atomic->second;
+                        sc_is_atomic_m.erase(it_atomic);
+                    }
+                    sc_ok = e.is_atomic && sc_is_atomic_val;
                     if (sc_ok) {
                         ram_m->write(reinterpret_cast<const uint8_t*>(&e.wdata[_word]),
                                      reinterpret_cast<const uint8_t*>(&e.be[_word]),
@@ -822,9 +831,11 @@ private:
             e.is_uncacheable = !req.cacheable;
             e.is_error = mem_resp_model->within_error_region(e.addr, e.addr + bytes);
             e.core_req_ptr = core_req;
+            e.is_stex = false;
 
             inflight_mem_read_m.insert(inflight_mem_map_pair_t(req_id, e));
 
+#if !CONF_HPDCACHE_COHERENCE_ENABLE
             if (req.is_ldex()) {
                 inflight_entry_t inflight_ret;
                 if (inflight_amo_req_m.num_available() > 1) {
@@ -835,6 +846,7 @@ private:
                     continue;
                 }
             }
+#endif
         }
     }
 
@@ -1019,10 +1031,12 @@ private:
             e.is_uncacheable = !req.cacheable;
             e.is_error = mem_resp_model->within_error_region(e.addr, e.addr + bytes);
             e.core_req_ptr = core_req;
+            e.is_stex = req.is_stex();
 
             inflight_mem_write_m.insert(inflight_mem_map_pair_t(req_id, e));
 
             if (req.is_amo()) {
+#if !CONF_HPDCACHE_COHERENCE_ENABLE
                 inflight_entry_t inflight_ret;
                 if (inflight_amo_req_m.num_available() > 1) {
                     print_error("there shall be a single inflight atomic operation");
@@ -1031,6 +1045,7 @@ private:
                     print_error("unexpected AMO request");
                     continue;
                 }
+#endif
                 if (core_req == nullptr) {
                     print_error("memory AMO request with no associated core request");
                 }
@@ -1038,6 +1053,7 @@ private:
             }
 
             if (req.is_stex()) {
+#if !CONF_HPDCACHE_COHERENCE_ENABLE
                 inflight_entry_t inflight_ret;
                 if (inflight_amo_req_m.num_available() > 1) {
                     print_error("there shall be a single inflight atomic operation");
@@ -1050,6 +1066,7 @@ private:
                     print_error("store exclusive access with no valid reservation");
                     continue;
                 }
+#endif
                 if (core_req == nullptr) {
                     print_error("memory store-conditional request with no associated core request");
                 }
@@ -1078,7 +1095,11 @@ private:
                 continue;
             }
 
-            sc_is_atomic = resp.is_atomic;
+            // Only push the (tid, is_atomic) pair to the map if this is a store-exclusive (stex)
+            if (it->second.core_req_ptr && it->second.is_stex) {
+                uint32_t tid = it->second.core_req_ptr->tid;
+                sc_is_atomic_m[tid] = resp.is_atomic;
+            }
 
             //  remove request from the inflight table
             inflight_mem_write_m.erase(it);

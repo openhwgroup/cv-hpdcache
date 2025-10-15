@@ -44,6 +44,7 @@ sources:
   - rtl/src/hpdcache_ctrl.sv
   - rtl/src/hpdcache_ctrl_pe.sv
   - rtl/src/hpdcache_flush.sv
+  - rtl/src/hpdcache_snoop.sv
   - rtl/src/hpdcache_memctrl.sv
   - rtl/src/hpdcache_cbuf.sv
   - rtl/src/hpdcache_miss_handler.sv

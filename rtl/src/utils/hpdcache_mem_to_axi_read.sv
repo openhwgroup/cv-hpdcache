@@ -54,7 +54,8 @@ import hpdcache_pkg::*;
     hpdcache_mem_error_e resp;
 
     assign  lock  = (req_i.mem_req_command == HPDCACHE_MEM_ATOMIC) &&
-                    (req_i.mem_req_atomic  == HPDCACHE_MEM_ATOMIC_LDEX);
+                    (req_i.mem_req_atomic  == HPDCACHE_MEM_ATOMIC_LDEX ||
+                     req_i.mem_req_atomic  == HPDCACHE_MEM_ATOMIC_STEX);
 
     assign  cache = req_i.mem_req_cacheable ?
                     axi_pkg::CACHE_BUFFERABLE |
@@ -64,7 +65,7 @@ import hpdcache_pkg::*;
 
     always_comb
     begin : resp_decode_comb
-        case (axi_r_i.resp)
+        case (axi_r_i.resp[axi_pkg::RespWidth-1:0])
             axi_pkg::RESP_SLVERR,
             axi_pkg::RESP_DECERR: resp = HPDCACHE_MEM_RESP_NOK;
             default:              resp = HPDCACHE_MEM_RESP_OK;
@@ -91,5 +92,34 @@ import hpdcache_pkg::*;
             resp_o.mem_resp_r_id    = axi_r_i.id,
             resp_o.mem_resp_r_data  = axi_r_i.data,
             resp_o.mem_resp_r_last  = axi_r_i.last;
+
+    ace_pkg::arsnoop_t snoop;
+    ace_pkg::axdomain_t domain;
+
+    always_comb begin : snoop_comb
+        case (req_i.mem_req_coherence)
+            HPDCACHE_MEM_COHERENCE_READ_NO_SNOOP: snoop = ace_pkg::ReadNoSnoop;
+            HPDCACHE_MEM_COHERENCE_READ_SHARED:   snoop = ace_pkg::ReadShared;
+            HPDCACHE_MEM_COHERENCE_READ_CLEAN:    snoop = ace_pkg::ReadClean;
+            HPDCACHE_MEM_COHERENCE_READ_UNIQUE:   snoop = ace_pkg::ReadUnique;
+            HPDCACHE_MEM_COHERENCE_CLEAN_UNIQUE:  snoop = ace_pkg::CleanUnique;
+            default:                              snoop = ace_pkg::ReadNoSnoop;
+        endcase
+    end
+
+    always_comb begin : domain_comb
+        case (req_i.mem_req_coherence)
+            HPDCACHE_MEM_COHERENCE_READ_NO_SNOOP: domain = ace_pkg::NonShareable;
+            default:                              domain = ace_pkg::InnerShareable;
+        endcase
+    end
+
+    assign axi_ar_o.snoop  = snoop,
+           axi_ar_o.bar    = '0,
+           axi_ar_o.domain = domain;
+
+    assign resp_o.mem_resp_r_dirty     = axi_r_i.resp[ace_pkg::RESP_IS_DIRTY];
+    assign resp_o.mem_resp_r_shared    = axi_r_i.resp[ace_pkg::RESP_IS_SHARED];
+    assign resp_o.mem_resp_r_is_atomic = axi_r_i.resp[axi_pkg::RespWidth-1:0] == axi_pkg::RESP_EXOKAY;
 
 endmodule

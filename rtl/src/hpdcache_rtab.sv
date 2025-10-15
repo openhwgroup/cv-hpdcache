@@ -50,9 +50,10 @@ import hpdcache_pkg::*;
     input  logic                  rst_ni,
 
     //  Global control signals
-    output logic                  empty_o,  // RTAB is empty
-    output logic                  full_o,   // RTAB is full
-    output logic                  fence_o,  // There is a pending instruction with fence in the RTAB
+    output logic                  empty_o,      // RTAB is empty
+    output logic                  full_o,       // RTAB is full
+    output logic                  fence_o,      // There is a pending instruction with fence in the RTAB
+    output logic                  fence_only_o, // There is ONLY a pending instruction with fence in the RTAB
 
     //  Check RTAB signals
     //     This interface allows to check if there is an address-overlapping
@@ -217,7 +218,6 @@ import hpdcache_pkg::*;
     logic               [N-1:0]  match_refill_way;
     logic               [N-1:0]  match_flush_nline;
 
-    logic                        fence_only;
     logic               [N-1:0]  free;
     logic               [N-1:0]  free_alloc;
     logic                        alloc;
@@ -266,7 +266,7 @@ import hpdcache_pkg::*;
     end
 
     assign fence_bv         = valid_q & (is_amo_bv | is_uc_bv);
-    assign fence_only       = (fence_bv == valid_q);
+    assign fence_only_o     = (fence_bv == valid_q);
     assign check_hit        = valid_q & match_check_nline;
     assign check_hit_o      = |check_hit;
     assign match_check_tail = check_hit & tail_q;
@@ -454,7 +454,7 @@ import hpdcache_pkg::*;
 
             //  Update pending transaction dependency
             //  {{{
-            deps_rst[i].pend_trans = no_pend_trans_i & fence_only;
+            deps_rst[i].pend_trans = no_pend_trans_i & fence_only_o;
             // }}}
         end
     end
@@ -616,8 +616,9 @@ import hpdcache_pkg::*;
     //  then set the error bit of the pending request to abort it when replayed
     for (gen_i = 0; gen_i < N; gen_i++) begin : gen_error_set
         assign error_set[gen_i] = valid_q[gen_i] &
-                                  deps_q[gen_i].write_miss &
-                                  match_refill_nline[gen_i] &
+                                  (deps_q[gen_i].write_miss  |
+                                   deps_q[gen_i].pend_trans) &
+                                  match_refill_nline[gen_i]  &
                                   refill_is_error;
     end
     assign error_rst = pop_commit_valid_rst;

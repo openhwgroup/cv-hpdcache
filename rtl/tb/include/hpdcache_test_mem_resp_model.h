@@ -58,6 +58,8 @@ public:
     sc_in<bool> mem_resp_read_ready_i;
     sc_out<bool> mem_resp_read_valid_o;
     sc_out<sc_bv<2>> mem_resp_read_error_o;
+    sc_out<bool> mem_resp_read_dirty_o;
+    sc_out<bool> mem_resp_read_shared_o;
     sc_out<sc_bv<HPDCACHE_MEM_ID_WIDTH>> mem_resp_read_id_o;
     sc_out<sc_bv<HPDCACHE_MEM_DATA_WIDTH>> mem_resp_read_data_o;
     sc_out<bool> mem_resp_read_last_o;
@@ -334,6 +336,10 @@ private:
             mem_resp_read_id_o.write(read_resp.id);
             mem_resp_read_data_o.write(read_resp.data);
             mem_resp_read_last_o.write(read_resp.last);
+            // Coherence related signals tieoffs
+            // TODO: generate actual coherent responses
+            mem_resp_read_dirty_o.write(false);
+            mem_resp_read_shared_o.write(false);
             do wait();
             while (!mem_resp_read_ready_i.read());
             mem_resp_read_valid_o.write(false);

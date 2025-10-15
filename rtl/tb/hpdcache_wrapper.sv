@@ -61,12 +61,14 @@ import hpdcache_pkg::*;
         rtabEntries: `CONF_HPDCACHE_RTAB_ENTRIES,
         flushEntries: `CONF_HPDCACHE_FLUSH_ENTRIES,
         flushFifoDepth: `CONF_HPDCACHE_FLUSH_FIFO_DEPTH,
+        snoopFifoDepth: `CONF_HPDCACHE_SNOOP_FIFO_DEPTH,
         memAddrWidth: `CONF_HPDCACHE_MEM_ADDR_WIDTH,
         memIdWidth: `CONF_HPDCACHE_MEM_ID_WIDTH,
         memDataWidth: `CONF_HPDCACHE_MEM_DATA_WIDTH,
         wtEn: `CONF_HPDCACHE_WT_ENABLE,
         wbEn: `CONF_HPDCACHE_WB_ENABLE,
-        lowLatency: `CONF_HPDCACHE_LOW_LATENCY
+        lowLatency: `CONF_HPDCACHE_LOW_LATENCY,
+        coherenceEn: `CONF_HPDCACHE_COHERENCE_ENABLE
     },
 
     localparam hpdcache_cfg_t Cfg = hpdcacheBuildConfig(UserCfg),
@@ -146,6 +148,8 @@ import hpdcache_pkg::*;
     input  wire hpdcache_mem_id_t              mem_resp_read_id_i,
     input  wire hpdcache_mem_data_t            mem_resp_read_data_i,
     input  wire logic                          mem_resp_read_last_i,
+    input  wire logic                          mem_resp_read_dirty_i,
+    input  wire logic                          mem_resp_read_shared_i,
 
     //      Memory write interface
     input  wire logic                          mem_req_write_ready_i,
@@ -169,6 +173,21 @@ import hpdcache_pkg::*;
     input  wire logic                          mem_resp_write_is_atomic_i,
     input  wire hpdcache_mem_error_e           mem_resp_write_error_i,
     input  wire hpdcache_mem_id_t              mem_resp_write_id_i,
+
+    //      Snoop interface
+    output  var  logic                         snoop_req_ready_o,
+    input   wire logic                         snoop_req_valid_i,
+    input   wire hpdcache_nline_t              snoop_req_nline_i,
+    input   wire hpdcache_req_op_t             snoop_req_op_i,
+
+    input   wire logic                         snoop_resp_meta_ready_i,
+    output  var  logic                         snoop_resp_meta_valid_o,
+    output  wire hpdcache_snoop_meta_t         snoop_resp_meta_o,
+
+    input   wire logic                         snoop_resp_data_ready_i,
+    output  var  logic                         snoop_resp_data_valid_o,
+    output  wire hpdcache_mem_data_t           snoop_resp_data_o,
+    output  wire logic                         snoop_resp_data_last_o,
 
     //      Performance events
     output wire  logic                         evt_cache_write_miss_o,
@@ -205,6 +224,9 @@ import hpdcache_pkg::*;
     `HPDCACHE_TYPEDEF_MEM_RESP_R_T(hpdcache_mem_resp_r_t, hpdcache_mem_id_t, hpdcache_mem_data_t);
     `HPDCACHE_TYPEDEF_MEM_REQ_W_T(hpdcache_mem_req_w_t, hpdcache_mem_data_t, hpdcache_mem_be_t);
     `HPDCACHE_TYPEDEF_MEM_RESP_W_T(hpdcache_mem_resp_w_t, hpdcache_mem_id_t);
+
+    `HPDCACHE_TYPEDEF_SNOOP_REQ_T(hpdcache_snoop_req_t, hpdcache_nline_t);
+    `HPDCACHE_TYPEDEF_SNOOP_RESP_DATA_T(hpdcache_snoop_resp_data_t, hpdcache_mem_data_t);
     //  }}}
 
     //  Declaration of internal signals
@@ -230,6 +252,9 @@ import hpdcache_pkg::*;
 
     logic mem_resp_read_inval;
     hpdcache_nline_t mem_resp_read_inval_nline;
+
+    hpdcache_snoop_req_t        snoop_req;
+    hpdcache_snoop_resp_data_t  snoop_resp_data;
     //  }}}
 
     //  Write/read to/from memory interfaces
@@ -243,9 +268,13 @@ import hpdcache_pkg::*;
            mem_req_read_cacheable_o = mem_req_read.mem_req_cacheable;
 
     assign mem_resp_read.mem_resp_r_error = mem_resp_read_error_i,
-           mem_resp_read.mem_resp_r_id    = mem_resp_read_id_i,
-           mem_resp_read.mem_resp_r_data  = mem_resp_read_data_i,
-           mem_resp_read.mem_resp_r_last  = mem_resp_read_last_i;
+       mem_resp_read.mem_resp_r_is_atomic = 1'b0, /* TODO: properly drive */
+       mem_resp_read.mem_resp_r_id        = mem_resp_read_id_i,
+       mem_resp_read.mem_resp_r_data      = mem_resp_read_data_i,
+       mem_resp_read.mem_resp_r_last      = mem_resp_read_last_i,
+       mem_resp_read.mem_resp_r_dirty     = mem_resp_read_dirty_i,
+       mem_resp_read.mem_resp_r_shared    = mem_resp_read_shared_i;
+
 
     assign mem_resp_read_inval = '0,
            mem_resp_read_inval_nline = '0;
@@ -265,6 +294,12 @@ import hpdcache_pkg::*;
     assign mem_resp_write.mem_resp_w_is_atomic = mem_resp_write_is_atomic_i,
            mem_resp_write.mem_resp_w_error     = mem_resp_write_error_i,
            mem_resp_write.mem_resp_w_id        = mem_resp_write_id_i;
+
+    assign snoop_req.nline = snoop_req_nline_i,
+           snoop_req.op    = snoop_req_op_i;
+
+    assign snoop_resp_data_o      = snoop_resp_data.data,
+           snoop_resp_data_last_o = snoop_resp_data.last;
     //  }}}
 
     always_comb
@@ -305,6 +340,8 @@ import hpdcache_pkg::*;
         .hpdcache_req_tid_t                (hpdcache_req_tid_t),
         .hpdcache_req_t                    (hpdcache_req_t),
         .hpdcache_rsp_t                    (hpdcache_rsp_t),
+        .hpdcache_snoop_req_t              (hpdcache_snoop_req_t),
+        .hpdcache_snoop_resp_data_t        (hpdcache_snoop_resp_data_t),
         .hpdcache_mem_addr_t               (hpdcache_mem_addr_t),
         .hpdcache_mem_id_t                 (hpdcache_mem_id_t),
         .hpdcache_mem_data_t               (hpdcache_mem_data_t),
@@ -328,6 +365,16 @@ import hpdcache_pkg::*;
 
         .core_rsp_valid_o                  (core_rsp_valid),
         .core_rsp_o                        (core_rsp),
+
+        .snoop_req_valid_i                 (snoop_req_valid_i),
+        .snoop_req_ready_o                 (snoop_req_ready_o),
+        .snoop_req_i                       (snoop_req),
+        .snoop_rsp_meta_valid_o            (snoop_resp_meta_valid_o),
+        .snoop_rsp_meta_ready_i            (snoop_resp_meta_ready_i),
+        .snoop_rsp_meta_o                  (snoop_resp_meta_o),
+        .snoop_rsp_data_ready_i            (snoop_resp_data_ready_i),
+        .snoop_rsp_data_valid_o            (snoop_resp_data_valid_o),
+        .snoop_rsp_data_o                  (snoop_resp_data),
 
         .mem_req_read_ready_i              (mem_req_read_ready_i),
         .mem_req_read_valid_o              (mem_req_read_valid_o),

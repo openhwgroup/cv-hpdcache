@@ -68,3 +68,4 @@ ${HPDCACHE_DIR}/rtl/src/hpdcache_victim_random.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_victim_sel.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_wbuf.sv
 ${HPDCACHE_DIR}/rtl/src/hpdcache_flush.sv
+${HPDCACHE_DIR}/rtl/src/hpdcache_snoop.sv

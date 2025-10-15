@@ -145,4 +145,30 @@ import hpdcache_pkg::*;
             resp_o.mem_resp_w_id            = axi_b_i.id,
             resp_o.mem_resp_w_is_atomic     = (axi_b_i.resp == axi_pkg::RESP_EXOKAY);
 
+    ace_pkg::awsnoop_t  snoop;
+    ace_pkg::axdomain_t domain;
+
+    always_comb begin : snoop_comb
+        case (req_i.mem_req_coherence)
+            HPDCACHE_MEM_COHERENCE_WRITE_NO_SNOOP: snoop = ace_pkg::WriteNoSnoop;
+            HPDCACHE_MEM_COHERENCE_WRITE_UNIQUE:   snoop = ace_pkg::WriteUnique;
+            HPDCACHE_MEM_COHERENCE_WRITE_BACK:     snoop = ace_pkg::WriteBack;
+            HPDCACHE_MEM_COHERENCE_EVICT:          snoop = ace_pkg::Evict;
+            default:                               snoop = ace_pkg::WriteNoSnoop;
+        endcase
+    end
+
+    always_comb begin : domain_comb
+        case (req_i.mem_req_coherence)
+            HPDCACHE_MEM_COHERENCE_WRITE_NO_SNOOP: domain = ace_pkg::NonShareable;
+            default:                               domain = ace_pkg::InnerShareable;
+        endcase
+    end
+
+    assign axi_aw_o.snoop    = snoop,
+           axi_aw_o.bar      = '0,
+           axi_aw_o.domain   = domain,
+           axi_aw_o.awunique = '0;
+
+
 endmodule

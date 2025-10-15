@@ -39,6 +39,7 @@ module hpdcache_wrapper
       cbufEntries: 4,
       refillCoreRspFeedthrough: 1'b1,
       refillFifoDepth: 2,
+      snoopFifoDepth: 2,
       wbufDirEntries: 16,
       wbufDataEntries: 8,
       wbufWords: 4,
@@ -51,7 +52,8 @@ module hpdcache_wrapper
       memDataWidth: 512,
       wtEn: 1'b1,
       wbEn: 1'b1,
-      lowLatency: 1'b1
+      lowLatency: 1'b1,
+      coherenceEn: 1'b0
   },
 
   localparam hpdcache_pkg::hpdcache_cfg_t HPDcacheCfg = hpdcache_pkg::hpdcacheBuildConfig(
@@ -92,7 +94,11 @@ module hpdcache_wrapper
                            hpdcache_req_tid_t),
 
   localparam type hpdcache_wbuf_timecnt_t = logic [HPDcacheCfg.u.wbufTimecntWidth-1:0],
-  localparam type hpdcache_nline_t    = logic [HPDcacheCfg.nlineWidth-1:0]
+  localparam type hpdcache_nline_t    = logic [HPDcacheCfg.nlineWidth-1:0],
+  localparam type hpdcache_snoop_req_t =
+      `HPDCACHE_DECL_SNOOP_REQ_T(hpdcache_nline_t),
+  localparam type hpdcache_snoop_resp_data_t =
+      `HPDCACHE_DECL_SNOOP_RESP_DATA_T(hpdcache_mem_data_t)
 )
 
 (
@@ -110,6 +116,16 @@ module hpdcache_wrapper
   input  hpdcache_pkg::hpdcache_pma_t core_req_pma_i           [HPDCACHE_NREQUESTERS],
   output logic                        core_rsp_valid_o         [HPDCACHE_NREQUESTERS],
   output hpdcache_rsp_t               core_rsp_o               [HPDCACHE_NREQUESTERS],
+
+  input  logic                        snoop_req_valid_i,
+  output logic                        snoop_req_ready_o,
+  input  hpdcache_snoop_req_t         snoop_req_i,
+  output logic                        snoop_rsp_meta_valid_o,
+  input  logic                        snoop_rsp_meta_ready_i,
+  output hpdcache_snoop_meta_t        snoop_rsp_meta_o,
+  input  logic                        snoop_rsp_data_ready_i,
+  output logic                        snoop_rsp_data_valid_o,
+  output hpdcache_snoop_resp_data_t   snoop_rsp_data_o,
 
   input  logic                        mem_req_read_ready_i,
   output logic                        mem_req_read_valid_o,
@@ -136,26 +152,28 @@ module hpdcache_wrapper
 );
 
   hpdcache #(
-      .HPDcacheCfg          (HPDcacheCfg),
-      .wbuf_timecnt_t       (hpdcache_wbuf_timecnt_t),
-      .hpdcache_tag_t       (hpdcache_tag_t),
-      .hpdcache_data_word_t (hpdcache_data_word_t),
-      .hpdcache_data_be_t   (hpdcache_data_be_t),
-      .hpdcache_req_offset_t(hpdcache_req_offset_t),
-      .hpdcache_req_data_t  (hpdcache_req_data_t),
-      .hpdcache_req_be_t    (hpdcache_req_be_t),
-      .hpdcache_req_sid_t   (hpdcache_req_sid_t),
-      .hpdcache_req_tid_t   (hpdcache_req_tid_t),
-      .hpdcache_req_t       (hpdcache_req_t),
-      .hpdcache_rsp_t       (hpdcache_rsp_t),
-      .hpdcache_mem_addr_t  (hpdcache_mem_addr_t),
-      .hpdcache_mem_id_t    (hpdcache_mem_id_t),
-      .hpdcache_mem_data_t  (hpdcache_mem_data_t),
-      .hpdcache_mem_be_t    (hpdcache_mem_be_t),
-      .hpdcache_mem_req_t   (hpdcache_mem_req_t),
-      .hpdcache_mem_req_w_t (hpdcache_mem_req_w_t),
-      .hpdcache_mem_resp_r_t(hpdcache_mem_resp_r_t),
-      .hpdcache_mem_resp_w_t(hpdcache_mem_resp_w_t)
+      .HPDcacheCfg               (HPDcacheCfg),
+      .wbuf_timecnt_t            (hpdcache_wbuf_timecnt_t),
+      .hpdcache_tag_t            (hpdcache_tag_t),
+      .hpdcache_data_word_t      (hpdcache_data_word_t),
+      .hpdcache_data_be_t        (hpdcache_data_be_t),
+      .hpdcache_req_offset_t     (hpdcache_req_offset_t),
+      .hpdcache_req_data_t       (hpdcache_req_data_t),
+      .hpdcache_req_be_t         (hpdcache_req_be_t),
+      .hpdcache_req_sid_t        (hpdcache_req_sid_t),
+      .hpdcache_req_tid_t        (hpdcache_req_tid_t),
+      .hpdcache_req_t            (hpdcache_req_t),
+      .hpdcache_rsp_t            (hpdcache_rsp_t),
+      .hpdcache_mem_addr_t       (hpdcache_mem_addr_t),
+      .hpdcache_mem_id_t         (hpdcache_mem_id_t),
+      .hpdcache_mem_data_t       (hpdcache_mem_data_t),
+      .hpdcache_mem_be_t         (hpdcache_mem_be_t),
+      .hpdcache_mem_req_t        (hpdcache_mem_req_t),
+      .hpdcache_mem_req_w_t      (hpdcache_mem_req_w_t),
+      .hpdcache_mem_resp_r_t     (hpdcache_mem_resp_r_t),
+      .hpdcache_mem_resp_w_t     (hpdcache_mem_resp_w_t),
+      .hpdcache_snoop_req_t      (hpdcache_snoop_req_t),
+      .hpdcache_snoop_resp_data_t(hpdcache_snoop_resp_data_t)
   ) i_hpdcache (
       .clk_i,
       .rst_ni,
@@ -171,6 +189,16 @@ module hpdcache_wrapper
 
       .core_rsp_valid_o,
       .core_rsp_o,
+
+      .snoop_req_valid_i,
+      .snoop_req_ready_o,
+      .snoop_req_i,
+      .snoop_rsp_meta_valid_o,
+      .snoop_rsp_meta_ready_i,
+      .snoop_rsp_meta_o,
+      .snoop_rsp_data_ready_i,
+      .snoop_rsp_data_valid_o,
+      .snoop_rsp_data_o,
 
       .mem_req_read_ready_i,
       .mem_req_read_valid_o,

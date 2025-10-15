@@ -42,6 +42,8 @@ import hpdcache_pkg::*;
     parameter type mshr_way_t = logic,
     parameter type mshr_set_t = logic,
 
+    parameter type mshr_op_t  = logic,
+
     parameter type cbuf_id_t = logic
 )
     //  }}}
@@ -73,9 +75,14 @@ import hpdcache_pkg::*;
     input  logic                  alloc_is_prefetch_i,
     input  logic                  alloc_wback_i,
     input  logic                  alloc_dirty_i,
+    input  mshr_op_t              alloc_op_i,
     input  cbuf_id_t              alloc_cbuf_id_i,
     output logic                  alloc_full_o,
     output mshr_way_t             alloc_way_o,
+
+    //  Snoop interface
+    input  logic                  make_shared_i,
+    input  logic                  make_inval_i,
 
     //  Acknowledge interface
     input  logic                  ack_i,
@@ -92,7 +99,10 @@ import hpdcache_pkg::*;
     output logic                  ack_is_prefetch_o,
     output logic                  ack_wback_o,
     output logic                  ack_dirty_o,
-    output cbuf_id_t              ack_cbuf_id_o
+    output mshr_op_t              ack_op_o,
+    output cbuf_id_t              ack_cbuf_id_o,
+    output logic                  ack_make_inval_o,
+    output logic                  ack_make_shared_o
 );
     //  }}}
 
@@ -108,6 +118,7 @@ import hpdcache_pkg::*;
         logic              dirty;
         logic              need_rsp;
         logic              is_prefetch;
+        mshr_op_t          op;
         cbuf_id_t          cbuf_id;
     } mshr_entry_t;
 
@@ -131,6 +142,7 @@ import hpdcache_pkg::*;
 
     hpdcache_set_t check_cache_set_q;
     mshr_set_t     check_set_st0, check_set_st1;
+    mshr_way_t     check_way;
     mshr_set_t     alloc_set;
     mshr_way_t     ack_way_q;
 
@@ -144,6 +156,11 @@ import hpdcache_pkg::*;
     logic mshr_cs;
     mshr_set_t  mshr_addr;
     logic check;
+
+    logic          [HPDcacheCfg.u.mshrSets*HPDcacheCfg.u.mshrWays-1:0] mshr_make_shared_q;
+    logic [HPDcacheCfg.u.mshrSets*HPDcacheCfg.u.mshrWays-1:0] mshr_make_shared_set, mshr_make_shared_rst;
+    logic          [HPDcacheCfg.u.mshrSets*HPDcacheCfg.u.mshrWays-1:0] mshr_make_inval_q;
+    logic [HPDcacheCfg.u.mshrSets*HPDcacheCfg.u.mshrWays-1:0] mshr_make_inval_set, mshr_make_inval_rst;
     //  }}}
 
     //  Control part for the allocation and check operations
@@ -206,6 +223,7 @@ import hpdcache_pkg::*;
             mshr_wentry[i].victim_way_idx = alloc_victim_way_i;
             mshr_wentry[i].need_rsp = alloc_need_rsp_i;
             mshr_wentry[i].is_prefetch = alloc_is_prefetch_i;
+            mshr_wentry[i].op = alloc_op_i;
             mshr_wentry[i].wback = alloc_wback_i;
             mshr_wentry[i].dirty = alloc_dirty_i;
             mshr_wentry[i].cbuf_id = alloc_cbuf_id_i;
@@ -216,20 +234,25 @@ import hpdcache_pkg::*;
     //  Shared control signals
     //  {{{
     hpdcache_uint mshr_alloc_slot;
+    hpdcache_uint mshr_check_slot;
     hpdcache_uint mshr_ack_slot;
 
     if ((HPDcacheCfg.u.mshrSets > 1) && (HPDcacheCfg.u.mshrWays > 1))
     begin : gen_mshr_set_associative
         assign mshr_alloc_slot = hpdcache_uint'({alloc_way_o, alloc_set});
+        assign mshr_check_slot = hpdcache_uint'({check_way, check_cache_set_q});
         assign mshr_ack_slot   = hpdcache_uint'({  ack_way_i, ack_set_i});
     end else if (HPDcacheCfg.u.mshrSets > 1) begin : gen_mshr_direct_mapped
         assign mshr_alloc_slot = hpdcache_uint'(alloc_set);
+        assign mshr_check_slot = hpdcache_uint'(check_cache_set_q);
         assign mshr_ack_slot   = hpdcache_uint'(ack_set_i);
     end else if (HPDcacheCfg.u.mshrWays > 1) begin : gen_mshr_fully_associative
         assign mshr_alloc_slot = hpdcache_uint'(alloc_way_o);
+        assign mshr_check_slot = hpdcache_uint'(check_way);
         assign mshr_ack_slot   = hpdcache_uint'(ack_way_i);
     end else begin : gen_mshr_single_entry
         assign mshr_alloc_slot = '0;
+        assign mshr_check_slot = '0;
         assign mshr_ack_slot   = '0;
     end
 
@@ -241,6 +264,16 @@ import hpdcache_pkg::*;
         for (hpdcache_uint i = 0; i < HPDcacheCfg.u.mshrSets*HPDcacheCfg.u.mshrWays; i++) begin
             mshr_valid_rst[i] = (i ==   mshr_ack_slot) ? ack_i   : 1'b0;
             mshr_valid_set[i] = (i == mshr_alloc_slot) ? alloc_i : 1'b0;
+        end
+    end
+
+    always_comb
+    begin : mshr_make_comb
+        for (hpdcache_uint i = 0; i < HPDcacheCfg.u.mshrSets*HPDcacheCfg.u.mshrWays; i++) begin
+            mshr_make_shared_rst[i] = (i ==   mshr_ack_slot) ? ack_i         : 1'b0;
+            mshr_make_shared_set[i] = (i == mshr_check_slot) ? make_shared_i : 1'b0;
+            mshr_make_inval_rst[i]  = (i ==   mshr_ack_slot) ? ack_i         : 1'b0;
+            mshr_make_inval_set[i]  = (i == mshr_check_slot) ? make_inval_i  : 1'b0;
         end
     end
     //  }}}
@@ -255,9 +288,17 @@ import hpdcache_pkg::*;
     assign ack_word_o        = mshr_rentry[ack_way_q].word_idx;
     assign ack_need_rsp_o    = mshr_rentry[ack_way_q].need_rsp;
     assign ack_is_prefetch_o = mshr_rentry[ack_way_q].is_prefetch;
+    assign ack_op_o          = mshr_rentry[ack_way_q].op;
     assign ack_wback_o       = mshr_rentry[ack_way_q].wback;
     assign ack_dirty_o       = mshr_rentry[ack_way_q].dirty;
     assign ack_cbuf_id_o     = mshr_rentry[ack_way_q].cbuf_id;
+
+    always_ff @(posedge clk_i) begin
+        if (ack_i) begin
+            ack_make_inval_o  <= mshr_make_inval_q[mshr_ack_slot];
+            ack_make_shared_o <= mshr_make_shared_q[mshr_ack_slot];
+        end
+    end
     //  }}}
 
     //  Global control signals
@@ -268,6 +309,8 @@ import hpdcache_pkg::*;
     always_comb
     begin : hit_comb
         automatic bit [HPDcacheCfg.u.mshrWays-1:0] v_hit_way;
+
+        check_way = '0;
 
         for (int unsigned w = 0; w < HPDcacheCfg.u.mshrWays; w++) begin
             automatic bit v_valid;
@@ -282,6 +325,7 @@ import hpdcache_pkg::*;
             v_match_set = (v_check_set == check_cache_set_q);
             v_match_tag = (mshr_rentry[w].tag == check_tag_i);
             v_hit_way[w] = (v_valid && v_match_tag && v_match_set);
+            if (v_hit_way[w]) check_way = mshr_way_t'(w);
         end
 
         hit_o = |v_hit_way;
@@ -294,10 +338,14 @@ import hpdcache_pkg::*;
     begin : mshr_ff_set
         if (!rst_ni) begin
             mshr_valid_q <= '0;
+            mshr_make_shared_q <= '0;
+            mshr_make_inval_q <= '0;
             ack_way_q <= '0;
             check_cache_set_q <= '0;
         end else begin
             mshr_valid_q <= (~mshr_valid_q & mshr_valid_set) | (mshr_valid_q & ~mshr_valid_rst);
+            mshr_make_shared_q <= (~mshr_make_shared_q & mshr_make_shared_set) | (mshr_make_shared_q & ~mshr_make_shared_rst);
+            mshr_make_inval_q <= (~mshr_make_inval_q & mshr_make_inval_set) | (mshr_make_inval_q & ~mshr_make_inval_rst);
             if (ack_i) ack_way_q <= ack_way_i;
             if (check) check_cache_set_q <= check_set_i;
         end

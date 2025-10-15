@@ -76,7 +76,16 @@ package hpdcache_pkg;
         HPDCACHE_REQ_CMO_FLUSH_NLINE       = 5'h14,
         HPDCACHE_REQ_CMO_FLUSH_ALL         = 5'h15,
         HPDCACHE_REQ_CMO_FLUSH_INVAL_NLINE = 5'h16,
-        HPDCACHE_REQ_CMO_FLUSH_INVAL_ALL   = 5'h17
+        HPDCACHE_REQ_CMO_FLUSH_INVAL_ALL   = 5'h17,
+        // Coherence snoop operations
+        HPDCACHE_REQ_SNOOP_CLEAN_INVALID         = 5'h18,
+        HPDCACHE_REQ_SNOOP_CLEAN_SHARED          = 5'h19,
+        HPDCACHE_REQ_SNOOP_MAKE_INVALID          = 5'h1a,
+        HPDCACHE_REQ_SNOOP_READ_CLEAN            = 5'h1b,
+        HPDCACHE_REQ_SNOOP_READ_NOT_SHARED_DIRTY = 5'h1c,
+        HPDCACHE_REQ_SNOOP_READ_ONCE             = 5'h1d,
+        HPDCACHE_REQ_SNOOP_READ_SHARED           = 5'h1e,
+        HPDCACHE_REQ_SNOOP_READ_UNIQUE           = 5'h1f
     } hpdcache_req_op_t;
     //      }}}
 
@@ -271,6 +280,67 @@ package hpdcache_pkg;
                 is_cmo_prefetch(op));
     endfunction
 
+    function automatic logic is_snoop(input hpdcache_req_op_t op);
+        return (op inside {
+            HPDCACHE_REQ_SNOOP_CLEAN_INVALID,
+            HPDCACHE_REQ_SNOOP_CLEAN_SHARED,
+            HPDCACHE_REQ_SNOOP_MAKE_INVALID,
+            HPDCACHE_REQ_SNOOP_READ_CLEAN,
+            HPDCACHE_REQ_SNOOP_READ_NOT_SHARED_DIRTY,
+            HPDCACHE_REQ_SNOOP_READ_ONCE,
+            HPDCACHE_REQ_SNOOP_READ_SHARED,
+            HPDCACHE_REQ_SNOOP_READ_UNIQUE
+        });
+    endfunction
+
+    function automatic logic is_snoop_clean_invalid(input hpdcache_req_op_t op);
+        return (op == HPDCACHE_REQ_SNOOP_CLEAN_INVALID);
+    endfunction
+
+    function automatic logic is_snoop_read_unique(input hpdcache_req_op_t op);
+        return (op == HPDCACHE_REQ_SNOOP_READ_UNIQUE);
+    endfunction
+
+    function automatic logic is_snoop_read_shared(input hpdcache_req_op_t op);
+        return (op == HPDCACHE_REQ_SNOOP_READ_SHARED);
+    endfunction
+
+    function automatic logic is_snoop_clean_shared(input hpdcache_req_op_t op);
+        return (op == HPDCACHE_REQ_SNOOP_CLEAN_SHARED);
+    endfunction
+
+    function automatic logic is_snoop_make_invalid(input hpdcache_req_op_t op);
+        return (op == HPDCACHE_REQ_SNOOP_MAKE_INVALID);
+    endfunction
+
+    function automatic logic is_snoop_read_once(input hpdcache_req_op_t op);
+        return (op == HPDCACHE_REQ_SNOOP_READ_ONCE);
+    endfunction
+
+    function automatic logic is_snoop_read_not_shared_dirty(input hpdcache_req_op_t op);
+        return (op == HPDCACHE_REQ_SNOOP_READ_NOT_SHARED_DIRTY);
+    endfunction
+
+    function automatic logic is_snoop_read_clean(input hpdcache_req_op_t op);
+        return (op == HPDCACHE_REQ_SNOOP_READ_CLEAN);
+    endfunction
+
+    function automatic logic is_snoop_make_shared(input hpdcache_req_op_t op);
+        return (op inside {
+            HPDCACHE_REQ_SNOOP_READ_CLEAN,
+            HPDCACHE_REQ_SNOOP_READ_NOT_SHARED_DIRTY,
+            HPDCACHE_REQ_SNOOP_READ_SHARED
+        });
+    endfunction
+
+    function automatic logic is_snoop_make_inval(input hpdcache_req_op_t op);
+        return (op inside {
+            HPDCACHE_REQ_SNOOP_CLEAN_INVALID,
+            HPDCACHE_REQ_SNOOP_MAKE_INVALID,
+            HPDCACHE_REQ_SNOOP_READ_UNIQUE
+        });
+    endfunction
+
     //      }}}
     //  }}}
 
@@ -309,6 +379,21 @@ package hpdcache_pkg;
         //  Reserved           = 4'b1110,
         //  Reserved           = 4'b1111
     } hpdcache_mem_atomic_e;
+
+
+    typedef enum logic [3:0] {
+        // Read channel coherence operations
+        HPDCACHE_MEM_COHERENCE_READ_NO_SNOOP  = 4'h0,
+        HPDCACHE_MEM_COHERENCE_READ_SHARED    = 4'h1,
+        HPDCACHE_MEM_COHERENCE_READ_CLEAN     = 4'h2,
+        HPDCACHE_MEM_COHERENCE_READ_UNIQUE    = 4'h3,
+        HPDCACHE_MEM_COHERENCE_CLEAN_UNIQUE   = 4'h4,
+        // Write channel coherence operations
+        HPDCACHE_MEM_COHERENCE_WRITE_NO_SNOOP = 4'h5,
+        HPDCACHE_MEM_COHERENCE_WRITE_UNIQUE   = 4'h6,
+        HPDCACHE_MEM_COHERENCE_WRITE_BACK     = 4'h7,
+        HPDCACHE_MEM_COHERENCE_EVICT          = 4'h8
+    } hpdcache_mem_coherence_e;
 
     function automatic hpdcache_mem_size_t get_hpdcache_mem_size(int unsigned bytes);
         if      (bytes ==   0) return 0;
@@ -358,6 +443,29 @@ package hpdcache_pkg;
         logic is_inval_all;
         logic is_fence;
     } hpdcache_cmoh_op_t;
+    //  }}}
+
+    //  Definition of constants and types for the snoop handler
+    //  {{{
+    typedef struct packed {
+        logic is_clean_invalid;
+        logic is_clean_shared;
+        logic is_make_invalid;
+        logic is_read_clean;
+        logic is_read_not_shared_dirty;
+        logic is_read_once;
+        logic is_read_shared;
+        logic is_read_unique;
+    } hpdcache_snoop_op_t;
+
+    typedef struct packed {
+        logic left_dirty;
+        logic was_unique;
+        logic is_shared;
+        logic pass_dirty;
+        logic error;
+        logic data_transfer;
+    } hpdcache_snoop_meta_t;
     //  }}}
 
     //  Definition Replay Table (RTAB) dependencies
@@ -447,6 +555,8 @@ package hpdcache_pkg;
         int unsigned flushEntries;
         //  Depth of the flush FIFO
         int unsigned flushFifoDepth;
+        //  Depth of the snoop FIFO
+        int unsigned snoopFifoDepth;
         //  Width of the address in the memory interface
         int unsigned memAddrWidth;
         //  Width of the ID in the memory interface
@@ -460,6 +570,8 @@ package hpdcache_pkg;
         //  Enable fast loads.
         //  Perform loads in 1 cycle at the cost of structural hazard for stores
         bit lowLatency;
+        //  Enable coherence features
+        bit coherenceEn;
     } hpdcache_user_cfg_t;
 
     typedef struct packed {
@@ -518,6 +630,11 @@ package hpdcache_pkg;
 
         ret.accessWidth = p.accessWords * p.wordWidth;
         ret.accessBytes = ret.accessWidth/8;
+
+        if (p.coherenceEn) begin
+            if (!p.wbEn || p.wtEn)
+                $error ("[hpdcache_pkg] Hardware coherency is supported only in WB mode only.");
+        end
 
         return ret;
     endfunction

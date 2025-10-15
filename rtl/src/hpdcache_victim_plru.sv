@@ -50,8 +50,9 @@ import hpdcache_pkg::*;
     //      Victim selection interface
     input  logic                  sel_victim_i, /* unused */
     input  way_vector_t           sel_dir_valid_i,
-    input  way_vector_t           sel_dir_wback_i,
+    input  way_vector_t           sel_dir_wback_i, /* unused */
     input  way_vector_t           sel_dir_dirty_i,
+    input  way_vector_t           sel_dir_shared_i, /* unused */
     input  way_vector_t           sel_dir_fetch_i,
     input  set_t                  sel_victim_set_i,
     output way_vector_t           sel_victim_way_o
