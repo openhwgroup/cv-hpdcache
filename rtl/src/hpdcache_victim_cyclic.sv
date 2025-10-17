@@ -60,7 +60,7 @@ import hpdcache_pkg::*;
 
     //  Internal signals and registers
     //  {{{
-    logic         unused_available;
+    logic         unused_available, clean_available, dirty_available;
     way_vector_t  unused_ways;
     way_vector_t  unused_victim_way;
     logic         [HPDcacheCfg.wayIndexWidth-1:0] cyclic_ptr;
@@ -73,24 +73,8 @@ import hpdcache_pkg::*;
     //  Victim way selection
     //  {{{
     assign unused_ways = ~sel_dir_fetch_i & ~sel_dir_valid_i;
-    //assign rand_ways   = ~sel_dir_fetch_i &  sel_dir_valid_i &  rand_victim_way;
     assign clean_ways  = ~sel_dir_fetch_i &  sel_dir_valid_i & ~sel_dir_dirty_i;
     assign dirty_ways  = ~sel_dir_fetch_i &  sel_dir_valid_i &  sel_dir_dirty_i;
-
-    // hpdcache_lfsr #(.WIDTH(8))
-    //     lfsr_i(
-    //         .clk_i,
-    //         .rst_ni,
-    //         .shift_i   (sel_victim_i & ~unused_available & rand_available),
-    //         .val_o     (lfsr_val)
-    //     );
-
-    // hpdcache_decoder #(.N(HPDcacheCfg.wayIndexWidth))
-    //     rand_way_decoder_i(
-    //         .en_i      (1'b1),
-    //         .val_i     (lfsr_val[0 +: HPDcacheCfg.wayIndexWidth]),
-    //         .val_o     (rand_victim_way)
-    //     );
 
     hpdcache_prio_1hot_encoder #(.N(HPDcacheCfg.u.ways))
         unused_victim_select_i(
@@ -135,7 +119,6 @@ import hpdcache_pkg::*;
 
 
     assign unused_available = |unused_ways;
-    //assign rand_available   = |rand_ways;
     assign clean_available  = |clean_ways;
     assign dirty_available  = |dirty_ways;
     assign cyclic_available = | (cyclic_victim_way & ~sel_dir_fetch_i & sel_dir_valid_i);
@@ -145,7 +128,6 @@ import hpdcache_pkg::*;
         priority case (1'b1)
             unused_available: sel_victim_way_o = unused_victim_way;   // use invalid way if any
             cyclic_available: sel_victim_way_o = cyclic_victim_way;   // use cyclic way if available
-            //rand_available:   sel_victim_way_o = rand_victim_way;
             clean_available:  sel_victim_way_o = clean_victim_way;    // fallback to clean way if any
             dirty_available:  sel_victim_way_o = dirty_victim_way;
             default:          sel_victim_way_o = '0;
