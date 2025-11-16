@@ -761,8 +761,6 @@ import hpdcache_pkg::*;
         data_addr        = '0;
         data_cs          = '0;
         data_we          = '0;
-        data_wbyteenable = '0;
-        data_wentry      = '0;
 
         unique case (1'b1)
             //  Select data read inputs
@@ -789,28 +787,13 @@ import hpdcache_pkg::*;
 
             //  Select data write inputs
             data_write: begin
-                data_addr = {HPDCACHE_ALL_CUTS{hpdcache_set_to_data_ram_addr(data_write_set,
-                                                                             data_write_word)}};
-
-                for (int unsigned i = 0; i < HPDCACHE_DATA_RAM_Y_CUTS; i++) begin
-                    for (int unsigned j = 0; j < HPDCACHE_DATA_RAM_X_CUTS; j++) begin
-                        data_wentry[i][j] = {HPDcacheCfg.u.dataWaysPerRamWord{data_write_data[j]}};
-                    end
-                end
-
+                data_addr = {HPDCACHE_ALL_CUTS{
+                    hpdcache_set_to_data_ram_addr(data_write_set, data_write_word)}
+                };
                 for (int unsigned i = 0; i < HPDCACHE_DATA_RAM_Y_CUTS; i++) begin
                     data_cs[i] = hpdcache_compute_data_ram_cs(data_write_size, data_write_word);
-
                     if (data_ram_row[i]) begin
                         data_we[i] = data_write_enable ? data_cs[i] : '0;
-                    end
-
-                    //  Build the write mask
-                    for (int unsigned j = 0; j < HPDcacheCfg.u.accessWords; j++) begin
-                        for (int unsigned k = 0; k < HPDcacheCfg.u.dataWaysPerRamWord; k++) begin
-                            data_wbyteenable[i][j][k] = (k == hpdcache_uint'(data_ram_word)) ?
-                                                        data_write_be[j] : '0;
-                        end
                     end
                 end
             end
@@ -819,6 +802,29 @@ import hpdcache_pkg::*;
                 //  Do nothing
             end
         endcase
+    end
+
+    always_comb
+    begin : data_write_ctrl_comb
+        data_wbyteenable = '0;
+        data_wentry      = '0;
+
+        //  Build the write data
+        for (int unsigned i = 0; i < HPDCACHE_DATA_RAM_Y_CUTS; i++) begin
+            for (int unsigned j = 0; j < HPDCACHE_DATA_RAM_X_CUTS; j++) begin
+                data_wentry[i][j] = {HPDcacheCfg.u.dataWaysPerRamWord{data_write_data[j]}};
+            end
+        end
+
+        //  Build the write mask
+        for (int unsigned i = 0; i < HPDCACHE_DATA_RAM_Y_CUTS; i++) begin
+            for (int unsigned j = 0; j < HPDcacheCfg.u.accessWords; j++) begin
+                for (int unsigned k = 0; k < HPDcacheCfg.u.dataWaysPerRamWord; k++) begin
+                    data_wbyteenable[i][j][k] = (k == hpdcache_uint'(data_ram_word)) ?
+                        data_write_be[j] : '0;
+                end
+            end
+        end
     end
     //  }}}
 
