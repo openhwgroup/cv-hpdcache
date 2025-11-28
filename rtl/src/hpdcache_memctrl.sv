@@ -61,6 +61,7 @@ import hpdcache_pkg::*;
     //      Global control signals
     //      {{{
     output logic                                ready_o,
+    output logic                                rd_wr_conflict_o,
     //      }}}
 
     //      DIR array access interface
@@ -186,7 +187,6 @@ import hpdcache_pkg::*;
     localparam int unsigned HPDCACHE_DATA_RAM_Y_CUTS = HPDcacheCfg.u.ways/
                                                        HPDcacheCfg.u.dataWaysPerRamWord;
     localparam int unsigned HPDCACHE_DATA_RAM_X_CUTS = HPDcacheCfg.u.accessWords;
-    localparam int unsigned HPDCACHE_ALL_CUTS = HPDCACHE_DATA_RAM_X_CUTS*HPDCACHE_DATA_RAM_Y_CUTS;
 
     typedef logic [HPDCACHE_DIR_RAM_ADDR_WIDTH-1:0] hpdcache_dir_addr_t;
 
@@ -311,6 +311,11 @@ import hpdcache_pkg::*;
     hpdcache_word_t                            data_write_word;
     hpdcache_access_data_t                     data_write_data;
     hpdcache_access_be_t                       data_write_be;
+
+    logic                                      data_read;
+    hpdcache_set_t                             data_read_set;
+    hpdcache_req_size_t                        data_read_size;
+    hpdcache_word_t                            data_read_word;
 
     hpdcache_access_data_t                     data_req_write_data;
     hpdcache_access_be_t                       data_req_write_be;
@@ -745,63 +750,73 @@ import hpdcache_pkg::*;
         endcase
     end
 
+    //  Multiplex between data read requests
+    always_comb
+    begin : data_read_comb
+        unique case (1'b1)
+            data_req_read_i: begin
+                data_read         = 1'b1;
+                data_read_set     = data_req_read_set_i;
+                data_read_size    = data_req_read_size_i;
+                data_read_word    = data_req_read_word_i;
+            end
+
+            data_flush_read_i: begin
+                data_read         = 1'b1;
+                data_read_set     = data_flush_read_set_i;
+                data_read_size    = hpdcache_req_size_t'($clog2(HPDcacheCfg.accessWidth/8));
+                data_read_word    = data_flush_read_word_i;
+            end
+
+            default: begin
+                data_read         = 1'b0;
+                data_read_set     = '0;
+                data_read_size    = '0;
+                data_read_word    = '0;
+            end
+        endcase
+    end
+
     //  Multiplex between read and write access on the data RAM
     assign data_way = data_refill_i     ? data_refill_way_i :
                       data_flush_read_i ? data_flush_read_way_i :
-                      data_amo_write_i ?  data_amo_write_way_i :
-                      data_req_read_i   ? data_req_read_way_i :
-                                          data_req_write_way_i;
+                      data_amo_write_i  ? data_amo_write_way_i :
+                      data_req_write_i  ? data_req_write_way_i : '0;
 
     //  Decode way index
     assign data_ram_word = hpdcache_way_to_data_ram_word(data_way);
     assign data_ram_row = hpdcache_way_to_data_ram_row(data_way);
 
+    //  Word selection
+    hpdcache_data_row_enable_t word_sel_req_rd, word_sel_req_wr;
+
+    assign word_sel_req_rd =
+        hpdcache_compute_data_ram_cs(data_req_read_size_i, data_req_read_word_i);
+    assign word_sel_req_wr =
+        hpdcache_compute_data_ram_cs(data_req_write_size_i, data_req_write_word_i);
+
+    assign rd_wr_conflict_o = |(word_sel_req_rd & word_sel_req_wr);
+
     always_comb
     begin : data_ctrl_comb
-        data_addr        = '0;
-        data_cs          = '0;
-        data_we          = '0;
+        automatic hpdcache_data_row_enable_t word_sel_rd, word_sel_wr;
+        automatic hpdcache_data_row_enable_t __word_sel_rd, __word_sel_wr;
+        automatic hpdcache_data_ram_addr_t   __data_rd_addr, __data_wr_addr;
 
-        unique case (1'b1)
-            //  Select data read inputs
-            data_req_read_i: begin
-                data_addr = {HPDCACHE_ALL_CUTS{
-                    hpdcache_set_to_data_ram_addr(data_req_read_set_i, data_req_read_word_i)}
-                };
+        word_sel_rd = hpdcache_compute_data_ram_cs(data_read_size, data_read_word);
+        word_sel_wr = hpdcache_compute_data_ram_cs(data_write_size, data_write_word);
+        __data_rd_addr = hpdcache_set_to_data_ram_addr(data_read_set, data_read_word);
+        __data_wr_addr = hpdcache_set_to_data_ram_addr(data_write_set, data_write_word);
+        for (int unsigned i = 0; i < HPDCACHE_DATA_RAM_Y_CUTS; i++) begin
+            __word_sel_rd = data_read ? word_sel_rd : '0;
+            __word_sel_wr = data_ram_row[i] & data_write ? word_sel_wr : '0;
 
-                for (int unsigned i = 0; i < HPDCACHE_DATA_RAM_Y_CUTS; i++) begin
-                    data_cs[i] = hpdcache_compute_data_ram_cs(data_req_read_size_i,
-                                                              data_req_read_word_i);
-                end
+            data_cs[i] = __word_sel_rd | __word_sel_wr;
+            data_we[i] = data_write_enable ? __word_sel_wr : '0;
+            for (int unsigned j = 0; j < HPDCACHE_DATA_RAM_X_CUTS; j++) begin
+                data_addr[i][j] = data_write && word_sel_wr[j] ? __data_wr_addr : __data_rd_addr;
             end
-
-            //  Select data flush read inputs
-            data_flush_read_i: begin
-                data_addr = {HPDCACHE_ALL_CUTS{
-                    hpdcache_set_to_data_ram_addr(data_flush_read_set_i, data_flush_read_word_i)}
-                };
-                for (int unsigned i = 0; i < HPDCACHE_DATA_RAM_Y_CUTS; i++) begin
-                    data_cs[i] = data_ram_row[i] ? '1 : '0;
-                end
-            end
-
-            //  Select data write inputs
-            data_write: begin
-                data_addr = {HPDCACHE_ALL_CUTS{
-                    hpdcache_set_to_data_ram_addr(data_write_set, data_write_word)}
-                };
-                for (int unsigned i = 0; i < HPDCACHE_DATA_RAM_Y_CUTS; i++) begin
-                    data_cs[i] = hpdcache_compute_data_ram_cs(data_write_size, data_write_word);
-                    if (data_ram_row[i]) begin
-                        data_we[i] = data_write_enable ? data_cs[i] : '0;
-                    end
-                end
-            end
-
-            default: begin
-                //  Do nothing
-            end
-        endcase
+        end
     end
 
     always_comb
@@ -977,8 +992,7 @@ import hpdcache_pkg::*;
             $error("hpdcache_memctrl: more than one process is accessing the cache directory");
 
     concurrent_data_access_assert: assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
-            $onehot0({data_req_read_i,
-                      data_req_write_i,
+            $onehot0({data_req_read_i | data_req_write_i,
                       data_amo_write_i,
                       data_refill_i,
                       data_flush_read_i})) else
