@@ -11,8 +11,19 @@
   },
 
   mapping: [
-    {from: 'util/basegen', to:'util/basegen'},
-    {from: 'util/design/secded_gen.py', to:'util/design/secded_gen.py'},
-    {from: 'util/design/data/secded_cfg.hjson', to:'util/design/data/secded_cfg.hjson'},
-  ]
+    {
+      from: 'util/basegen',
+      to:'util/basegen',
+    },
+
+    {
+      from: 'util/design/secded_gen.py',
+      to:'util/design/secded_gen.py',
+    },
+
+    {
+      from: 'util/design/data/secded_cfg.hjson',
+      to:'util/design/data/secded_cfg.hjson',
+    },
+  ],
 }
