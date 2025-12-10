@@ -1,0 +1,18 @@
+// Copyright lowRISC contributors (OpenTitan project).
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+{
+  name: "opentitan",
+  target_dir: "opentitan",
+
+  upstream: {
+    url: "https://github.com/lowRISC/opentitan.git",
+    rev: "master",
+  },
+
+  mapping: [
+    {from: 'util/basegen', to:'util/basegen'},
+    {from: 'util/design/secded_gen.py', to:'util/design/secded_gen.py'},
+    {from: 'util/design/data/secded_cfg.hjson', to:'util/design/data/secded_cfg.hjson'},
+  ]
+}
