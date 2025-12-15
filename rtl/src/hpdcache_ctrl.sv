@@ -420,6 +420,8 @@ import hpdcache_pkg::*;
     hpdcache_word_t          data_req_read_word;
     hpdcache_way_vector_t    data_req_read_way;
     hpdcache_req_data_t      data_req_read_data;
+
+    logic                    rd_wr_conflict;
     //  }}}
 
     //  Decoding of the request in stage 0
@@ -626,6 +628,7 @@ import hpdcache_pkg::*;
         .st2_dir_updt_fetch_o               (st2_dir_updt_fetch_d),
 
         .req_cachedata_read_o               (data_req_read),
+        .rd_wr_conflict_i                   (rd_wr_conflict),
 
         .flush_busy_i,
         .st1_flush_check_hit_i              (flush_check_hit_i),
@@ -927,6 +930,7 @@ import hpdcache_pkg::*;
         .rst_ni,
 
         .ready_o                       (hpdcache_init_ready),
+        .rd_wr_conflict_o              (rd_wr_conflict),
 
         .dir_match_i                   (st0_req_cachedir_read),
         .dir_match_set_i               (st0_req_set),
