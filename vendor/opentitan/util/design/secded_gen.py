@@ -678,7 +678,7 @@ def generate(cfgs, args):
         write_enc_dec_files(n, k, m, codes, suffix, args.outdir, codetype)
 
         # write out C files, only hsiao codes are supported
-        if not args.not_c and (codetype in ["hsiao", "inv_hsiao"]):
+        if not args.no_c and (codetype in ["hsiao", "inv_hsiao"]):
             write_c_files(n, k, m, codes, suffix, c_src_filename, c_h_filename,
                           codetype)
 
