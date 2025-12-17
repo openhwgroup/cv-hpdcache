@@ -14,6 +14,9 @@ verilator-lint:
 		-Wno-fatal \
 		-error-limit 100 \
 		--top hpdcache_lint \
+		$(HPDCACHE_DIR)/rtl/src/utils/ecc/prim_secded_pkg.sv \
+		$(HPDCACHE_DIR)/rtl/src/utils/ecc/prim_secded_*enc.sv \
+		$(HPDCACHE_DIR)/rtl/src/utils/ecc/prim_secded_*dec.sv \
 		-f $(HPDCACHE_DIR)/rtl/hpdcache.Flist \
 		$(HPDCACHE_DIR)/rtl/src/common/macros/behav/*.sv \
 		hpdcache_lint.sv
@@ -22,6 +25,9 @@ verible-lint:
 	verible-verilog-lint \
 		--rules_config verible_rules.cfg \
 		--waiver_files verible.waiver \
+		$(HPDCACHE_DIR)/rtl/src/utils/ecc/prim_secded_pkg.sv \
+		$(HPDCACHE_DIR)/rtl/src/utils/ecc/prim_secded_*enc.sv \
+		$(HPDCACHE_DIR)/rtl/src/utils/ecc/prim_secded_*dec.sv \
 		$(HPDCACHE_FILES) \
 		$(HPDCACHE_DIR)/rtl/src/common/macros/behav/*.sv \
 		hpdcache_lint.sv
