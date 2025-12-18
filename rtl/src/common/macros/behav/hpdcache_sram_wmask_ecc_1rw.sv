@@ -64,8 +64,10 @@ module hpdcache_sram_wmask_ecc_1rw
                 //  Data bits are written according to the write mask
                 assign wmask_ecc[i][j] = wmask[i][j];
             end else begin : gen_ecc_check_wmask
-                //  Check bits are always written
-                assign wmask_ecc[i][j] = 1'b1;
+                //  Check bits byte are written if the last bit of the word is modified.
+                //  When using ECC, all the bits of word need to be written to correctly compute the
+                //  check bits. Hence, we can arbitrarily take a mask bit for the check bits
+                assign wmask_ecc[i][j] = wmask[i][DATA_SIZE-1];
             end
         end
 

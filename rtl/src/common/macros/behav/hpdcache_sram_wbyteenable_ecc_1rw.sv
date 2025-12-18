@@ -72,8 +72,10 @@ module hpdcache_sram_wbyteenable_ecc_1rw
                 //  Data bits are written according to the byte-enable signal
                 assign wbyte_sram[i][j] = wbyteenable[i][j];
             end else begin : gen_ecc_check_wbyteenable
-                //  Check bits are always written
-                assign wbyte_sram[i][j] = 1'b1;
+                //  Check bits byte are written if the last byte of the word is modified
+                //  When using ECC, all the bytes of word need to be written to correctly compute
+                //  the check bits. Hence, we can arbitrarily take a byte-enable for the check bits
+                assign wbyte_sram[i][j] = wbyteenable[i][(DATA_SIZE/8) - 1];
             end
         end
 
@@ -96,6 +98,10 @@ module hpdcache_sram_wbyteenable_ecc_1rw
 
         assign err_cor_o[i] = err[i][0];
         assign err_unc_o[i] = err[i][1];
+
+        byteenable_all_set_assert: assert property (@(posedge clk) disable iff (rst_n !== 1'b1)
+            ((cs & we) == 1'b1) && ((&wbyteenable[i] == 1'b1) || (|wbyteenable[i] == 0))) else
+            $warning("partial write (sparse byteenable) not supported when implementing ECC");
     end
 
     if (!prim_secded_pkg::is_width_valid(prim_secded_pkg::SecdedHsiao, DATA_SIZE))
