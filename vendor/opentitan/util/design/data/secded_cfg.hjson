@@ -5,6 +5,7 @@
     {k: 29,   m: 7,  code_type: "hsiao"  },
     {k: 32,   m: 7,  code_type: "hsiao"  },
     {k: 48,   m: 7,  code_type: "hsiao"  },
+    {k: 49,   m: 7,  code_type: "hsiao"  },
     {k: 64,   m: 8,  code_type: "hsiao"  },
 //    {k: 16,   m: 6,  code_type: "hamming"},
 //    {k: 32,   m: 7,  code_type: "hamming"},

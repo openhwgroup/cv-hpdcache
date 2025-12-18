@@ -1,22 +1,8 @@
 ##
-#  Copyright 2023,2024 CEA*
-#  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
-#  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
+#  Copyright 2023,2024 Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+#  Copyright 2025 Univ. Grenoble Alpes, Inria, TIMA Laboratory
 #
 #  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
-#
-#  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
-#  may not use this file except in compliance with the License, or, at your
-#  option, the Apache License version 2.0. You may obtain a copy of the
-#  License at
-#
-#  https://solderpad.org/licenses/SHL-2.1/
-#
-#  Unless required by applicable law or agreed to in writing, any work
-#  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
-#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-#  License for the specific language governing permissions and limitations
-#  under the License.
 ##
 ##
 #  Author     : Cesar Fuguet
@@ -66,6 +52,7 @@ RUN_LOG             ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(LOG_SUFFIX).log
 TRACE_FILE          ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(LOG_SUFFIX).vcd
 COV_FILE            ?= $(COV_DIR)/cov_$(SEQUENCE)_$(SEED)$(LOG_SUFFIX).dat
 COV_MERGEFILE       ?= $(COV_DIR)/cov_result.dat
+CONFIG_NAME          = $(notdir $(basename $(CONFIG)))
 DATE_TIME           ?= $(shell date "+%Y_%m_%d-%H%M")
 
 export CXX             := $(CXX)
@@ -236,7 +223,8 @@ $(RUN_LOG):
 	$(Q)$(ECHO) "RUN FINISHED" >> $@
 	$(Q)$(SCANLOG) -pat scripts/scan_patterns/run_patterns.pat \
 	    -att scripts/scan_patterns/run_attributes.pat \
-	    -nowarn $@  >$@.scan 2>&1
+	    -nowarn $@ 2>&1 | tee $@.scan ; \
+	    exit $${PIPESTATUS[0]}
 
 .PHONY: debug
 debug: build
@@ -250,19 +238,12 @@ nonreg: nonregression
 .PHONY: nonregression
 nonregression:
 	$(Q)$(ECHO) "Running non-regression testsuite with SEQUENCE=$(SEQUENCE)..."
-	$(Q)$(MKDIR) $(LOG_DIR)/nonreg_$(DATE_TIME)
-	$(Q)i=1 ; \
-	for s in $(shell head -n $(NTESTS) scripts/random_numbers.dat | tr '\n' ' ') ; do \
-	    $(ECHO) "[$$i/$(NTESTS)] Running sequence $(SEQUENCE) SEED=$$s" ; \
-	    ((i++)) ; \
-	    $(MAKE) -s run SEED=$$s \
-	            RUN_LOG=$(LOG_DIR)/nonreg_$(DATE_TIME)/$(SEQUENCE)_$$s.log ; \
-	done ;
-	$(Q)$(SCANLOG) -pat scripts/scan_patterns/run_patterns.pat \
-	        -att scripts/scan_patterns/run_attributes.pat \
-	        -nowarn $(LOG_DIR)/nonreg_$(DATE_TIME)/$(SEQUENCE)_*.log \
-	        2>&1 | tee $(LOG_DIR)/nonreg_$(DATE_TIME)/nonreg.scan.log ; \
-	        exit $${PIPESTATUS[0]}
+	./scripts/run_nonregression.sh \
+		-s ${SEQUENCE} \
+		-n ${NTESTS} \
+		-t ${NTRANSACTIONS} \
+		-l $(LOG_DIR)/nonreg_$(CONFIG_NAME)_$(DATE_TIME) \
+		-c ${CONFIG}
 
 .PHONY: cov
 cov: $(COV_MERGEFILE) $(COV_MERGEFILE).info
@@ -292,6 +273,7 @@ $(VERILATE_LOG): print_config $(SVLOG_SOURCES) $(BUILD_DIR)/miniz.o $(TB_TOP).cp
 	$(Q)$(VERILATOR) --sc $(VERILATOR_FLAGS) -Mdir $(BUILD_DIR) \
 	        $(if $(filter $(DISABLE_WAIVERS),1),,scripts/verilate_waivers.vlt) \
 	        +incdir+$(HPDCACHE_DIR)/rtl/include \
+	        +incdir+$(HPDCACHE_DIR)/rtl/src/utils/ecc \
 	        $(SVLOG_SOURCES) \
 	        --exe $(TB_TOP).cpp --top-module $(DUT) $(BUILD_DIR)/miniz.o >& $@
 	$(Q)$(ECHO) "VERILATE FINISHED" >> $@
@@ -365,3 +347,5 @@ print_config:
 	@printf "CONF_HPDCACHE_WT_ENABLE=$(CONF_HPDCACHE_WT_ENABLE)\n"
 	@printf "CONF_HPDCACHE_WB_ENABLE=$(CONF_HPDCACHE_WB_ENABLE)\n"
 	@printf "CONF_HPDCACHE_LOW_LATENCY=$(CONF_HPDCACHE_LOW_LATENCY)\n"
+	@printf "CONF_HPDCACHE_ECC_ENABLE=$(CONF_HPDCACHE_ECC_ENABLE)\n"
+	@printf "CONF_HPDCACHE_ECC_SCRUBBER_ENABLE=$(CONF_HPDCACHE_ECC_SCRUBBER_ENABLE)\n"

@@ -1,21 +1,8 @@
-/*
- *  Copyright 2023 CEA*
- *  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+/**
+ *  Copyright 2023,2024 Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+ *  Copyright 2025 Univ. Grenoble Alpes, Inria, TIMA Laboratory
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
- *
- *  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
- *  may not use this file except in compliance with the License, or, at your
- *  option, the Apache License version 2.0. You may obtain a copy of the
- *  License at
- *
- *  https://solderpad.org/licenses/SHL-2.1/
- *
- *  Unless required by applicable law or agreed to in writing, any work
- *  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
- *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- *  License for the specific language governing permissions and limitations
- *  under the License.
  */
 /*
  *  Authors       : Cesar Fuguet
@@ -116,6 +103,11 @@ import hpdcache_pkg::*;
     //      Performance events
     output logic                          evt_cache_write_miss_o,
     output logic                          evt_cache_read_miss_o,
+    output logic                          evt_cache_dir_unc_err_o,
+    output logic                          evt_cache_dir_cor_err_o,
+    output logic                          evt_cache_dat_unc_err_o,
+    output logic                          evt_cache_dat_cor_err_o,
+    output logic                          evt_scrub_complete_o,
     output logic                          evt_uncached_req_o,
     output logic                          evt_cmo_req_o,
     output logic                          evt_write_req_o,
@@ -138,7 +130,10 @@ import hpdcache_pkg::*;
     input  logic                          cfg_prefetch_updt_plru_i,
     input  logic                          cfg_error_on_cacheable_amo_i,
     input  logic                          cfg_rtab_single_entry_i,
-    input  logic                          cfg_default_wb_i
+    input  logic                          cfg_default_wb_i,
+    input  logic                          cfg_scrub_enable_i,
+    input  logic unsigned [5:0]           cfg_scrub_period_i,
+    input  logic                          cfg_scrub_restart_i
 );
     //  }}}
 
@@ -258,6 +253,7 @@ import hpdcache_pkg::*;
     hpdcache_req_tid_t     uc_req_tid;
     logic                  uc_req_need_rsp;
     hpdcache_way_vector_t  uc_req_dir_hit_way;
+    hpdcache_req_data_t    uc_req_old_data;
     logic                  uc_wbuf_flush_all;
     logic                  uc_data_amo_write;
     logic                  uc_data_amo_write_enable;
@@ -589,6 +585,7 @@ import hpdcache_pkg::*;
         .uc_req_tid_o                       (uc_req_tid),
         .uc_req_need_rsp_o                  (uc_req_need_rsp),
         .uc_req_dir_hit_way_o               (uc_req_dir_hit_way),
+        .uc_req_old_data_o                  (uc_req_old_data),
         .uc_wbuf_flush_all_i                (uc_wbuf_flush_all),
         .uc_data_amo_write_i                (uc_data_amo_write),
         .uc_data_amo_write_enable_i         (uc_data_amo_write_enable),
@@ -655,9 +652,17 @@ import hpdcache_pkg::*;
         .cfg_prefetch_updt_plru_i,
         .cfg_rtab_single_entry_i,
         .cfg_default_wb_i                   (cfg_default_wb),
+        .cfg_scrub_enable_i,
+        .cfg_scrub_period_i,
+        .cfg_scrub_restart_i,
 
         .evt_cache_write_miss_o,
         .evt_cache_read_miss_o,
+        .evt_cache_dir_unc_err_o,
+        .evt_cache_dir_cor_err_o,
+        .evt_cache_dat_unc_err_o,
+        .evt_cache_dat_cor_err_o,
+        .evt_scrub_complete_o,
         .evt_uncached_req_o,
         .evt_cmo_req_o,
         .evt_write_req_o,
@@ -871,6 +876,7 @@ import hpdcache_pkg::*;
         .req_tid_i                     (uc_req_tid),
         .req_need_rsp_i                (uc_req_need_rsp),
         .req_hit_way_i                 (uc_req_dir_hit_way),
+        .req_old_data_i                (uc_req_old_data),
 
         .wbuf_flush_all_o              (uc_wbuf_flush_all),
 
@@ -1320,7 +1326,11 @@ import hpdcache_pkg::*;
     if (!HPDcacheCfg.u.wtEn && !HPDcacheCfg.u.wbEn) begin : gen_write_policy_assertion
         $fatal(1, "the cache shall be configured to support WT, WB or both");
     end
+    if (!HPDcacheCfg.u.lowLatency && HPDcacheCfg.u.eccEn) begin : gen_latency_and_ecc_assertion
+        $fatal(1, "ECC only supported in lowLatency mode");
+    end
 `endif
     // }}}
 
 endmodule
+// vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en : fdm=marker

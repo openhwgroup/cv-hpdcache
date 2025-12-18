@@ -10,6 +10,8 @@
  *  Description   : Behavioral model of a 1RW SRAM with write byte enable and ECC
  *  History       :
  */
+`include "prim_secded_inc.svh"
+
 module hpdcache_sram_wbyteenable_ecc_1rw
 #(
     parameter int unsigned ADDR_SIZE = 0,
@@ -72,8 +74,10 @@ module hpdcache_sram_wbyteenable_ecc_1rw
                 //  Data bits are written according to the byte-enable signal
                 assign wbyte_sram[i][j] = wbyteenable[i][j];
             end else begin : gen_ecc_check_wbyteenable
-                //  Check bits are always written
-                assign wbyte_sram[i][j] = 1'b1;
+                //  Check bits byte are written if the last byte of the word is modified
+                //  When using ECC, all the bytes of word need to be written to correctly compute
+                //  the check bits. Hence, we can arbitrarily take a byte-enable for the check bits
+                assign wbyte_sram[i][j] = wbyteenable[i][(DATA_SIZE/8) - 1];
             end
         end
 
@@ -96,8 +100,17 @@ module hpdcache_sram_wbyteenable_ecc_1rw
 
         assign err_cor_o[i] = err[i][0];
         assign err_unc_o[i] = err[i][1];
+
+`ifndef HPDCACHE_ASSERT_OFF
+        byteenable_all_set_assert: assert property (@(posedge clk) disable iff (rst_n !== 1'b1)
+            ((cs & we) == 1'b1) |-> ((&wbyteenable[i] == 1'b1) || (|wbyteenable[i] == 1'b0))) else
+            $warning("partial write (sparse byteenable) not supported when implementing ECC");
+`endif
     end
 
+    //  Assertions
+    //  {{{
+`ifndef HPDCACHE_ASSERT_OFF
     if (!prim_secded_pkg::is_width_valid(prim_secded_pkg::SecdedHsiao, DATA_SIZE))
     begin : gen_ecc_valid_width_assertion
         $fatal(1, $sformatf("Unsupported DATA_SIZE = %0d", DATA_SIZE));
@@ -106,6 +119,8 @@ module hpdcache_sram_wbyteenable_ecc_1rw
     if ((DATA_SIZE % 8) != 0) begin : gen_data_width_assertion
         $fatal(1, $sformatf("DATA_SIZE = %0d must be a multiple of 8", DATA_SIZE));
     end
+`endif
+    // }}}
 
 endmodule
 // vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en

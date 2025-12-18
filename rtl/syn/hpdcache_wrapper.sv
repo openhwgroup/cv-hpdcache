@@ -51,7 +51,10 @@ module hpdcache_wrapper
       memDataWidth: 512,
       wtEn: 1'b1,
       wbEn: 1'b1,
-      lowLatency: 1'b1
+      lowLatency: 1'b1,
+      eccDataEn: 1'b0,
+      eccDirEn: 1'b0,
+      eccScrubberEn: 1'b0
   },
 
   localparam hpdcache_pkg::hpdcache_cfg_t HPDcacheCfg = hpdcache_pkg::hpdcacheBuildConfig(
@@ -197,6 +200,10 @@ module hpdcache_wrapper
 
       .evt_cache_write_miss_o(  /* unused */),
       .evt_cache_read_miss_o (  /* unused */),
+      .evt_cache_dir_unc_err_o( /* unused */),
+      .evt_cache_dir_cor_err_o( /* unused */),
+      .evt_cache_dat_unc_err_o( /* unused */),
+      .evt_cache_dat_cor_err_o( /* unused */),
       .evt_uncached_req_o    (  /* unused */),
       .evt_cmo_req_o         (  /* unused */),
       .evt_write_req_o       (  /* unused */),
@@ -217,7 +224,11 @@ module hpdcache_wrapper
       .cfg_prefetch_updt_plru_i           (1'b1),
       .cfg_error_on_cacheable_amo_i       (1'b0),
       .cfg_rtab_single_entry_i            (1'b0),
-      .cfg_default_wb_i                   (1'b0)
+      .cfg_default_wb_i                   (1'b0),
+      .cfg_scrub_enable_i                 (1'b0),
+      .cfg_scrub_period_i                 (6'd10),
+      .cfg_scrub_restart_i                (1'b1)
   );
 
 endmodule  /* hpdcache_wrapper */
+// vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en
