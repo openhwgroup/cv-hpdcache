@@ -1,22 +1,8 @@
 /*
- *  Copyright 2023 CEA*
- *  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
- *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
+ *  Copyright 2023 Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+ *  Copyright 2025 Univ. Grenoble Alpes, Inria, TIMA Laboratory
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
- *
- *  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
- *  may not use this file except in compliance with the License, or, at your
- *  option, the Apache License version 2.0. You may obtain a copy of the
- *  License at
- *
- *  https://solderpad.org/licenses/SHL-2.1/
- *
- *  Unless required by applicable law or agreed to in writing, any work
- *  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
- *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- *  License for the specific language governing permissions and limitations
- *  under the License.
  */
 /*
  *  Authors       : Cesar Fuguet
@@ -75,6 +61,7 @@ import hpdcache_pkg::*;
     input  hpdcache_req_tid_t     req_tid_i,
     input  logic                  req_need_rsp_i,
     input  hpdcache_way_vector_t  req_hit_way_i,
+    input  hpdcache_req_data_t    req_old_data_i,
     //  }}}
 
     //  Write buffer interface
@@ -230,6 +217,7 @@ import hpdcache_pkg::*;
     logic                 req_need_rsp_q;
     hpdcache_way_vector_t req_hit_way_q;
     logic                 req_hit;
+    hpdcache_req_data_t   req_old_data_q;
 
     logic                 uc_sc_retcode_q, uc_sc_retcode_d;
 
@@ -246,6 +234,9 @@ import hpdcache_pkg::*;
     logic [63:0]          amo_st_data;
     logic [63:0]          amo_result;
     logic [63:0]          amo_write_data;
+
+    hpdcache_req_data_t   data_amo_write_data;
+    logic                 data_amo_write_merge;
 //  }}}
 
 //  LR/SC reservation buffer logic
@@ -612,13 +603,30 @@ import hpdcache_pkg::*;
     assign data_amo_write_word_o = req_addr_q[HPDcacheCfg.wordByteIdxWidth +:
                                               HPDcacheCfg.clWordIdxWidth];
     assign data_amo_write_way_o = req_hit_way_q;
-    assign data_amo_write_be_o = req_be_q;
 
     assign amo_write_data = prepare_amo_data_result(amo_result, req_size_q);
     if (HPDcacheCfg.reqDataWidth >= 64) begin : gen_amo_ram_write_data_ge_64
-        assign data_amo_write_data_o = {HPDcacheCfg.reqDataWidth/64{amo_write_data}};
+        assign data_amo_write_data = {HPDcacheCfg.reqDataWidth/64{amo_write_data}};
     end else begin : gen_amo_ram_write_data_lt_64
-        assign data_amo_write_data_o = amo_write_data;
+        assign data_amo_write_data = amo_write_data;
+    end
+
+    if (HPDcacheCfg.u.eccEn) begin : gen_data_req_write_ecc
+        assign data_amo_write_merge = (hpdcache_uint'(req_size_q) < HPDcacheCfg.wordByteIdxWidth);
+        always_comb
+        begin : data_amo_write_merge_comb
+            for (int i = 0; i < HPDcacheCfg.u.reqWords; i++) begin
+                for (int j = 0; j < HPDcacheCfg.u.wordWidth/8; j++) begin
+                    data_amo_write_be_o[i][j] = req_be_q[i][j] | data_amo_write_merge;
+                    data_amo_write_data_o[i][j*8 +: 8] =
+                        (     req_old_data_q[i][j*8 +: 8] & {8{~req_be_q[i][j]}}) |
+                        (data_amo_write_data[i][j*8 +: 8] & {8{ req_be_q[i][j]}});
+                end
+            end
+        end
+    end else begin : gen_data_req_write_noecc
+        assign data_amo_write_data_o = data_amo_write_data;
+        assign data_amo_write_be_o = req_be_q;
     end
 //  }}}
 
@@ -847,6 +855,7 @@ import hpdcache_pkg::*;
             req_uc_q <= 1'b0;
             req_need_rsp_q <= 1'b0;
             req_hit_way_q <= '0;
+            req_old_data_q <= '0;
         end else if (req_valid_i && req_ready_o) begin
             req_op_q <= req_op_i;
             req_addr_q <= req_addr_i;
@@ -854,6 +863,7 @@ import hpdcache_pkg::*;
             req_uc_q <= req_uc_i;
             req_need_rsp_q <= req_need_rsp_i;
             req_hit_way_q <= req_hit_way_i;
+            req_old_data_q <= req_old_data_i;
         end
     end
 //  }}}
@@ -948,3 +958,4 @@ import hpdcache_pkg::*;
 //  }}}
 
 endmodule
+// vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en
