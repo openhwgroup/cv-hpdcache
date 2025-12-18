@@ -1,16 +1,16 @@
 /*
  *  Copyright 2023 Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
- *  Copyright 2025 Univ. Grenoble Alpes, Inria, TIMA Laboratory
+ *  Copyright 2023 Univ. Grenoble Alpes, Inria, TIMA Laboratory
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
  */
 /*
  *  Authors       : Cesar Fuguet
- *  Creation Date : March, 2020
- *  Description   : SRAM behavioral model
+ *  Creation Date : December, 2025
+ *  Description   : Blackbox model of a 1RW SRAM with write byte enable and ECC
  *  History       :
  */
-module hpdcache_sram_1rw
+(* black_box *) module hpdcache_sram_wbyteenable_ecc_1rw
 #(
     parameter int unsigned ADDR_SIZE = 0,
     parameter int unsigned DATA_SIZE = 0,
@@ -23,27 +23,15 @@ module hpdcache_sram_1rw
     input  logic                            cs,
     input  logic                            we,
     input  logic [ADDR_SIZE-1:0]            addr,
-    input  logic [NDATA-1:0][DATA_SIZE-1:0] wdata,
-    output logic [NDATA-1:0][DATA_SIZE-1:0] rdata
+    input  logic [NDATA-1][DATA_SIZE-1:0]   wdata,
+    input  logic [NDATA-1][DATA_SIZE/8-1:0] wbyteenable,
+    output logic [NDATA-1][DATA_SIZE-1:0]   rdata
+
+    input  logic                            err_inj_i,
+    input  logic [NDATA-1:0][DATA_SIZE-1:0] err_inj_msk_i,
+    output logic [NDATA-1:0]                err_cor_o,
+    output logic [NDATA-1:0]                err_unc_o
 );
 
-    /*
-     *  Internal memory array declaration
-     */
-    typedef logic [NDATA-1:0][DATA_SIZE-1:0] mem_t [DEPTH];
-    mem_t mem;
-
-    /*
-     *  Process to update or read the memory array
-     */
-    always_ff @(posedge clk)
-    begin : mem_update_ff
-        if (cs == 1'b1) begin
-            if (we == 1'b1) begin
-                mem[addr] <= wdata;
-            end
-            rdata <= mem[addr];
-        end
-    end : mem_update_ff
 endmodule
 // vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en

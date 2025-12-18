@@ -6,11 +6,11 @@
  */
 /*
  *  Authors       : Cesar Fuguet
- *  Creation Date : March, 2020
- *  Description   : Behavioral model of a 1RW SRAM with write bit mask
+ *  Creation Date : December, 2025
+ *  Description   : Blackbox model of a 1RW SRAM with write bit mask and ECC
  *  History       :
  */
-module hpdcache_sram_wmask_1rw
+(* black_box *) module hpdcache_sram_wmask_ecc_1rw
 #(
     parameter int unsigned ADDR_SIZE = 0,
     parameter int unsigned DATA_SIZE = 0,
@@ -25,26 +25,13 @@ module hpdcache_sram_wmask_1rw
     input  logic [ADDR_SIZE-1:0]            addr,
     input  logic [NDATA-1:0][DATA_SIZE-1:0] wdata,
     input  logic [NDATA-1:0][DATA_SIZE-1:0] wmask,
-    output logic [NDATA-1:0][DATA_SIZE-1:0] rdata
+    output logic [NDATA-1:0][DATA_SIZE-1:0] rdata,
+
+    input  logic                            err_inj_i,
+    input  logic [NDATA-1:0][DATA_SIZE-1:0] err_inj_msk_i,
+    output logic [NDATA-1:0]                err_cor_o,
+    output logic [NDATA-1:0]                err_unc_o
 );
 
-    /*
-     *  Internal memory array declaration
-     */
-    typedef logic [NDATA-1:0][DATA_SIZE-1:0] mem_t [DEPTH];
-    mem_t mem;
-
-    /*
-     *  Process to update or read the memory array
-     */
-    always_ff @(posedge clk)
-    begin : mem_update_ff
-        if (cs == 1'b1) begin
-            if (we == 1'b1) begin
-                mem[addr] <= (mem[addr] & ~wmask) | (wdata & wmask);
-            end
-            rdata <= mem[addr];
-        end
-    end : mem_update_ff
 endmodule
 // vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en

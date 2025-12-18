@@ -1,7 +1,6 @@
 /*
- *  Copyright 2023 CEA*
- *  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
- *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
+ *  Copyright 2023 Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+ *  Copyright 2025 Univ. Grenoble Alpes, Inria, TIMA Laboratory
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
  *
@@ -179,8 +178,6 @@ import hpdcache_pkg::*;
                                                              HPDcacheCfg.u.accessWords;
     localparam int unsigned HPDCACHE_DATA_RAM_DEPTH = HPDcacheCfg.u.sets*
                                                       HPDCACHE_DATA_RAM_ENTR_PER_SET;
-    localparam int unsigned HPDCACHE_DATA_RAM_WIDTH = HPDcacheCfg.u.dataWaysPerRamWord*
-                                                      HPDcacheCfg.u.wordWidth;
     localparam int unsigned HPDCACHE_DATA_RAM_ADDR_WIDTH = $clog2(HPDCACHE_DATA_RAM_DEPTH);
     localparam int unsigned HPDCACHE_DATA_REQ_RATIO = HPDcacheCfg.u.accessWords/
                                                       HPDcacheCfg.u.reqWords;
@@ -378,16 +375,22 @@ import hpdcache_pkg::*;
         //
         for (dir_w = 0; dir_w < int'(HPDcacheCfg.u.ways); dir_w++) begin : gen_dir_sram
             hpdcache_sram #(
+                .ADDR_SIZE (HPDCACHE_DIR_RAM_ADDR_WIDTH),
                 .DATA_SIZE (HPDCACHE_DIR_RAM_WIDTH),
-                .ADDR_SIZE (HPDCACHE_DIR_RAM_ADDR_WIDTH)
-            ) dir_sram (
-                .clk       (clk_i),
-                .rst_n     (rst_ni),
-                .cs        (dir_cs[dir_w]),
-                .we        (dir_we[dir_w]),
-                .addr      (dir_addr),
-                .wdata     (dir_wentry[dir_w]),
-                .rdata     (dir_rentry[dir_w])
+                .NDATA     (1),
+                .ECC_EN    (1'b0)
+            ) dir_sram(
+                .clk           (clk_i),
+                .rst_n         (rst_ni),
+                .cs            (dir_cs[dir_w]),
+                .we            (dir_we[dir_w]),
+                .addr          (dir_addr),
+                .wdata         (dir_wentry[dir_w]),
+                .rdata         (dir_rentry[dir_w]),
+                .err_inj_i     (1'b0),
+                .err_inj_msk_i ('0),
+                .err_cor_o     (/*open*/),
+                .err_unc_o     (/*open*/)
             );
         end
 
@@ -395,47 +398,25 @@ import hpdcache_pkg::*;
         //
         for (y = 0; y < int'(HPDCACHE_DATA_RAM_Y_CUTS); y++) begin : gen_data_sram_row
             for (x = 0; x < int'(HPDCACHE_DATA_RAM_X_CUTS); x++) begin : gen_data_sram_col
-                if (HPDcacheCfg.u.dataRamByteEnable) begin : gen_data_sram_wbyteenable
-                    hpdcache_sram_wbyteenable #(
-                        .DATA_SIZE   (HPDCACHE_DATA_RAM_WIDTH),
-                        .ADDR_SIZE   (HPDCACHE_DATA_RAM_ADDR_WIDTH)
-                    ) data_sram (
-                        .clk         (clk_i),
-                        .rst_n       (rst_ni),
-                        .cs          (data_cs[y][x]),
-                        .we          (data_we[y][x]),
-                        .addr        (data_addr[y][x]),
-                        .wdata       (data_wentry[y][x]),
-                        .wbyteenable (data_wbyteenable[y][x]),
-                        .rdata       (data_rentry[y][x])
-                    );
-                end else begin : gen_data_sram_wmask
-                    hpdcache_data_ram_data_t data_wmask;
-
-                    //  build the bitmask from the write byte enable signal
-                    always_comb
-                    begin : data_wmask_comb
-                        for (int w = 0; w < HPDcacheCfg.u.dataWaysPerRamWord; w++) begin
-                            for (int b = 0; b < HPDcacheCfg.u.wordWidth/8; b++) begin
-                                data_wmask[w][8*b +: 8] = {8{data_wbyteenable[y][x][w][b]}};
-                            end
-                        end
-                    end
-
-                    hpdcache_sram_wmask #(
-                        .DATA_SIZE   (HPDCACHE_DATA_RAM_WIDTH),
-                        .ADDR_SIZE   (HPDCACHE_DATA_RAM_ADDR_WIDTH)
-                    ) data_sram (
-                        .clk         (clk_i),
-                        .rst_n       (rst_ni),
-                        .cs          (data_cs[y][x]),
-                        .we          (data_we[y][x]),
-                        .addr        (data_addr[y][x]),
-                        .wdata       (data_wentry[y][x]),
-                        .wmask       (data_wmask),
-                        .rdata       (data_rentry[y][x])
-                    );
-                end
+                hpdcache_sram_wbyteenable #(
+                    .ADDR_SIZE (HPDCACHE_DATA_RAM_ADDR_WIDTH),
+                    .DATA_SIZE (HPDcacheCfg.u.wordWidth),
+                    .NDATA     (HPDcacheCfg.u.dataWaysPerRamWord),
+                    .ECC_EN    (1'b0)
+                ) data_sram(
+                    .clk           (clk_i),
+                    .rst_n         (rst_ni),
+                    .cs            (data_cs[y][x]),
+                    .we            (data_we[y][x]),
+                    .addr          (data_addr[y][x]),
+                    .wdata         (data_wentry[y][x]),
+                    .wbyteenable   (data_wbyteenable[y][x]),
+                    .rdata         (data_rentry[y][x]),
+                    .err_inj_i     (1'b0),
+                    .err_inj_msk_i ('0),
+                    .err_cor_o     (/*open*/),
+                    .err_unc_o     (/*open*/)
+                );
             end
         end
     endgenerate
@@ -1000,3 +981,4 @@ import hpdcache_pkg::*;
 `endif
     //  }}}
 endmodule
+// vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en

@@ -13,8 +13,22 @@
   case (_TYPE)                                                               \
     prim_secded_pkg::SecdedHsiao: begin : gen_dec_hsiao                      \
       case (_WIDTH)                                                          \
+        29: begin : gen_dec_hsiao_29                                         \
+          prim_secded_36_29_dec _INST(                                       \
+            .data_i(_ENC_DATA),                                              \
+            .data_o(_DATA),                                                  \
+            .syndrome_o(_SYND),                                              \
+            .err_o(_ERR));                                                   \
+        end                                                                  \
         32: begin : gen_dec_hsiao_32                                         \
           prim_secded_39_32_dec _INST(                                       \
+            .data_i(_ENC_DATA),                                              \
+            .data_o(_DATA),                                                  \
+            .syndrome_o(_SYND),                                              \
+            .err_o(_ERR));                                                   \
+        end                                                                  \
+        48: begin : gen_dec_hsiao_48                                         \
+          prim_secded_55_48_dec _INST(                                       \
             .data_i(_ENC_DATA),                                              \
             .data_o(_DATA),                                                  \
             .syndrome_o(_SYND),                                              \
@@ -40,8 +54,18 @@
   case (_TYPE)                                                  \
     prim_secded_pkg::SecdedHsiao: begin : gen_enc_hsiao         \
       case (_WIDTH)                                             \
+        29: begin : gen_enc_hsiao_29                            \
+          prim_secded_36_29_enc _INST(                          \
+            .data_i(_DATA),                                     \
+            .data_o(_ENC_DATA));                                \
+        end                                                     \
         32: begin : gen_enc_hsiao_32                            \
           prim_secded_39_32_enc _INST(                          \
+            .data_i(_DATA),                                     \
+            .data_o(_ENC_DATA));                                \
+        end                                                     \
+        48: begin : gen_enc_hsiao_48                            \
+          prim_secded_55_48_enc _INST(                          \
             .data_i(_DATA),                                     \
             .data_o(_ENC_DATA));                                \
         end                                                     \
