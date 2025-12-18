@@ -3,19 +3,6 @@
  *  Copyright 2025 Univ. Grenoble Alpes, Inria, TIMA Laboratory
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
- *
- *  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
- *  may not use this file except in compliance with the License, or, at your
- *  option, the Apache License version 2.0. You may obtain a copy of the
- *  License at
- *
- *  https://solderpad.org/licenses/SHL-2.1/
- *
- *  Unless required by applicable law or agreed to in writing, any work
- *  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
- *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- *  License for the specific language governing permissions and limitations
- *  under the License.
  */
 /*
  *  Authors       : Cesar Fuguet
@@ -378,7 +365,7 @@ import hpdcache_pkg::*;
                 .ADDR_SIZE (HPDCACHE_DIR_RAM_ADDR_WIDTH),
                 .DATA_SIZE (HPDCACHE_DIR_RAM_WIDTH),
                 .NDATA     (1),
-                .ECC_EN    (1'b0)
+                .ECC_EN    (HPDcacheCfg.u.eccDirEn)
             ) dir_sram(
                 .clk           (clk_i),
                 .rst_n         (rst_ni),
@@ -402,7 +389,7 @@ import hpdcache_pkg::*;
                     .ADDR_SIZE (HPDCACHE_DATA_RAM_ADDR_WIDTH),
                     .DATA_SIZE (HPDcacheCfg.u.wordWidth),
                     .NDATA     (HPDcacheCfg.u.dataWaysPerRamWord),
-                    .ECC_EN    (1'b0)
+                    .ECC_EN    (HPDcacheCfg.u.eccDataEn)
                 ) data_sram(
                     .clk           (clk_i),
                     .rst_n         (rst_ni),
