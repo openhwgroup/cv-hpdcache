@@ -46,8 +46,9 @@ module hpdcache_sram_wbyteenable_1rw
                         if (wbyteenable[j][i]) mem[addr][j][i*8 +: 8] <= wdata[j][i*8 +: 8];
                     end
                 end
+            end else begin
+                rdata <= mem[addr];
             end
-            rdata <= mem[addr];
         end
     end
 endmodule

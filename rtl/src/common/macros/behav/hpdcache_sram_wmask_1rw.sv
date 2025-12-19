@@ -42,8 +42,9 @@ module hpdcache_sram_wmask_1rw
         if (cs == 1'b1) begin
             if (we == 1'b1) begin
                 mem[addr] <= (mem[addr] & ~wmask) | (wdata & wmask);
+            end else begin
+                rdata <= mem[addr];
             end
-            rdata <= mem[addr];
         end
     end : mem_update_ff
 endmodule
