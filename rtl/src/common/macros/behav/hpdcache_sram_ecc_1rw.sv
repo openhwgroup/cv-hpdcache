@@ -76,10 +76,15 @@ module hpdcache_sram_ecc_1rw
         assign err_unc_o[i] = err[i][1];
     end
 
+    //  Assertions
+    //  {{{
+`ifndef HPDCACHE_ASSERT_OFF
     if (!prim_secded_pkg::is_width_valid(prim_secded_pkg::SecdedHsiao, DATA_SIZE))
     begin : gen_ecc_valid_width_assertion
         $fatal(1, $sformatf("Unsupported DATA_SIZE = %0d", DATA_SIZE));
     end
+`endif
+    //  }}}
 
 endmodule
 // vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en
