@@ -1325,6 +1325,9 @@ import hpdcache_pkg::*;
     if (!HPDcacheCfg.u.wtEn && !HPDcacheCfg.u.wbEn) begin : gen_write_policy_assertion
         $fatal(1, "the cache shall be configured to support WT, WB or both");
     end
+    if (!HPDcacheCfg.u.lowLatency && HPDcacheCfg.u.eccDataEn) begin : gen_latency_and_ecc_assertion
+        $fatal(1, "ECC in DATA SRAMs only supported in lowLatency mode");
+    end
 `endif
     // }}}
 

@@ -1,22 +1,8 @@
 /*
- *  Copyright 2023-2024 CEA*
- *  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
- *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
+ *  Copyright 2023,2024 Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+ *  Copyright 2025 Univ. Grenoble Alpes, Inria, TIMA Laboratory
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
- *
- *  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
- *  may not use this file except in compliance with the License, or, at your
- *  option, the Apache License version 2.0. You may obtain a copy of the
- *  License at
- *
- *  https://solderpad.org/licenses/SHL-2.1/
- *
- *  Unless required by applicable law or agreed to in writing, any work
- *  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
- *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- *  License for the specific language governing permissions and limitations
- *  under the License.
  */
 /*
  *  Authors       : Cesar Fuguet
@@ -326,6 +312,7 @@ import hpdcache_pkg::*;
     logic                    st0_req_is_cmo_fence;
     logic                    st0_req_is_cmo_inval;
     logic                    st0_req_is_cmo_prefetch;
+    logic                    st0_req_is_partial;
     logic                    st0_req_cachedir_read;
     hpdcache_set_t           st0_req_set;
     hpdcache_word_t          st0_req_word;
@@ -343,6 +330,7 @@ import hpdcache_pkg::*;
     logic                    st1_req_abort;
     logic                    st1_req_cachedata_write;
     logic                    st1_req_cachedata_write_enable;
+    logic                    st1_req_cachedata_write_merge;
     hpdcache_pma_t           st1_req_pma;
     hpdcache_tag_t           st1_req_tag;
     hpdcache_set_t           st1_req_set;
@@ -370,6 +358,7 @@ import hpdcache_pkg::*;
     logic                    st1_req_is_cmo_flush;
     logic                    st1_req_is_cmo_fence;
     logic                    st1_req_is_cmo_prefetch;
+    logic                    st1_req_is_partial;
     logic                    st1_req_wr_wt;
     logic                    st1_req_wr_wb;
     logic                    st1_req_wr_auto;
@@ -479,6 +468,7 @@ import hpdcache_pkg::*;
     assign st0_req_is_cmo_fence    =    is_cmo_fence(st0_req.op);
     assign st0_req_is_cmo_inval    =    is_cmo_inval(st0_req.op);
     assign st0_req_is_cmo_prefetch = is_cmo_prefetch(st0_req.op);
+    assign st0_req_is_partial      = (st0_req.size < HPDcacheCfg.wordByteIdxWidth);
     //  }}}
 
     //  Decode operation in stage 1
@@ -541,6 +531,7 @@ import hpdcache_pkg::*;
     assign st1_req_is_cmo_flush    =    is_cmo_flush(st1_req.op);
     assign st1_req_is_cmo_fence    =    is_cmo_fence(st1_req.op);
     assign st1_req_is_cmo_prefetch = is_cmo_prefetch(st1_req.op);
+    assign st1_req_is_partial      = (st1_req.size < HPDcacheCfg.wordByteIdxWidth);
 
     //  Decode write-policy hint
     assign st1_req_wr_wt           = (st1_req.pma.wr_policy_hint == HPDCACHE_WR_POLICY_WT);
@@ -569,6 +560,7 @@ import hpdcache_pkg::*;
         .st0_req_is_cmo_fence_i             (st0_req_is_cmo_fence),
         .st0_req_is_cmo_inval_i             (st0_req_is_cmo_inval),
         .st0_req_is_cmo_prefetch_i          (st0_req_is_cmo_prefetch),
+        .st0_req_is_partial_i               (st0_req_is_partial),
         .st0_req_mshr_check_o               (st0_mshr_check_o),
         .st0_req_cachedir_read_o            (st0_req_cachedir_read),
 
@@ -585,6 +577,7 @@ import hpdcache_pkg::*;
         .st1_req_is_cmo_flush_i             (st1_req_is_cmo_flush),
         .st1_req_is_cmo_fence_i             (st1_req_is_cmo_fence),
         .st1_req_is_cmo_prefetch_i          (st1_req_is_cmo_prefetch),
+        .st1_req_is_partial_i               (st1_req_is_partial),
         .st1_req_wr_wt_i                    (st1_req_wr_wt),
         .st1_req_wr_wb_i                    (st1_req_wr_wb),
         .st1_req_wr_auto_i                  (st1_req_wr_auto),
@@ -604,6 +597,7 @@ import hpdcache_pkg::*;
         .st1_req_cachedir_updt_sel_victim_o (st1_req_updt_sel_victim),
         .st1_req_cachedata_write_o          (st1_req_cachedata_write),
         .st1_req_cachedata_write_enable_o   (st1_req_cachedata_write_enable),
+        .st1_req_cachedata_write_merge_o    (st1_req_cachedata_write_merge),
         .st1_no_pend_trans_i                (st1_no_pend_trans),
 
         .st2_mshr_alloc_i                   (st2_mshr_alloc_q),
@@ -1003,6 +997,7 @@ import hpdcache_pkg::*;
 
         .data_req_write_i              (st1_req_cachedata_write),
         .data_req_write_enable_i       (st1_req_cachedata_write_enable),
+        .data_req_write_merge_i        (st1_req_cachedata_write_merge),
         .data_req_write_set_i          (st1_req_set),
         .data_req_write_way_i          (st1_dir_hit_way),
         .data_req_write_size_i         (st1_req.size),
@@ -1362,3 +1357,4 @@ import hpdcache_pkg::*;
 `endif
     //  }}}
 endmodule
+// vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en

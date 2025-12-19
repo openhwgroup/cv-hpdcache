@@ -1,22 +1,8 @@
 /*
- *  Copyright 2023 CEA*
- *  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
- *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
+ *  Copyright 2023,2024 Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+ *  Copyright 2025 Univ. Grenoble Alpes, Inria, TIMA Laboratory
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
- *
- *  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
- *  may not use this file except in compliance with the License, or, at your
- *  option, the Apache License version 2.0. You may obtain a copy of the
- *  License at
- *
- *  https://solderpad.org/licenses/SHL-2.1/
- *
- *  Unless required by applicable law or agreed to in writing, any work
- *  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
- *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- *  License for the specific language governing permissions and limitations
- *  under the License.
  */
 /*
  *  Authors       : Cesar Fuguet
@@ -61,6 +47,7 @@ import hpdcache_pkg::*;
     input  logic                   st0_req_is_cmo_fence_i,
     input  logic                   st0_req_is_cmo_inval_i,
     input  logic                   st0_req_is_cmo_prefetch_i,
+    input  logic                   st0_req_is_partial_i,
     output logic                   st0_req_mshr_check_o,
     output logic                   st0_req_cachedir_read_o,
     //   }}}
@@ -80,6 +67,7 @@ import hpdcache_pkg::*;
     input  logic                   st1_req_is_cmo_flush_i,
     input  logic                   st1_req_is_cmo_fence_i,
     input  logic                   st1_req_is_cmo_prefetch_i,
+    input  logic                   st1_req_is_partial_i,
     input  logic                   st1_req_wr_wt_i,
     input  logic                   st1_req_wr_wb_i,
     input  logic                   st1_req_wr_auto_i,
@@ -99,6 +87,7 @@ import hpdcache_pkg::*;
     output logic                   st1_req_cachedir_updt_sel_victim_o,
     output logic                   st1_req_cachedata_write_o,
     output logic                   st1_req_cachedata_write_enable_o,
+    output logic                   st1_req_cachedata_write_merge_o,
     input  logic                   st1_mshr_alloc_ready_i,
     input  logic                   st1_mshr_hit_i,
     input  logic                   st1_mshr_full_i,
@@ -283,7 +272,7 @@ import hpdcache_pkg::*;
         automatic logic nop;
         automatic logic st1_nop; //  Do not consume a request in stage 0 because of stage 1 hazard
         automatic logic st2_nop; //  Do not consume a request in stage 0 because of stage 2 hazard
-        automatic logic st1_req_is_cacheable_store;
+        automatic logic st0_req_is_pstore;
 
         uc_req_valid_o                      = 1'b0;
 
@@ -300,14 +289,15 @@ import hpdcache_pkg::*;
         st0_req_mshr_check_o                = 1'b0;
         st0_req_cachedir_read_o             = 1'b0;
         st0_req_cachedata_read              = 1'b0;
+        st0_req_is_pstore                   = st0_req_is_store_i & st0_req_is_partial_i;
 
         st1_req_valid_o                     = st1_req_valid_i;
         st1_req_is_error_o                  = st1_req_is_error_i;
-        st1_req_is_cacheable_store          = 1'b0;
         st1_nop                             = 1'b0;
         st1_req_cachedata_read              = 1'b0;
         st1_req_cachedata_write_o           = 1'b0;
         st1_req_cachedata_write_enable_o    = 1'b0;
+        st1_req_cachedata_write_merge_o     = 1'b0;
         st1_req_cachedir_sel_victim_o       = 1'b0;
         st1_req_cachedir_updt_sel_victim_o  = 1'b0;
         st1_rsp_valid_o                     = 1'b0;
@@ -751,7 +741,7 @@ import hpdcache_pkg::*;
                         // with the write
                         else begin
                             st1_nop = (st1_req_rtab_i & ~rtab_req_valid_i) |
-                                      (rd_wr_conflict_i & st0_req_is_load_i);
+                                      (rd_wr_conflict_i & (st0_req_is_load_i | st0_req_is_pstore));
                         end
 
                         //  Enable the data RAM in case of write. However, the actual write
@@ -761,6 +751,13 @@ import hpdcache_pkg::*;
                         //  write misses, but removes timing paths between the cache directory
                         //  RAM and the data RAM chip-select.
                         st1_req_cachedata_write_o = 1'b1;
+
+                        //  When implementing ECC in the data SRAMs, in case of a partial write,
+                        //  written data needs to be merged with the old data according to the byte
+                        //  enable
+                        if (HPDcacheCfg.u.eccDataEn) begin
+                            st1_req_cachedata_write_merge_o = st1_req_is_partial_i;
+                        end
 
                         //  Pending miss on the same line
                         if (st1_mshr_hit_i) begin
@@ -1097,11 +1094,12 @@ import hpdcache_pkg::*;
                 !st0_req_is_uncacheable_i &&
                 !st0_req_is_error_i)
             begin
-                st1_req_is_cacheable_store = st1_req_valid_i & st1_req_is_store_i &
-                        ~st1_req_is_uncacheable_i;
-
                 if (HPDcacheCfg.u.lowLatency) begin
-                    st0_req_cachedata_read = st0_req_is_load_i;
+                    if (HPDcacheCfg.u.eccDataEn) begin
+                        st0_req_cachedata_read = st0_req_is_load_i | st0_req_is_pstore;
+                    end else begin
+                        st0_req_cachedata_read = st0_req_is_load_i;
+                    end
                 end
 
                 if (st0_req_is_load_i         |
@@ -1120,3 +1118,4 @@ import hpdcache_pkg::*;
     end
     //  }}}
 endmodule
+// vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en

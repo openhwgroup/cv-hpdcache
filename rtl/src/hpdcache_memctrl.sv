@@ -126,6 +126,7 @@ import hpdcache_pkg::*;
 
     input  logic                                data_req_write_i,
     input  logic                                data_req_write_enable_i,
+    input  logic                                data_req_write_merge_i,
     input  hpdcache_set_t                       data_req_write_set_i,
     input  hpdcache_way_vector_t                data_req_write_way_i,
     input  hpdcache_req_size_t                  data_req_write_size_i,
@@ -295,6 +296,8 @@ import hpdcache_pkg::*;
     hpdcache_word_t                            data_write_word;
     hpdcache_access_data_t                     data_write_data;
     hpdcache_access_be_t                       data_write_be;
+    hpdcache_req_data_t                        data_req_write_data_merged;
+    hpdcache_req_be_t                          data_req_write_be_merged;
 
     logic                                      data_read;
     hpdcache_set_t                             data_read_set;
@@ -631,26 +634,43 @@ import hpdcache_pkg::*;
 
     //  Data RAM request multiplexor
     //  {{{
+    if (HPDcacheCfg.u.eccDataEn) begin : gen_data_req_write_ecc
+        always_comb
+        begin : data_req_write_data_merge_comb
+            for (int i = 0; i < HPDcacheCfg.u.reqWords; i++) begin
+                for (int j = 0; j < HPDcacheCfg.u.wordWidth/8; j++) begin
+                    data_req_write_data_merged[i][j*8 +: 8] =
+                            (data_req_read_data_o[i][j*8 +: 8]  & {8{~data_req_write_be_i[i][j]}}) |
+                            (data_req_write_data_i[i][j*8 +: 8] & {8{ data_req_write_be_i[i][j]}});
+
+                    data_req_write_be_merged[i][j] = data_req_write_be_i[i][j] | data_req_write_merge_i;
+                end
+            end
+        end
+    end else begin : gen_data_req_write_noecc
+        assign data_req_write_data_merged = data_req_write_data_i;
+        assign data_req_write_be_merged   = data_req_write_be_i;
+    end
 
     //  Upsize the request interface to match the maximum access width of the data RAM
     if (HPDCACHE_DATA_REQ_RATIO > 1) begin : gen_upsize_data_req_write
         //  demux request DATA
-        assign data_req_write_data = {HPDCACHE_DATA_REQ_RATIO{data_req_write_data_i}};
+        assign data_req_write_data = {HPDCACHE_DATA_REQ_RATIO{data_req_write_data_merged}};
 
         //  demux request BE
         hpdcache_demux #(
             .NOUTPUT     (HPDCACHE_DATA_REQ_RATIO),
-            .DATA_WIDTH  (HPDcacheCfg.reqDataWidth/8),
+            .DATA_WIDTH  (HPDcacheCfg.reqDataBytes),
             .ONE_HOT_SEL (1'b0)
         ) data_req_write_be_demux_i (
-            .data_i      (data_req_write_be_i),
+            .data_i      (data_req_write_be_merged),
             .sel_i       (data_req_write_word_i[HPDcacheCfg.reqWordIdxWidth +:
                                                 $clog2(HPDCACHE_DATA_REQ_RATIO)]),
             .data_o      (data_req_write_be)
         );
     end else begin : gen_eqsize_data_req_write
-        assign data_req_write_data = data_req_write_data_i;
-        assign data_req_write_be   = data_req_write_be_i;
+        assign data_req_write_data = data_req_write_data_merged;
+        assign data_req_write_be   = data_req_write_be_merged;
     end
 
     //  Upsize the AMO data interface to match the maximum access width of the data RAM
@@ -659,7 +679,7 @@ import hpdcache_pkg::*;
 
         hpdcache_demux #(
             .NOUTPUT          (HPDCACHE_DATA_REQ_RATIO),
-            .DATA_WIDTH       (HPDcacheCfg.reqDataWidth/8),
+            .DATA_WIDTH       (HPDcacheCfg.reqDataBytes),
             .ONE_HOT_SEL      (1'b0)
         ) amo_be_demux_i(
             .data_i           (data_amo_write_be_i),
