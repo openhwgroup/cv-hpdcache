@@ -10,6 +10,8 @@
  *  Description   : Behavioral model of a 1RW SRAM with write bit mask and ECC
  *  History       :
  */
+`include "prim_secded_inc.svh"
+
 module hpdcache_sram_wmask_ecc_1rw
 #(
     parameter int unsigned ADDR_SIZE = 0,
