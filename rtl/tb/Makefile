@@ -66,6 +66,7 @@ RUN_LOG             ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(LOG_SUFFIX).log
 TRACE_FILE          ?= $(LOG_DIR)/run_$(SEQUENCE)_$(SEED)$(LOG_SUFFIX).vcd
 COV_FILE            ?= $(COV_DIR)/cov_$(SEQUENCE)_$(SEED)$(LOG_SUFFIX).dat
 COV_MERGEFILE       ?= $(COV_DIR)/cov_result.dat
+CONFIG_NAME          = $(notdir $(basename $(CONFIG)))
 DATE_TIME           ?= $(shell date "+%Y_%m_%d-%H%M")
 
 export CXX             := $(CXX)
@@ -251,18 +252,19 @@ nonreg: nonregression
 .PHONY: nonregression
 nonregression:
 	$(Q)$(ECHO) "Running non-regression testsuite with SEQUENCE=$(SEQUENCE)..."
-	$(Q)$(MKDIR) $(LOG_DIR)/nonreg_$(DATE_TIME)
+	$(Q)$(MKDIR) $(LOG_DIR)/nonreg_$(CONFIG_NAME)_$(DATE_TIME)
 	$(Q)i=1 ; \
+	logprefix=$(LOG_DIR)/nonreg_$(CONFIG_NAME)_$(DATE_TIME)/$(SEQUENCE) ; \
 	for s in $(shell head -n $(NTESTS) scripts/random_numbers.dat | tr '\n' ' ') ; do \
+	    logfile=$${logprefix}_$$s.log ; \
 	    $(ECHO) "[$$i/$(NTESTS)] Running sequence $(SEQUENCE) SEED=$$s" ; \
 	    ((i++)) ; \
-	    $(MAKE) -s run SEED=$$s \
-	            RUN_LOG=$(LOG_DIR)/nonreg_$(DATE_TIME)/$(SEQUENCE)_$$s.log ; \
-	done ;
-	$(Q)$(SCANLOG) -pat scripts/scan_patterns/run_patterns.pat \
+	    $(MAKE) -s run SEED=$$s RUN_LOG=$${logfile} ; \
+	done ; \
+	$(SCANLOG) -pat scripts/scan_patterns/run_patterns.pat \
 	        -att scripts/scan_patterns/run_attributes.pat \
-	        -nowarn $(LOG_DIR)/nonreg_$(DATE_TIME)/$(SEQUENCE)_*.log \
-	        2>&1 | tee $(LOG_DIR)/nonreg_$(DATE_TIME)/nonreg.scan.log ; \
+	        -nowarn $${logprefix}_*.log \
+	        2>&1 | tee $${logprefix}_nonreg.log.scan ; \
 	        exit $${PIPESTATUS[0]}
 
 .PHONY: cov
