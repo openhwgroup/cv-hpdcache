@@ -643,7 +643,8 @@ import hpdcache_pkg::*;
                             (data_req_read_data_o[i][j*8 +: 8]  & {8{~data_req_write_be_i[i][j]}}) |
                             (data_req_write_data_i[i][j*8 +: 8] & {8{ data_req_write_be_i[i][j]}});
 
-                    data_req_write_be_merged[i][j] = data_req_write_be_i[i][j] | data_req_write_merge_i;
+                    data_req_write_be_merged[i][j] = data_req_write_be_i[i][j] |
+                                                     data_req_write_merge_i;
                 end
             end
         end
