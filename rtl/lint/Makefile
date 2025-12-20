@@ -17,6 +17,7 @@ verilator-lint:
 		$(HPDCACHE_DIR)/rtl/src/utils/ecc/prim_secded_pkg.sv \
 		$(HPDCACHE_DIR)/rtl/src/utils/ecc/prim_secded_*enc.sv \
 		$(HPDCACHE_DIR)/rtl/src/utils/ecc/prim_secded_*dec.sv \
+		+incdir+${HPDCACHE_DIR}/rtl/src/utils/ecc \
 		-f $(HPDCACHE_DIR)/rtl/hpdcache.Flist \
 		$(HPDCACHE_DIR)/rtl/src/common/macros/behav/*.sv \
 		hpdcache_lint.sv

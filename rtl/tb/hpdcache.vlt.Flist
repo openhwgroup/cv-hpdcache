@@ -10,6 +10,7 @@
 #  Description: HPDCACHE Testbench Filelist
 ##
 #  list of HPDcache files
++incdir+${HPDCACHE_DIR}/rtl/src/utils/ecc
 -F ${HPDCACHE_DIR}/rtl/hpdcache.Flist
 
 #  ECC modules
