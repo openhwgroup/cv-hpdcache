@@ -1,22 +1,8 @@
 ##
-#  Copyright 2023,2024 CEA*
-#  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
-#  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
+#  Copyright 2023,2024 Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+#  Copyright 2025 Univ. Grenoble Alpes, Inria, TIMA Laboratory
 #
 #  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
-#
-#  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
-#  may not use this file except in compliance with the License, or, at your
-#  option, the Apache License version 2.0. You may obtain a copy of the
-#  License at
-#
-#  https://solderpad.org/licenses/SHL-2.1/
-#
-#  Unless required by applicable law or agreed to in writing, any work
-#  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
-#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-#  License for the specific language governing permissions and limitations
-#  under the License.
 ##
 ##
 #  Author     : Cesar Fuguet
@@ -252,20 +238,12 @@ nonreg: nonregression
 .PHONY: nonregression
 nonregression:
 	$(Q)$(ECHO) "Running non-regression testsuite with SEQUENCE=$(SEQUENCE)..."
-	$(Q)$(MKDIR) $(LOG_DIR)/nonreg_$(CONFIG_NAME)_$(DATE_TIME)
-	$(Q)i=1 ; \
-	logprefix=$(LOG_DIR)/nonreg_$(CONFIG_NAME)_$(DATE_TIME)/$(SEQUENCE) ; \
-	for s in $(shell head -n $(NTESTS) scripts/random_numbers.dat | tr '\n' ' ') ; do \
-	    logfile=$${logprefix}_$$s.log ; \
-	    $(ECHO) "[$$i/$(NTESTS)] Running sequence $(SEQUENCE) SEED=$$s" ; \
-	    ((i++)) ; \
-	    $(MAKE) -s run SEED=$$s RUN_LOG=$${logfile} ; \
-	done ; \
-	$(SCANLOG) -pat scripts/scan_patterns/run_patterns.pat \
-	        -att scripts/scan_patterns/run_attributes.pat \
-	        -nowarn $${logprefix}_*.log \
-	        2>&1 | tee $${logprefix}_nonreg.log.scan ; \
-	        exit $${PIPESTATUS[0]}
+	./scripts/run_nonregression.sh \
+		-s ${SEQUENCE} \
+		-n ${NTESTS} \
+		-t ${NTRANSACTIONS} \
+		-l $(LOG_DIR)/nonreg_$(CONFIG_NAME)_$(DATE_TIME) \
+		-c ${CONFIG}
 
 .PHONY: cov
 cov: $(COV_MERGEFILE) $(COV_MERGEFILE).info
