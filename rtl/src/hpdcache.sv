@@ -259,6 +259,7 @@ import hpdcache_pkg::*;
     hpdcache_req_tid_t     uc_req_tid;
     logic                  uc_req_need_rsp;
     hpdcache_way_vector_t  uc_req_dir_hit_way;
+    hpdcache_req_data_t    uc_req_old_data;
     logic                  uc_wbuf_flush_all;
     logic                  uc_data_amo_write;
     logic                  uc_data_amo_write_enable;
@@ -590,6 +591,7 @@ import hpdcache_pkg::*;
         .uc_req_tid_o                       (uc_req_tid),
         .uc_req_need_rsp_o                  (uc_req_need_rsp),
         .uc_req_dir_hit_way_o               (uc_req_dir_hit_way),
+        .uc_req_old_data_o                  (uc_req_old_data),
         .uc_wbuf_flush_all_i                (uc_wbuf_flush_all),
         .uc_data_amo_write_i                (uc_data_amo_write),
         .uc_data_amo_write_enable_i         (uc_data_amo_write_enable),
@@ -872,6 +874,7 @@ import hpdcache_pkg::*;
         .req_tid_i                     (uc_req_tid),
         .req_need_rsp_i                (uc_req_need_rsp),
         .req_hit_way_i                 (uc_req_dir_hit_way),
+        .req_old_data_i                (uc_req_old_data),
 
         .wbuf_flush_all_o              (uc_wbuf_flush_all),
 

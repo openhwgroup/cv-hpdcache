@@ -170,6 +170,7 @@ import hpdcache_pkg::*;
     output hpdcache_req_tid_t     uc_req_tid_o,
     output logic                  uc_req_need_rsp_o,
     output hpdcache_way_vector_t  uc_req_dir_hit_way_o,
+    output hpdcache_req_data_t    uc_req_old_data_o,
     input  logic                  uc_wbuf_flush_all_i,
     input  logic                  uc_data_amo_write_i,
     input  logic                  uc_data_amo_write_enable_i,
@@ -468,7 +469,7 @@ import hpdcache_pkg::*;
     assign st0_req_is_cmo_fence    =    is_cmo_fence(st0_req.op);
     assign st0_req_is_cmo_inval    =    is_cmo_inval(st0_req.op);
     assign st0_req_is_cmo_prefetch = is_cmo_prefetch(st0_req.op);
-    assign st0_req_is_partial      = (st0_req.size < HPDcacheCfg.wordByteIdxWidth);
+    assign st0_req_is_partial      = (hpdcache_uint'(st0_req.size) < HPDcacheCfg.wordByteIdxWidth);
     //  }}}
 
     //  Decode operation in stage 1
@@ -531,7 +532,7 @@ import hpdcache_pkg::*;
     assign st1_req_is_cmo_flush    =    is_cmo_flush(st1_req.op);
     assign st1_req_is_cmo_fence    =    is_cmo_fence(st1_req.op);
     assign st1_req_is_cmo_prefetch = is_cmo_prefetch(st1_req.op);
-    assign st1_req_is_partial      = (st1_req.size < HPDcacheCfg.wordByteIdxWidth);
+    assign st1_req_is_partial      = (hpdcache_uint'(st1_req.size) < HPDcacheCfg.wordByteIdxWidth);
 
     //  Decode write-policy hint
     assign st1_req_wr_wt           = (st1_req.pma.wr_policy_hint == HPDCACHE_WR_POLICY_WT);
@@ -1062,31 +1063,32 @@ import hpdcache_pkg::*;
 
     //  Uncacheable request handler outputs
     //  {{{
-    assign uc_lrsc_snoop_o           = st1_req_valid_q & st1_req_is_store,
-           uc_lrsc_snoop_addr_o      = st1_req_addr,
-           uc_lrsc_snoop_size_o      = st1_req.size,
-           uc_req_addr_o             = st1_req_addr,
-           uc_req_size_o             = st1_req.size,
-           uc_req_data_o             = st1_req.wdata,
-           uc_req_be_o               = st1_req.be,
-           uc_req_uc_o               = st1_req_is_uncacheable,
-           uc_req_sid_o              = st1_req.sid,
-           uc_req_tid_o              = st1_req.tid,
-           uc_req_need_rsp_o         = st1_req.need_rsp,
-           uc_req_dir_hit_way_o      = st1_dir_hit_way,
-           uc_req_op_o.is_ld         = st1_req_is_load,
-           uc_req_op_o.is_st         = st1_req_is_store,
-           uc_req_op_o.is_amo_lr     = st1_req_is_amo_lr,
-           uc_req_op_o.is_amo_sc     = st1_req_is_amo_sc,
-           uc_req_op_o.is_amo_swap   = st1_req_is_amo_swap,
-           uc_req_op_o.is_amo_add    = st1_req_is_amo_add,
-           uc_req_op_o.is_amo_and    = st1_req_is_amo_and,
-           uc_req_op_o.is_amo_or     = st1_req_is_amo_or,
-           uc_req_op_o.is_amo_xor    = st1_req_is_amo_xor,
-           uc_req_op_o.is_amo_max    = st1_req_is_amo_max,
-           uc_req_op_o.is_amo_maxu   = st1_req_is_amo_maxu,
-           uc_req_op_o.is_amo_min    = st1_req_is_amo_min,
-           uc_req_op_o.is_amo_minu   = st1_req_is_amo_minu;
+    assign uc_lrsc_snoop_o           = st1_req_valid_q & st1_req_is_store;
+    assign uc_lrsc_snoop_addr_o      = st1_req_addr;
+    assign uc_lrsc_snoop_size_o      = st1_req.size;
+    assign uc_req_addr_o             = st1_req_addr;
+    assign uc_req_size_o             = st1_req.size;
+    assign uc_req_data_o             = st1_req.wdata;
+    assign uc_req_be_o               = st1_req.be;
+    assign uc_req_uc_o               = st1_req_is_uncacheable;
+    assign uc_req_sid_o              = st1_req.sid;
+    assign uc_req_tid_o              = st1_req.tid;
+    assign uc_req_need_rsp_o         = st1_req.need_rsp;
+    assign uc_req_dir_hit_way_o      = st1_dir_hit_way;
+    assign uc_req_old_data_o         = data_req_read_data;
+    assign uc_req_op_o.is_ld         = st1_req_is_load;
+    assign uc_req_op_o.is_st         = st1_req_is_store;
+    assign uc_req_op_o.is_amo_lr     = st1_req_is_amo_lr;
+    assign uc_req_op_o.is_amo_sc     = st1_req_is_amo_sc;
+    assign uc_req_op_o.is_amo_swap   = st1_req_is_amo_swap;
+    assign uc_req_op_o.is_amo_add    = st1_req_is_amo_add;
+    assign uc_req_op_o.is_amo_and    = st1_req_is_amo_and;
+    assign uc_req_op_o.is_amo_or     = st1_req_is_amo_or;
+    assign uc_req_op_o.is_amo_xor    = st1_req_is_amo_xor;
+    assign uc_req_op_o.is_amo_max    = st1_req_is_amo_max;
+    assign uc_req_op_o.is_amo_maxu   = st1_req_is_amo_maxu;
+    assign uc_req_op_o.is_amo_min    = st1_req_is_amo_min;
+    assign uc_req_op_o.is_amo_minu   = st1_req_is_amo_minu;
     //  }}}
 
     //  CMO request handler outputs

@@ -32,6 +32,7 @@
 #include <systemc>
 
 #define HPDCACHE_TEST_SEQUENCE_ENABLE_ERROR_SEGMENTS 1
+#define HPDCACHE_TEST_SEQUENCE_AMO_SUPPORT true
 
 class hpdcache_test_random_seq : public hpdcache_test_sequence
 {
@@ -45,25 +46,25 @@ public:
         seg[0].set_base(0x00000000ULL);
         seg[0].set_length(0x00004000ULL);
         seg[0].set_uncached(false);
-        seg[0].set_amo_supported(true);
+        seg[0].set_amo_supported(HPDCACHE_TEST_SEQUENCE_AMO_SUPPORT);
         seg[0].set_wr_policy_hint(hpdcache_test_memory_segment::WR_POLICY_RANDOM);
 
         seg[1].set_base(0x40004000ULL);
         seg[1].set_length(0x00004000ULL);
         seg[1].set_uncached(false);
-        seg[1].set_amo_supported(true);
+        seg[1].set_amo_supported(HPDCACHE_TEST_SEQUENCE_AMO_SUPPORT);
         seg[1].set_wr_policy_hint(hpdcache_test_memory_segment::WR_POLICY_WB);
 
         seg[2].set_base(0x80008000ULL);
         seg[2].set_length(0x00004000ULL);
         seg[2].set_uncached(false);
-        seg[2].set_amo_supported(true);
+        seg[2].set_amo_supported(HPDCACHE_TEST_SEQUENCE_AMO_SUPPORT);
         seg[2].set_wr_policy_hint(hpdcache_test_memory_segment::WR_POLICY_WT);
 
         seg[3].set_base(0xC000C000ULL);
         seg[3].set_length(0x00004000ULL);
         seg[3].set_uncached(true);
-        seg[3].set_amo_supported(true);
+        seg[3].set_amo_supported(HPDCACHE_TEST_SEQUENCE_AMO_SUPPORT);
         seg[3].set_wr_policy_hint(hpdcache_test_memory_segment::WR_POLICY_AUTO);
 
         hpdcache_test_sequence::seg_distribution.push(0, 33);
@@ -112,9 +113,9 @@ public:
         hpdcache_test_sequence::op->set_mode(op_distribution);
 
         hpdcache_test_sequence::op_amo_distribution.push(
-            hpdcache_test_transaction_req::HPDCACHE_REQ_LOAD, 400);
+            hpdcache_test_transaction_req::HPDCACHE_REQ_LOAD, 800);
         hpdcache_test_sequence::op_amo_distribution.push(
-            hpdcache_test_transaction_req::HPDCACHE_REQ_STORE, 350);
+            hpdcache_test_transaction_req::HPDCACHE_REQ_STORE, 600);
         hpdcache_test_sequence::op_amo_distribution.push(
             hpdcache_test_transaction_req::HPDCACHE_REQ_CMO_FENCE, 10);
         hpdcache_test_sequence::op_amo_distribution.push(

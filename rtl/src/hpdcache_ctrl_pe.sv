@@ -273,6 +273,7 @@ import hpdcache_pkg::*;
         automatic logic st1_nop; //  Do not consume a request in stage 0 because of stage 1 hazard
         automatic logic st2_nop; //  Do not consume a request in stage 0 because of stage 2 hazard
         automatic logic st0_req_is_pstore;
+        automatic logic st0_req_is_pamo;
 
         uc_req_valid_o                      = 1'b0;
 
@@ -290,6 +291,7 @@ import hpdcache_pkg::*;
         st0_req_cachedir_read_o             = 1'b0;
         st0_req_cachedata_read              = 1'b0;
         st0_req_is_pstore                   = st0_req_is_store_i & st0_req_is_partial_i;
+        st0_req_is_pamo                     = st0_req_is_amo_i & st0_req_is_partial_i;
 
         st1_req_valid_o                     = st1_req_valid_i;
         st1_req_is_error_o                  = st1_req_is_error_i;
@@ -1090,13 +1092,15 @@ import hpdcache_pkg::*;
             //          This increases the power consumption in that cases, but
             //          removes the timing paths RAM-to-RAM between the cache
             //          directory and the data array.
-            if ((core_req_ready_o | rtab_req_ready_o) &&
-                !st0_req_is_uncacheable_i &&
-                !st0_req_is_error_i)
+            if ((core_req_ready_o | rtab_req_ready_o)
+                && !st0_req_is_uncacheable_i
+                && !st0_req_is_error_i)
             begin
                 if (HPDcacheCfg.u.lowLatency) begin
                     if (HPDcacheCfg.u.eccDataEn) begin
-                        st0_req_cachedata_read = st0_req_is_load_i | st0_req_is_pstore;
+                        st0_req_cachedata_read = st0_req_is_load_i
+                                               | st0_req_is_pstore
+                                               | st0_req_is_pamo;
                     end else begin
                         st0_req_cachedata_read = st0_req_is_load_i;
                     end

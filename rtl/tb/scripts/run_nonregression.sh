@@ -14,7 +14,9 @@ sequence=random
 ntests=32
 ntrans=30000
 logdir=nonreg
+loglevel=1
 config=configs/default_config.mk
+coverage=0
 
 help() {
     echo "help: $0"
@@ -23,6 +25,8 @@ help() {
     echo "      -t <ntrans>          desc: number of transactions (default: ${ntrans})"
     echo "      -l <logdir>          desc: logs directory (default: ${logdir})"
     echo "      -c <config>          desc: config file (default: ${config})"
+    echo "      -d <loglevel>        desc: logging level (default: ${loglevel})"
+    echo "      -e <coverage>        desc: coverage (default: ${coverage})"
     echo "      -h                   desc: show this help message"
 }
 
@@ -46,6 +50,12 @@ while [[ $# -gt 0 ]] ; do
         -j)
             njobs=$2
             shift 2 ;;
+        -d)
+            loglevel=$2
+            shift 2 ;;
+        -e)
+            coverage=$2
+            shift 2 ;;
         -h)
             help
             exit 1 ;;
@@ -59,9 +69,11 @@ mkdir -p ${logdir}
 for s in $(head -n ${ntests} scripts/random_numbers.dat | tr '\n' ' ') ; do
     echo "[$i/${ntests}] Running sequence ${sequence} SEED=${s}" ; ((i++)) ;
     make -s run SEQUENCE=${sequence} SEED=${s} NTRANSACTIONS=${ntrans} \
-            RUN_LOG=${logdir}/${sequence}_${s}.log ;
+            RUN_LOG=${logdir}/${sequence}_${s}.log LOG_LEVEL=${loglevel} \
+            COV=${coverage};
 done
 
+PERL5LIB=./scripts/perl5 \
 ./scripts/scan_logs.pl -listwarnings -listerrors \
     -pat scripts/scan_patterns/run_patterns.pat \
     -att scripts/scan_patterns/run_attributes.pat \

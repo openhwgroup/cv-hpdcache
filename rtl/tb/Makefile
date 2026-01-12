@@ -243,7 +243,8 @@ nonregression:
 		-n ${NTESTS} \
 		-t ${NTRANSACTIONS} \
 		-l $(LOG_DIR)/nonreg_$(CONFIG_NAME)_$(DATE_TIME) \
-		-c ${CONFIG}
+		-c ${CONFIG} \
+		-e ${COV}
 
 .PHONY: cov
 cov: $(COV_MERGEFILE) $(COV_MERGEFILE).info
