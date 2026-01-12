@@ -51,7 +51,9 @@ module hpdcache_wrapper
       memDataWidth: 512,
       wtEn: 1'b1,
       wbEn: 1'b1,
-      lowLatency: 1'b1
+      lowLatency: 1'b1,
+      eccDataEn: 1'b0,
+      eccDirEn: 1'b0
   },
 
   localparam hpdcache_pkg::hpdcache_cfg_t HPDcacheCfg = hpdcache_pkg::hpdcacheBuildConfig(
@@ -214,3 +216,4 @@ module hpdcache_wrapper
   );
 
 endmodule  /* hpdcache_wrapper */
+// vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en
