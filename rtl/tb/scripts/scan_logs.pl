@@ -130,30 +130,30 @@ this option is specified, timing violations will not affect the output status.
 By default, a fail status is returned, if the the log does not have an
 explicit end of test message. This is to avoid truncated logs producing a
 pass status. Using this option, the check for the end message can be
-surpressed.
+suppressed.
 
 =item B<-silent>
 
 Even when an output file is specified, the script outputs some information
-to the console. Using this option, all messages can be surpressed.
+to the console. Using this option, all messages can be suppressed.
 
 =item B<-listwarnings>
 
 When this option is specified, the report will include a list of all the
 warnings that were found, including in which file, the line number and 
-whether it was wavied.
+whether it was waived.
 
 =item B<-listerrors>
 
 When this option is specified, the report will include a list of all the
 errors that were found, including in which file, the line number and 
-whether it was wavied.
+whether it was waived.
 
 =item B<-nogroup>
 
 By default, the warnings and error messages are grouped and a table is
 output showing the number of messages corresponding to each group. This
-table can be suppresseed using this option.
+table can be suppressed using this option.
 
 =item B<-suppresswaived>
 
@@ -188,7 +188,7 @@ contains a perl regular expression. For the ERROR, WARNING and EOT types, the
 script simply checks whether the line matches or not. For the ERROR_NUM,
 WARNING_NUM, SEED and GROUP types, it is expected that the regular expression
 contains a capture group that extracts an argument. For example the log might
-contain a line such as "NUMER ERRORS : 3". The regular expression could extract
+contain a line such as "NUMBER ERRORS : 3". The regular expression could extract
 the numeric value '3'. When scanning a log, the total number of errors (or
 warnings) is summed. Thus for a log file to pass, all the ERROR_NUM messages
 must report zero errors.
@@ -213,13 +213,13 @@ An attribute file is a CSV file with 5 columns. The first column contains
 either the keyword 'ATT' or 'META'. Lines with 'ATT' specify an attribute,
 which is a raw value that is extracted from a log file. Lines with 'META'
 specify 'meta-attribute'. A meta-attribute is an expression based on
-attributes. For example, a meta-atribute might the ratio between two attributes.
+attributes. For example, a meta-attribute might the ratio between two attributes.
 
 The second column contains a name for the attribute. This is the name that
 is displayed in the column header in the final report. Generally, it should
 be kept relatively short, otherwise the resulting table can become too wide.
 
-The thid column contains a type (s=string,d=decimal, f=float,t=time h:m:s).
+The third column contains a type (s=string,d=decimal, f=float,t=time h:m:s).
 The fourth column contains a regular expression for detecting the attribute in
 a log file. Finally, the fifth column contains a format string which, if
 present, is used with sformatf to print the result. For example, a %3.1f 
@@ -254,7 +254,7 @@ sub extract_common_suffix(@);
 my @pat_files_A = ( );
 my @att_files_A = ( );
 my @waiver_files_A = ( );
-my $format = "TXT";     # outputf format
+my $format = "TXT";     # output format
 my $outfile = "";       # default to STDOUT
 my $noendcheck = 0;     # don't fail if missing EOT
 my $nowarn = 0;         # don't fail if there are warnings
@@ -262,7 +262,7 @@ my $list_warning = 0;   # list all the warnings
 my $list_error = 0;     # list all the errors 
 my $nopreresetwarn = 0; # don't fail if there are warnings pre reset
 my $notime = 0;         # don't fail if there are timing violations
-my $no_groups = 0;      # flag to suppresss group by table report
+my $no_groups = 0;      # flag to suppress group by table report
 my $suppresswaived = 0; # flag to prevent waived errors/warnings being reported
 my $suppressprereset = 0; # flag to prevent waived errors/warnings being reported
 my $help_flag = 0;
@@ -272,12 +272,12 @@ my $debug = 0;
 my $silent = 0;
 
 # Internal data structures
-my @pattern_DB_AoH = ( ); # Array containging patterns. Each entry contains a
+my @pattern_DB_AoH = ( ); # Array containing patterns. Each entry contains a
                           # hash with keys REGEXP|TYPE. REGEXP is a regexp
                           # to match against. 
                           # TYPE is "ERROR|ERROR_NUM|SEED|WARNING|WARNING_NUM|EOT|RESET|GROUP
 
-my @waiver_DB_AoH = ( ); # Array containging waiver  patterns. Each entry contains a
+my @waiver_DB_AoH = ( ); # Array containing waiver  patterns. Each entry contains a
                           # hash with keys REGEXP|TYPE. REGEXP is a regexp
                           # to match against. 
                           # TYPE is "NOERROR|NOWARNING"
@@ -321,7 +321,7 @@ my $common_length_end_log_file_names = 0;    # same and end of file name
 
 # Summary variables
 my $total_errors=0;        # total errors in all logs
-my $total_waived_errors=0; # total errors wavied in all logs
+my $total_waived_errors=0; # total errors waived in all logs
 my $total_warnings=0;      # total warnings in all logs
 my $total_waived_warnings=0;      # total warnings in all logs
 my $total_timing=0;        # total timing violations in all logs
@@ -568,14 +568,14 @@ foreach my $log ( @ARGV ) {
    my $num_post_reset_warnings = 0; # no. post-reset warnings in current log
    my $num_pre_reset_timing = 0;    # no. pre-reset timing viol in current log
    my $num_post_reset_timing = 0;   # no. post-reset timing viol in current log
-   my $num_timing = 0;              # either all timing violns or jus post-reset
-   my $num_warnings = 0;             # either all warnings or jus post-reset
+   my $num_timing = 0;              # either all timing violns or just post-reset
+   my $num_warnings = 0;             # either all warnings or just post-reset
    my $num_waived_warnings = 0;     # number of warnings that were waived
    my $num_waived_errors = 0;       # number of errors that were waived
    my $got_eot = 0;                 # check we got an EOT message
    my $seed = "";
 
-   my $got_bad_msg = 0 ;   # indicates badly formated ERROR_NUM, WARNING_NUM
+   my $got_bad_msg = 0 ;   # indicates badly formatted ERROR_NUM, WARNING_NUM
    my $reset_done_flag = 0;
    my $bad_msg_line;
 
@@ -758,7 +758,7 @@ foreach my $log ( @ARGV ) {
       if ( $debug ) {
          if ( $logit ) {
             print "$debug_prefix : Line $l in $log matched.";
-            print "ERRORS=$num_errors ( $num_waived_errors were wavied ).\n";
+            print "ERRORS=$num_errors ( $num_waived_errors were waived ).\n";
             print "PRE RESET WARNINGS=$num_pre_reset_warnings. POST RESET WARNINGS=$num_post_reset_warnings. $num_waived_warnings were waived.\n";
             print "EOT=$got_eot.\n";
             print "PRE RESET TIMING=$num_pre_reset_timing. POST RESET TIMING=$num_post_reset_timing\n";
@@ -1119,7 +1119,7 @@ sub text_report( $ ) {
             #   If use doesn't want to see pre-reset warnings - skip them
             if ( ( $w eq "" ) || ( !$suppresswaived ) ) {
                if ( ( !$suppressprereset ) || ( $prereset ne "PRE_RESET" ) ) {
-                  my $key = $log_file . sprintf("%07d", $line_num ); # sort report by file and then line numbe
+                  my $key = $log_file . sprintf("%07d", $line_num ); # sort report by file and then line number
                   $warning_report_H{$key} = sprintf("%-30s : %s\n", $msg_prefix, $t );
                }
             }
@@ -1145,7 +1145,7 @@ sub text_report( $ ) {
 
             # If suppresswaived flag is true - don't display waived messages
             if ( ( $w eq "" ) || ( !$suppresswaived ) ) {
-               my $key = $log_file . sprintf("%07d", $line_num ); # sort report by file and then line numbe
+               my $key = $log_file . sprintf("%07d", $line_num ); # sort report by file and then line number
                $error_report_H{$key} = sprintf("%-30s : %s\n", $msg_prefix, $t );
             }
          }

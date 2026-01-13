@@ -86,8 +86,8 @@ end
 //  Assertions
 //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
-initial begin : assertions_initials
-    assert ((WIDTH >= 8) && (WIDTH <= 16)) else $fatal("illegal width");
+if ((WIDTH < 8) || (WIDTH > 16)) begin : gen_lfsr_width_assertion
+    $fatal(1, "illegal LFSR width");
 end
 `endif
 //  }}}

@@ -77,7 +77,7 @@ module hpdcache_fxarb
     //  Assertions
     //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
-    gnt_at_most_one_requester: assert property (@(posedge clk_i) disable iff (!rst_ni)
+    gnt_at_most_one_requester: assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
             $onehot0(gnt_o)) else $error("arbiter: granting more than one requester");
 `endif
     //  }}}

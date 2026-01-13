@@ -21,12 +21,20 @@ The HPDcache is an open-source High-Performance, Multi-requester, Out-of-Order L
     <td>Contains the SystemVerilog RTL sources of the HPDcache</td>
   </tr>
   <tr>
+    <td>rtl/syn</td>
+    <td>Contains a synthesis flow based on Yosys</td>
+  </tr>
+  <tr>
     <td>rtl/lint</td>
-    <td>Contains a linter wrapper and a Mafile to run a lint tool on the RTL</td>
+    <td>Contains a linter wrapper and a Makefile to run a lint tool on the RTL</td>
   </tr>
   <tr>
     <td>rtl/tb</td>
     <td>Contains a HPDcache standalone testbench for validation of the RTL</td>
+  </tr>
+  <tr>
+    <td>rtl/fv/lnt</td>
+    <td>Contains a formal HPDcache specification written in LNT</td>
   </tr>
   <tr>
     <td>docs</td>
@@ -75,8 +83,9 @@ These macros ease the definition of types required by the interface of the HPDca
 
 For a complete UVM testbench of the HPDcache, please see the [HPDcache Verif](https://github.com/openhwgroup/cv-hpdcache-verif) repository.
 
-There is another simpler testbench (hence not as complete as the one above) into the `rtl/tb` subdirectory of this repository .
-This testbench is compatible with the [Verilator](https://www.veripool.org/verilator/) simulation tool.
+There is another testbench (not as complete as the one above) written in SystemC into the `rtl/tb` subdirectory of this repository.
+This testbench is compatible with the [Verilator](https://www.veripool.org/verilator/) simulation tool. Thus, it accepts a fully open-source simulation flow.
+For more information about the SystemC testbench, read its dedicated [README](rtl/tb/README.md).
 
 
 ## HPDcache Publications & Tutorials

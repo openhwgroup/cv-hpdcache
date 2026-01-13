@@ -1,0 +1,138 @@
+(*
+ *  Copyright 2025 INRIA
+ *
+ *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
+ *
+ *  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
+ *  may not use this file except in compliance with the License, or, at your
+ *  option, the Apache License version 2.0. You may obtain a copy of the
+ *  License at
+ *
+ *  https://solderpad.org/licenses/SHL-2.1/
+ *
+ *  Unless required by applicable law or agreed to in writing, any work
+ *  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
+ *
+ *
+ *  Authors       : Zachary Assoumani, Wendelin Serwe
+ *  Creation Date : March, 2025
+ *  Description   : HPDcache LNT formal model cachedata 
+ *  History       :
+*)
+
+
+module cachedata (types, channels) is
+
+-------------------------------------------------------------------------------
+-- process managing the data stored in the cache.
+-------------------------------------------------------------------------------
+
+process CACHEDATA [CONTROLLER_CACHE, CRI_RSP_R: Wire, STATUS: Statusgate,
+                   DEBUG: any] is
+   access DEBUG;
+   var C: Cache, lru: LRU_t, a: Addr, d: Data, sid: SId, tid: TId, ind: nat in
+      -- initialize the cache
+      lru := LRU_t (false);
+      C := Cache (Invalid);
+      loop
+         STATUS (C, ?any WBUF_Buffer, ?any MSHR_Buffer, ?any RTAB_Array);
+         alt
+            -- read an address that is present in the cache
+            CONTROLLER_CACHE (Load, NoData, ?sid, ?tid, ?ind);
+            -- the read datum is sent as a response to the core
+            CRI_RSP_R (C[ind].D, sid, tid)
+         []
+            -- write to a cache location
+            CONTROLLER_CACHE (Store, ?d, ?any SId, ?any TId, ?ind);
+            C[ind] := C[ind].{d -> d}
+         []
+            -- refill
+            -- compute the index to be written to, and writes to it
+            CONTROLLER_CACHE (Refill, ?d, ?sid, ?tid, ?a);
+            ind := select_victim_way (C, lru);
+            eval update_plru (!?lru, ind);
+            C[ind] := Elt (a, d);
+            -- DEBUG ("lru", lru);
+            -- respond to the core
+            CRI_RSP_R (d, sid, tid)
+         []
+            null
+         end alt
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+
+function cache_match (C: Cache, a: Addr) : nat is
+   -- return the location of address a in cache C (or 0 if a is not in C) 
+   var i: nat in
+      for i:=1 while i<=CACHE_NENTRIES by i:=i+1 loop
+         if (C[i] != Invalid) then
+            if (a==C[i].A) then
+               return i
+            end if
+         end if
+      end loop
+   end var;
+   return 0
+end function
+
+-------------------------------------------------------------------------------
+
+function select_victim_way (C: Cache, lru: LRU_t) : nat is
+   -- compute location to use to write new cacheline using LRU algorithm 
+   var w: nat in
+      -- Return the first way (of the target set) whose valid bit is unset
+      for w:=1 while w<=CACHE_NENTRIES by w:=w+1 loop
+         if (C[w]==Invalid) then
+            return w -- the first empty location
+         end if
+      end loop;
+
+      -- If all ways are valid, return the first way (of the target set) whose
+      -- LRU bit is unset
+      for w:=1 while w<=CACHE_NENTRIES by w:=w+1 loop
+         if (lru[w]==false) then
+            return w
+         end if
+      end loop
+   end var;
+
+   -- This return statement should not be reached as there is always, at
+   -- least, one LRU bit unset (refer to update_plru)
+   -- /!\ except when there is only one way
+   return 1
+end function
+
+-------------------------------------------------------------------------------
+
+function update_plru (in out lru: LRU_t, way: nat) is
+   -- updates the bit table for the Least Recently Used algorithm
+   var w: nat in
+      -- set the LRU bit of the target set and way
+      lru[way] := true;
+      -- check if all LRU bits of the target "set" contain true
+      for w:=1 while w<=CACHE_NENTRIES by w:=w+1 loop
+         -- if there is at least one false, the update is done
+         if (lru[w] == false) then
+            return
+         end if
+      end loop;
+      -- other reset to false the LRU bits of all the ways except the one
+      -- being accessed
+      for w:=1 while w<=CACHE_NENTRIES by w:=w+1 loop
+         if (w != way) then
+            lru[way] := false
+         end if
+      end loop;
+      return
+   end var
+end function
+
+-------------------------------------------------------------------------------
+
+end module

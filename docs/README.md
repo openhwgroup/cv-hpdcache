@@ -40,6 +40,12 @@ A secondary build target is pdf. To build the pdf, additional prerequisites need
 sudo apt-get install texlive-latex-base
 ```
 
+Note: you may also need to install the `latexmk` package separately.
+
+```bash
+sudo apt install latexmk
+```
+
 A pdf document can be built using the command
 
 ```bash

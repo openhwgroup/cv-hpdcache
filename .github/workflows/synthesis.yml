@@ -1,0 +1,63 @@
+##
+#  Copyright 2025 Inria
+#  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
+##
+##
+#  Author        Cesar Fuguet
+#  Date          June, 2025
+#  Description   GitHub Action to run Yosys-based synthesis on pull requests and pushes
+##
+name: HPDcache Synthesis CI
+on:
+  push:
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - 'CODEOWNERS'
+      - 'LICENSE'
+
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - 'CODEOWNERS'
+      - 'LICENSE'
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      #  Install Dependencies
+      - name: Install Dependencies
+        shell: bash
+        run: |
+          ./.github/scripts/install_deps_ubuntu.sh
+
+      #  Install OSS-CAD-Suite
+      - name: Cache OSS-CAD-Suite
+        id: cache-oss-cad-suite
+        uses: actions/cache@v4
+        with:
+          path: build/oss-cad-suite
+          key: ${{ runner.os }}-build-oss-cad-suite-${{ hashFiles('.github/scripts/install_oss-cad-suite.sh') }}
+
+      - name: Install OSS-CAD-Suite
+        shell: bash
+        run: |
+          . .github/scripts/env_syn.sh
+          ./.github/scripts/install_oss-cad-suite.sh
+
+
+  #  Run the tests
+  run_synthesis:
+    runs-on: ubuntu-latest
+    name: run_synthesis
+    needs: build
+    steps:
+      - uses: actions/checkout@master
+
+      - id: run_synthesis
+        uses: ./.github/actions/run_synthesis

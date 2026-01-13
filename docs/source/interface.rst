@@ -277,7 +277,7 @@ CRI Signal Description
    * - ``core_req_i.sid``
      - Requester
      - The identification tag for the requester. It shall be identical to the
-       index of the request port binded to that requester
+       index of the request port bound to that requester
    * - ``core_req_i.tid``
      - Requester
      - The identification tag for the request. A requester can issue multiple
@@ -288,7 +288,7 @@ CRI Signal Description
        the cache will not issue a response for the corresponding request
    * - ``core_req_i.phys_indexed``
      - Requester
-     - Indicates wheter the access uses virtual (unset) or physical indexing
+     - Indicates whether the access uses virtual (unset) or physical indexing
        (set)
    * - ``core_req_i.addr_tag``
      - Requester
@@ -1049,7 +1049,7 @@ and write operations from/to the specified address.
 In case of an atomic operation request (``HPDCACHE_MEM_ATOMIC``), the specific
 operation is specified in the ``MEM_REQ_ATOMIC`` signal. These operations are
 listed in :numref:`tab_mem_req_atomics_types`. Note that these
-operations are compatible with the ones defined in the AMBA AXI prototol.
+operations are compatible with the ones defined in the AMBA AXI protocol.
 
 .. _tab_mem_req_atomics_types:
 

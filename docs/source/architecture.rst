@@ -896,8 +896,9 @@ The RTAB implements the following operations:
 |                          | to an existing linked list       |
 +--------------------------+----------------------------------+
 | ``rtab_pop_try``         | Get a ready request from one of  |
-|                          | the linked list (wihout actually |
-|                          | removing it from the list)       |
+|                          | the linked list (without         |
+|                          | actually removing it from the    |
+|                          | list)                            |
 +--------------------------+----------------------------------+
 | ``rtab_pop_commit``      | Actually remove a popped request |
 |                          | from the list                    |
@@ -1000,7 +1001,11 @@ request (dependencies have been resolved) from the RTAB.
          //  Find a list whose head request is ready
          //  (using a round-robin policy)
          index = rtab_find_ready(last);
-         if (index == -1) return -1;
+
+         //  If there is no ready entry, or there is an ongoing rollback,
+         //  return an invalid index
+         if ((index == -1) || rtab_pop_rollback)
+           return -1;
 
          //  Update the pointer to the last linked list served
          last = index;
@@ -1019,6 +1024,12 @@ request (dependencies have been resolved) from the RTAB.
 
        case NEXT:
          index = next;
+
+         //  If there is an ongoing rollback, abandon the current pop
+         if (rtab_pop_rollback) {
+            pop_state = HEAD;
+            return -1;
+         }
 
          //  If the list have more than one request, the next time this function
          //  is called, serve the next request of the list
@@ -1088,7 +1099,7 @@ replayed (dependencies have been resolved).
    }
 
 
-The following function is called by the miss hander and the write buffer on the
+The following function is called by the miss handler and the write buffer on the
 completion of any pending transaction. It allows to update the dependency bits
 of any matching request (with the same cacheline address) in the RTAB.
 

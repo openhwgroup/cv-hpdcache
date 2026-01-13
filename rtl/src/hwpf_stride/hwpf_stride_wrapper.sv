@@ -131,13 +131,11 @@ import hpdcache_pkg::*;
 
     //  Assertions
     //  {{{
-    //  pragma translate_off
-    initial
-    begin : initial_assertions
-        max_hwpf_stride_assert: assert (NUM_HW_PREFETCH <= 16) else
-                $error("hwpf_stride: maximum number of HW prefetchers is 16");
+`ifndef HPDCACHE_ASSERT_OFF
+    if (NUM_HW_PREFETCH > 16) begin : gen_max_hwpf_stride_assertion
+        $fatal(1, "hwpf_stride: maximum number of HW prefetchers is 16");
     end
-    //  pragma translate_on
+`endif
     //  }}}
 
     //  Compute the status information
@@ -258,7 +256,7 @@ import hpdcache_pkg::*;
     end
     //  }}}
 
-    //  Hardware prefetcher arbiter betweem engines
+    //  Hardware prefetcher arbiter between engines
     //  {{{
     hwpf_stride_arb #(
         .NUM_HW_PREFETCH          (NUM_HW_PREFETCH),

@@ -1,6 +1,7 @@
 /**
  *  Copyright 2023,2024 CEA*
  *  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+ *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
  *
@@ -50,6 +51,7 @@ import hpdcache_pkg::*;
         mshrSetsPerRam: `CONF_HPDCACHE_MSHR_SETS_PER_RAM,
         mshrRamByteEnable: `CONF_HPDCACHE_MSHR_RAM_WBYTEENABLE,
         mshrUseRegbank: `CONF_HPDCACHE_MSHR_USE_REGBANK,
+        cbufEntries: `CONF_HPDCACHE_CBUF_ENTRIES,
         refillCoreRspFeedthrough: `CONF_HPDCACHE_REFILL_CORE_RSP_FEEDTHROUGH,
         refillFifoDepth: `CONF_HPDCACHE_REFILL_FIFO_DEPTH,
         wbufDirEntries: `CONF_HPDCACHE_WBUF_DIR_ENTRIES,
@@ -63,7 +65,8 @@ import hpdcache_pkg::*;
         memIdWidth: `CONF_HPDCACHE_MEM_ID_WIDTH,
         memDataWidth: `CONF_HPDCACHE_MEM_DATA_WIDTH,
         wtEn: `CONF_HPDCACHE_WT_ENABLE,
-        wbEn: `CONF_HPDCACHE_WB_ENABLE
+        wbEn: `CONF_HPDCACHE_WB_ENABLE,
+        lowLatency: `CONF_HPDCACHE_LOW_LATENCY
     },
 
     localparam hpdcache_cfg_t Cfg = hpdcacheBuildConfig(UserCfg),
@@ -366,11 +369,20 @@ import hpdcache_pkg::*;
 
     //  Assertions/Coverage
     //  {{{
-    //  pragma translate_off
+`ifndef HPDCACHE_ASSERT_OFF
     wbuf_not_ready_cover: cover property (
-        @(posedge clk_i) i_hpdcache.hpdcache_ctrl_i.wbuf_write_o &
-                        ~i_hpdcache.hpdcache_ctrl_i.wbuf_write_ready_i);
-    //  pragma translate_on
+        @(posedge clk_i) disable iff (rst_ni !== 1'b1)
+                i_hpdcache.hpdcache_ctrl_i.wbuf_write_o &
+                ~i_hpdcache.hpdcache_ctrl_i.wbuf_write_ready_i);
+    uncacheable_rtab_pend_trans_cover: cover property (
+        @(posedge clk_i) disable iff (rst_ni !== 1'b1)
+                i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.st1_rtab_pend_trans_o &
+                i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.st1_req_is_uncacheable_i);
+    amo_rtab_pend_trans_cover: cover property (
+        @(posedge clk_i) disable iff (rst_ni !== 1'b1)
+                i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.st1_rtab_pend_trans_o &
+                i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.st1_req_is_amo_i);
+`endif
     //  }}}
 
 endmodule

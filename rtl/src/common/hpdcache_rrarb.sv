@@ -57,9 +57,8 @@ module hpdcache_rrarb
     //  Elaboration-time assertions
     //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
-    initial
-    begin : initial_assertions
-        n_assertion : assert (N > 0) else $fatal("N must be greater than 0");
+    if (N <= 0) begin : gen_n_assertion
+        $fatal(1, "N must be greater than 0");
     end
 `endif
     //  }}}
@@ -112,9 +111,9 @@ module hpdcache_rrarb
     //  Assertions
     //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
-    gnt_at_most_one_requester: assert property (@(posedge clk_i) disable iff (!rst_ni)
+    gnt_at_most_one_requester: assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
             $onehot0(gnt)) else $error("arbiter: granting more than one requester");
-    gnt_q_exactly_one_requester: assert property (@(posedge clk_i) disable iff (!rst_ni)
+    gnt_q_exactly_one_requester: assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
             $onehot(gnt_q)) else $error("arbiter: grant state is not one-hot");
 `endif
     //  }}}
