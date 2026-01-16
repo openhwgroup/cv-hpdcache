@@ -255,7 +255,7 @@ import hpdcache_pkg::*;
 );
     // }}}
 
-    //  Definition of internal registers
+    //  Definition of types
     //  {{{
     typedef logic [$clog2(HPDcacheCfg.u.rtabEntries)-1:0] rtab_ptr_t;
     typedef logic [$clog2(HPDcacheCfg.u.rtabEntries):0]   rtab_cnt_t;
@@ -376,6 +376,15 @@ import hpdcache_pkg::*;
     logic                    st1_dir_victim_dirty;
     hpdcache_tag_t           st1_dir_victim_tag;
     hpdcache_way_vector_t    st1_dir_victim_way;
+    hpdcache_way_vector_t    st1_dir_err_cor;
+    hpdcache_way_vector_t    st1_dir_err_unc;
+    hpdcache_way_vector_t    st1_dir_err_valid;
+    hpdcache_way_vector_t    st1_dir_err_dirty;
+    hpdcache_way_vector_t    st1_dat_err_cor;
+    hpdcache_way_vector_t    st1_dat_err_unc;
+    hpdcache_way_vector_t    st1_dat_err_unc_dirty;
+    logic                    st1_err_trigger;
+    logic                    err_busy;
     hpdcache_nline_t         st1_victim_nline;
     logic                    st1_rtab_alloc;
     logic                    st1_rtab_alloc_and_link;
@@ -542,6 +551,8 @@ import hpdcache_pkg::*;
 
     //  Cache controller protocol engine
     //  {{{
+    assign st1_dat_err_unc_dirty = st1_dir_err_valid & st1_dir_err_dirty & st1_dat_err_unc;
+
     hpdcache_ctrl_pe #(
         .HPDcacheCfg(HPDcacheCfg)
     ) hpdcache_ctrl_pe_i(
@@ -589,6 +600,13 @@ import hpdcache_pkg::*;
         .st1_dir_victim_valid_i             (st1_dir_victim_valid),
         .st1_dir_victim_wback_i             (st1_dir_victim_wback),
         .st1_dir_victim_dirty_i             (st1_dir_victim_dirty),
+        .st1_dir_err_cor_i                  (|st1_dir_err_cor),
+        .st1_dir_err_unc_i                  (|st1_dir_err_unc),
+        .st1_dat_err_cor_i                  (|st1_dat_err_cor),
+        .st1_dat_err_unc_i                  (|st1_dat_err_unc),
+        .st1_dat_err_unc_dirty_i            (|st1_dat_err_unc_dirty),
+        .st1_err_o                          (st1_err_trigger),
+        .err_busy_i                         (err_busy),
         .st1_req_valid_o                    (st1_req_valid_d),
         .st1_req_is_error_o                 (st1_req_is_error_d),
         .st1_rsp_valid_o                    (st1_rsp_valid),
@@ -705,13 +723,15 @@ import hpdcache_pkg::*;
                                & flush_empty_i;
 
     //  pipeline is empty
-    assign st1_empty = ~st1_req_valid_q;
-    assign st2_empty = ~(st2_mshr_alloc_q | st2_dir_updt_q | st2_flush_alloc_q);
-    assign ctrl_empty_o = st1_empty & st2_empty;
+    always_comb
+    begin : pipeline_empty_comb
+        st1_empty = ~st1_req_valid_q;
+        st2_empty = ~(st2_mshr_alloc_q | st2_dir_updt_q | st2_flush_alloc_q);
+        ctrl_empty_o = st1_empty & st2_empty;
+    end
 
     //  no available victim cacheline (all pre-allocated for replacement)
     assign st1_dir_victim_unavailable = ~(|st1_dir_victim_way);
-
     //  }}}
 
     //  Replay table
@@ -850,13 +870,13 @@ import hpdcache_pkg::*;
         end
 
         if (st2_dir_updt_d) begin
-            st2_dir_updt_tag_q    <= st1_dir_hit ? st1_dir_hit_tag : st1_dir_victim_tag;
-            st2_dir_updt_set_q    <= st1_req_set;
-            st2_dir_updt_way_q    <= st1_dir_hit ? st1_dir_hit_way : st1_dir_victim_way;
-            st2_dir_updt_valid_q  <= st2_dir_updt_valid_d;
-            st2_dir_updt_wback_q  <= st2_dir_updt_wback_d;
-            st2_dir_updt_dirty_q  <= st2_dir_updt_dirty_d;
-            st2_dir_updt_fetch_q  <= st2_dir_updt_fetch_d;
+            st2_dir_updt_tag_q   <= st1_dir_hit ? st1_dir_hit_tag : st1_dir_victim_tag;
+            st2_dir_updt_set_q   <= st1_req_set;
+            st2_dir_updt_way_q   <= st1_dir_hit ? st1_dir_hit_way : st1_dir_victim_way;
+            st2_dir_updt_valid_q <= st2_dir_updt_valid_d;
+            st2_dir_updt_wback_q <= st2_dir_updt_wback_d;
+            st2_dir_updt_dirty_q <= st2_dir_updt_dirty_d;
+            st2_dir_updt_fetch_q <= st2_dir_updt_fetch_d;
         end
     end
 
@@ -989,6 +1009,18 @@ import hpdcache_pkg::*;
         .dir_cmo_updt_dirty_i          (cmo_dir_updt_dirty_i),
         .dir_cmo_updt_fetch_i          (cmo_dir_updt_fetch_i),
 
+        .dir_err_cor_o                 (st1_dir_err_cor),
+        .dir_err_unc_o                 (st1_dir_err_unc),
+        .dir_err_valid_o               (st1_dir_err_valid),
+        .dir_err_dirty_o               (st1_dir_err_dirty),
+
+        .dir_err_set_i                 (err_set_q),
+        .dir_err_way_i                 (err_way_q),
+        .dir_err_read_i                (err_dir_read),
+        .dir_err_rdata_o               (err_dir_rdata_d),
+        .dir_err_write_i               (err_dir_write),
+        .dir_err_wdata_i               (err_dir_wdata),
+
         .data_req_read_i               (data_req_read),
         .data_req_read_set_i           (data_req_read_set),
         .data_req_read_size_i          (data_req_read_size),
@@ -1025,7 +1057,17 @@ import hpdcache_pkg::*;
         .data_refill_set_i             (refill_set_i),
         .data_refill_way_i             (refill_way_i),
         .data_refill_word_i            (refill_word_i),
-        .data_refill_data_i            (refill_data_i)
+        .data_refill_data_i            (refill_data_i),
+
+        .data_err_cor_o                (st1_dat_err_cor),
+        .data_err_unc_o                (st1_dat_err_unc),
+        .data_err_set_i                (err_set_q),
+        .data_err_way_i                (err_way_q),
+        .data_err_word_i               (err_dat_word_q),
+        .data_err_read_i               (err_dat_read),
+        .data_err_rdata_o              (err_dat_rdata_d),
+        .data_err_write_i              (err_dat_write),
+        .data_err_wdata_i              (err_dat_wdata)
     );
 
     assign st1_dir_hit           = |st1_dir_hit_way;
@@ -1111,6 +1153,171 @@ import hpdcache_pkg::*;
                                                   is_cmo_flush_inval_by_nline(st1_req.op);
     assign cmo_req_op_o.is_flush_inval_all      = st1_req_is_cmo_flush &
                                                   is_cmo_flush_inval_all(st1_req.op);
+    //  }}}
+
+    //  ECC recovery handler
+    //  {{{
+    typedef enum {
+        ERR_IDLE,
+        ERR_CHECK,
+        ERR_INVAL,
+        ERR_LATCH,
+        ERR_CORRECT
+    } hpdcache_err_fsm_t;
+
+    hpdcache_err_fsm_t    err_fsm_q, err_fsm_d;
+    hpdcache_way_vector_t err_dir_unc_q;
+    hpdcache_way_vector_t err_dir_cor_q;
+    hpdcache_way_vector_t err_dat_unc_q;
+    hpdcache_way_vector_t err_dat_cor_q;
+
+    hpdcache_set_t         err_set_q;
+    hpdcache_way_vector_t  err_way_q, err_way_d;
+
+    logic                  err_dir_read, err_dir_write;
+    logic                  err_dir_rdata_we;
+    hpdcache_dir_entry_t   err_dir_rdata_q, err_dir_rdata_d;
+    hpdcache_dir_entry_t   err_dir_wdata;
+
+    logic                  err_dat_read, err_dat_write;
+    logic                  err_dat_rdata_we;
+    hpdcache_access_data_t err_dat_rdata_q, err_dat_rdata_d;
+    hpdcache_word_t        err_dat_word_q;
+    hpdcache_access_data_t err_dat_wdata;
+
+    always_comb
+    begin : err_fsm_comb
+        automatic hpdcache_way_vector_t err_way_next;
+        automatic logic err_dir_unc_msk, err_dir_cor_msk;
+        automatic logic err_dat_unc_msk, err_dat_cor_msk;
+
+        err_fsm_d = err_fsm_q;
+        err_way_d = err_way_q;
+
+        err_dir_unc_msk = |(err_dir_unc_q & err_way_q);
+        err_dir_cor_msk = |(err_dir_cor_q & err_way_q);
+        err_dat_unc_msk = |(err_dat_unc_q & err_way_q);
+        err_dat_cor_msk = |(err_dat_cor_q & err_way_q);
+
+        err_way_next  = {err_way_q[0 +: HPDcacheCfg.u.ways-1], 1'b0};
+        err_dir_read  = 1'b0;
+        err_dir_write = 1'b0;
+        err_dir_wdata = '0;
+        err_dat_read  = 1'b0;
+        err_dat_write = 1'b0;
+        err_dat_wdata = '0;
+
+        err_dir_rdata_we = 1'b0;
+        err_dat_rdata_we = 1'b0;
+
+        err_busy = 1'b1;
+
+        case (err_fsm_q)
+            ERR_IDLE: begin
+                err_busy = 1'b0;
+
+                //  Start checking all ways to correct/invalidate wrong entries
+                if (st1_err_trigger) begin
+                    err_fsm_d = ERR_CHECK;
+                    err_way_d = {{HPDcacheCfg.u.ways-1{1'b0}}, 1'b1};
+                end
+            end
+            ERR_CHECK: begin
+                if (err_dir_unc_msk | err_dat_unc_msk) begin
+                    err_fsm_d = ERR_INVAL;
+                end else if (err_dir_cor_msk | err_dat_cor_msk) begin
+                    err_dir_read = err_dir_cor_msk;
+                    err_dat_read = err_dat_cor_msk;
+                    err_fsm_d = ERR_LATCH;
+                end else if (err_way_q[HPDcacheCfg.u.ways - 1]) begin
+                    err_fsm_d = ERR_IDLE;
+                end else begin
+                    err_way_d = err_way_next;
+                end
+            end
+            ERR_INVAL: begin
+                //  Invalidate the uncorrectable cacheline
+                err_dir_write = 1'b1;
+                err_dir_wdata = '0;
+                //  Zero data words to put them in a correct state
+                err_dat_write = err_dat_unc_msk;
+                err_dat_wdata = '0;
+
+                //  Check next way or go to IDLE after the last one
+                if (err_way_q[HPDcacheCfg.u.ways - 1]) begin
+                    err_fsm_d = ERR_IDLE;
+                end else begin
+                    err_way_d = err_way_next;
+                    err_fsm_d = ERR_CHECK;
+                end
+            end
+            ERR_LATCH: begin
+                //  Latch corrected dir and data entries
+                err_dir_rdata_we = err_dir_cor_msk;
+                err_dat_rdata_we = err_dat_cor_msk;
+                err_fsm_d = ERR_CORRECT;
+            end
+            ERR_CORRECT: begin
+                //  Correct the directory entry
+                err_dir_write = err_dir_cor_msk;
+                err_dir_wdata = err_dir_rdata_q;
+                //  Correct data words
+                err_dat_write = err_dat_cor_msk;
+                err_dat_wdata = err_dat_rdata_q;
+
+                //  Check next way or go to IDLE after the last one
+                if (err_way_q[HPDcacheCfg.u.ways - 1]) begin
+                    err_fsm_d = ERR_IDLE;
+                end else begin
+                    err_way_d = err_way_next;
+                    err_fsm_d = ERR_CHECK;
+                end
+            end
+            default: begin
+            end
+        endcase
+    end
+
+    always_ff @(posedge clk_i or negedge rst_ni)
+    begin : err_fsm_ff
+        if (!rst_ni) begin
+            err_fsm_q      <= ERR_IDLE;
+            err_way_q      <= '0;
+            err_set_q      <= '0;
+            err_dir_unc_q  <= '0;
+            err_dir_cor_q  <= '0;
+            err_dat_unc_q  <= '0;
+            err_dat_cor_q  <= '0;
+            err_dat_word_q <= '0;
+        end else begin
+            err_fsm_q      <= err_fsm_d;
+            err_way_q      <= err_way_d;
+            if (st1_err_trigger && !err_busy) begin
+                err_set_q  <= st1_req_set;
+
+                err_dir_unc_q <= st1_dir_err_unc;
+                err_dir_cor_q <= st1_dir_err_cor;
+                err_dat_unc_q <= st1_dat_err_unc;
+                err_dat_cor_q <= st1_dat_err_cor;
+
+                //  Align request word to the number of access words
+                //  The error recovery handler checks and corrects "access words" per cycle
+                err_dat_word_q <= hpdcache_word_t'(
+                    (hpdcache_uint'(st1_req_word) / HPDcacheCfg.u.accessWords) *
+                    HPDcacheCfg.u.accessWords);
+            end
+        end
+    end
+
+    always_ff @(posedge clk_i or negedge rst_ni)
+    begin : err_fsm_data_ff
+        if (err_dir_rdata_we) begin
+            err_dir_rdata_q <= err_dir_rdata_d;
+        end
+        if (err_dat_rdata_we) begin
+            err_dat_rdata_q <= err_dat_rdata_d;
+        end
+    end
     //  }}}
 
     //  Dirty/valid cachelines tracking to accelerate flushes and invalidations triggered by CMOs
@@ -1359,4 +1566,4 @@ import hpdcache_pkg::*;
 `endif
     //  }}}
 endmodule
-// vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en
+// vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en : fdm=marker

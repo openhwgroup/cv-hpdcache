@@ -78,6 +78,13 @@ import hpdcache_pkg::*;
     input  logic                   st1_dir_victim_valid_i,
     input  logic                   st1_dir_victim_wback_i,
     input  logic                   st1_dir_victim_dirty_i,
+    input  logic                   st1_dir_err_cor_i,
+    input  logic                   st1_dir_err_unc_i,
+    input  logic                   st1_dat_err_cor_i,
+    input  logic                   st1_dat_err_unc_i,
+    input  logic                   st1_dat_err_unc_dirty_i,
+    output logic                   st1_err_o,
+    input  logic                   err_busy_i,
     output logic                   st1_req_valid_o,
     output logic                   st1_req_is_error_o,
     output logic                   st1_rsp_valid_o,
@@ -306,6 +313,8 @@ import hpdcache_pkg::*;
         st1_rsp_error_o                     = 1'b0;
         st1_rsp_aborted_o                   = 1'b0;
 
+        st1_err_o                           = 1'b0;
+
         st2_mshr_alloc_o                    = st2_mshr_alloc_i;
         st2_mshr_alloc_cs_o                 = 1'b0;
         st2_mshr_alloc_need_rsp_o           = 1'b0;
@@ -368,6 +377,13 @@ import hpdcache_pkg::*;
         //  {{{
         else if (flush_busy_i) begin
             //  flush controller has the control of the cache pipeline
+        end
+        //  }}}
+
+        //  Error recovery handler active
+        //  {{{
+        else if (err_busy_i) begin
+            //  Error recovery handler has the control of the cache pipeline
         end
         //  }}}
 
@@ -493,9 +509,40 @@ import hpdcache_pkg::*;
                 //  Cacheable request
                 //  {{{
                 else begin
+                    //  Error correction
+                    //  {{{
+                    if ((HPDcacheCfg.u.eccDirEn  && st1_dir_err_unc_i) ||
+                        (HPDcacheCfg.u.eccDataEn && st1_dat_err_unc_dirty_i))
+                    begin
+                        //  Trigger directory invalidation
+                        st1_err_o = 1'b1;
+
+                        //  Use response (if required) to signal an unrecoverable error
+                        st1_rsp_valid_o = st1_req_need_rsp_i;
+                        st1_rsp_error_o = st1_req_need_rsp_i;
+
+                        //  Stall the pipeline
+                        st1_nop = 1'b1;
+                    end
+                    else if ((HPDcacheCfg.u.eccDirEn  &&  st1_dir_err_cor_i) ||
+                             (HPDcacheCfg.u.eccDataEn && (st1_dat_err_cor_i || st1_dat_err_unc_i)))
+                    begin
+                        //  Trigger directory correction
+                        st1_err_o = 1'b1;
+
+                        //  Put the request on-hold during SRAM correction
+                        //  FIXME: how to handle a permanent or long lasting fault here ?
+                        //  Currently it will be replayed indefinitely without allowing any progress
+                        //  (livelock)
+                        st1_rtab_alloc = 1'b1;
+
+                        //  Stall the pipeline
+                        st1_nop = 1'b1;
+                    end
+                    //  }}}
                     //  AMO cacheable request
                     //  {{{
-                    if (st1_req_is_amo_i) begin
+                    else if (st1_req_is_amo_i) begin
                         //  There are pending transactions which must be completed and the
                         //  request is not being replayed.
                         //  When an AMO request is replayed, it is guaranteed that there
