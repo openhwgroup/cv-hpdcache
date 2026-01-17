@@ -208,6 +208,10 @@ import hpdcache_pkg::*;
     //   {{{
     output logic                   evt_cache_write_miss_o,
     output logic                   evt_cache_read_miss_o,
+    output logic                   evt_cache_dir_unc_err_o,
+    output logic                   evt_cache_dir_cor_err_o,
+    output logic                   evt_cache_dat_unc_err_o,
+    output logic                   evt_cache_dat_cor_err_o,
     output logic                   evt_uncached_req_o,
     output logic                   evt_cmo_req_o,
     output logic                   evt_write_req_o,
@@ -351,6 +355,10 @@ import hpdcache_pkg::*;
 
         evt_cache_write_miss_o              = 1'b0;
         evt_cache_read_miss_o               = 1'b0;
+        evt_cache_dir_unc_err_o             = 1'b0;
+        evt_cache_dir_cor_err_o             = 1'b0;
+        evt_cache_dat_unc_err_o             = 1'b0;
+        evt_cache_dat_cor_err_o             = 1'b0;
         evt_uncached_req_o                  = 1'b0;
         evt_cmo_req_o                       = 1'b0;
         evt_write_req_o                     = 1'b0;
@@ -521,6 +529,10 @@ import hpdcache_pkg::*;
                         st1_rsp_valid_o = st1_req_need_rsp_i;
                         st1_rsp_error_o = st1_req_need_rsp_i;
 
+                        //  Performance event
+                        evt_cache_dir_unc_err_o = st1_dir_err_unc_i;
+                        evt_cache_dat_unc_err_o = st1_dat_err_unc_i;
+
                         //  Stall the pipeline
                         st1_nop = 1'b1;
                     end
@@ -535,6 +547,12 @@ import hpdcache_pkg::*;
                         //  Currently it will be replayed indefinitely without allowing any progress
                         //  (livelock)
                         st1_rtab_alloc = 1'b1;
+
+                        //  Performance event
+                        evt_cache_dir_unc_err_o = st1_dir_err_unc_i;
+                        evt_cache_dir_cor_err_o = st1_dir_err_cor_i;
+                        evt_cache_dat_unc_err_o = st1_dat_err_unc_i;
+                        evt_cache_dat_cor_err_o = st1_dat_err_cor_i;
 
                         //  Stall the pipeline
                         st1_nop = 1'b1;

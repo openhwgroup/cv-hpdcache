@@ -1,22 +1,8 @@
 /**
- *  Copyright 2023,2024 CEA*
- *  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+ *  Copyright 2023,2024 Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
  *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
- *
- *  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
- *  may not use this file except in compliance with the License, or, at your
- *  option, the Apache License version 2.0. You may obtain a copy of the
- *  License at
- *
- *  https://solderpad.org/licenses/SHL-2.1/
- *
- *  Unless required by applicable law or agreed to in writing, any work
- *  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
- *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- *  License for the specific language governing permissions and limitations
- *  under the License.
  */
 /**
  *  Author     : Cesar Fuguet
@@ -132,6 +118,10 @@ public:
         top->mem_resp_write_id_i(mem_resp_write_id);
         top->evt_cache_write_miss_o(evt_cache_write_miss);
         top->evt_cache_read_miss_o(evt_cache_read_miss);
+        top->evt_cache_dir_unc_err_o(evt_cache_dir_unc_err);
+        top->evt_cache_dir_cor_err_o(evt_cache_dir_cor_err);
+        top->evt_cache_dat_unc_err_o(evt_cache_dat_unc_err);
+        top->evt_cache_dat_cor_err_o(evt_cache_dat_cor_err);
         top->evt_uncached_req_o(evt_uncached_req);
         top->evt_cmo_req_o(evt_cmo_req);
         top->evt_write_req_o(evt_write_req);
@@ -215,6 +205,10 @@ public:
         hpdcache_test_scoreboard_i->mem_write_resp_i(sb_mem_write_resp);
         hpdcache_test_scoreboard_i->evt_cache_write_miss_i(evt_cache_write_miss);
         hpdcache_test_scoreboard_i->evt_cache_read_miss_i(evt_cache_read_miss);
+        hpdcache_test_scoreboard_i->evt_cache_dir_unc_err_i(evt_cache_dir_unc_err);
+        hpdcache_test_scoreboard_i->evt_cache_dir_cor_err_i(evt_cache_dir_cor_err);
+        hpdcache_test_scoreboard_i->evt_cache_dat_unc_err_i(evt_cache_dat_unc_err);
+        hpdcache_test_scoreboard_i->evt_cache_dat_cor_err_i(evt_cache_dat_cor_err);
         hpdcache_test_scoreboard_i->evt_uncached_req_i(evt_uncached_req);
         hpdcache_test_scoreboard_i->evt_cmo_req_i(evt_cmo_req);
         hpdcache_test_scoreboard_i->evt_write_req_i(evt_write_req);
@@ -409,6 +403,10 @@ private:
 
     sc_core::sc_signal<bool> evt_cache_write_miss;
     sc_core::sc_signal<bool> evt_cache_read_miss;
+    sc_core::sc_signal<bool> evt_cache_dir_unc_err;
+    sc_core::sc_signal<bool> evt_cache_dir_cor_err;
+    sc_core::sc_signal<bool> evt_cache_dat_unc_err;
+    sc_core::sc_signal<bool> evt_cache_dat_cor_err;
     sc_core::sc_signal<bool> evt_uncached_req;
     sc_core::sc_signal<bool> evt_cmo_req;
     sc_core::sc_signal<bool> evt_write_req;
@@ -545,3 +543,4 @@ sc_main(int argc, char** argv)
     test.simulate();
     return 0;
 }
+// vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en : fdm=marker

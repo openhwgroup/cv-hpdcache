@@ -1,22 +1,8 @@
 /**
- *  Copyright 2023,2024 CEA*
- *  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+ *  Copyright 2023,2024 Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
  *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
- *
- *  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
- *  may not use this file except in compliance with the License, or, at your
- *  option, the Apache License version 2.0. You may obtain a copy of the
- *  License at
- *
- *  https://solderpad.org/licenses/SHL-2.1/
- *
- *  Unless required by applicable law or agreed to in writing, any work
- *  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
- *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- *  License for the specific language governing permissions and limitations
- *  under the License.
  */
 /**
  *  Author     : Cesar Fuguet
@@ -67,6 +53,10 @@ public:
 
     sc_in<bool> evt_cache_write_miss_i;
     sc_in<bool> evt_cache_read_miss_i;
+    sc_in<bool> evt_cache_dir_unc_err_i;
+    sc_in<bool> evt_cache_dir_cor_err_i;
+    sc_in<bool> evt_cache_dat_unc_err_i;
+    sc_in<bool> evt_cache_dat_cor_err_i;
     sc_in<bool> evt_uncached_req_i;
     sc_in<bool> evt_cmo_req_i;
     sc_in<bool> evt_write_req_i;
@@ -98,6 +88,10 @@ public:
       , sb_error_limit_m(0)
       , evt_cache_write_miss(0)
       , evt_cache_read_miss(0)
+      , evt_cache_dir_unc_err(0)
+      , evt_cache_dir_cor_err(0)
+      , evt_cache_dat_unc_err(0)
+      , evt_cache_dat_cor_err(0)
       , evt_uncached_req(0)
       , evt_cmo_req(0)
       , evt_write_req(0)
@@ -180,6 +174,10 @@ public:
                << "SB.NB_MEM_WRITE_RESP    : " << nb_mem_write_resp << std::endl
                << "CACHE.WRITE_MISSES      : " << evt_cache_write_miss << std::endl
                << "CACHE.READ_MISSES       : " << evt_cache_read_miss << std::endl
+               << "CACHE.DIR_UNC_ERRORS    : " << evt_cache_dir_unc_err << std::endl
+               << "CACHE.DIR_COR_ERRORS    : " << evt_cache_dir_cor_err << std::endl
+               << "CACHE.DAT_UNC_ERRORS    : " << evt_cache_dat_unc_err << std::endl
+               << "CACHE.DAT_COR_ERRORS    : " << evt_cache_dat_cor_err << std::endl
                << "CACHE.UNCACHED_REQUESTS : " << evt_uncached_req << std::endl
                << "CACHE.CMO_REQUESTS      : " << evt_cmo_req << std::endl
                << "CACHE.WRITE_REQUESTS    : " << evt_write_req << std::endl
@@ -230,6 +228,10 @@ private:
 
     uint64_t evt_cache_write_miss;
     uint64_t evt_cache_read_miss;
+    uint64_t evt_cache_dir_unc_err;
+    uint64_t evt_cache_dir_cor_err;
+    uint64_t evt_cache_dat_unc_err;
+    uint64_t evt_cache_dat_cor_err;
     uint64_t evt_uncached_req;
     uint64_t evt_cmo_req;
     uint64_t evt_write_req;
@@ -351,6 +353,10 @@ private:
         nb_cycles++;
         if (evt_cache_write_miss_i.read()) evt_cache_write_miss++;
         if (evt_cache_read_miss_i.read()) evt_cache_read_miss++;
+        if (evt_cache_dir_unc_err_i.read()) evt_cache_dir_unc_err++;
+        if (evt_cache_dir_cor_err_i.read()) evt_cache_dir_cor_err++;
+        if (evt_cache_dat_unc_err_i.read()) evt_cache_dat_unc_err++;
+        if (evt_cache_dat_cor_err_i.read()) evt_cache_dat_cor_err++;
         if (evt_uncached_req_i.read()) evt_uncached_req++;
         if (evt_cmo_req_i.read()) evt_cmo_req++;
         if (evt_write_req_i.read()) evt_write_req++;
@@ -1087,3 +1093,4 @@ private:
 };
 
 #endif /* __HPDCACHE_TEST_SCOREBOARD_H__ */
+// vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en : fdm=marker
