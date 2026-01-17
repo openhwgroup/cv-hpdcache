@@ -17,6 +17,7 @@ logdir=nonreg
 loglevel=1
 config=configs/default_config.mk
 coverage=0
+compile=0
 
 help() {
     echo "help: $0"
@@ -27,6 +28,7 @@ help() {
     echo "      -c <config>          desc: config file (default: ${config})"
     echo "      -d <loglevel>        desc: logging level (default: ${loglevel})"
     echo "      -e <coverage>        desc: coverage (default: ${coverage})"
+    echo "      -f                   desc: force recompilation (default: ${compile})"
     echo "      -h                   desc: show this help message"
 }
 
@@ -56,6 +58,9 @@ while [[ $# -gt 0 ]] ; do
         -e)
             coverage=$2
             shift 2 ;;
+        -f)
+            compile=1
+            shift 1 ;;
         -h)
             help
             exit 1 ;;
@@ -64,13 +69,22 @@ done
 
 echo "Running non-regression testsuite with SEQUENCE=${sequence}"
 
+if [[ -n ${compile} && ${compile} == 1 ]] ; then
+    make clean ;
+    make build CONFIG=${config}
+    if [[ $? -ne 0 ]] ; then
+        echo "error: testbench compilation failed" ;
+        exit 1 ;
+    fi
+fi
+
 i=1
 mkdir -p ${logdir}
 for s in $(head -n ${ntests} scripts/random_numbers.dat | tr '\n' ' ') ; do
     echo "[$i/${ntests}] Running sequence ${sequence} SEED=${s}" ; ((i++)) ;
     make -s run SEQUENCE=${sequence} SEED=${s} NTRANSACTIONS=${ntrans} \
             RUN_LOG=${logdir}/${sequence}_${s}.log LOG_LEVEL=${loglevel} \
-            COV=${coverage};
+            COV=${coverage} CONFIG=${config} ;
 done
 
 PERL5LIB=./scripts/perl5 \
