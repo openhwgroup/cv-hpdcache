@@ -244,6 +244,7 @@ nonregression:
 		-t ${NTRANSACTIONS} \
 		-l $(LOG_DIR)/nonreg_$(CONFIG_NAME)_$(DATE_TIME) \
 		-c ${CONFIG} \
+		-f \
                 $(if $(filter 1,$(COV)),-e $(COV))
 
 .PHONY: cov
