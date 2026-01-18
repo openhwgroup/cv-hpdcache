@@ -1,4 +1,4 @@
-/*
+/**
  *  Copyright 2023,2024 Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
  *  Copyright 2025 Univ. Grenoble Alpes, Inria, TIMA Laboratory
  *
@@ -108,6 +108,7 @@ import hpdcache_pkg::*;
     output logic                          evt_cache_dir_cor_err_o,
     output logic                          evt_cache_dat_unc_err_o,
     output logic                          evt_cache_dat_cor_err_o,
+    output logic                          evt_scrub_complete_o,
     output logic                          evt_uncached_req_o,
     output logic                          evt_cmo_req_o,
     output logic                          evt_write_req_o,
@@ -130,7 +131,10 @@ import hpdcache_pkg::*;
     input  logic                          cfg_prefetch_updt_plru_i,
     input  logic                          cfg_error_on_cacheable_amo_i,
     input  logic                          cfg_rtab_single_entry_i,
-    input  logic                          cfg_default_wb_i
+    input  logic                          cfg_default_wb_i,
+    input  logic                          cfg_scrub_enable_i,
+    input  logic unsigned [5:0]           cfg_scrub_period_i,
+    input  logic                          cfg_scrub_restart_i
 );
     //  }}}
 
@@ -649,6 +653,9 @@ import hpdcache_pkg::*;
         .cfg_prefetch_updt_plru_i,
         .cfg_rtab_single_entry_i,
         .cfg_default_wb_i                   (cfg_default_wb),
+        .cfg_scrub_enable_i,
+        .cfg_scrub_period_i,
+        .cfg_scrub_restart_i,
 
         .evt_cache_write_miss_o,
         .evt_cache_read_miss_o,
@@ -656,6 +663,7 @@ import hpdcache_pkg::*;
         .evt_cache_dir_cor_err_o,
         .evt_cache_dat_unc_err_o,
         .evt_cache_dat_cor_err_o,
+        .evt_scrub_complete_o,
         .evt_uncached_req_o,
         .evt_cmo_req_o,
         .evt_write_req_o,

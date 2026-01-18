@@ -7,7 +7,7 @@
 /*
  *  Authors       : Cesar Fuguet
  *  Creation Date : April, 2021
- *  Description   : Write-Through (WT), High-Throughput (HTPUT) HPDcache Package
+ *  Description   : HPDcache Definitions Package
  *  History       :
  */
 package hpdcache_pkg;
@@ -450,6 +450,8 @@ package hpdcache_pkg;
         bit eccDataEn;
         //  Enable ECC in cache directory SRAMs
         bit eccDirEn;
+        //  Enable error correction scrubber
+        bit eccScrubberEn;
     } hpdcache_user_cfg_t;
 
     typedef struct packed {

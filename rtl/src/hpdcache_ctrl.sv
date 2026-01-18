@@ -239,6 +239,9 @@ import hpdcache_pkg::*;
     input  logic                  cfg_prefetch_updt_plru_i,
     input  logic                  cfg_rtab_single_entry_i,
     input  logic                  cfg_default_wb_i,
+    input  logic                  cfg_scrub_enable_i,
+    input  logic unsigned [5:0]   cfg_scrub_period_i,
+    input  logic                  cfg_scrub_restart_i,
 
     //   Performance events
     output logic                  evt_cache_write_miss_o,
@@ -247,6 +250,7 @@ import hpdcache_pkg::*;
     output logic                  evt_cache_dir_cor_err_o,
     output logic                  evt_cache_dat_unc_err_o,
     output logic                  evt_cache_dat_cor_err_o,
+    output logic                  evt_scrub_complete_o,
     output logic                  evt_uncached_req_o,
     output logic                  evt_cmo_req_o,
     output logic                  evt_write_req_o,
@@ -259,7 +263,7 @@ import hpdcache_pkg::*;
 );
     // }}}
 
-    //  Definition of types
+    //  Definition of types and constants
     //  {{{
     typedef logic [$clog2(HPDcacheCfg.u.rtabEntries)-1:0] rtab_ptr_t;
     typedef logic [$clog2(HPDcacheCfg.u.rtabEntries):0]   rtab_cnt_t;
@@ -287,6 +291,8 @@ import hpdcache_pkg::*;
         hpdcache_req_x_t req;
         hpdcache_way_t   way_fetch;
     } rtab_entry_t;
+
+    localparam hpdcache_uint CACHELINE_CHUNKS = (HPDcacheCfg.u.clWords/HPDcacheCfg.u.accessWords);
     //  }}}
 
     //  Definition of internal registers
@@ -319,15 +325,27 @@ import hpdcache_pkg::*;
     logic                    st2_dir_updt_wback_q, st2_dir_updt_wback_d;
     logic                    st2_dir_updt_dirty_q, st2_dir_updt_dirty_d;
     logic                    st2_dir_updt_fetch_q, st2_dir_updt_fetch_d;
+
+    hpdcache_set_t           err_set_q;
+    hpdcache_way_vector_t    err_way_q, err_way_d;
+
+    logic                    err_dir_read, err_dir_write;
+    hpdcache_dir_entry_t     err_dir_rdata_q, err_dir_rdata_d;
+    hpdcache_dir_entry_t     err_dir_wdata;
+
+    logic                    err_dat_read, err_dat_write;
+    hpdcache_access_data_t   err_dat_rdata_q, err_dat_rdata_d;
+    hpdcache_word_t          err_dat_word_q;
+    hpdcache_access_data_t   err_dat_wdata;
     //  }}}
 
     //  Definition of internal signals
     //  {{{
     // Pipeline Stage 0
     hpdcache_req_x_t         st0_req;
-    hpdcache_pma_t           st0_req_pma;
     logic                    st0_req_is_uncacheable;
     logic                    st0_req_is_load;
+    logic                    st0_req_is_scrub;
     logic                    st0_req_is_store;
     logic                    st0_req_is_amo;
     logic                    st0_req_is_cmo_fence;
@@ -414,6 +432,10 @@ import hpdcache_pkg::*;
     logic                    st1_rtab_check_hit;
     logic                    st1_no_pend_trans;
 
+    logic                    scrub_req_valid;
+    logic                    scrub_req_ready;
+    hpdcache_req_x_t         scrub_req;
+
     // Pipeline Stage 1/2 (depending on lowLatency setting)
     logic                    core_rsp_valid;
     logic                    core_rsp_error;
@@ -444,29 +466,11 @@ import hpdcache_pkg::*;
 
     //  Decoding of the request in stage 0
     //  {{{
-    always_comb
-    begin : st0_req_pma_comb
-        st0_req_pma = core_req_i.pma;
-
-        //  force uncacheable requests if the cache is disabled
-        if (!cfg_enable_i) begin
-            st0_req_pma.uncacheable = 1'b1;
-        end
-
-        //  if either WB or WT is not supported, force write-policy
-        if (!HPDcacheCfg.u.wtEn) begin
-            st0_req_pma.wr_policy_hint = HPDCACHE_WR_POLICY_WB;
-        end
-        if (!HPDcacheCfg.u.wbEn) begin
-            st0_req_pma.wr_policy_hint = HPDCACHE_WR_POLICY_WT;
-        end
-    end
-
     //     Select between request in the replay table or a new core requests
     always_comb
     begin : st0_req_comb
         st0_req = '0;
-        if (st0_rtab_pop_try_valid) begin
+        priority if (st0_rtab_pop_try_valid) begin
             //  Grant RTAB request
             st0_req = st0_rtab_pop_try_req.req;
 
@@ -475,15 +479,38 @@ import hpdcache_pkg::*;
 
             //  Indicate that this request is being replayed
             st0_req.from_rtab = 1'b1;
+        end else if (HPDcacheCfg.u.eccScrubberEn && scrub_req_valid) begin
+            //  Grant scrubber request
+            st0_req = scrub_req;
+
+            //  Requests in the scrubber do not need address translation
+            st0_req.req.phys_indexed = 1'b1;
+
+            //  Indicate that this request comes from the scrubber
+            st0_req.err_scrubbing = 1'b1;
         end else begin
             //  Grant core request
             st0_req.req = core_req_i;
+
+            //  force uncacheable requests if the cache is disabled
+            if (!cfg_enable_i) begin
+                st0_req.req.pma.uncacheable = 1'b1;
+            end
+            //  if WT write-policy is not supported, force WB
+            if (!HPDcacheCfg.u.wtEn) begin
+                st0_req.req.pma.wr_policy_hint = HPDCACHE_WR_POLICY_WB;
+            end
+            //  if WB write-policy is not supported, force WT
+            if (!HPDcacheCfg.u.wbEn) begin
+                st0_req.req.pma.wr_policy_hint = HPDCACHE_WR_POLICY_WT;
+            end
         end
     end
 
     //     Decode operation in stage 0
     assign st0_req_is_uncacheable  =     st0_req.req.pma.uncacheable;
-    assign st0_req_is_load         =         is_load(st0_req.req.op);
+    assign st0_req_is_load         =         is_load(st0_req.req.op) & ~st0_req.err_scrubbing;
+    assign st0_req_is_scrub        =         is_load(st0_req.req.op) &  st0_req.err_scrubbing;
     assign st0_req_is_store        =        is_store(st0_req.req.op);
     assign st0_req_is_amo          =          is_amo(st0_req.req.op);
     assign st0_req_is_cmo_fence    =    is_cmo_fence(st0_req.req.op);
@@ -503,11 +530,11 @@ import hpdcache_pkg::*;
         if (!cfg_enable_i) begin
             st1_req_pma.uncacheable = 1'b1;
         end
-
-        //  if either WB or WT is not supported, force write-policy
+        //  if WT write-policy is not supported, force WB
         if (!HPDcacheCfg.u.wtEn) begin
             st1_req_pma.wr_policy_hint = HPDCACHE_WR_POLICY_WB;
         end
+        //  if WB write-policy is not supported, force WT
         if (!HPDcacheCfg.u.wbEn) begin
             st1_req_pma.wr_policy_hint = HPDCACHE_WR_POLICY_WT;
         end
@@ -532,7 +559,7 @@ import hpdcache_pkg::*;
     assign st1_req_abort           = core_req_abort_i & ~st1_req.req.phys_indexed;
 
     assign st1_req_is_uncacheable  = ~cfg_enable_i | st1_req.req.pma.uncacheable;
-    assign st1_req_is_load         =         is_load(st1_req.req.op);
+    assign st1_req_is_load         =         is_load(st1_req.req.op) & ~st1_req.err_scrubbing;
     assign st1_req_is_store        =        is_store(st1_req.req.op);
     assign st1_req_is_amo          =          is_amo(st1_req.req.op);
     assign st1_req_is_amo_lr       =       is_amo_lr(st1_req.req.op);
@@ -568,6 +595,8 @@ import hpdcache_pkg::*;
     ) hpdcache_ctrl_pe_i(
         .core_req_valid_i,
         .core_req_ready_o,
+        .scrub_req_valid_i                  (scrub_req_valid),
+        .scrub_req_ready_o                  (scrub_req_ready),
         .rtab_req_valid_i                   (st0_rtab_pop_try_valid),
         .rtab_req_ready_o                   (st0_rtab_pop_try_ready),
         .refill_req_valid_i,
@@ -577,6 +606,7 @@ import hpdcache_pkg::*;
         .st0_req_is_uncacheable_i           (st0_req_is_uncacheable),
         .st0_req_need_rsp_i                 (st0_req.req.need_rsp),
         .st0_req_is_load_i                  (st0_req_is_load),
+        .st0_req_is_scrub_i                 (st0_req_is_scrub),
         .st0_req_is_store_i                 (st0_req_is_store),
         .st0_req_is_amo_i                   (st0_req_is_amo),
         .st0_req_is_cmo_fence_i             (st0_req_is_cmo_fence),
@@ -1173,158 +1203,284 @@ import hpdcache_pkg::*;
         ERR_CORRECT
     } hpdcache_err_fsm_t;
 
-    hpdcache_err_fsm_t    err_fsm_q, err_fsm_d;
-    hpdcache_way_vector_t err_dir_unc_q;
-    hpdcache_way_vector_t err_dir_cor_q;
-    hpdcache_way_vector_t err_dat_unc_q;
-    hpdcache_way_vector_t err_dat_cor_q;
+    if (HPDcacheCfg.u.eccDirEn || HPDcacheCfg.u.eccDataEn) begin : gen_err_recovery
+        hpdcache_err_fsm_t    err_fsm_q, err_fsm_d;
+        hpdcache_way_vector_t err_dir_unc_q;
+        hpdcache_way_vector_t err_dir_cor_q;
+        hpdcache_way_vector_t err_dat_unc_q;
+        hpdcache_way_vector_t err_dat_cor_q;
 
-    hpdcache_set_t         err_set_q;
-    hpdcache_way_vector_t  err_way_q, err_way_d;
+        logic err_dir_rdata_we;
+        logic err_dat_rdata_we;
 
-    logic                  err_dir_read, err_dir_write;
-    logic                  err_dir_rdata_we;
-    hpdcache_dir_entry_t   err_dir_rdata_q, err_dir_rdata_d;
-    hpdcache_dir_entry_t   err_dir_wdata;
+        always_comb
+        begin : err_fsm_comb
+            automatic hpdcache_way_vector_t err_way_next;
+            automatic logic err_dir_unc_msk, err_dir_cor_msk;
+            automatic logic err_dat_unc_msk, err_dat_cor_msk;
 
-    logic                  err_dat_read, err_dat_write;
-    logic                  err_dat_rdata_we;
-    hpdcache_access_data_t err_dat_rdata_q, err_dat_rdata_d;
-    hpdcache_word_t        err_dat_word_q;
-    hpdcache_access_data_t err_dat_wdata;
+            err_fsm_d = err_fsm_q;
+            err_way_d = err_way_q;
 
-    always_comb
-    begin : err_fsm_comb
-        automatic hpdcache_way_vector_t err_way_next;
-        automatic logic err_dir_unc_msk, err_dir_cor_msk;
-        automatic logic err_dat_unc_msk, err_dat_cor_msk;
+            err_dir_unc_msk = |(err_dir_unc_q & err_way_q);
+            err_dir_cor_msk = |(err_dir_cor_q & err_way_q);
+            err_dat_unc_msk = |(err_dat_unc_q & err_way_q);
+            err_dat_cor_msk = |(err_dat_cor_q & err_way_q);
 
-        err_fsm_d = err_fsm_q;
-        err_way_d = err_way_q;
+            err_way_next  = {err_way_q[0 +: HPDcacheCfg.u.ways-1], 1'b0};
+            err_dir_read  = 1'b0;
+            err_dir_write = 1'b0;
+            err_dir_wdata = '0;
+            err_dat_read  = 1'b0;
+            err_dat_write = 1'b0;
+            err_dat_wdata = '0;
 
-        err_dir_unc_msk = |(err_dir_unc_q & err_way_q);
-        err_dir_cor_msk = |(err_dir_cor_q & err_way_q);
-        err_dat_unc_msk = |(err_dat_unc_q & err_way_q);
-        err_dat_cor_msk = |(err_dat_cor_q & err_way_q);
+            err_dir_rdata_we = 1'b0;
+            err_dat_rdata_we = 1'b0;
 
-        err_way_next  = {err_way_q[0 +: HPDcacheCfg.u.ways-1], 1'b0};
-        err_dir_read  = 1'b0;
-        err_dir_write = 1'b0;
-        err_dir_wdata = '0;
-        err_dat_read  = 1'b0;
-        err_dat_write = 1'b0;
-        err_dat_wdata = '0;
+            err_busy = 1'b1;
 
-        err_dir_rdata_we = 1'b0;
-        err_dat_rdata_we = 1'b0;
+            case (err_fsm_q)
+                ERR_IDLE: begin
+                    err_busy = 1'b0;
 
-        err_busy = 1'b1;
+                    //  Start checking all ways to correct/invalidate wrong entries
+                    if (st1_err_trigger) begin
+                        err_fsm_d = ERR_CHECK;
+                        err_way_d = {{HPDcacheCfg.u.ways-1{1'b0}}, 1'b1};
+                    end
+                end
+                ERR_CHECK: begin
+                    if (err_dir_unc_msk | err_dat_unc_msk) begin
+                        err_fsm_d = ERR_INVAL;
+                    end else if (err_dir_cor_msk | err_dat_cor_msk) begin
+                        err_dir_read = err_dir_cor_msk;
+                        err_dat_read = err_dat_cor_msk;
+                        err_fsm_d = ERR_LATCH;
+                    end else if (err_way_q[HPDcacheCfg.u.ways - 1]) begin
+                        err_fsm_d = ERR_IDLE;
+                    end else begin
+                        err_way_d = err_way_next;
+                    end
+                end
+                ERR_INVAL: begin
+                    //  Invalidate the uncorrectable cacheline
+                    err_dir_write = 1'b1;
+                    err_dir_wdata = '0;
+                    //  Zero data words to put them in a correct state
+                    err_dat_write = err_dat_unc_msk;
+                    err_dat_wdata = '0;
 
-        case (err_fsm_q)
-            ERR_IDLE: begin
-                err_busy = 1'b0;
+                    //  Check next way or go to IDLE after the last one
+                    if (err_way_q[HPDcacheCfg.u.ways - 1]) begin
+                        err_fsm_d = ERR_IDLE;
+                    end else begin
+                        err_way_d = err_way_next;
+                        err_fsm_d = ERR_CHECK;
+                    end
+                end
+                ERR_LATCH: begin
+                    //  Latch corrected dir and data entries
+                    err_dir_rdata_we = err_dir_cor_msk;
+                    err_dat_rdata_we = err_dat_cor_msk;
+                    err_fsm_d = ERR_CORRECT;
+                end
+                ERR_CORRECT: begin
+                    //  Correct the directory entry
+                    err_dir_write = err_dir_cor_msk;
+                    err_dir_wdata = err_dir_rdata_q;
+                    //  Correct data words
+                    err_dat_write = err_dat_cor_msk;
+                    err_dat_wdata = err_dat_rdata_q;
 
-                //  Start checking all ways to correct/invalidate wrong entries
-                if (st1_err_trigger) begin
-                    err_fsm_d = ERR_CHECK;
-                    err_way_d = {{HPDcacheCfg.u.ways-1{1'b0}}, 1'b1};
+                    //  Check next way or go to IDLE after the last one
+                    if (err_way_q[HPDcacheCfg.u.ways - 1]) begin
+                        err_fsm_d = ERR_IDLE;
+                    end else begin
+                        err_way_d = err_way_next;
+                        err_fsm_d = ERR_CHECK;
+                    end
+                end
+                default: begin
+                end
+            endcase
+        end
+
+        always_ff @(posedge clk_i or negedge rst_ni)
+        begin : err_fsm_ff
+            if (!rst_ni) begin
+                err_fsm_q      <= ERR_IDLE;
+                err_way_q      <= '0;
+                err_set_q      <= '0;
+                err_dir_unc_q  <= '0;
+                err_dir_cor_q  <= '0;
+                err_dat_unc_q  <= '0;
+                err_dat_cor_q  <= '0;
+                err_dat_word_q <= '0;
+            end else begin
+                err_fsm_q      <= err_fsm_d;
+                err_way_q      <= err_way_d;
+                if (st1_err_trigger && !err_busy) begin
+                    err_set_q  <= st1_req_set;
+
+                    err_dir_unc_q <= st1_dir_err_unc;
+                    err_dir_cor_q <= st1_dir_err_cor;
+                    err_dat_unc_q <= st1_dat_err_unc;
+                    err_dat_cor_q <= st1_dat_err_cor;
+
+                    //  Align request word to the number of access words
+                    //  The error recovery handler checks and corrects "access words" per cycle
+                    err_dat_word_q <= hpdcache_word_t'(
+                        (hpdcache_uint'(st1_req_word) / HPDcacheCfg.u.accessWords) *
+                        HPDcacheCfg.u.accessWords);
                 end
             end
-            ERR_CHECK: begin
-                if (err_dir_unc_msk | err_dat_unc_msk) begin
-                    err_fsm_d = ERR_INVAL;
-                end else if (err_dir_cor_msk | err_dat_cor_msk) begin
-                    err_dir_read = err_dir_cor_msk;
-                    err_dat_read = err_dat_cor_msk;
-                    err_fsm_d = ERR_LATCH;
-                end else if (err_way_q[HPDcacheCfg.u.ways - 1]) begin
-                    err_fsm_d = ERR_IDLE;
-                end else begin
-                    err_way_d = err_way_next;
-                end
-            end
-            ERR_INVAL: begin
-                //  Invalidate the uncorrectable cacheline
-                err_dir_write = 1'b1;
-                err_dir_wdata = '0;
-                //  Zero data words to put them in a correct state
-                err_dat_write = err_dat_unc_msk;
-                err_dat_wdata = '0;
+        end
 
-                //  Check next way or go to IDLE after the last one
-                if (err_way_q[HPDcacheCfg.u.ways - 1]) begin
-                    err_fsm_d = ERR_IDLE;
-                end else begin
-                    err_way_d = err_way_next;
-                    err_fsm_d = ERR_CHECK;
-                end
+        always_ff @(posedge clk_i or negedge rst_ni)
+        begin : err_fsm_data_ff
+            if (err_dir_rdata_we) begin
+                err_dir_rdata_q <= err_dir_rdata_d;
             end
-            ERR_LATCH: begin
-                //  Latch corrected dir and data entries
-                err_dir_rdata_we = err_dir_cor_msk;
-                err_dat_rdata_we = err_dat_cor_msk;
-                err_fsm_d = ERR_CORRECT;
+            if (err_dat_rdata_we) begin
+                err_dat_rdata_q <= err_dat_rdata_d;
             end
-            ERR_CORRECT: begin
-                //  Correct the directory entry
-                err_dir_write = err_dir_cor_msk;
-                err_dir_wdata = err_dir_rdata_q;
-                //  Correct data words
-                err_dat_write = err_dat_cor_msk;
-                err_dat_wdata = err_dat_rdata_q;
-
-                //  Check next way or go to IDLE after the last one
-                if (err_way_q[HPDcacheCfg.u.ways - 1]) begin
-                    err_fsm_d = ERR_IDLE;
-                end else begin
-                    err_way_d = err_way_next;
-                    err_fsm_d = ERR_CHECK;
-                end
-            end
-            default: begin
-            end
-        endcase
+        end
+    end else begin : gen_no_err_recovery
+        assign err_set_q      = '0;
+        assign err_way_q      = '0;
+        assign err_dat_word_q = '0;
+        assign err_dir_read   = 1'b0;
+        assign err_dir_write  = 1'b0;
+        assign err_dir_wdata  = 1'b0;
+        assign err_dat_read   = 1'b0;
+        assign err_dat_write  = 1'b0;
+        assign err_dat_wdata  = 1'b0;
     end
+    //  }}}
 
-    always_ff @(posedge clk_i or negedge rst_ni)
-    begin : err_fsm_ff
-        if (!rst_ni) begin
-            err_fsm_q      <= ERR_IDLE;
-            err_way_q      <= '0;
-            err_set_q      <= '0;
-            err_dir_unc_q  <= '0;
-            err_dir_cor_q  <= '0;
-            err_dat_unc_q  <= '0;
-            err_dat_cor_q  <= '0;
-            err_dat_word_q <= '0;
-        end else begin
-            err_fsm_q      <= err_fsm_d;
-            err_way_q      <= err_way_d;
-            if (st1_err_trigger && !err_busy) begin
-                err_set_q  <= st1_req_set;
+    //  Error Scrubber
+    //  {{{
+    typedef enum {
+        SCRUB_IDLE,
+        SCRUB_CHECK,
+        SCRUB_WAIT
+    } hpdcache_scrub_fsm_t;
 
-                err_dir_unc_q <= st1_dir_err_unc;
-                err_dir_cor_q <= st1_dir_err_cor;
-                err_dat_unc_q <= st1_dat_err_unc;
-                err_dat_cor_q <= st1_dat_err_cor;
+    if (HPDcacheCfg.u.eccScrubberEn) begin : gen_err_scrubber
+        hpdcache_scrub_fsm_t scrub_fsm_q, scrub_fsm_d;
+        hpdcache_set_t       scrub_set_q, scrub_set_d;
+        hpdcache_word_t      scrub_chunk_q, scrub_chunk_d;
+        hpdcache_uint64      scrub_wait_q, scrub_wait_d;
+        hpdcache_uint64      scrub_period;
+        logic                scrub_last_set, scrub_last_chunk, scrub_last_access;
 
-                //  Align request word to the number of access words
-                //  The error recovery handler checks and corrects "access words" per cycle
-                err_dat_word_q <= hpdcache_word_t'(
-                    (hpdcache_uint'(st1_req_word) / HPDcacheCfg.u.accessWords) *
-                    HPDcacheCfg.u.accessWords);
+        always_comb
+        begin : scrub_fsm_comb
+            automatic hpdcache_uint32 cl_offset;
+
+            cl_offset = scrub_chunk_q*HPDcacheCfg.accessBytes;
+
+            scrub_fsm_d = scrub_fsm_q;
+            scrub_set_d = scrub_set_q;
+            scrub_chunk_d = scrub_chunk_q;
+            scrub_period = hpdcache_uint64'((1 << cfg_scrub_period_i) - 1);
+
+            //  build scrubber request
+            scrub_req_valid = 1'b0;
+            scrub_req = '0;
+            scrub_req.req.op = hpdcache_pkg::HPDCACHE_REQ_LOAD;
+            scrub_req.req.size = hpdcache_req_size_t'($clog2(HPDcacheCfg.accessBytes));
+            scrub_req.req.pma.wr_policy_hint = hpdcache_pkg::HPDCACHE_WR_POLICY_AUTO;
+            scrub_req.req.addr_offset[0 +: HPDcacheCfg.clOffsetWidth] =
+                    cl_offset[0 +: HPDcacheCfg.clOffsetWidth];
+            scrub_req.req.addr_offset[HPDcacheCfg.clOffsetWidth +: HPDcacheCfg.setWidth] =
+                    scrub_set_q;
+
+            scrub_last_set = (scrub_set_q == hpdcache_set_t'(HPDcacheCfg.u.sets-1));
+            scrub_last_chunk = (scrub_chunk_q == hpdcache_word_t'(CACHELINE_CHUNKS-1));
+            scrub_last_access = scrub_last_set & scrub_last_chunk;
+
+            evt_scrub_complete_o = 1'b0;
+
+            case (scrub_fsm_q)
+                SCRUB_IDLE: begin
+                    if (cfg_scrub_enable_i) begin
+                        scrub_set_d = 0;
+                        scrub_chunk_d = 0;
+                        scrub_fsm_d = SCRUB_CHECK;
+                    end
+                end
+                SCRUB_CHECK: begin
+                    scrub_req_valid = 1'b1;
+                    if (scrub_req_ready) begin
+                        if (scrub_last_set) begin
+                            scrub_set_d = 0;
+                        end else begin
+                            scrub_set_d = scrub_set_q + 1;
+                        end
+                        if (scrub_last_chunk) begin
+                            scrub_chunk_d = 0;
+                        end else begin
+                            scrub_chunk_d = scrub_chunk_q + 1;
+                        end
+
+                        if (!cfg_scrub_enable_i) begin
+                            scrub_fsm_d = SCRUB_IDLE;
+                        end else if (scrub_last_access) begin
+                            if (cfg_scrub_restart_i) begin
+                                scrub_set_d = 0;
+                                scrub_chunk_d = 0;
+                                scrub_fsm_d = SCRUB_CHECK;
+                            end else begin
+                                scrub_fsm_d = SCRUB_IDLE;
+                            end
+                        end else if (scrub_period != 0) begin
+                            scrub_wait_d = 0;
+                            scrub_fsm_d = SCRUB_WAIT;
+                        end
+                    end
+                end
+
+                SCRUB_WAIT: begin
+                    scrub_wait_d = scrub_wait_q + 1;
+                    if (!cfg_scrub_enable_i) begin
+                        scrub_fsm_d = SCRUB_IDLE;
+                    end else if (scrub_wait_q == scrub_period) begin
+                        evt_scrub_complete_o = scrub_last_access;
+                        if (scrub_last_access) begin
+                            if (cfg_scrub_restart_i) begin
+                                scrub_set_d = 0;
+                                scrub_chunk_d = 0;
+                                scrub_fsm_d = SCRUB_CHECK;
+                            end else begin
+                                scrub_fsm_d = SCRUB_IDLE;
+                            end
+                        end else begin
+                            scrub_fsm_d = SCRUB_CHECK;
+                        end
+                    end
+                end
+            endcase
+        end
+
+        always_ff @(posedge clk_i or negedge rst_ni)
+        begin : scrub_fsm_ff
+            if (!rst_ni) begin
+                scrub_fsm_q   <= SCRUB_IDLE;
+                scrub_wait_q  <= '0;
+                scrub_set_q   <= '0;
+                scrub_chunk_q <= '0;
+            end else begin
+                scrub_fsm_q   <= scrub_fsm_d;
+                scrub_wait_q  <= scrub_wait_d;
+                scrub_set_q   <= scrub_set_d;
+                scrub_chunk_q <= scrub_chunk_d;
             end
         end
-    end
-
-    always_ff @(posedge clk_i or negedge rst_ni)
-    begin : err_fsm_data_ff
-        if (err_dir_rdata_we) begin
-            err_dir_rdata_q <= err_dir_rdata_d;
-        end
-        if (err_dat_rdata_we) begin
-            err_dat_rdata_q <= err_dat_rdata_d;
-        end
+    end else begin : gen_no_err_scrubber
+        assign scrub_req_valid = 1'b0;
+        assign scrub_req = '0;
     end
     //  }}}
 

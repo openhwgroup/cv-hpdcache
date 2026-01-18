@@ -29,6 +29,9 @@ import hpdcache_pkg::*;
     input  logic                   core_req_valid_i,
     output logic                   core_req_ready_o,
 
+    input  logic                   scrub_req_valid_i,
+    output logic                   scrub_req_ready_o,
+
     input  logic                   rtab_req_valid_i,
     output logic                   rtab_req_ready_o,
 
@@ -42,6 +45,7 @@ import hpdcache_pkg::*;
     input  logic                   st0_req_is_uncacheable_i,
     input  logic                   st0_req_need_rsp_i,
     input  logic                   st0_req_is_load_i,
+    input  logic                   st0_req_is_scrub_i,
     input  logic                   st0_req_is_store_i,
     input  logic                   st0_req_is_amo_i,
     input  logic                   st0_req_is_cmo_fence_i,
@@ -294,6 +298,7 @@ import hpdcache_pkg::*;
         wbuf_write_uncacheable_o            = 1'b0; // unused
 
         core_req_ready_o                    = 1'b0;
+        scrub_req_ready_o                   = 1'b0;
         rtab_req_ready_o                    = 1'b0;
         refill_req_ready_o                  = 1'b0;
 
@@ -533,9 +538,9 @@ import hpdcache_pkg::*;
 
                         //  Stall the pipeline
                         st1_nop = 1'b1;
-                    end
-                    else if ((HPDcacheCfg.u.eccDirEn  &&  st1_dir_err_cor_i) ||
-                             (HPDcacheCfg.u.eccDataEn && (st1_dat_err_cor_i || st1_dat_err_unc_i)))
+                    end else if ((HPDcacheCfg.u.eccDirEn  &&  st1_dir_err_cor_i) ||
+                                 (HPDcacheCfg.u.eccDataEn && (st1_dat_err_cor_i ||
+                                                              st1_dat_err_unc_i)))
                     begin
                         //  Trigger directory correction
                         st1_err_o = 1'b1;
@@ -556,9 +561,10 @@ import hpdcache_pkg::*;
                         st1_nop = 1'b1;
                     end
                     //  }}}
+
                     //  AMO cacheable request
                     //  {{{
-                    else if (st1_req_is_amo_i) begin
+                    if (st1_req_is_amo_i && !st1_err_o) begin
                         //  There are pending transactions which must be completed and the
                         //  request is not being replayed.
                         //  When an AMO request is replayed, it is guaranteed that there
@@ -615,8 +621,7 @@ import hpdcache_pkg::*;
 
                     //  Load cacheable request
                     //  {{{
-                    if (|{st1_req_is_load_i,
-                          st1_req_is_cmo_prefetch_i})
+                    if (|{st1_req_is_load_i, st1_req_is_cmo_prefetch_i} && !st1_err_o)
                     begin
                         //  Cache miss
                         //  {{{
@@ -793,7 +798,7 @@ import hpdcache_pkg::*;
 
                     //  Store cacheable request
                     //  {{{
-                    if (st1_req_is_store_i) begin
+                    if (st1_req_is_store_i && !st1_err_o) begin
                         //  Add a NOP in the pipeline when: Replaying a request, the cache cannot
                         //  accept a request from the core the next cycle. It can however accept
                         //  a new request from the replay table
@@ -806,9 +811,16 @@ import hpdcache_pkg::*;
                         // with the write
                         else begin
                             st1_nop = (st1_req_rtab_i & ~rtab_req_valid_i) |
-                                      (rd_wr_conflict_i & ( st0_req_is_load_i
-                                                          | st0_req_is_pstore
-                                                          | st0_req_is_pamo));
+                                      (rd_wr_conflict_i & st0_req_is_load_i);
+
+                            if (HPDcacheCfg.u.eccDataEn) begin
+                                if (rd_wr_conflict_i) begin
+                                    st1_nop |= (st0_req_is_pstore | st0_req_is_pamo);
+                                    if (HPDcacheCfg.u.eccScrubberEn) begin
+                                        st1_nop |= st0_req_is_scrub_i;
+                                    end
+                                end
+                            end
                         end
 
                         //  Enable the data RAM in case of write. However, the actual write
@@ -1119,7 +1131,8 @@ import hpdcache_pkg::*;
             //     New requests/refill are served according to the following priority:
             //     0 - Refills/Invalidations (Highest priority)
             //     1 - Replay Table
-            //     2 - Core (Lowest priority)
+            //     2 - Scrubber
+            //     3 - Core (Lowest priority)
 
             //     * IMPORTANT: When the replay table is full, the cache
             //       cannot accept new core requests to prevent a deadlock: If
@@ -1128,6 +1141,16 @@ import hpdcache_pkg::*;
             //       the pipeline is stalled, dependencies of on-hold requests
             //       cannot be solved, creating a deadlock
             core_req_ready_o = core_req_valid_i
+                               & ~scrub_req_valid_i
+                               & ~rtab_req_valid_i
+                               & ~refill_req_valid_i
+                               & ~rtab_full_i
+                               & ~cmo_busy_i
+                               & ~uc_busy_i
+                               & ~rtab_fence_i
+                               & ~nop;
+
+            scrub_req_ready_o = scrub_req_valid_i
                                & ~rtab_req_valid_i
                                & ~refill_req_valid_i
                                & ~rtab_full_i
@@ -1156,7 +1179,7 @@ import hpdcache_pkg::*;
             //          This increases the power consumption in that cases, but
             //          removes the timing paths RAM-to-RAM between the cache
             //          directory and the data array.
-            if ((core_req_ready_o | rtab_req_ready_o)
+            if ((core_req_ready_o | rtab_req_ready_o | scrub_req_ready_o)
                 && !st0_req_is_uncacheable_i
                 && !st0_req_is_error_i)
             begin
@@ -1165,6 +1188,10 @@ import hpdcache_pkg::*;
                         st0_req_cachedata_read = st0_req_is_load_i
                                                | st0_req_is_pstore
                                                | st0_req_is_pamo;
+
+                        if (HPDcacheCfg.u.eccScrubberEn) begin
+                            st0_req_cachedata_read |= st0_req_is_scrub_i;
+                        end
                     end else begin
                         st0_req_cachedata_read = st0_req_is_load_i;
                     end
@@ -1173,10 +1200,14 @@ import hpdcache_pkg::*;
                 if (st0_req_is_load_i         |
                     st0_req_is_cmo_prefetch_i |
                     st0_req_is_store_i        |
-                    st0_req_is_amo_i          )
+                    st0_req_is_amo_i)
                 begin
                     st0_req_mshr_check_o    = 1'b1;
                     st0_req_cachedir_read_o = 1'b1;
+                end
+
+                if (HPDcacheCfg.u.eccDirEn && HPDcacheCfg.u.eccScrubberEn) begin
+                    st0_req_cachedir_read_o |= st0_req_is_scrub_i;
                 end
             end
             //      }}}

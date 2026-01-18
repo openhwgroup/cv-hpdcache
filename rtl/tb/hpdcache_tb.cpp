@@ -122,6 +122,7 @@ public:
         top->evt_cache_dir_cor_err_o(evt_cache_dir_cor_err);
         top->evt_cache_dat_unc_err_o(evt_cache_dat_unc_err);
         top->evt_cache_dat_cor_err_o(evt_cache_dat_cor_err);
+        top->evt_scrub_complete_o(evt_scrub_complete);
         top->evt_uncached_req_o(evt_uncached_req);
         top->evt_cmo_req_o(evt_cmo_req);
         top->evt_write_req_o(evt_write_req);
@@ -141,6 +142,9 @@ public:
         top->cfg_error_on_cacheable_amo_i(cfg_error_on_cacheable_amo);
         top->cfg_rtab_single_entry_i(cfg_rtab_single_entry);
         top->cfg_default_wb_i(cfg_default_wb);
+        top->cfg_scrub_enable_i(cfg_scrub_enable);
+        top->cfg_scrub_period_i(cfg_scrub_period);
+        top->cfg_scrub_restart_i(cfg_scrub_restart);
 
         hpdcache_test_agent_i->clk_i(clk_i);
         hpdcache_test_agent_i->rst_ni(rst_ni);
@@ -209,6 +213,7 @@ public:
         hpdcache_test_scoreboard_i->evt_cache_dir_cor_err_i(evt_cache_dir_cor_err);
         hpdcache_test_scoreboard_i->evt_cache_dat_unc_err_i(evt_cache_dat_unc_err);
         hpdcache_test_scoreboard_i->evt_cache_dat_cor_err_i(evt_cache_dat_cor_err);
+        hpdcache_test_scoreboard_i->evt_scrub_complete_i(evt_scrub_complete);
         hpdcache_test_scoreboard_i->evt_uncached_req_i(evt_uncached_req);
         hpdcache_test_scoreboard_i->evt_cmo_req_i(evt_cmo_req);
         hpdcache_test_scoreboard_i->evt_write_req_i(evt_write_req);
@@ -251,6 +256,9 @@ public:
         cfg_error_on_cacheable_amo.write(false);
         cfg_rtab_single_entry.write(false);
         cfg_default_wb.write(false);
+        cfg_scrub_enable.write(false);
+        cfg_scrub_period.write(10); // 2^10 = 1024
+        cfg_scrub_restart.write(true);
 
         Verilated::assertOn(false);
         rst_ni = 1;
@@ -407,6 +415,7 @@ private:
     sc_core::sc_signal<bool> evt_cache_dir_cor_err;
     sc_core::sc_signal<bool> evt_cache_dat_unc_err;
     sc_core::sc_signal<bool> evt_cache_dat_cor_err;
+    sc_core::sc_signal<bool> evt_scrub_complete;
     sc_core::sc_signal<bool> evt_uncached_req;
     sc_core::sc_signal<bool> evt_cmo_req;
     sc_core::sc_signal<bool> evt_write_req;
@@ -428,6 +437,9 @@ private:
     sc_core::sc_signal<bool> cfg_error_on_cacheable_amo;
     sc_core::sc_signal<bool> cfg_rtab_single_entry;
     sc_core::sc_signal<bool> cfg_default_wb;
+    sc_core::sc_signal<bool> cfg_scrub_enable;
+    sc_core::sc_signal<sc_bv<6>> cfg_scrub_period;
+    sc_core::sc_signal<bool> cfg_scrub_restart;
 };
 
 void
