@@ -808,7 +808,9 @@ import hpdcache_pkg::*;
                         // with the write
                         else begin
                             st1_nop = (st1_req_rtab_i & ~rtab_req_valid_i) |
-                                      (rd_wr_conflict_i & (st0_req_is_load_i | st0_req_is_pstore));
+                                      (rd_wr_conflict_i & ( st0_req_is_load_i
+                                                          | st0_req_is_pstore
+                                                          | st0_req_is_pamo));
                         end
 
                         //  Enable the data RAM in case of write. However, the actual write
