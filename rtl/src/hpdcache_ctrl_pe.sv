@@ -86,7 +86,6 @@ import hpdcache_pkg::*;
     output logic                   st1_err_o,
     input  logic                   err_busy_i,
     output logic                   st1_req_valid_o,
-    output logic                   st1_req_is_error_o,
     output logic                   st1_rsp_valid_o,
     output logic                   st1_rsp_error_o,
     output logic                   st1_rsp_aborted_o,
@@ -305,7 +304,6 @@ import hpdcache_pkg::*;
         st0_req_is_pamo                     = st0_req_is_amo_i & st0_req_is_partial_i;
 
         st1_req_valid_o                     = st1_req_valid_i;
-        st1_req_is_error_o                  = st1_req_is_error_i;
         st1_nop                             = 1'b0;
         st1_req_cachedata_read              = 1'b0;
         st1_req_cachedata_write_o           = 1'b0;
@@ -1150,7 +1148,6 @@ import hpdcache_pkg::*;
 
             //      Forward the core/rtab request to stage 1
             st1_req_valid_o = core_req_ready_o | rtab_req_ready_o;
-            st1_req_is_error_o = st0_req_is_error_i;
 
             //      New cacheable stage 0 request granted
             //      {{{

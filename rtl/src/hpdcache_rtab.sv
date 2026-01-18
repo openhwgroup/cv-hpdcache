@@ -74,7 +74,6 @@ import hpdcache_pkg::*;
     input  logic                  pop_try_i,
     output rtab_entry_t           pop_try_req_o,
     output rtab_ptr_t             pop_try_ptr_o,
-    output logic                  pop_try_error_o,
 
     //  Pop Commit signals
     //     This interface allows to actually remove a popped request
@@ -222,6 +221,8 @@ import hpdcache_pkg::*;
     logic               [N-1:0]  pop_try_bv;
     logic               [N-1:0]  ready;
 
+    rtab_entry_t                 pop_try_req;
+
     genvar                       gen_i;
 //  }}}
 
@@ -252,13 +253,13 @@ import hpdcache_pkg::*;
 //  Check interface
 //  {{{
     for (gen_i = 0; gen_i < N; gen_i++) begin : gen_check
-        assign addr[gen_i] = {req_q[gen_i].req.addr_tag, req_q[gen_i].req.addr_offset};
+        assign addr[gen_i] = {req_q[gen_i].req.req.addr_tag, req_q[gen_i].req.req.addr_offset};
         assign nline[gen_i] = addr[gen_i][HPDcacheCfg.clOffsetWidth +: HPDcacheCfg.nlineWidth];
         assign match_check_nline[gen_i] = (check_nline_i == nline[gen_i]);
-        assign is_read_bv[gen_i] = is_load(req_q[gen_i].req.op) |
-                                   is_cmo_prefetch(req_q[gen_i].req.op);
-        assign is_amo_bv[gen_i] = is_amo(req_q[gen_i].req.op);
-        assign is_uc_bv[gen_i] = req_q[gen_i].req.pma.uncacheable;
+        assign is_read_bv[gen_i] = is_load(req_q[gen_i].req.req.op) |
+                                   is_cmo_prefetch(req_q[gen_i].req.req.op);
+        assign is_amo_bv[gen_i] = is_amo(req_q[gen_i].req.req.op);
+        assign is_uc_bv[gen_i] = req_q[gen_i].req.req.pma.uncacheable;
     end
 
     assign fence_bv         = valid_q & (is_amo_bv | is_uc_bv);
@@ -529,7 +530,7 @@ import hpdcache_pkg::*;
     ) pop_mux_i (
         .data_i         (req_q),
         .sel_i          (pop_sel),
-        .data_o         (pop_try_req_o)
+        .data_o         (pop_try_req)
     );
 
     //  Temporarily unset the head bit of the popped request to prevent it to be rescheduled
@@ -542,7 +543,11 @@ import hpdcache_pkg::*;
     assign pop_try_ptr_o = rtab_bv_to_index(pop_sel);
 
     //  Forward the error bit
-    assign pop_try_error_o = |(pop_sel & error_q);
+    always_comb
+    begin : pop_try_req_comb
+        pop_try_req_o              = pop_try_req;
+        pop_try_req_o.req.is_error = |(pop_sel & error_q);
+    end
     //  }}}
 
     //  Pop commit process
@@ -660,10 +665,10 @@ import hpdcache_pkg::*;
 
     assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
             alloc_and_link_i |->
-                    ({alloc_req_i.req.addr_tag,
-                      alloc_req_i.req.addr_offset[HPDcacheCfg.clOffsetWidth +:
-                                                  HPDcacheCfg.setWidth]} == check_nline_i)) else
-                    $error("rtab: nline for alloc and link shall match the one being checked");
+                    ({alloc_req_i.req.req.addr_tag,
+                      alloc_req_i.req.req.addr_offset[HPDcacheCfg.clOffsetWidth +:
+                                                      HPDcacheCfg.setWidth]} == check_nline_i))
+                    else $error("rtab: nline for alloc and link shall match the one being checked");
 
     assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
             alloc_i |-> !alloc_and_link_i) else
