@@ -1337,7 +1337,7 @@ import hpdcache_pkg::*;
             end
         end
 
-        always_ff @(posedge clk_i or negedge rst_ni)
+        always_ff @(posedge clk_i)
         begin : err_fsm_data_ff
             if (err_dir_rdata_we) begin
                 err_dir_rdata_q <= err_dir_rdata_d;
@@ -1384,6 +1384,7 @@ import hpdcache_pkg::*;
             scrub_fsm_d = scrub_fsm_q;
             scrub_set_d = scrub_set_q;
             scrub_chunk_d = scrub_chunk_q;
+            scrub_wait_d = scrub_wait_q;
             scrub_period = hpdcache_uint64'((1 << cfg_scrub_period_i) - 1);
 
             //  build scrubber request

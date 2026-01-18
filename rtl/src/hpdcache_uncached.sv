@@ -619,8 +619,8 @@ import hpdcache_pkg::*;
         begin : data_amo_write_merge_comb
             for (int i = 0; i < HPDcacheCfg.u.reqWords; i++) begin
                 for (int j = 0; j < HPDcacheCfg.u.wordWidth/8; j++) begin
-                    assign data_amo_write_be_o[i][j] = req_be_q[i][j] | data_amo_write_merge;
-                    assign data_amo_write_data_o[i][j*8 +: 8] =
+                    data_amo_write_be_o[i][j] = req_be_q[i][j] | data_amo_write_merge;
+                    data_amo_write_data_o[i][j*8 +: 8] =
                         (     req_old_data_q[i][j*8 +: 8] & {8{~req_be_q[i][j]}}) |
                         (data_amo_write_data[i][j*8 +: 8] & {8{ req_be_q[i][j]}});
                 end
