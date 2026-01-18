@@ -1403,7 +1403,7 @@ import hpdcache_pkg::*;
 
             evt_scrub_complete_o = 1'b0;
 
-            case (scrub_fsm_q)
+            unique case (scrub_fsm_q)
                 SCRUB_IDLE: begin
                     if (cfg_scrub_enable_i) begin
                         scrub_set_d = 0;
@@ -1441,7 +1441,6 @@ import hpdcache_pkg::*;
                         end
                     end
                 end
-
                 SCRUB_WAIT: begin
                     scrub_wait_d = scrub_wait_q + 1;
                     if (!cfg_scrub_enable_i) begin
@@ -1460,6 +1459,8 @@ import hpdcache_pkg::*;
                             scrub_fsm_d = SCRUB_CHECK;
                         end
                     end
+                end
+                default: begin
                 end
             endcase
         end
