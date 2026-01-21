@@ -29,6 +29,8 @@
 #include "hpdcache_test_defs.h"
 #include "logger.h"
 #include "mem_model.h"
+#include "tlm.h"
+#include "tlm_utils/peq_with_get.h"
 #include <iostream>
 #include <map>
 #include <scv.h>
@@ -112,16 +114,17 @@ protected:
         }
     };
 
-    sc_fifo<hpdcache_test_transaction_mem_read_resp> read_resp_fifo;
     sc_fifo<mem_write_req_flit_t> write_req_fifo;
     sc_fifo<mem_write_req_data_flit_t> write_req_data_fifo;
-    sc_fifo<hpdcache_test_transaction_mem_write_resp> write_resp_fifo;
+    tlm_utils::peq_with_get<hpdcache_test_transaction_mem_read_resp> read_resp_peq;
+    tlm_utils::peq_with_get<hpdcache_test_transaction_mem_write_resp> write_resp_peq;
 
     std::vector<segment_t> errorsegs;
     mem_model* memory_m;
     excl_reservation_buf_t excl_buf_m[1 << HPDCACHE_MEM_ID_WIDTH];
 
     scv_smart_ptr<int> ra_ready_delay;
+    scv_smart_ptr<int> between_valid_delay;
     scv_smart_ptr<int> rd_valid_delay;
     scv_smart_ptr<int> wa_ready_delay;
     scv_smart_ptr<int> wd_ready_delay;
@@ -136,8 +139,8 @@ protected:
 
 public:
     hpdcache_test_mem_resp_model_base(const std::string& nm)
-      : read_resp_fifo(2)
-      , write_resp_fifo(2)
+      : read_resp_peq("read")
+      , write_resp_peq("write")
     {
         std::string mem_model_name;
         mem_model_name = mem_model_name + "_" + nm;
@@ -173,6 +176,10 @@ public:
         wb_delay_distribution.push(pair<int, int>(3, 8), 90);
         wb_delay_distribution.push(pair<int, int>(9, 64), 2);
         wb_valid_delay->set_mode(wb_delay_distribution);
+
+        scv_bag<pair<int, int>> between_delay_distribution;
+        between_delay_distribution.push(pair<int, int>(1, 10), 100);
+        between_valid_delay->set_mode(between_delay_distribution);
     }
 
     ~hpdcache_test_mem_resp_model_base() { delete memory_m; }
@@ -210,6 +217,13 @@ public:
     void set_wb_valid_delay_distribution(scv_bag<pair<int, int>>& dist)
     {
         wb_valid_delay->set_mode(dist);
+    }
+
+    scv_smart_ptr<int> get_between_valid_delay_distribution() { return between_valid_delay; }
+
+    void set_between_valid_delay_distribution(scv_bag<pair<int, int>>& dist)
+    {
+        between_valid_delay->set_mode(dist);
     }
 
     scv_smart_ptr<int> get_wb_valid_delay_distribution() { return wb_valid_delay; }
