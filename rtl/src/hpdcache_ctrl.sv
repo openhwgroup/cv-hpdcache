@@ -1356,6 +1356,7 @@ import hpdcache_pkg::*;
         assign err_dat_read   = 1'b0;
         assign err_dat_write  = 1'b0;
         assign err_dat_wdata  = 1'b0;
+        assign err_busy       = 1'b0;
     end
     //  }}}
 

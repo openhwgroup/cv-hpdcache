@@ -628,6 +628,8 @@ import hpdcache_pkg::*;
                 end
             end
         end
+    end else begin : gen_noecc_dir_mux
+        assign dir_err_rdata_o = '0;
     end
     //  }}}
 
