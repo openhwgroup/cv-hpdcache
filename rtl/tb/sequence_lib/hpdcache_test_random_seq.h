@@ -1,22 +1,8 @@
 /**
- *  Copyright 2023,2024 CEA*
- *  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+ *  Copyright 2023,2024 Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
  *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
- *
- *  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
- *  may not use this file except in compliance with the License, or, at your
- *  option, the Apache License version 2.0. You may obtain a copy of the
- *  License at
- *
- *  https://solderpad.org/licenses/SHL-2.1/
- *
- *  Unless required by applicable law or agreed to in writing, any work
- *  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
- *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- *  License for the specific language governing permissions and limitations
- *  under the License.
  */
 /**
  *  Author     : Cesar Fuguet
@@ -32,6 +18,7 @@
 #include <systemc>
 
 #define HPDCACHE_TEST_SEQUENCE_ENABLE_ERROR_SEGMENTS 1
+#define HPDCACHE_TEST_SEQUENCE_ENABLE_FAULT_INJECTION 1
 #define HPDCACHE_TEST_SEQUENCE_AMO_SUPPORT true
 
 class hpdcache_test_random_seq : public hpdcache_test_sequence
@@ -156,12 +143,30 @@ public:
             hpdcache_test_transaction_req::HPDCACHE_REQ_AMO_MINU, 4);
         hpdcache_test_sequence::op_amo->set_mode(op_amo_distribution);
 
-        scv_bag<bool> need_rsp_distribution;
-        need_rsp_distribution.push(false, 5);
-        need_rsp_distribution.push(true, 95);
-        need_rsp_rnd->set_mode(need_rsp_distribution);
+        scv_bag<bool> need_rsp_dist;
+        need_rsp_dist.push(false, 5);
+        need_rsp_dist.push(true, 95);
+        need_rsp_rnd->set_mode(need_rsp_dist);
 
         size->keep_only(0, LOG2_REQ_DATA_BYTES);
+
+#if HPDCACHE_TEST_SEQUENCE_ENABLE_FAULT_INJECTION
+        scv_bag<bool> fault_inj_dist;
+        fault_inj_dist.push(false, 99);
+        fault_inj_dist.push(true, 1);
+        fault_inj_rnd->set_mode(fault_inj_dist);
+
+        scv_bag<int> fault_inj_domain_dist;
+        fault_inj_domain_dist.push(
+                static_cast<int>(hpdcache_fault_injection::domain_e::CACHE_DIR), 20);
+        fault_inj_domain_dist.push(
+                static_cast<int>(hpdcache_fault_injection::domain_e::CACHE_DAT), 80);
+        fault_inj_domain_rnd->set_mode(fault_inj_domain_dist);
+
+        scv_bag<pair<int, int>> fault_inj_way_dist;
+        fault_inj_way_dist.push(pair<int, int>(0, HPDCACHE_WAYS-1), 100);
+        fault_inj_way_rnd->set_mode(fault_inj_way_dist);
+#endif
     }
 
 private:
@@ -169,6 +174,13 @@ private:
     scv_smart_ptr<sc_bv<HPDCACHE_REQ_DATA_WIDTH>> data;
     scv_smart_ptr<sc_bv<HPDCACHE_REQ_DATA_WIDTH>> size;
     scv_smart_ptr<bool> need_rsp_rnd;
+
+#if HPDCACHE_TEST_SEQUENCE_ENABLE_FAULT_INJECTION
+    scv_smart_ptr<bool> fault_inj_rnd;
+    scv_smart_ptr<int> fault_inj_way_rnd;
+    scv_smart_ptr<int> fault_inj_domain_rnd;
+#endif
+
     static constexpr unsigned int REQ_DATA_BYTES = HPDCACHE_REQ_DATA_WIDTH / 8;
     static constexpr unsigned int LOG2_REQ_DATA_BYTES = HPDCACHE_TEST_DEFS_LOG2(REQ_DATA_BYTES);
 
@@ -273,6 +285,21 @@ private:
             }
         }
 
+#if HPDCACHE_TEST_SEQUENCE_ENABLE_FAULT_INJECTION
+        fault_inj_rnd->next();
+        if (fault_inj_rnd->read()) {
+            fault_inj_way_rnd->next();
+            fault_inj_domain_rnd->next();
+            t->req_fault.valid = true;
+            t->req_fault.set = t->get_cache_set();
+            t->req_fault.way = fault_inj_way_rnd->read();
+            t->req_fault.word = t->get_cache_word();
+            t->req_fault.domain = static_cast<hpdcache_fault_injection::domain_e>(
+                    fault_inj_domain_rnd->read());
+            t->req_fault.fault_mask = 0x20; /* FIXME */
+        }
+#endif
+
         return t;
     }
 
@@ -362,3 +389,4 @@ private:
 };
 
 #endif // __HPDCACHE_TEST_RANDOM_SEQ_H__
+// vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en : fdm=marker

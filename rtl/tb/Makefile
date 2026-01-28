@@ -88,6 +88,7 @@ VERILATOR_FLAGS     += -Wall -Wno-fatal \
                        -Wno-PINCONNECTEMPTY \
                        --report-unoptflat \
                        --pins-bv 2 \
+                       -DHPDCACHE_DPI_ON=1 \
                        -O3 -I$(HPDCACHE_DIR)/rtl/src \
                        --x-assign unique --x-initial unique
 

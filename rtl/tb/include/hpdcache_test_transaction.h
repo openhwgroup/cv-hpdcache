@@ -1,22 +1,8 @@
 /**
- *  Copyright 2023,2024 CEA*
- *  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+ *  Copyright 2023,2024 Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
  *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
- *
- *  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
- *  may not use this file except in compliance with the License, or, at your
- *  option, the Apache License version 2.0. You may obtain a copy of the
- *  License at
- *
- *  https://solderpad.org/licenses/SHL-2.1/
- *
- *  Unless required by applicable law or agreed to in writing, any work
- *  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
- *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- *  License for the specific language governing permissions and limitations
- *  under the License.
  */
 /**
  *  Author     : Cesar Fuguet
@@ -30,6 +16,7 @@
 #include <verilated.h>
 
 #include "hpdcache_test_defs.h"
+#include "hpdcache_fault_injection.h"
 #include "transaction.h"
 
 using namespace sc_dt;
@@ -72,6 +59,26 @@ public:
         HPDCACHE_WR_POLICY_WT = 0b100
     };
 
+    struct hpdcache_fault_injection_req
+    {
+        bool valid;
+        int set;
+        int way;
+        int word;
+        hpdcache_fault_injection::domain_e domain;
+        sc_bv<128> fault_mask;
+
+        hpdcache_fault_injection_req()
+        {
+            valid = false;
+            set = 0;
+            way = 0;
+            word = 0;
+            domain = hpdcache_fault_injection::domain_e::CACHE_DIR;
+            fault_mask = 0;
+        }
+    };
+
     typedef std::shared_ptr<hpdcache_test_transaction_req> transaction_ptr;
 
     //  request
@@ -88,6 +95,7 @@ public:
     bool req_io;
     hpdcache_wr_policy_hint_e req_wr_policy_hint;
     bool req_abort;
+    hpdcache_fault_injection_req req_fault;
 
     hpdcache_test_transaction_req()
     {
@@ -154,6 +162,24 @@ public:
     {
         unsigned op = this->req_op.to_uint();
         return (op == HPDCACHE_REQ_CMO_PREFETCH);
+    }
+
+    uint64_t get_cache_tag() const
+    {
+        uint64_t addr = req_addr.to_uint64();
+        return (addr >> (HPDCACHE_CL_OFFSET_WIDTH + HPDCACHE_SET_WIDTH));
+    }
+
+    uint64_t get_cache_set() const
+    {
+        uint64_t addr = req_addr.to_uint64();
+        return (addr >> HPDCACHE_CL_OFFSET_WIDTH) & ((1 << HPDCACHE_SET_WIDTH)-1);
+    }
+
+    uint64_t get_cache_word() const
+    {
+        uint64_t addr = req_addr.to_uint64();
+        return ((addr*8) / HPDCACHE_WORD_WIDTH) % HPDCACHE_CL_WORDS;
     }
 
     static const char* op_to_string(unsigned int op)
@@ -265,10 +291,14 @@ public:
                 contains_data = true;
                 break;
         }
-        os << "CORE_REQ / @ = " << req_addr.to_string(SC_HEX)
-
-           << " / " << op_to_string(op) << " / SID = 0x" << std::hex << req_sid.to_uint()
-           << std::dec << " / TID = 0x" << std::hex << req_tid.to_uint() << std::dec
+        os << "CORE_REQ"
+           << " / @ = " << req_addr.to_string(SC_HEX)
+           << " / " << op_to_string(op)
+           << " / SET = 0x" << std::hex << get_cache_set() << std::dec
+           << " / WORD = 0x" << std::hex << get_cache_word() << std::dec
+           << " / TAG = 0x" << std::hex << get_cache_tag() << std::dec
+           << " / SID = 0x" << std::hex << req_sid.to_uint() << std::dec
+           << " / TID = 0x" << std::hex << req_tid.to_uint() << std::dec
            << " / WR_POLICY_HINT = " << wr_policy_to_string(req_wr_policy_hint);
 
         if (!is_cmo()) {
@@ -283,6 +313,16 @@ public:
             }
         } else {
             os << " / " << cmo_to_string(op);
+        }
+
+        if (req_fault.valid) {
+            os << " / FAULT INJECTION / WAY = " << req_fault.way;
+            if (req_fault.domain == hpdcache_fault_injection::domain_e::CACHE_DIR) {
+                os << " / CACHE_DIR";
+            }
+            if (req_fault.domain == hpdcache_fault_injection::domain_e::CACHE_DAT) {
+                os << " / CACHE_DAT";
+            }
         }
 
         return os.str();
@@ -578,3 +618,4 @@ public:
 };
 
 #endif /* __HPDCACHE_TEST_TRANSACTION_H__ */
+// vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en : fdm=marker
