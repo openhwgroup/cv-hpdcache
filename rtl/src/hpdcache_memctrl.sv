@@ -452,9 +452,7 @@ import hpdcache_pkg::*;
                 if (!rst_ni) begin
                     data_read_sel_q <= '0;
                 end else begin
-                    if (data_read) begin
-                        data_read_sel_q <= word_sel_rd;
-                    end
+                    data_read_sel_q <= data_read ? word_sel_rd : '0;
                 end
             end
 
