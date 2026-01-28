@@ -1,22 +1,8 @@
 /**
- *  Copyright 2023,2024 CEA*
- *  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+ *  Copyright 2023,2024 Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
  *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
- *
- *  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
- *  may not use this file except in compliance with the License, or, at your
- *  option, the Apache License version 2.0. You may obtain a copy of the
- *  License at
- *
- *  https://solderpad.org/licenses/SHL-2.1/
- *
- *  Unless required by applicable law or agreed to in writing, any work
- *  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
- *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- *  License for the specific language governing permissions and limitations
- *  under the License.
  */
 /**
  *  Author     : Cesar Fuguet
@@ -29,6 +15,9 @@
 #include "driver.h"
 #include "hpdcache_test_defs.h"
 #include "hpdcache_test_transaction.h"
+#if CONF_HPDCACHE_TEST_FAULT_INJ
+#include "hpdcache_fault_injection.h"
+#endif
 #include "logger.h"
 #include <string>
 #include <systemc>
@@ -66,6 +55,10 @@ public:
 private:
 #if SC_VERSION_MAJOR < 3
     SC_HAS_PROCESS(hpdcache_test_driver);
+#endif
+
+#if CONF_HPDCACHE_TEST_FAULT_INJ
+    hpdcache_fault_injection faultInj;
 #endif
 
     typedef std::shared_ptr<hpdcache_test_transaction_req> transaction_ptr;
@@ -147,6 +140,28 @@ private:
 
             if (t == nullptr) break;
 
+#if CONF_HPDCACHE_TEST_FAULT_INJ
+            if (t->req_fault.valid) {
+                switch (t->req_fault.domain) {
+#if CONF_HPDCACHE_TEST_FAULT_INJ_DIR
+                    case hpdcache_fault_injection::domain_e::CACHE_DIR:
+                        faultInj.injectDirFault(t->req_fault.set,
+                                                t->req_fault.way,
+                                                t->req_fault.fault_mask.range(63, 0));
+                        break;
+#endif
+                    case hpdcache_fault_injection::domain_e::CACHE_DAT:
+                        faultInj.injectDatFault(t->req_fault.set,
+                                                t->req_fault.way,
+                                                t->req_fault.word,
+                                                t->req_fault.fault_mask.range(71, 0));
+                        break;
+                    default:
+                        break;
+                }
+            }
+#endif
+
             core_req_valid_o.write(true);
             core_req_o.write(core_req_to_bv(t));
             do wait();
@@ -199,3 +214,4 @@ private:
 };
 
 #endif // __HPDCACHE_TEST_DRIVER_H__
+// vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en : fdm=marker
