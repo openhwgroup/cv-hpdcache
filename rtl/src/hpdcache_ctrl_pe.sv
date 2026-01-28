@@ -525,7 +525,7 @@ import hpdcache_pkg::*;
                     if ((HPDcacheCfg.u.eccDirEn  && st1_dir_err_unc_i) ||
                         (HPDcacheCfg.u.eccDataEn && st1_dat_err_unc_dirty_i))
                     begin
-                        //  Trigger directory invalidation
+                        //  Trigger directory/data invalidation
                         st1_err_o = 1'b1;
 
                         //  Use response (if required) to signal an unrecoverable error
@@ -542,7 +542,7 @@ import hpdcache_pkg::*;
                                  (HPDcacheCfg.u.eccDataEn && (st1_dat_err_cor_i ||
                                                               st1_dat_err_unc_i)))
                     begin
-                        //  Trigger directory correction
+                        //  Trigger directory/data correction
                         st1_err_o = 1'b1;
 
                         //  Put the request on-hold during SRAM correction
