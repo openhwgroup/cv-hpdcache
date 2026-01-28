@@ -51,5 +51,25 @@ module hpdcache_sram_wbyteenable_1rw
             end
         end
     end
+
+    //  DPI
+    //  {{{
+`ifdef HPDCACHE_DPI_ON
+    export "DPI-C" task publicSramBeSetMask;
+    export "DPI-C" task publicSramBeSetData;
+
+    task publicSramBeSetMask;
+        input int index;
+        input logic [NDATA-1:0][DATA_SIZE-1:0] mask;
+        mem[index] ^= mask;
+    endtask
+
+    task publicSramBeSetData;
+        input int index;
+        input logic [NDATA-1:0][DATA_SIZE-1:0] data;
+        mem[index] = data;
+    endtask
+`endif
+    //  }}}
 endmodule
 // vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en

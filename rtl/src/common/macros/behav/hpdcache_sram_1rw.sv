@@ -46,5 +46,25 @@ module hpdcache_sram_1rw
             end
         end
     end : mem_update_ff
+
+    //  DPI
+    //  {{{
+`ifdef HPDCACHE_DPI_ON
+    export "DPI-C" task publicSramSetMask;
+    export "DPI-C" task publicSramSetData;
+
+    task publicSramSetMask;
+        input int index;
+        input logic [NDATA-1:0][DATA_SIZE-1:0] mask;
+        mem[index] ^= mask;
+    endtask
+
+    task publicSramSetData;
+        input int index;
+        input logic [NDATA-1:0][DATA_SIZE-1:0] data;
+        mem[index] = data;
+    endtask
+`endif
+    //  }}}
 endmodule
 // vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en
