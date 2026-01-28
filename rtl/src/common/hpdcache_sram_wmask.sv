@@ -56,6 +56,8 @@ module hpdcache_sram_wmask
             .err_unc_o
         );
     end else begin : gen_sram
+        logic _unused_err_inj;
+
         hpdcache_sram_wmask_1rw #(
             .ADDR_SIZE(ADDR_SIZE),
             .DATA_SIZE(DATA_SIZE),
@@ -71,6 +73,10 @@ module hpdcache_sram_wmask
             .wmask,
             .rdata
         );
+
+        assign _unused_err_inj = 1'b0 && (err_inj_i & |err_inj_msk_i);
+        assign err_cor_o = {NDATA{1'b0}};
+        assign err_unc_o = {NDATA{1'b0}};
     end
 
 endmodule
