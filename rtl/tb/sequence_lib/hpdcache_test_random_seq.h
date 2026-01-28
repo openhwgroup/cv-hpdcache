@@ -19,6 +19,7 @@
 
 #define HPDCACHE_TEST_SEQUENCE_ENABLE_ERROR_SEGMENTS 1
 #define HPDCACHE_TEST_SEQUENCE_ENABLE_FAULT_INJECTION 1
+#define HPDCACHE_TEST_SEQUENCE_ENABLE_DOUBLE_FAULT 0
 #define HPDCACHE_TEST_SEQUENCE_AMO_SUPPORT true
 
 class hpdcache_test_random_seq : public hpdcache_test_sequence
@@ -163,6 +164,16 @@ public:
                 static_cast<int>(hpdcache_fault_injection::domain_e::CACHE_DAT), 80);
         fault_inj_domain_rnd->set_mode(fault_inj_domain_dist);
 
+        scv_bag<bool> fault_inj_double_dist;
+
+#if HPDCACHE_TEST_SEQUENCE_ENABLE_DOUBLE_FAULT
+        fault_inj_double_dist.push(false, 95);
+        fault_inj_double_dist.push(true, 5);
+#else
+        fault_inj_double_dist.push(false, 100);
+#endif
+        fault_inj_double_rnd->set_mode(fault_inj_double_dist);
+
         scv_bag<pair<int, int>> fault_inj_way_dist;
         fault_inj_way_dist.push(pair<int, int>(0, HPDCACHE_WAYS-1), 100);
         fault_inj_way_rnd->set_mode(fault_inj_way_dist);
@@ -179,6 +190,7 @@ private:
     scv_smart_ptr<bool> fault_inj_rnd;
     scv_smart_ptr<int> fault_inj_way_rnd;
     scv_smart_ptr<int> fault_inj_domain_rnd;
+    scv_smart_ptr<bool> fault_inj_double_rnd;
 #endif
 
     static constexpr unsigned int REQ_DATA_BYTES = HPDCACHE_REQ_DATA_WIDTH / 8;
@@ -290,13 +302,18 @@ private:
         if (fault_inj_rnd->read()) {
             fault_inj_way_rnd->next();
             fault_inj_domain_rnd->next();
+            fault_inj_double_rnd->next();
             t->req_fault.valid = true;
             t->req_fault.set = t->get_cache_set();
             t->req_fault.way = fault_inj_way_rnd->read();
             t->req_fault.word = t->get_cache_word();
             t->req_fault.domain = static_cast<hpdcache_fault_injection::domain_e>(
                     fault_inj_domain_rnd->read());
-            t->req_fault.fault_mask = 0x20; /* FIXME */
+            if (fault_inj_double_rnd->read()) {
+                t->req_fault.fault_mask = 0xA0;
+            } else {
+                t->req_fault.fault_mask = 0x20;
+            }
         }
 #endif
 
