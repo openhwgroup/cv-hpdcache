@@ -552,10 +552,8 @@ import hpdcache_pkg::*;
                         st1_rtab_alloc = 1'b1;
 
                         //  Performance event
-                        evt_cache_dir_unc_err_o = st1_dir_err_unc_i;
                         evt_cache_dir_cor_err_o = st1_dir_err_cor_i;
-                        evt_cache_dat_unc_err_o = st1_dat_err_unc_i;
-                        evt_cache_dat_cor_err_o = st1_dat_err_cor_i;
+                        evt_cache_dat_cor_err_o = st1_dat_err_cor_i | st1_dat_err_unc_i;
 
                         //  Stall the pipeline
                         st1_nop = 1'b1;
