@@ -58,13 +58,13 @@ module hpdcache_sram_wbyteenable_1rw
     export "DPI-C" task publicSramBeSetMask;
     export "DPI-C" task publicSramBeSetData;
 
-    task publicSramBeSetMask;
+    task automatic publicSramBeSetMask;
         input int index;
         input logic [NDATA-1:0][DATA_SIZE-1:0] mask;
         mem[index] ^= mask;
     endtask
 
-    task publicSramBeSetData;
+    task automatic publicSramBeSetData;
         input int index;
         input logic [NDATA-1:0][DATA_SIZE-1:0] data;
         mem[index] = data;

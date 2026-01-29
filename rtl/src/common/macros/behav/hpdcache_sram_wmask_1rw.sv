@@ -54,13 +54,13 @@ module hpdcache_sram_wmask_1rw
     export "DPI-C" task publicSramWmSetMask;
     export "DPI-C" task publicSramWmSetData;
 
-    task publicSramWmSetMask;
+    task automatic publicSramWmSetMask;
         input int index;
         input logic [NDATA-1:0][DATA_SIZE-1:0] mask;
         mem[index] ^= mask;
     endtask
 
-    task publicSramWmSetData;
+    task automatic publicSramWmSetData;
         input int index;
         input logic [NDATA-1:0][DATA_SIZE-1:0] data;
         mem[index] = data;
