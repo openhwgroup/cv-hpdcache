@@ -238,18 +238,20 @@ import hpdcache_pkg::*;
     //  Global control signals
     //  {{{
 
-    //  Determine if the new request is a "fence". Here, fence instructions are
-    //  considered those that need to be executed in program order
-    //  (irrespectively of addresses). This means that all memory operations
-    //  arrived before the "fence" instruction need to be finished, and only
-    //  then the "fence" instruction is executed. In the same manner, all
-    //  instructions following the "fence" need to wait the completion of this
-    //  last before being executed.
+    //      Determine if the new request is a "fence". Here, fence instructions are considered those
+    //      that need to be executed in program order (irrespectively of addresses). This means that
+    //      all memory operations arrived before the "fence" instruction need to be finished, and
+    //      only then the "fence" instruction is executed. In the same manner, all instructions
+    //      following the "fence" need to wait the completion of this last before being executed.
     assign st1_fence = st1_req_is_amo_i         |
                        st1_req_is_uncacheable_i |
                        st1_req_is_cmo_fence_i   |
                        st1_req_is_cmo_inval_i   |
                        st1_req_is_cmo_flush_i;
+
+    //      When allocating an entry in the RTAB for fence-like operations, make sure that it cannot
+    //      be replayed until all pending operations are completed
+    assign st1_rtab_pend_trans_o = st1_fence;
 
     //      Trigger an event signal when a new request cannot consumed
     assign evt_stall_o = core_req_valid_i & ~core_req_ready_o;
@@ -354,7 +356,6 @@ import hpdcache_pkg::*;
         st1_rtab_dir_fetch_o                = 1'b0;
         st1_rtab_flush_hit_o                = 1'b0;
         st1_rtab_flush_not_ready_o          = 1'b0;
-        st1_rtab_pend_trans_o               = 1'b0;
 
         evt_cache_write_miss_o              = 1'b0;
         evt_cache_read_miss_o               = 1'b0;
@@ -499,7 +500,6 @@ import hpdcache_pkg::*;
                     //  that there is no other pending transaction.
                     if (!st1_no_pend_trans_i && !st1_req_rtab_i) begin
                         st1_rtab_alloc = 1'b1;
-                        st1_rtab_pend_trans_o = 1'b1;
                         st1_nop = 1'b1;
                     end
 
@@ -571,7 +571,6 @@ import hpdcache_pkg::*;
                         //  is no other pending transaction.
                         if (!st1_no_pend_trans_i && !st1_req_rtab_i) begin
                             st1_rtab_alloc = 1'b1;
-                            st1_rtab_pend_trans_o = 1'b1;
                             st1_nop = 1'b1;
                         end
 
@@ -605,7 +604,6 @@ import hpdcache_pkg::*;
                                 //  replay table to wait for the flush to finish
                                 if (st1_dir_hit_dirty_i) begin
                                     st1_rtab_alloc = 1'b1;
-                                    st1_rtab_pend_trans_o = 1'b1;
                                 end else begin
                                     uc_req_valid_o = 1'b1;
                                 end
