@@ -585,8 +585,12 @@ import hpdcache_pkg::*;
                 dir_wentry = '0;
             end
 
-            //  Cache directory error correction
-            (HPDcacheCfg.u.eccDirEn && dir_err_write_i): begin
+            //  Cache directory/data error correction
+            //  When a correctable or uncorrectable error is detected in the directory, the
+            //  corresponding entries are invalidated.
+            //  When an uncorrectable error is detected in the data, the directory is also written
+            //  to invalidate the corresponding entries
+            dir_err_write_i: begin
                 dir_addr   = dir_err_set_i;
                 dir_cs     = dir_err_way_i;
                 dir_we     = dir_err_way_i;
