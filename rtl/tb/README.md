@@ -103,6 +103,43 @@ using the random sequence:
 $ make nonregression SEQUENCE=random LOG_LEVEL=1 NTRANSACTIONS=10000 NTESTS=32
 ```
 
+### Fault-Injection
+
+You can enable the injection of soft-errors in HPDcache's SRAMs during the
+simulation.
+
+To do so, when compiling the platform you can pass the following options:
+```bash
+make build CONF_HPDCACHE_TEST_FAULT_INJ=1
+```
+
+By default, the testbench only inject faults into SRAMs storing the cache data.
+To also inject faults in the cache directory:
+```bash
+make build CONF_HPDCACHE_TEST_FAULT_INJ=1 \
+           CONF_HPDCACHE_TEST_FAULT_INJ_DIR=1
+```
+
+Finally, if you want to enable double faults (by default only single errors are
+enabled), do as follows:
+```bash
+make build CONF_HPDCACHE_TEST_FAULT_INJ=1 \
+           CONF_HPDCACHE_TEST_FAULT_INJ_DIR=1 \
+           CONF_HPDCACHE_TEST_DOUBLE_FAULT_INJ=1
+```
+
+Both ```CONF_HPDCACHE_TEST_FAULT_INJ_DIR``` and
+```CONF_HPDCACHE_TEST_DOUBLE_FAULT_INJ``` can be enabled together or
+separately.
+
+These options can also be passed to the nonregression target:
+```bash
+make nonregression <other nonreg options> \
+                   CONF_HPDCACHE_TEST_FAULT_INJ=1 \
+                   CONF_HPDCACHE_TEST_FAULT_INJ_DIR=1 \
+                   CONF_HPDCACHE_TEST_DOUBLE_FAULT_INJ=1
+```
+
 ### Logs
 
 The build logs are written in the `build/` subdirectory. The simulation logs
