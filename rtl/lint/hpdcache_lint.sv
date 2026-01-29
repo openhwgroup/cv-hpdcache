@@ -80,8 +80,10 @@ module hpdcache_lint
   localparam type hpdcache_data_word_t = logic [HPDcacheCfg.u.wordWidth-1:0],
   localparam type hpdcache_data_be_t = logic [HPDcacheCfg.u.wordWidth/8-1:0],
   localparam type hpdcache_req_offset_t = logic [HPDcacheCfg.reqOffsetWidth-1:0],
-  localparam type hpdcache_req_data_t = logic [HPDcacheCfg.u.reqWords-1:0][HPDcacheCfg.u.wordWidth-1:0],
-  localparam type hpdcache_req_be_t = logic [HPDcacheCfg.u.reqWords-1:0][HPDcacheCfg.u.wordWidth/8-1:0],
+  localparam type hpdcache_req_data_t =
+      logic [HPDcacheCfg.u.reqWords-1:0][HPDcacheCfg.u.wordWidth-1:0],
+  localparam type hpdcache_req_be_t =
+      logic [HPDcacheCfg.u.reqWords-1:0][HPDcacheCfg.u.wordWidth/8-1:0],
   localparam type hpdcache_req_sid_t = logic [HPDcacheCfg.u.reqSrcIdWidth-1:0],
   localparam type hpdcache_req_tid_t = logic [HPDcacheCfg.u.reqTransIdWidth-1:0],
   localparam type hpdcache_req_t =
