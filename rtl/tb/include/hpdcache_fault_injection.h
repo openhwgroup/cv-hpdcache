@@ -92,6 +92,7 @@ public:
             dirScopes[w] = scope;
         }
 
+#if CONF_HPDCACHE_ECC_DATA_ENABLE
         for (int w = 0; w < CONF_HPDCACHE_WAYS/CONF_HPDCACHE_DATA_WAYS_PER_RAM_WORD; w++) {
             for (int m = 0; m < CONF_HPDCACHE_ACCESS_WORDS; m++) {
                 char hier_name[256];
@@ -107,6 +108,7 @@ public:
                 datScopes[w][m] = scope;
             }
         }
+#endif
 
         assert((HPDCACHE_WORD_WIDTH == 64) || (HPDCACHE_WORD_WIDTH == 32));
     }
