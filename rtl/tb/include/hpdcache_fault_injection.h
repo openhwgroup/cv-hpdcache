@@ -124,6 +124,7 @@ public:
 
     void injectDirFault(int set, int way, sc_bv<64> mask, int cycles=0)
     {
+#if CONF_HPDCACHE_ECC_DIR_ENABLE
         //  dir entry bits: valid (1) + dirty (1) + fetch (1) + wback (1) + tag (tag width)
         static constexpr int DirBits = HPDCACHE_TAG_WIDTH + 4;
         static constexpr int ParBits = getParBits(DirBits);
@@ -145,10 +146,12 @@ public:
             }
         }
         Vhpdcache_wrapper::publicSramSetMask(set, lv);
+#endif
     }
 
     void injectDatFault(int set, int way, int word, sc_bv<72> mask, int cycles=0)
     {
+#if CONF_HPDCACHE_ECC_DATA_ENABLE
         static constexpr int ParBits = getParBits(CONF_HPDCACHE_WORD_WIDTH);
         static constexpr int WordBits = CONF_HPDCACHE_WORD_WIDTH + ParBits;
         static constexpr int RamBits = WordBits*CONF_HPDCACHE_DATA_WAYS_PER_RAM_WORD;
@@ -188,6 +191,7 @@ public:
 
         int cacheIdx = (set*CONF_HPDCACHE_CL_WORDS + word)/CONF_HPDCACHE_ACCESS_WORDS;
         Vhpdcache_wrapper::publicSramBeSetMask(cacheIdx, lv);
+#endif
     }
 
     void injectActiveFaults()
