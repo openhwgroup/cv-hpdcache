@@ -16,6 +16,7 @@
 #include <verilated.h>
 #include "hpdcache_test_defs.h"
 #include "Vhpdcache_wrapper.h"
+#include "svdpi.h"
 
 using namespace sc_dt;
 
@@ -62,14 +63,20 @@ private:
         int x, y;
         svScope ret = nullptr;
         switch (domain) {
+#if CONF_HPDCACHE_ECC_DIR_ENABLE
             case domain_e::CACHE_DIR:
                 x = getDir(way);
                 ret = dirScopes[x];
                 break;
+#endif
+#if CONF_HPDCACHE_ECC_DATA_ENABLE
             case domain_e::CACHE_DAT:
                 x = getDatRow(way);
                 y = getDatCol(word);
                 ret = datScopes[x][y];
+                break;
+#endif
+            default:
                 break;
         }
         return ret;
@@ -79,6 +86,7 @@ public:
 
     hpdcache_fault_injection()
     {
+#if CONF_HPDCACHE_ECC_DIR_ENABLE
         for (int w = 0; w < CONF_HPDCACHE_WAYS; w++) {
             char hier_name[256];
             snprintf(hier_name, 256,
@@ -91,6 +99,7 @@ public:
             assert(scope != nullptr);
             dirScopes[w] = scope;
         }
+#endif
 
 #if CONF_HPDCACHE_ECC_DATA_ENABLE
         for (int w = 0; w < CONF_HPDCACHE_WAYS/CONF_HPDCACHE_DATA_WAYS_PER_RAM_WORD; w++) {

@@ -65,6 +65,18 @@ CONF_DEFINES =
 include $(CONFIG)
 include rtl_conf.mk
 
+ifdef CONF_HPDCACHE_TEST_FAULT_INJ
+  CONF_HPDCACHE_DPI ?= 1
+  CONF_DEFINES      += -DCONF_HPDCACHE_TEST_FAULT_INJ=1
+  CONF_DEFINES      += -DCONF_HPDCACHE_TEST_FAULT_INJ_DAT=1
+  ifdef CONF_HPDCACHE_TEST_FAULT_INJ_DIR
+    CONF_DEFINES    += -DCONF_HPDCACHE_TEST_FAULT_INJ_DIR=1
+  endif
+  ifdef CONF_HPDCACHE_TEST_DOUBLE_FAULT_INJ
+    CONF_DEFINES    += -DCONF_HPDCACHE_TEST_DOUBLE_FAULT_INJ=1
+  endif
+endif
+
 USER_CPPFLAGS       += -I$(TB_DIR)/include \
                        -I$(TB_DIR)/sc_verif_lib/include \
                        -I$(TB_DIR)/sc_verif_lib/modules/generic_cache/include \
@@ -79,7 +91,6 @@ ifdef CREATE_FILE
 USER_CPPFLAGS       += -DCREATE_FILE=1
 endif
 
-
 VERILATOR_FLAGS     += -Wall -Wno-fatal \
                        -Werror-PINMISSING \
                        -Werror-IMPLICIT \
@@ -88,7 +99,7 @@ VERILATOR_FLAGS     += -Wall -Wno-fatal \
                        -Wno-PINCONNECTEMPTY \
                        --report-unoptflat \
                        --pins-bv 2 \
-                       -DHPDCACHE_DPI_ON=1 \
+                       $(if $(filter 1,$(CONF_HPDCACHE_DPI)),-DHPDCACHE_DPI_ON=1) \
                        -O3 -I$(HPDCACHE_DIR)/rtl/src \
                        --x-assign unique --x-initial unique
 

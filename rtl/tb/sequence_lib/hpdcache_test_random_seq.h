@@ -18,8 +18,6 @@
 #include <systemc>
 
 #define HPDCACHE_TEST_SEQUENCE_ENABLE_ERROR_SEGMENTS 1
-#define HPDCACHE_TEST_SEQUENCE_ENABLE_FAULT_INJECTION 1
-#define HPDCACHE_TEST_SEQUENCE_ENABLE_DOUBLE_FAULT 0
 #define HPDCACHE_TEST_SEQUENCE_AMO_SUPPORT true
 
 class hpdcache_test_random_seq : public hpdcache_test_sequence
@@ -151,18 +149,18 @@ public:
 
         size->keep_only(0, LOG2_REQ_DATA_BYTES);
 
-#if HPDCACHE_TEST_SEQUENCE_ENABLE_FAULT_INJECTION
+#if CONF_HPDCACHE_TEST_FAULT_INJ
         scv_bag<bool> fault_inj_dist;
         fault_inj_dist.push(false, 99);
         fault_inj_dist.push(true, 1);
         fault_inj_rnd->set_mode(fault_inj_dist);
 
         scv_bag<int> fault_inj_domain_dist;
-#if CONF_HPDCACHE_ECC_DIR_ENABLE
+#if CONF_HPDCACHE_TEST_FAULT_INJ_DIR
         fault_inj_domain_dist.push(
                 static_cast<int>(hpdcache_fault_injection::domain_e::CACHE_DIR), 20);
 #endif
-#if CONF_HPDCACHE_ECC_DATA_ENABLE
+#if CONF_HPDCACHE_TEST_FAULT_INJ_DAT
         fault_inj_domain_dist.push(
                 static_cast<int>(hpdcache_fault_injection::domain_e::CACHE_DAT), 80);
 #endif
@@ -170,7 +168,7 @@ public:
 
         scv_bag<bool> fault_inj_double_dist;
 
-#if HPDCACHE_TEST_SEQUENCE_ENABLE_DOUBLE_FAULT
+#if CONF_HPDCACHE_TEST_DOUBLE_FAULT_INJ
         fault_inj_double_dist.push(false, 95);
         fault_inj_double_dist.push(true, 5);
 #else
@@ -190,7 +188,7 @@ private:
     scv_smart_ptr<sc_bv<HPDCACHE_REQ_DATA_WIDTH>> size;
     scv_smart_ptr<bool> need_rsp_rnd;
 
-#if HPDCACHE_TEST_SEQUENCE_ENABLE_FAULT_INJECTION
+#if CONF_HPDCACHE_TEST_FAULT_INJ
     scv_smart_ptr<bool> fault_inj_rnd;
     scv_smart_ptr<int> fault_inj_way_rnd;
     scv_smart_ptr<int> fault_inj_domain_rnd;
@@ -301,7 +299,7 @@ private:
             }
         }
 
-#if HPDCACHE_TEST_SEQUENCE_ENABLE_FAULT_INJECTION
+#if CONF_HPDCACHE_TEST_FAULT_INJ
         fault_inj_rnd->next();
         if (fault_inj_rnd->read()) {
             fault_inj_way_rnd->next();

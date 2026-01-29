@@ -15,7 +15,9 @@
 #include "driver.h"
 #include "hpdcache_test_defs.h"
 #include "hpdcache_test_transaction.h"
+#if CONF_HPDCACHE_TEST_FAULT_INJ
 #include "hpdcache_fault_injection.h"
+#endif
 #include "logger.h"
 #include <string>
 #include <systemc>
@@ -41,7 +43,7 @@ public:
     sc_fifo_out<hpdcache_test_transaction_resp> sb_core_resp_o;
 
     hpdcache_test_driver(sc_core::sc_module_name nm)
-      : Driver(nm), faultInj()
+      : Driver(nm)
     {
         SC_THREAD(drive_request);
         sensitive << clk_i.pos();
@@ -55,7 +57,9 @@ private:
     SC_HAS_PROCESS(hpdcache_test_driver);
 #endif
 
+#if CONF_HPDCACHE_TEST_FAULT_INJ
     hpdcache_fault_injection faultInj;
+#endif
 
     typedef std::shared_ptr<hpdcache_test_transaction_req> transaction_ptr;
 
@@ -136,14 +140,18 @@ private:
 
             if (t == nullptr) break;
 
+#if CONF_HPDCACHE_TEST_FAULT_INJ
             if (t->req_fault.valid) {
                 switch (t->req_fault.domain) {
+#if CONF_HPDCACHE_TEST_FAULT_INJ_DIR
                     case hpdcache_fault_injection::domain_e::CACHE_DIR:
                         faultInj.injectDirFault(
                                 t->req_fault.set,
                                 t->req_fault.way,
                                 t->req_fault.fault_mask.range(63, 0));
                         break;
+#endif
+#if CONF_HPDCACHE_TEST_FAULT_INJ_DAT
                     case hpdcache_fault_injection::domain_e::CACHE_DAT:
                         faultInj.injectDatFault(
                                 t->req_fault.set,
@@ -151,8 +159,12 @@ private:
                                 t->req_fault.word,
                                 t->req_fault.fault_mask.range(71, 0));
                         break;
+#endif
+                    default:
+                        break;
                 }
             }
+#endif
 
             core_req_valid_o.write(true);
             core_req_o.write(core_req_to_bv(t));
