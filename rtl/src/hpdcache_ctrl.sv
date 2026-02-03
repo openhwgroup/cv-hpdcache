@@ -1000,8 +1000,8 @@ import hpdcache_pkg::*;
             st2_mshr_alloc_victim_way_q  <= st1_dir_hit ? st1_dir_hit_way : st1_dir_victim_way;
             st2_mshr_alloc_inval_q       <= st2_mshr_alloc_inval_d;
             st2_mshr_alloc_refill_q      <= st2_mshr_alloc_refill_d;
-            st2_mshr_alloc_lr_q          <= st1_req_is_amo_lr;
-            st2_mshr_alloc_sc_q          <= st1_req_is_amo_sc;
+            st2_mshr_alloc_lr_q          <= st1_req_is_amo_lr && HPDcacheCfg.u.coherenceEn;
+            st2_mshr_alloc_sc_q          <= st1_req_is_amo_sc && HPDcacheCfg.u.coherenceEn;
         end
 
         if (st2_flush_alloc_d) begin
@@ -1259,13 +1259,12 @@ import hpdcache_pkg::*;
 
     //  Uncacheable request handler outputs
     //  {{{
-    assign uc_lrsc_snoop_rst_o        = st1_req_valid_q &
-                                       (st1_req_is_store | st1_req_lrsc_snoop_rst |
-                                       (~st1_req_is_uncacheable & ~st1_req_is_amo_lr & ~st1_dir_hit)),
+
+    //  In the coherence configuration, a cache miss caused by an SC operation should immediately result in SC failure.
+    assign uc_lrsc_snoop_rst_o        = st1_req_valid_q & (st1_req_is_store | st1_req_lrsc_snoop_rst | (st2_mshr_alloc_q & HPDcacheCfg.u.coherenceEn)),
            uc_lrsc_snoop_set_o        = st1_req_valid_q & st1_req_is_amo_lr,
-           uc_lrsc_snoop_only_nline_o = st1_req_lrsc_snoop_rst |
-                                       (~st1_req_is_uncacheable & ~st1_req_is_amo_lr & ~st1_dir_hit),
-           uc_lrsc_snoop_addr_o       = st1_req_addr,
+           uc_lrsc_snoop_only_nline_o = st1_req_lrsc_snoop_rst | (st2_mshr_alloc_q & HPDcacheCfg.u.coherenceEn),
+           uc_lrsc_snoop_addr_o       = st2_mshr_alloc_q & HPDcacheCfg.u.coherenceEn ? st2_mshr_alloc_addr_q : st1_req_addr,
            uc_lrsc_snoop_size_o       = st1_req.size,
            uc_req_addr_o              = st1_req_addr,
            uc_req_size_o              = st1_req.size,
