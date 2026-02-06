@@ -276,7 +276,7 @@ import hpdcache_pkg::*;
         if (HPDcacheCfg.u.coherenceEn) begin
             //  Cacheable and coherent ATOPs and LDEX operations
             //  read both data and directory
-            st0_req_is_cacheable_amo_load = st0_req_is_amo_i & ~st0_req_is_uncacheable_i & ~st1_req_is_amo_sc_i;
+            st0_req_is_cacheable_amo_load = st0_req_is_amo_i & ~st0_req_is_uncacheable_i & ~st0_req_is_amo_sc_i;
             if (st1_req_is_amo_sc_i & (~cachedir_hit_i | ~uc_lrsc_snoop_hit_i)) begin
                 //  The AMO SC has no valid reservation
             end else if (cachedir_hit_i & ~st1_dir_hit_shared_i) begin
