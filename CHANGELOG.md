@@ -14,6 +14,33 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
+## [5.1.0] 2025-07-02
+
+### Added
+
+- New lowLatency parameter: When enabled, load requests have a latency of 1
+  cycle. When disabled, load requests have a latency 2 cycles. This may improve
+  the throughput on some access patterns because it reduces port conflicts
+  between loads and stores.
+- New coalescing buffer for write misses. On write misses, the write data is
+  stored in a dedicated buffer, and coalesced when the refill response arrives
+  before writing it into the cache.
+- Heuristic mechanism to reduce the latency of flush operations. The cache
+  stores both the min and max index of dirty cachelines and perform the flush
+  only on within that boundary.
+
+### Removed
+
+### Changed
+
+- Use RTAB to drain pipeline upon UC/AMO requests. On a UC/AMO request, the
+  cache puts the request into the RTAB, and waits for all transactions into the
+  pipeline to be completed before replaying the UC/AMO request.
+
+### Fixed
+
+- Missing reset of some registers in the uncached requests handler.
+
 ## [5.0.1] 2025-01-30
 
 This releases include some bugfixes and optimizations.
