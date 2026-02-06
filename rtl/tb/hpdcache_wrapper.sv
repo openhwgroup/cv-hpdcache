@@ -100,7 +100,8 @@ import hpdcache_pkg::*;
     localparam type hpdcache_mem_addr_t = logic [Cfg.u.memAddrWidth-1:0],
     localparam type hpdcache_mem_id_t   = logic [Cfg.u.memIdWidth-1:0],
     localparam type hpdcache_mem_data_t = logic [Cfg.u.memDataWidth-1:0],
-    localparam type hpdcache_mem_be_t   = logic [Cfg.u.memDataWidth/8-1:0]
+    localparam type hpdcache_mem_be_t   = logic [Cfg.u.memDataWidth/8-1:0],
+    localparam type hpdcache_nline_t    = logic [Cfg.nlineWidth-1:0]
 )
     //  }}}
 
@@ -226,6 +227,9 @@ import hpdcache_pkg::*;
     hpdcache_mem_req_t     mem_req_write;
     hpdcache_mem_req_w_t   mem_req_write_data;
     hpdcache_mem_resp_w_t  mem_resp_write;
+
+    logic mem_resp_read_inval;
+    hpdcache_nline_t mem_resp_read_inval_nline;
     //  }}}
 
     //  Write/read to/from memory interfaces
@@ -242,6 +246,9 @@ import hpdcache_pkg::*;
            mem_resp_read.mem_resp_r_id    = mem_resp_read_id_i,
            mem_resp_read.mem_resp_r_data  = mem_resp_read_data_i,
            mem_resp_read.mem_resp_r_last  = mem_resp_read_last_i;
+
+    assign mem_resp_read_inval = '0,
+           mem_resp_read_inval_nline = '0;
 
     assign mem_req_write_addr_o      = mem_req_write.mem_req_addr,
            mem_req_write_len_o       = mem_req_write.mem_req_len,
@@ -329,6 +336,9 @@ import hpdcache_pkg::*;
         .mem_resp_read_ready_o             (mem_resp_read_ready_o),
         .mem_resp_read_valid_i             (mem_resp_read_valid_i),
         .mem_resp_read_i                   (mem_resp_read),
+
+        .mem_resp_read_inval_i             (mem_resp_read_inval),
+        .mem_resp_read_inval_nline_i       (mem_resp_read_inval_nline),
 
         .mem_req_write_ready_i             (mem_req_write_ready_i),
         .mem_req_write_valid_o             (mem_req_write_valid_o),
