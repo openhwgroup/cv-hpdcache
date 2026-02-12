@@ -40,9 +40,10 @@ package hpdcache_pkg;
     //  Definition of constants and types for HPDcache directory memory
     //  {{{
     //      Victim selection policy
-    typedef enum logic {
-        HPDCACHE_VICTIM_RANDOM = 1'b0,
-        HPDCACHE_VICTIM_PLRU   = 1'b1
+    typedef enum logic [1:0] {
+        HPDCACHE_VICTIM_RANDOM = 2'b00,
+        HPDCACHE_VICTIM_PLRU   = 2'b01,
+        HPDCACHE_VICTIM_CYCLIC = 2'b10
     } hpdcache_victim_sel_policy_t;
     //  }}}
 
