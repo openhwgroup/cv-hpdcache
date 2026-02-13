@@ -157,12 +157,12 @@ public:
 
         scv_bag<int> fault_inj_domain_dist;
 #if CONF_HPDCACHE_TEST_FAULT_INJ_DIR
-        fault_inj_domain_dist.push(
-                static_cast<int>(hpdcache_fault_injection::domain_e::CACHE_DIR), 20);
+        fault_inj_domain_dist.push(static_cast<int>(hpdcache_fault_injection::domain_e::CACHE_DIR),
+                                   20);
 #endif
 #if CONF_HPDCACHE_TEST_FAULT_INJ_DAT
-        fault_inj_domain_dist.push(
-                static_cast<int>(hpdcache_fault_injection::domain_e::CACHE_DAT), 80);
+        fault_inj_domain_dist.push(static_cast<int>(hpdcache_fault_injection::domain_e::CACHE_DAT),
+                                   80);
 #endif
         fault_inj_domain_rnd->set_mode(fault_inj_domain_dist);
 
@@ -177,7 +177,7 @@ public:
         fault_inj_double_rnd->set_mode(fault_inj_double_dist);
 
         scv_bag<pair<int, int>> fault_inj_way_dist;
-        fault_inj_way_dist.push(pair<int, int>(0, HPDCACHE_WAYS-1), 100);
+        fault_inj_way_dist.push(pair<int, int>(0, HPDCACHE_WAYS - 1), 100);
         fault_inj_way_rnd->set_mode(fault_inj_way_dist);
 #endif
     }
@@ -309,8 +309,8 @@ private:
             t->req_fault.set = t->get_cache_set();
             t->req_fault.way = fault_inj_way_rnd->read();
             t->req_fault.word = t->get_cache_word();
-            t->req_fault.domain = static_cast<hpdcache_fault_injection::domain_e>(
-                    fault_inj_domain_rnd->read());
+            t->req_fault.domain =
+                static_cast<hpdcache_fault_injection::domain_e>(fault_inj_domain_rnd->read());
             if (fault_inj_double_rnd->read()) {
                 t->req_fault.fault_mask = 0xA0;
             } else {

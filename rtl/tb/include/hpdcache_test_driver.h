@@ -145,19 +145,17 @@ private:
                 switch (t->req_fault.domain) {
 #if CONF_HPDCACHE_TEST_FAULT_INJ_DIR
                     case hpdcache_fault_injection::domain_e::CACHE_DIR:
-                        faultInj.injectDirFault(
-                                t->req_fault.set,
-                                t->req_fault.way,
-                                t->req_fault.fault_mask.range(63, 0));
+                        faultInj.injectDirFault(t->req_fault.set,
+                                                t->req_fault.way,
+                                                t->req_fault.fault_mask.range(63, 0));
                         break;
 #endif
 #if CONF_HPDCACHE_TEST_FAULT_INJ_DAT
                     case hpdcache_fault_injection::domain_e::CACHE_DAT:
-                        faultInj.injectDatFault(
-                                t->req_fault.set,
-                                t->req_fault.way,
-                                t->req_fault.word,
-                                t->req_fault.fault_mask.range(71, 0));
+                        faultInj.injectDatFault(t->req_fault.set,
+                                                t->req_fault.way,
+                                                t->req_fault.word,
+                                                t->req_fault.fault_mask.range(71, 0));
                         break;
 #endif
                     default:

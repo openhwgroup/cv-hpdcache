@@ -179,13 +179,13 @@ public:
     uint64_t get_cache_set() const
     {
         uint64_t addr = req_addr.to_uint64();
-        return (addr >> HPDCACHE_CL_OFFSET_WIDTH) & ((1 << HPDCACHE_SET_WIDTH)-1);
+        return (addr >> HPDCACHE_CL_OFFSET_WIDTH) & ((1 << HPDCACHE_SET_WIDTH) - 1);
     }
 
     uint64_t get_cache_word() const
     {
         uint64_t addr = req_addr.to_uint64();
-        return ((addr*8) / HPDCACHE_WORD_WIDTH) % HPDCACHE_CL_WORDS;
+        return ((addr * 8) / HPDCACHE_WORD_WIDTH) % HPDCACHE_CL_WORDS;
     }
 
     static const char* op_to_string(unsigned int op)
@@ -298,12 +298,10 @@ public:
                 break;
         }
         os << "CORE_REQ"
-           << " / @ = " << req_addr.to_string(SC_HEX)
-           << " / " << op_to_string(op)
-           << " / SET = 0x" << std::hex << get_cache_set() << std::dec
-           << " / WORD = 0x" << std::hex << get_cache_word() << std::dec
-           << " / TAG = 0x" << std::hex << get_cache_tag() << std::dec
-           << " / SID = 0x" << std::hex << req_sid.to_uint() << std::dec
+           << " / @ = " << req_addr.to_string(SC_HEX) << " / " << op_to_string(op) << " / SET = 0x"
+           << std::hex << get_cache_set() << std::dec << " / WORD = 0x" << std::hex
+           << get_cache_word() << std::dec << " / TAG = 0x" << std::hex << get_cache_tag()
+           << std::dec << " / SID = 0x" << std::hex << req_sid.to_uint() << std::dec
            << " / TID = 0x" << std::hex << req_tid.to_uint() << std::dec
            << " / WR_POLICY_HINT = " << wr_policy_to_string(req_wr_policy_hint);
 

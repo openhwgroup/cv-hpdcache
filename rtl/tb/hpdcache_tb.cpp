@@ -23,7 +23,6 @@
 #include <verilated_vcd_sc.h>
 #endif
 
-
 #include "Vhpdcache_wrapper.h"
 #include "logger.h"
 
