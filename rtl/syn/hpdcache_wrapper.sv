@@ -53,7 +53,8 @@ module hpdcache_wrapper
       wbEn: 1'b1,
       lowLatency: 1'b1,
       eccDataEn: 1'b0,
-      eccDirEn: 1'b0
+      eccDirEn: 1'b0,
+      eccScrubberEn: 1'b0
   },
 
   localparam hpdcache_pkg::hpdcache_cfg_t HPDcacheCfg = hpdcache_pkg::hpdcacheBuildConfig(
