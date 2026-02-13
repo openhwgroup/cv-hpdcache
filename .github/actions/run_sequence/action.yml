@@ -94,6 +94,7 @@ runs:
         . .github/scripts/env.sh
         cd rtl/tb
         make nonregression \
+            CONFIG=${{ inputs.config }} \
             SEQUENCE=${{ inputs.seqname }} \
             NTESTS=${{ inputs.ntests }} \
             NTRANSACTIONS=${{ inputs.ntrans }} \
