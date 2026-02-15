@@ -197,6 +197,10 @@ import hpdcache_pkg::*;
     hpdcache_rtab_deps_t[N-1:0]  alloc_deps_set;
     hpdcache_rtab_deps_t[N-1:0]  pop_rback_deps_set;
 
+    // bits indicating refill grant
+    logic [N-1:0]  waiters_mshr_full, waiters_mshr_full_gnt;
+    logic [N-1:0]  waiters_dir_unavailable, waiters_dir_unavailable_gnt;
+
     logic               [N-1:0]  nodeps;
     hpdcache_nline_t    [N-1:0]  nline;
     hpdcache_req_addr_t [N-1:0]  addr;
@@ -307,6 +311,36 @@ import hpdcache_pkg::*;
         assign match_flush_nline[gen_i] = (flush_ack_nline_i == nline[gen_i]);
     end
 
+    // generate bit vector for waiters on mshr full and dir unavailable
+    for (gen_i = 0; gen_i < N; gen_i++) begin : gen_waiters
+        assign waiters_mshr_full[gen_i] = valid_q[gen_i] & deps_q[gen_i].mshr_full &
+                                        match_refill_mshr_set[gen_i]; 
+        assign waiters_dir_unavailable[gen_i] = valid_q[gen_i] & deps_q[gen_i].dir_unavailable
+                                        & match_refill_set[gen_i];
+    end
+
+    // arbitrate among waiters on mshr full
+    hpdcache_rrarb #(
+        .N              (N)
+    ) waiters_mshr_full_arb_i (
+        .clk_i,
+        .rst_ni,
+        .req_i          (waiters_mshr_full),
+        .gnt_o          (waiters_mshr_full_gnt),
+        .ready_i        (refill_i)
+    );
+
+    // arbitrate among waiters on dir unavailable
+    hpdcache_rrarb #(
+        .N              (N)
+    ) waiters_dir_unavailable_arb_i (
+        .clk_i,
+        .rst_ni,
+        .req_i          (waiters_dir_unavailable),
+        .gnt_o          (waiters_dir_unavailable_gnt),
+        .ready_i        (refill_i)
+    );
+
     //  Update write buffer hit dependencies
     //  {{{
     //  Build a bit-vector with HEAD requests waiting for a conflict in the wbuf
@@ -404,10 +438,10 @@ import hpdcache_pkg::*;
             //  Update refill dependencies
             //  {{{
             if (refill_i) begin
-                deps_rst[i].mshr_full = match_refill_mshr_set[i];
+                deps_rst[i].mshr_full = waiters_mshr_full_gnt[i];
                 deps_rst[i].mshr_hit = match_refill_nline[i];
                 deps_rst[i].write_miss = match_refill_nline[i];
-                deps_rst[i].dir_unavailable = match_refill_set[i];
+                deps_rst[i].dir_unavailable = waiters_dir_unavailable_gnt[i];
                 deps_rst[i].dir_fetch = match_refill_set[i] & match_refill_way[i];
             end
             //  }}}
