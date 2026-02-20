@@ -62,7 +62,7 @@ import hpdcache_pkg::*;
     //  Direct mapped cache (one way)
     if (HPDcacheCfg.u.ways == 1)
     begin : gen_single_way_victim_sel
-        assign sel_victim_way_o = 1'b1;
+        assign sel_victim_way_o = ~sel_dir_fetch_i;
     end
 
     //  -----------------------------------------------------------------------
