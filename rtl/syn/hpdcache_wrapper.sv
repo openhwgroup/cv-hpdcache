@@ -52,8 +52,7 @@ module hpdcache_wrapper
       wtEn: 1'b1,
       wbEn: 1'b1,
       lowLatency: 1'b1,
-      eccDataEn: 1'b0,
-      eccDirEn: 1'b0,
+      eccEn: 1'b0,
       eccScrubberEn: 1'b0
   },
 
