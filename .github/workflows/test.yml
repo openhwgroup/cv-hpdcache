@@ -201,6 +201,21 @@ jobs:
           ntests: '16'
           config: 'configs/embedded_config.mk'
 
+  run_random_short_directmap:
+    runs-on: ubuntu-latest
+    name: run_random_short_directmap
+    needs: build
+    steps:
+      - uses: actions/checkout@master
+
+      - id: run_random_short_sequence
+        uses: ./.github/actions/run_sequence
+        with:
+          seqname: 'random'
+          ntrans: '10000'
+          ntests: '64'
+          config: 'configs/directmap_config.mk'
+
   run_trace:
     runs-on: ubuntu-latest
     name: run_trace

@@ -188,13 +188,16 @@ import hpdcache_pkg::*;
                                                        HPDcacheCfg.u.dataWaysPerRamWord;
     localparam int unsigned HPDCACHE_DATA_RAM_X_CUTS = HPDcacheCfg.u.accessWords;
 
+    localparam int unsigned RAM_WAY_IDX_BITS = HPDcacheCfg.u.dataWaysPerRamWord > 1 ?
+            $clog2(HPDcacheCfg.u.dataWaysPerRamWord) : 1;
+
     typedef logic [HPDCACHE_DIR_RAM_ADDR_WIDTH-1:0] hpdcache_dir_addr_t;
 
     typedef logic [HPDCACHE_DATA_RAM_ADDR_WIDTH-1:0] hpdcache_data_ram_addr_t;
     typedef hpdcache_data_word_t[HPDcacheCfg.u.dataWaysPerRamWord-1:0] hpdcache_data_ram_data_t;
     typedef hpdcache_data_be_t  [HPDcacheCfg.u.dataWaysPerRamWord-1:0] hpdcache_data_ram_be_t;
     typedef logic [HPDCACHE_DATA_RAM_Y_CUTS-1:0] hpdcache_data_ram_row_idx_t;
-    typedef logic [$clog2(HPDcacheCfg.u.dataWaysPerRamWord)-1:0] hpdcache_data_ram_way_idx_t;
+    typedef logic [RAM_WAY_IDX_BITS-1:0] hpdcache_data_ram_way_idx_t;
     typedef logic [HPDCACHE_DATA_RAM_X_CUTS-1:0] hpdcache_data_row_enable_t;
     typedef hpdcache_data_row_enable_t [HPDCACHE_DATA_RAM_Y_CUTS-1:0] hpdcache_data_enable_t;
 
@@ -861,7 +864,10 @@ import hpdcache_pkg::*;
     end
 
     //  Mux the data according to the access word
-    typedef logic [$clog2(HPDCACHE_DATA_REQ_RATIO)-1:0] data_req_word_t;
+    localparam int unsigned DATA_WORD_IDX_WIDTH =
+            HPDCACHE_DATA_REQ_RATIO > 1 ?  $clog2(HPDCACHE_DATA_REQ_RATIO) : 1;
+    typedef logic [DATA_WORD_IDX_WIDTH-1:0] data_req_word_t;
+
     if (HPDCACHE_DATA_REQ_RATIO > 1) begin : gen_req_width_lt_ram_width
         data_req_word_t data_read_req_word_index_q;
 
@@ -877,8 +883,7 @@ import hpdcache_pkg::*;
         always_ff @(posedge clk_i)
         begin : data_req_read_word_ff
             data_read_req_word_index_q <=
-                    data_req_read_word_i[HPDcacheCfg.reqWordIdxWidth +:
-                                         $clog2(HPDCACHE_DATA_REQ_RATIO)];
+                    data_req_read_word_i[HPDcacheCfg.reqWordIdxWidth +: DATA_WORD_IDX_WIDTH];
         end
     end
 

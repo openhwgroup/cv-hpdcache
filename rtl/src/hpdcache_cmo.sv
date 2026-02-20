@@ -553,15 +553,19 @@ import hpdcache_pkg::*;
 
     assign cmoh_way_last = cmoh_way_q[HPDcacheCfg.u.ways - 1];
 
-    always_comb
-    begin : way_incr_comb
-        cmoh_way_d = cmoh_way_q;
-        if (cmoh_way_reset) begin
-            cmoh_way_d = hpdcache_way_vector_t'(1);
-        end else if (cmoh_way_incr) begin
-            cmoh_way_d = cmoh_way_last ?
-                hpdcache_way_vector_t'(1) : {cmoh_way_q[0 +: HPDcacheCfg.u.ways-1], 1'b0};
+    if (HPDcacheCfg.u.ways > 1) begin : gen_cmoh_way_assoc
+        always_comb
+        begin : way_incr_comb
+            cmoh_way_d = cmoh_way_q;
+            if (cmoh_way_reset) begin
+                cmoh_way_d = hpdcache_way_vector_t'(1);
+            end else if (cmoh_way_incr) begin
+                cmoh_way_d = cmoh_way_last ?
+                    hpdcache_way_vector_t'(1) : {cmoh_way_q[0 +: HPDcacheCfg.u.ways-1], 1'b0};
+            end
         end
+    end else begin : gen_cmoh_way_direct
+        assign cmoh_way_d = 1'b1;
     end
 //  }}}
 
