@@ -54,8 +54,7 @@ module hpdcache_lint
       wtEn: 1'b1,
       wbEn: 1'b1,
       lowLatency: 1'b1,
-      eccDataEn: 1'b1,
-      eccDirEn: 1'b1,
+      eccEn: 1'b1,
       eccScrubberEn: 1'b1
   },
 
