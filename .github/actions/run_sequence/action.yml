@@ -26,6 +26,16 @@ inputs:
     description: 'Number of separate tests'
     required: true
 
+  inject_single_faults:
+    description: 'Inject single faults'
+    default: '1'
+    required: false
+
+  inject_double_faults:
+    description: 'Inject double faults'
+    default: '0'
+    required: false
+
   config:
     description: 'File with DUT parameters'
     required: true
@@ -55,37 +65,6 @@ runs:
         fail-on-cache-miss: true
         key: ${{ runner.os }}-build-verilator-${{ hashFiles('.github/scripts/install_verilator.sh') }}
 
-    #  Verilate the HPDcache RTL sources and build the testbench
-    - name: Verilate the HPDcache RTL
-      id: verilate
-      shell: bash
-      run: |
-        . .github/scripts/env.sh
-        cd rtl/tb
-        make verilate CONFIG=${{ inputs.config }}
-
-    - name: Archive Verilate log
-      if: ${{ failure () && steps.verilate.conclusion == 'failure' }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: verilate-${{ inputs.seqname }}_${{ inputs.ntrans }}_${{ inputs.ntests }}-log
-        path: rtl/tb/build/verilate.log
-
-    - name: Build SystemC testbench
-      id: build-tb
-      shell: bash
-      run: |
-        . .github/scripts/env.sh
-        cd rtl/tb
-        make build -j${PARALLEL_JOBS} CONFIG=${{ inputs.config }}
-
-    - name: Archive SystemC build log
-      if: ${{ failure () && steps.build-tb.conclusion == 'failure' }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-${{ inputs.seqname }}_${{ inputs.ntrans }}_${{ inputs.ntests }}-log
-        path: rtl/tb/build/build.log
-
     #  Run the test sequence
     - name: Run the random test sequence (short)
       id: run-tb
@@ -98,7 +77,10 @@ runs:
             SEQUENCE=${{ inputs.seqname }} \
             NTESTS=${{ inputs.ntests }} \
             NTRANSACTIONS=${{ inputs.ntrans }} \
-            TRACE_SEQ_FILE=${{ inputs.filename }}
+            TRACE_SEQ_FILE=${{ inputs.filename }} \
+            CONF_HPDCACHE_TEST_FAULT_INJ=${{ inputs.inject_single_faults }} \
+            CONF_HPDCACHE_TEST_FAULT_INJ_DIR=1 \
+            CONF_HPDCACHE_TEST_DOUBLE_FAULT_INJ=${{ inputs.inject_double_faults }}
 
     - name: Archive nonregression logs
       if: ${{ failure () && steps.run-tb.conclusion == 'failure' }}
