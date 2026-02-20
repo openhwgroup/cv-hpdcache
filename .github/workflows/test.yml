@@ -96,6 +96,22 @@ jobs:
           ntests: '8'
           config: 'configs/default_config.mk'
 
+  run_random_long_ecc:
+    runs-on: ubuntu-latest
+    name: run_random_long_ecc
+    needs: build
+    steps:
+      - uses: actions/checkout@master
+
+      - id: run_random_long_sequence_ecc
+        uses: ./.github/actions/run_sequence
+        with:
+          seqname: 'random'
+          ntrans: '80000'
+          ntests: '8'
+          config: 'configs/default_config.mk'
+          inject_single_faults: '1'
+
   run_unique_set:
     runs-on: ubuntu-latest
     name: run_unique_set
@@ -185,6 +201,22 @@ jobs:
           ntrans: '80000'
           ntests: '8'
           config: 'configs/embedded_config.mk'
+
+  run_random_long_embedded_ecc:
+    runs-on: ubuntu-latest
+    name: run_random_long_embedded_ecc
+    needs: build
+    steps:
+      - uses: actions/checkout@master
+
+      - id: run_random_long_sequence_ecc
+        uses: ./.github/actions/run_sequence
+        with:
+          seqname: 'random'
+          ntrans: '80000'
+          ntests: '8'
+          config: 'configs/embedded_config.mk'
+          inject_single_faults: '1'
 
   run_unique_set_embedded:
     runs-on: ubuntu-latest
