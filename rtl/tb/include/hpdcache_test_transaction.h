@@ -518,6 +518,8 @@ public:
     uint32_t error;
     uint32_t id;
     sc_bv<HPDCACHE_MEM_DATA_WIDTH> data;
+    std::vector<sc_bv<HPDCACHE_MEM_DATA_WIDTH>> my_data;
+    uint32_t len_data;
     bool last;
 
     hpdcache_test_transaction_mem_read_resp()
@@ -525,6 +527,8 @@ public:
       , id(0)
       , data(0)
       , last(false)
+      , len_data(0)
+      , my_data()
     {
     }
 
