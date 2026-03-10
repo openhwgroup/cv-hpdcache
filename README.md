@@ -40,6 +40,10 @@ The HPDcache is an open-source High-Performance, Multi-requester, Out-of-Order L
     <td>docs</td>
     <td>Contains documentation of the HPDcache</td>
   </tr>
+  <tr>
+    <td>vendor</td>
+    <td>Third-party IPs maintained outside the repository</td>
+  </tr>
 </table>
 
 
@@ -58,6 +62,7 @@ You can find some pre-compiled User Guide documents (in both HTML or PDF) in [Re
 The HPDcache is released under the Solderpad Hardware License (version 2.1).
 Please refer to the [LICENSE](LICENSE) file for further information.
 
+This repository may include third-party open-source IPs. These may be covered by different but compatible permissive licenses.
 
 ## Integration Examples of the HPDcache
 
@@ -87,13 +92,24 @@ There is another testbench (not as complete as the one above) written in SystemC
 This testbench is compatible with the [Verilator](https://www.veripool.org/verilator/) simulation tool. Thus, it accepts a fully open-source simulation flow.
 For more information about the SystemC testbench, read its dedicated [README](rtl/tb/README.md).
 
+## Vendorized repositories
+
+The directory vendor/opentitan contains [vendorized](https://opentitan.org/book/doc/contributing/hw/vendor.html) subdirectories from the [OpenTitan platform](https://github.com/lowRISC/opentitan/) related to the generation of error correction and detection artifacts (ECC encoding and decoding SystemVerilog primitives).
 
 ## HPDcache Publications & Tutorials
 
-- Technical Paper: César Fuguet. 2023. HPDcache: Open-Source High-Performance L1 Data Cache for RISC-V Cores. In Proceedings of the 20th ACM International Conference on Computing Frontiers (CF '23). Association for Computing Machinery, New York, NY, USA, 377–378. <https://doi.org/10.1145/3587135.3591413>
+If you use the HPDcache in your academic work, you can cite us:
 
+<details>
+<summary>HPDcache original publication<summary>
+César Fuguet. 2023. HPDcache: Open-Source High-Performance L1 Data Cache for RISC-V Cores. In Proceedings of the 20th ACM International Conference on Computing Frontiers (CF '23). Association for Computing Machinery, New York, NY, USA, 377–378. <https://doi.org/10.1145/3587135.3591413>
+</details>
+
+<details>
+<summary>Other HPDcache related publication<summary>
 - Technical Paper: D. Million, N. Oliete-Escuín and C. Fuguet, "Breaking the Memory Wall with a Flexible Open-Source L1 Data-Cache," 2024 Design, Automation & Test in Europe Conference & Exhibition (DATE), Valencia, Spain, 2024, pp. 1-2, <https://doi.org/10.23919/DATE58400.2024.10546547>
 
 - Video: César Fuguet. 2023. High Performance L1 Dcache for RISC-V Cores. TRISTAN Workshop. RISC-V Summit Europe 2023. <https://www.youtube.com/watch?v=3r5STMiUq9s>
 
 - Video: Christian Fabre, César Fuguet. 2023. One Year of Improvements on OpenHW Group's HPDCache. RISC-V Summit US 2023. <https://www.youtube.com/watch?v=ODHA-wPOmW0>
+</details>
