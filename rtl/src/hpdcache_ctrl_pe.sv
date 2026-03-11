@@ -203,7 +203,6 @@ import hpdcache_pkg::*;
 
     //   Flush controller
     input  logic                   flush_busy_i,
-    input  logic                   flush_empty_i,
     input  logic                   st1_flush_check_hit_i,
     input  logic                   st1_flush_alloc_ready_i,
     input  logic                   st2_flush_alloc_i,
@@ -1263,21 +1262,17 @@ import hpdcache_pkg::*;
                                & ~rtab_fence_i
                                & ~nop;
 
-            //  Snoop transactions must respect non-blocking requirements
-            //  The dependencies are then:
-            //  - No refill is ongoing. Otherwise, a fixed latency to refill is expected, thus no deadlock should arise.
-            //  - The CMO handler is not clobbering the cache directory or the cache data.
-            //  - The UC/AMO handler is not serving a cacheable request (i.e. AMOs).
-            //    As a cacheable AMO in a coherent scenario reaches the UC/AMO handler only when it can be played locally,
-            //    no deadlock should arise due to missing a memory response.
-            //  - No pending flushes. It is allowed to wait for writebacks and evictions.
-            //  - No NOPs.
+            // Snoop transactions require the following for non-blocking, deadlock-free execution:
+            // - No active refills (bounded wait latency prevents deadlocks).
+            // - CMO handler is not updating the cache directory or data.
+            // - UC/AMO handler is not processing cacheable AMOs (local resolution guarantees no memory response deadlocks).
+            // - No pending flushes (pipeline stalled via `flush_busy_i`), as waiting for writebacks/evictions is allowed.
+            // - No NOPs.
             snoop_req_ready_o = snoop_req_valid_i
                                 & ~refill_req_valid_i
                                 & ~rtab_req_valid_i
                                 & (~cmo_busy_i | cmo_wait_i)
                                 & (~uc_busy_i | uc_i)
-                                & flush_empty_i
                                 & ~nop;
 
             rtab_req_ready_o = rtab_req_valid_i
