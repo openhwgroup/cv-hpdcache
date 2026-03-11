@@ -91,7 +91,8 @@ module hpdcache_wrapper
                            hpdcache_req_sid_t,
                            hpdcache_req_tid_t),
 
-  localparam type hpdcache_wbuf_timecnt_t = logic [HPDcacheCfg.u.wbufTimecntWidth-1:0]
+  localparam type hpdcache_wbuf_timecnt_t = logic [HPDcacheCfg.u.wbufTimecntWidth-1:0],
+  localparam type hpdcache_nline_t    = logic [HPDcacheCfg.nlineWidth-1:0]
 )
 
 (
@@ -117,6 +118,9 @@ module hpdcache_wrapper
   output logic                        mem_resp_read_ready_o,
   input  logic                        mem_resp_read_valid_i,
   input  hpdcache_mem_resp_r_t        mem_resp_read_i,
+
+  input  logic                        mem_resp_read_inval_i,
+  input  hpdcache_nline_t             mem_resp_read_inval_nline_i,
 
   input  logic                        mem_req_write_ready_i,
   output logic                        mem_req_write_valid_o,
@@ -175,6 +179,9 @@ module hpdcache_wrapper
       .mem_resp_read_ready_o,
       .mem_resp_read_valid_i,
       .mem_resp_read_i,
+
+      .mem_resp_read_inval_i,
+      .mem_resp_read_inval_nline_i,
 
       .mem_req_write_ready_i,
       .mem_req_write_valid_o,

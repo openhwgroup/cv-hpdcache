@@ -96,10 +96,9 @@ import hpdcache_pkg::*;
     output logic                          mem_resp_read_ready_o,
     input  logic                          mem_resp_read_valid_i,
     input  hpdcache_mem_resp_r_t          mem_resp_read_i,
-`ifdef HPDCACHE_OPENPITON
+
     input  logic                          mem_resp_read_inval_i,
     input  hpdcache_nline_t               mem_resp_read_inval_nline_i,
-`endif
 
     //      Write memory interface
     input  logic                          mem_req_write_ready_i,
@@ -1143,13 +1142,9 @@ import hpdcache_pkg::*;
 
     assign mem_resp_read_uc               = mem_resp_read_i;
     assign mem_resp_read_miss             = mem_resp_read_i;
-`ifdef HPDCACHE_OPENPITON
+
     assign mem_resp_read_miss_inval       = mem_resp_read_inval_i;
     assign mem_resp_read_miss_inval_nline = mem_resp_read_inval_nline_i;
-`else
-    assign mem_resp_read_miss_inval       = 1'b0;
-    assign mem_resp_read_miss_inval_nline = '0;
-`endif
 
     //      Write request interface
     //
