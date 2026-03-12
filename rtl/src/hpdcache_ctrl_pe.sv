@@ -89,6 +89,7 @@ import hpdcache_pkg::*;
     input  logic                   st1_dat_err_unc_dirty_i,
     output logic                   st1_err_o,
     input  logic                   err_busy_i,
+    input  logic                   err_wait_i,
     output logic                   st1_req_valid_o,
     output logic                   st1_rsp_valid_o,
     output logic                   st1_rsp_error_o,
@@ -389,13 +390,6 @@ import hpdcache_pkg::*;
         //  {{{
         else if (flush_busy_i) begin
             //  flush controller has the control of the cache pipeline
-        end
-        //  }}}
-
-        //  Error recovery handler active
-        //  {{{
-        else if (err_busy_i) begin
-            //  Error recovery handler has the control of the cache pipeline
         end
         //  }}}
 
@@ -1141,6 +1135,7 @@ import hpdcache_pkg::*;
                                & ~rtab_full_i
                                & ~cmo_busy_i
                                & ~uc_busy_i
+                               & ~err_busy_i
                                & ~rtab_fence_i
                                & ~nop;
 
@@ -1150,16 +1145,19 @@ import hpdcache_pkg::*;
                                & ~rtab_full_i
                                & ~cmo_busy_i
                                & ~uc_busy_i
+                               & ~err_busy_i
                                & ~rtab_fence_i
                                & ~nop;
 
             rtab_req_ready_o = rtab_req_valid_i
                                & ~refill_req_valid_i
                                & (~cmo_busy_i | cmo_wait_i)
+                               & ~err_busy_i
                                & ~nop;
 
             refill_req_ready_o = refill_req_valid_i
                                  & (~cmo_busy_i | cmo_wait_i)
+                                 & (~err_busy_i | err_wait_i)
                                  & ~st1_req_valid_i
                                  & ~(st2_mshr_alloc_i | st2_dir_updt_i);
 
