@@ -27,6 +27,7 @@ import hpdcache_pkg::*;
     parameter type hpdcache_req_sid_t = logic,
     parameter type hpdcache_tag_t = logic,
     parameter type hpdcache_set_t = logic,
+    parameter type hpdcache_nline_t = logic,
     parameter type hpdcache_way_vector_t = logic,
     parameter type hpdcache_word_t = logic,
     parameter type hpdcache_access_data_t = logic,
@@ -80,6 +81,20 @@ import hpdcache_pkg::*;
     input  hpdcache_access_data_t     data_read_data_i,
     //      }}}
 
+    //  Flush acknowledgement interface
+    //  {{{
+    //  Pulsed for one cycle when a WriteBack B response is received for a
+    //  flushed cache line.  The snoop handler uses this to exit
+    //  SNOOP_WAIT_FLUSH once the in-progress writeback has completed.
+    input  logic                      flush_ack_i,
+    input  hpdcache_nline_t           flush_ack_nline_i,
+    //  High at acceptance time when the flush controller has an in-flight
+    //  WriteBack for this line (AW sent, B pending). Distinct from
+    //  req_dir_fetch_i which is also set for coherence upgrades and clean
+    //  evictions that do not generate a writeback.
+    input  logic                      req_flush_pending_i,
+    //  }}}
+
     //  SNOOP interface
     //  {{{
     input  logic                      snoop_rsp_meta_ready_i,
@@ -95,6 +110,7 @@ import hpdcache_pkg::*;
     //  {{{
     typedef enum {
         SNOOP_IDLE,
+        SNOOP_WAIT_FLUSH,
         SNOOP_DATA_READ_FIRST,
         SNOOP_DATA_READ_NEXT,
         SNOOP_DIR_UPDT
@@ -133,6 +149,10 @@ import hpdcache_pkg::*;
     logic                  req_dir_fetch_q;
 
     logic data_eol;
+    //  Flush B received for the nline parked in SNOOP_WAIT_FLUSH
+    logic flush_ack_match;
+    assign flush_ack_match = flush_ack_i
+                           & (flush_ack_nline_i == {req_tag_q, req_set_q});
     //  }}}
 
     //  Snoop FSM
@@ -169,67 +189,55 @@ import hpdcache_pkg::*;
         unique case (snoop_fsm_q)
             SNOOP_IDLE: begin
                 if (req_valid_i && req_ready_o) begin
-                    //  If there is a request, we can start processing it
-                    //  Enable the response sync buffer
-                    resp_w = 1'b1;
                     if (!req_dir_valid_i) begin
-                        // The requested cacheline is not available
+                        // Cache miss
+                        resp_w = 1'b1;
                         resp_wdata.was_unique    = 1'b0;
                         resp_wdata.is_shared     = 1'b0;
                         resp_wdata.pass_dirty    = 1'b0;
                         resp_wdata.left_dirty    = 1'b0;
                         resp_wdata.data_transfer = 1'b0;
+                    end else if (req_dir_fetch_i && req_flush_pending_i
+                              && (   req_op_i.is_read_unique
+                                  || req_op_i.is_clean_invalid
+                                  || req_op_i.is_clean_shared
+                                  || req_op_i.is_make_invalid)) begin
+                        //  If fetch is set, a WriteBack is in-flight (AW sent, B pending).
+                        //  Per ACE §C5-225, stall until B is received before responding
+                        //  to snoops that grant write permission or trigger a memory write.
+                        //  Pure read snoops are exempt as they do neither.
+                        snoop_fsm_d = SNOOP_WAIT_FLUSH;
                     end else begin
-                        // The requested cacheline is available
+                        // Cache hit
+                        resp_w = 1'b1;
                         unique case (1'b1)
                             req_op_i.is_read_clean,
                             req_op_i.is_read_not_shared_dirty,
                             req_op_i.is_read_once,
                             req_op_i.is_read_shared: begin
-                                // Snoop read operations
-                                // Was the cacheline unique before the request?
                                 resp_wdata.was_unique    = !req_dir_shared_i;
-                                // A copy of the cacheline is always kept
                                 resp_wdata.is_shared     = 1'b1;
-                                // Write-back responsibility is not passed
                                 resp_wdata.pass_dirty    = 1'b0;
-                                // Is the cacheline dirty?
                                 resp_wdata.left_dirty    = req_dir_dirty_i;
-                                // Data transfer is always carried out
                                 resp_wdata.data_transfer = 1'b1;
-
                                 snoop_fsm_d = SNOOP_DATA_READ_FIRST;
                             end
 
                             req_op_i.is_read_unique: begin
-                                // Snoop read with invalidation
-                                // Was the cacheline unique before the request?
                                 resp_wdata.was_unique    = !req_dir_shared_i;
-                                // A copy of the cacheline is not kept, as it is invalidated
                                 resp_wdata.is_shared     = 1'b0;
-                                // Write-back responsibility is passed if the cacheline is dirty
                                 resp_wdata.pass_dirty    = req_dir_dirty_i;
-                                // Invalidation does not leave a dirty cacheline
                                 resp_wdata.left_dirty    = 1'b0;
-                                // Data transfer is always carried out
                                 resp_wdata.data_transfer = 1'b1;
-
                                 snoop_fsm_d = SNOOP_DATA_READ_FIRST;
                             end
 
                             req_op_i.is_clean_invalid: begin
-                                // Snoop clean with invalidation
-                                // Was the cacheline unique before the request?
                                 resp_wdata.was_unique    = !req_dir_shared_i;
-                                // A copy of the cacheline is not kept, as it is invalidated
                                 resp_wdata.is_shared     = 1'b0;
-                                // Write-back responsibility is passed if the cacheline is dirty
                                 resp_wdata.pass_dirty    = req_dir_dirty_i;
-                                // Cleaning does not leave a dirty cacheline
                                 resp_wdata.left_dirty    = 1'b0;
-                                // Data transfer is carried out only if the cacheline is dirty
                                 resp_wdata.data_transfer = req_dir_dirty_i;
-
                                 if (req_dir_dirty_i) begin
                                     snoop_fsm_d = SNOOP_DATA_READ_FIRST;
                                 end else begin
@@ -238,18 +246,11 @@ import hpdcache_pkg::*;
                             end
 
                             req_op_i.is_clean_shared: begin
-                                // Snoop clean without invalidation
-                                // Was the cacheline unique before the request?
                                 resp_wdata.was_unique    = !req_dir_shared_i;
-                                // A copy of the cacheline is kept
                                 resp_wdata.is_shared     = 1'b1;
-                                // Write-back responsibility is passed if the cacheline is dirty
                                 resp_wdata.pass_dirty    = req_dir_dirty_i;
-                                // Cleaning does not leave a dirty cacheline
                                 resp_wdata.left_dirty    = 1'b0;
-                                // Data transfer is carried out only if the cacheline is dirty
                                 resp_wdata.data_transfer = req_dir_dirty_i;
-
                                 if (req_dir_dirty_i) begin
                                     snoop_fsm_d = SNOOP_DATA_READ_FIRST;
                                 end else begin
@@ -258,16 +259,11 @@ import hpdcache_pkg::*;
                             end
 
                             req_op_i.is_make_invalid: begin
-                                // Snoop plain invalidation
-                                // Was the cacheline unique before the request?
                                 resp_wdata.was_unique    = !req_dir_shared_i;
-                                // A copy of the cacheline is not kept, as it is invalidated
                                 resp_wdata.is_shared     = 1'b0;
-                                // No data transfer is expected, so no dirty data is passed
                                 resp_wdata.pass_dirty    = 1'b0;
                                 resp_wdata.left_dirty    = 1'b0;
                                 resp_wdata.data_transfer = 1'b0;
-
                                 snoop_fsm_d = SNOOP_DIR_UPDT;
                             end
 
@@ -280,6 +276,53 @@ import hpdcache_pkg::*;
                             end
                         endcase
                     end
+                end
+            end
+
+            //  WriteBack was in-flight on arrival; wait for flush B.
+            //  Once landed: pass_dirty=0 (memory is authoritative),
+            //  data_transfer=0 except for ReadUnique (data still in SRAM).
+            SNOOP_WAIT_FLUSH: begin
+                if (flush_ack_match) begin
+                    resp_w = 1'b1;
+                    unique case (1'b1)
+                        req_op_q.is_read_unique: begin
+                            resp_wdata.was_unique    = !req_dir_shared_q;
+                            resp_wdata.is_shared     = 1'b0;
+                            resp_wdata.pass_dirty    = 1'b0;
+                            resp_wdata.left_dirty    = 1'b0;
+                            resp_wdata.data_transfer = 1'b1;
+                            snoop_fsm_d = SNOOP_DATA_READ_FIRST;
+                        end
+
+                        req_op_q.is_clean_invalid,
+                        req_op_q.is_clean_shared: begin
+                            resp_wdata.was_unique    = !req_dir_shared_q;
+                            resp_wdata.is_shared     = req_op_q.is_clean_shared;
+                            resp_wdata.pass_dirty    = 1'b0;
+                            resp_wdata.left_dirty    = 1'b0;
+                            resp_wdata.data_transfer = 1'b0;
+                            snoop_fsm_d = SNOOP_DIR_UPDT;
+                        end
+
+                        req_op_q.is_make_invalid: begin
+                            resp_wdata.was_unique    = !req_dir_shared_q;
+                            resp_wdata.is_shared     = 1'b0;
+                            resp_wdata.pass_dirty    = 1'b0;
+                            resp_wdata.left_dirty    = 1'b0;
+                            resp_wdata.data_transfer = 1'b0;
+                            snoop_fsm_d = SNOOP_DIR_UPDT;
+                        end
+
+                        default: begin
+                            resp_wdata.was_unique    = 1'b0;
+                            resp_wdata.is_shared     = 1'b0;
+                            resp_wdata.pass_dirty    = 1'b0;
+                            resp_wdata.left_dirty    = 1'b0;
+                            resp_wdata.data_transfer = 1'b0;
+                            snoop_fsm_d = SNOOP_IDLE;
+                        end
+                    endcase
                 end
             end
 
