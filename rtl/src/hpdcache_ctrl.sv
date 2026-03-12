@@ -422,6 +422,7 @@ import hpdcache_pkg::*;
     hpdcache_way_vector_t    st1_dat_err_unc_dirty;
     logic                    st1_err_trigger;
     logic                    err_busy;
+    logic                    err_wait;
     hpdcache_nline_t         st1_victim_nline;
     logic                    st1_rtab_alloc;
     logic                    st1_rtab_alloc_and_link;
@@ -647,6 +648,7 @@ import hpdcache_pkg::*;
         .st1_dat_err_unc_dirty_i            (|st1_dat_err_unc_dirty),
         .st1_err_o                          (st1_err_trigger),
         .err_busy_i                         (err_busy),
+        .err_wait_i                         (err_wait),
         .st1_req_valid_o                    (st1_req_valid_d),
         .st1_rsp_valid_o                    (st1_rsp_valid),
         .st1_rsp_error_o                    (st1_rsp_error),
@@ -1198,6 +1200,7 @@ import hpdcache_pkg::*;
     typedef enum {
         ERR_IDLE,
         ERR_CHECK,
+        ERR_WAIT_MSHR,
         ERR_INVAL,
         ERR_LATCH,
         ERR_CORRECT
@@ -1224,10 +1227,12 @@ import hpdcache_pkg::*;
         begin : err_fsm_comb
             automatic logic err_dir_unc_msk, err_dir_cor_msk;
             automatic logic err_dat_unc_msk, err_dat_cor_msk;
+            automatic logic err_unc;
 
             err_fsm_d = err_fsm_q;
             err_way_d = err_way_q;
 
+            err_unc         = |(err_dir_unc_q | err_dat_unc_q);
             err_dir_unc_msk = |(err_dir_unc_q & err_way_q);
             err_dir_cor_msk = |(err_dir_cor_q & err_way_q);
             err_dat_unc_msk = |(err_dat_unc_q & err_way_q);
@@ -1244,6 +1249,7 @@ import hpdcache_pkg::*;
             err_dat_rdata_we = 1'b0;
 
             err_busy = 1'b1;
+            err_wait = 1'b0;
 
             case (err_fsm_q)
                 ERR_IDLE: begin
@@ -1263,9 +1269,19 @@ import hpdcache_pkg::*;
                         err_dat_read = err_dat_cor_msk;
                         err_fsm_d = ERR_LATCH;
                     end else if (err_way_q[HPDcacheCfg.u.ways - 1]) begin
-                        err_fsm_d = ERR_IDLE;
+                        err_fsm_d = err_unc ? ERR_WAIT_MSHR : ERR_IDLE;
                     end else begin
                         err_way_d = err_way_next;
+                    end
+                end
+                ERR_WAIT_MSHR: begin
+                    //  If there are uncorrectable errors in the directory, wait for all pending
+                    //  misses before releasing the pipeline. This is to prevent that a previously
+                    //  selected as victim (fetch bit set), which has been invalidated, is reused
+                    //  before the corresponding refill response arrives
+                    err_wait = 1'b1;
+                    if (mshr_empty_i) begin
+                        err_fsm_d = ERR_CHECK;
                     end
                 end
                 ERR_INVAL: begin
@@ -1278,7 +1294,7 @@ import hpdcache_pkg::*;
 
                     //  Check next way or go to IDLE after the last one
                     if (err_way_q[HPDcacheCfg.u.ways - 1]) begin
-                        err_fsm_d = ERR_IDLE;
+                        err_fsm_d = err_unc ? ERR_WAIT_MSHR : ERR_IDLE;
                     end else begin
                         err_way_d = err_way_next;
                         err_fsm_d = ERR_CHECK;
@@ -1300,7 +1316,7 @@ import hpdcache_pkg::*;
 
                     //  Check next way or go to IDLE after the last one
                     if (err_way_q[HPDcacheCfg.u.ways - 1]) begin
-                        err_fsm_d = ERR_IDLE;
+                        err_fsm_d = err_unc ? ERR_WAIT_MSHR : ERR_IDLE;
                     end else begin
                         err_way_d = err_way_next;
                         err_fsm_d = ERR_CHECK;
@@ -1362,6 +1378,7 @@ import hpdcache_pkg::*;
         assign err_dat_write  = 1'b0;
         assign err_dat_wdata  = 1'b0;
         assign err_busy       = 1'b0;
+        assign err_wait       = 1'b0;
     end
     //  }}}
 
