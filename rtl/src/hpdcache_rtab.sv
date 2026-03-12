@@ -1,22 +1,8 @@
 /*
- *  Copyright 2023 CEA*
- *  *Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
+ *  Copyright 2023 CEA Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA)
  *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
- *
- *  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
- *  may not use this file except in compliance with the License, or, at your
- *  option, the Apache License version 2.0. You may obtain a copy of the
- *  License at
- *
- *  https://solderpad.org/licenses/SHL-2.1/
- *
- *  Unless required by applicable law or agreed to in writing, any work
- *  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
- *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- *  License for the specific language governing permissions and limitations
- *  under the License.
  */
 /*
  *  Authors       : Cesar Fuguet
@@ -204,9 +190,8 @@ import hpdcache_pkg::*;
     hpdcache_nline_t    [N-1:0]  nline;
     hpdcache_req_addr_t [N-1:0]  addr;
     logic               [N-1:0]  is_read_bv;
-    logic               [N-1:0]  is_amo_bv;
-    logic               [N-1:0]  is_uc_bv;
     logic               [N-1:0]  fence_bv;
+    logic                        fence_only;
     logic               [N-1:0]  check_hit;
     logic               [N-1:0]  match_check_nline;
     logic               [N-1:0]  match_check_tail;
@@ -216,7 +201,6 @@ import hpdcache_pkg::*;
     logic               [N-1:0]  match_refill_way;
     logic               [N-1:0]  match_flush_nline;
 
-    logic                        fence_only;
     logic               [N-1:0]  free;
     logic               [N-1:0]  free_alloc;
     logic                        alloc;
@@ -262,12 +246,10 @@ import hpdcache_pkg::*;
         assign match_check_nline[gen_i] = (check_nline_i == nline[gen_i]);
         assign is_read_bv[gen_i] = is_load(req_q[gen_i].req.req.op) |
                                    is_cmo_prefetch(req_q[gen_i].req.req.op);
-        assign is_amo_bv[gen_i] = is_amo(req_q[gen_i].req.req.op);
-        assign is_uc_bv[gen_i] = req_q[gen_i].req.req.pma.uncacheable;
+        assign fence_bv[gen_i] = deps_q[gen_i].pend_trans;
     end
 
-    assign fence_bv         = valid_q & (is_amo_bv | is_uc_bv);
-    assign fence_only       = (fence_bv == valid_q);
+    assign fence_only       = (valid_q == fence_bv);
     assign check_hit        = valid_q & match_check_nline;
     assign check_hit_o      = |check_hit;
     assign match_check_tail = check_hit & tail_q;
