@@ -14,6 +14,34 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
+## [6.0.0] 2026-03-13
+
+### Added
+
+- Error correction and detection mechanisms for bit-flips in dir and data SRAMs
+- New parameters: eccEn, eccScrubberEn
+- Vendorized lowRISC OpenTitan subdirectory with ECC primitives and generators
+
+## [5.2.0] 2026-03-13
+
+### Added
+
+- Testbench: add sequence that reads trace file from QEMU execution
+- Testbench: add direct mapped configuration and validate it in the CI
+- Add plugin for QEMU to generate memory access traces
+- Add cache invalidation signal in the memory response interface
+
+### Changed
+
+- Enable concurrent read and write if they target different banks
+- Optimize write byte enable logic for timing towards data SRAMs
+- Improve wake-up logic in the RTAB for requests waiting for a refill
+
+### Fixed
+
+- Prevent invalidations to go into the uncached handler (on OpenPiton platform)
+- Correctly support direct mapped configuration of the cache
+
 ## [5.1.0] 2025-07-02
 
 ### Added
