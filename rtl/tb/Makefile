@@ -168,10 +168,13 @@ export SC_COPYRIGHT_MESSAGE=DISABLE
 .PHONY: all
 all: help
 
-.PHONY: verilate build run
+.PHONY: verilate build run run_clobber
 verilate: $(VERILATE_LOG)
-build: $(BUILD_LOG)
-run: $(RUN_LOG)
+build: verilate $(BUILD_LOG)
+run: build $(RUN_LOG)
+run_clobber: clean build run
+
+.NOTPARALLEL: run build run_clobber
 
 define help_message
 help: make [target] [arguments]
@@ -259,8 +262,9 @@ nonregression:
 		-s ${SEQUENCE} \
 		-n ${NTESTS} \
 		-t ${NTRANSACTIONS} \
-		-l $(LOG_DIR)/nonreg_$(CONFIG_NAME)_$(DATE_TIME) \
+		-l ${LOG_DIR}/nonreg_${CONFIG_NAME}_${DATE_TIME} \
 		-c ${CONFIG} \
+		-d ${LOG_LEVEL} \
 		-f \
                 $(if $(filter 1,$(COV)),-e $(COV))
 
