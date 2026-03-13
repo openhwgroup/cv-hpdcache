@@ -521,9 +521,21 @@ import hpdcache_pkg::*;
                         //  Trigger directory/data invalidation
                         st1_err_o = 1'b1;
 
+                        //  Put the request on-hold during SRAM correction
+                        //  When the cache does not support the write-back mode, cachelines are
+                        //  always clean (next level of memory is up to date). Therefore, the cache
+                        //  can recover from unrecoverable errors by invalidating the cacheline and
+                        //  replaying the request
+                        st1_rtab_alloc = ~HPDcacheCfg.u.wbEn;
+
                         //  Use response (if required) to signal an unrecoverable error
-                        st1_rsp_valid_o = st1_req_need_rsp_i;
-                        st1_rsp_error_o = st1_req_need_rsp_i;
+                        //  When the cache supports the write-back mode, the cache cannot recover
+                        //  from the following situations:
+                        //  - if the data is dirty and has uncorrectable errors
+                        //  - If the directory has uncorrectable errors (the controller cannot tell
+                        //    whether the data is dirty or clean)
+                        st1_rsp_valid_o = HPDcacheCfg.u.wbEn & st1_req_need_rsp_i;
+                        st1_rsp_error_o = HPDcacheCfg.u.wbEn & st1_req_need_rsp_i;
 
                         //  Performance event
                         evt_cache_dir_unc_err_o = st1_dir_err_unc_i;
