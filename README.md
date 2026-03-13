@@ -101,15 +101,17 @@ The directory vendor/opentitan contains [vendorized](https://opentitan.org/book/
 If you use the HPDcache in your academic work, you can cite us:
 
 <details>
-<summary>HPDcache original publication<summary>
-César Fuguet. 2023. HPDcache: Open-Source High-Performance L1 Data Cache for RISC-V Cores. In Proceedings of the 20th ACM International Conference on Computing Frontiers (CF '23). Association for Computing Machinery, New York, NY, USA, 377–378. <https://doi.org/10.1145/3587135.3591413>
+  <summary>HPDcache original publication</summary>
+  <ul>
+    <li>César Fuguet. 2023. HPDcache: Open-Source High-Performance L1 Data Cache for RISC-V Cores. In Proceedings of the 20th ACM International Conference on Computing Frontiers (CF '23). Association for Computing Machinery, New York, NY, USA, 377–378. <https://doi.org/10.1145/3587135.3591413></li>
+  </ul>
 </details>
 
 <details>
-<summary>Other HPDcache related publication<summary>
-- Technical Paper: D. Million, N. Oliete-Escuín and C. Fuguet, "Breaking the Memory Wall with a Flexible Open-Source L1 Data-Cache," 2024 Design, Automation & Test in Europe Conference & Exhibition (DATE), Valencia, Spain, 2024, pp. 1-2, <https://doi.org/10.23919/DATE58400.2024.10546547>
-
-- Video: César Fuguet. 2023. High Performance L1 Dcache for RISC-V Cores. TRISTAN Workshop. RISC-V Summit Europe 2023. <https://www.youtube.com/watch?v=3r5STMiUq9s>
-
-- Video: Christian Fabre, César Fuguet. 2023. One Year of Improvements on OpenHW Group's HPDCache. RISC-V Summit US 2023. <https://www.youtube.com/watch?v=ODHA-wPOmW0>
+  <summary>Other HPDcache related publication</summary>
+  <ul>
+    <li>Technical Paper: D. Million, N. Oliete-Escuín and C. Fuguet, "Breaking the Memory Wall with a Flexible Open-Source L1 Data-Cache," 2024 Design, Automation & Test in Europe Conference & Exhibition (DATE), Valencia, Spain, 2024, pp. 1-2, <https://doi.org/10.23919/DATE58400.2024.10546547</li>
+    <li>Video: César Fuguet. 2023. <a href="https://www.youtube.com/watch?v=3r5STMiUq9s">High Performance L1 Dcache for RISC-V Cores. TRISTAN Workshop. RISC-V Summit Europe 2023</a></li>
+    <li>Video: Christian Fabre, César Fuguet. 2023. <a href="https://www.youtube.com/watch?v=ODHA-wPOmW0">One Year of Improvements on OpenHW Group's HPDCache. RISC-V Summit US 2023</a></li>
+  </ul>
 </details>
