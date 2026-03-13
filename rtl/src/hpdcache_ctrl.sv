@@ -1281,7 +1281,7 @@ import hpdcache_pkg::*;
                     //  before the corresponding refill response arrives
                     err_wait = 1'b1;
                     if (mshr_empty_i) begin
-                        err_fsm_d = ERR_CHECK;
+                        err_fsm_d = ERR_IDLE;
                     end
                 end
                 ERR_INVAL: begin
