@@ -71,7 +71,7 @@ echo "Running non-regression testsuite with SEQUENCE=${sequence}"
 
 if [[ -n ${compile} && ${compile} == 1 ]] ; then
     make clean ;
-    make build CONFIG=${config}
+    make build -j${njobs} CONFIG=${config}
     if [[ $? -ne 0 ]] ; then
         echo "error: testbench compilation failed" ;
         exit 1 ;
