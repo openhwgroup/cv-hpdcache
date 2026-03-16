@@ -15,8 +15,8 @@
 #include <sstream>
 #include <verilated.h>
 
-#include "hpdcache_test_defs.h"
 #include "hpdcache_fault_injection.h"
+#include "hpdcache_test_defs.h"
 #include "transaction.h"
 
 using namespace sc_dt;
