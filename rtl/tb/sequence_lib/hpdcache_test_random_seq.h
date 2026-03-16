@@ -158,11 +158,11 @@ public:
 
         scv_bag<int> fault_inj_domain_dist;
 #if CONF_HPDCACHE_TEST_FAULT_INJ_DIR
-        fault_inj_domain_dist.push(
-                static_cast<int>(hpdcache_fault_injection::domain_e::CACHE_DIR), 20);
+        fault_inj_domain_dist.push(static_cast<int>(hpdcache_fault_injection::domain_e::CACHE_DIR),
+                                   20);
 #endif
-        fault_inj_domain_dist.push(
-                static_cast<int>(hpdcache_fault_injection::domain_e::CACHE_DAT), 80);
+        fault_inj_domain_dist.push(static_cast<int>(hpdcache_fault_injection::domain_e::CACHE_DAT),
+                                   80);
         fault_inj_domain_rnd->set_mode(fault_inj_domain_dist);
 
         scv_bag<bool> fault_inj_double_dist;

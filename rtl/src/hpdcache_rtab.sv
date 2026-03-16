@@ -297,7 +297,7 @@ import hpdcache_pkg::*;
     // generate bit vector for waiters on mshr full and dir unavailable
     for (gen_i = 0; gen_i < N; gen_i++) begin : gen_waiters
         assign waiters_mshr_full[gen_i] = valid_q[gen_i] & deps_q[gen_i].mshr_full &
-                                        match_refill_mshr_set[gen_i]; 
+                                        match_refill_mshr_set[gen_i];
         assign waiters_dir_unavailable[gen_i] = valid_q[gen_i] & deps_q[gen_i].dir_unavailable
                                         & match_refill_set[gen_i];
     end
