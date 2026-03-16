@@ -534,12 +534,17 @@ import hpdcache_pkg::*;
                         //  - if the data is dirty and has uncorrectable errors
                         //  - If the directory has uncorrectable errors (the controller cannot tell
                         //    whether the data is dirty or clean)
-                        st1_rsp_valid_o = HPDcacheCfg.u.wbEn & st1_req_need_rsp_i;
-                        st1_rsp_error_o = HPDcacheCfg.u.wbEn & st1_req_need_rsp_i;
+                        st1_rsp_valid_o = HPDcacheCfg.u.wbEn && st1_req_need_rsp_i;
+                        st1_rsp_error_o = HPDcacheCfg.u.wbEn && st1_req_need_rsp_i;
 
                         //  Performance event
-                        evt_cache_dir_unc_err_o = st1_dir_err_unc_i;
-                        evt_cache_dat_unc_err_o = st1_dat_err_unc_i;
+                        if (HPDcacheCfg.u.wbEn) begin
+                            evt_cache_dir_unc_err_o = st1_dir_err_unc_i;
+                            evt_cache_dat_unc_err_o = st1_dat_err_unc_i;
+                        end else begin
+                            evt_cache_dir_cor_err_o = st1_dir_err_unc_i;
+                            evt_cache_dat_cor_err_o = st1_dat_err_unc_i;
+                        end
 
                         //  Stall the pipeline
                         st1_nop = 1'b1;
