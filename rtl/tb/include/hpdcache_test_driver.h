@@ -57,9 +57,7 @@ private:
     SC_HAS_PROCESS(hpdcache_test_driver);
 #endif
 
-#if CONF_HPDCACHE_TEST_FAULT_INJ
     hpdcache_fault_injection faultInj;
-#endif
 
     typedef std::shared_ptr<hpdcache_test_transaction_req> transaction_ptr;
 
@@ -140,16 +138,13 @@ private:
 
             if (t == nullptr) break;
 
-#if CONF_HPDCACHE_TEST_FAULT_INJ
             if (t->req_fault.valid) {
                 switch (t->req_fault.domain) {
-#if CONF_HPDCACHE_TEST_FAULT_INJ_DIR
                     case hpdcache_fault_injection::domain_e::CACHE_DIR:
                         faultInj.injectDirFault(t->req_fault.set,
                                                 t->req_fault.way,
                                                 t->req_fault.fault_mask.range(63, 0));
                         break;
-#endif
                     case hpdcache_fault_injection::domain_e::CACHE_DAT:
                         faultInj.injectDatFault(t->req_fault.set,
                                                 t->req_fault.way,
@@ -160,7 +155,6 @@ private:
                         break;
                 }
             }
-#endif
 
             core_req_valid_o.write(true);
             core_req_o.write(core_req_to_bv(t));

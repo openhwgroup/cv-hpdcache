@@ -149,35 +149,32 @@ public:
 
         size->keep_only(0, LOG2_REQ_DATA_BYTES);
 
-#if CONF_HPDCACHE_TEST_FAULT_INJ
         scv_bag<bool> fault_inj_dist;
         fault_inj_dist.push(false, 99);
+#if CONF_HPDCACHE_TEST_FAULT_INJ
         fault_inj_dist.push(true, 1);
+#endif
         fault_inj_rnd->set_mode(fault_inj_dist);
 
         scv_bag<int> fault_inj_domain_dist;
 #if CONF_HPDCACHE_TEST_FAULT_INJ_DIR
-        fault_inj_domain_dist.push(static_cast<int>(hpdcache_fault_injection::domain_e::CACHE_DIR),
-                                   20);
+        fault_inj_domain_dist.push(
+                static_cast<int>(hpdcache_fault_injection::domain_e::CACHE_DIR), 20);
 #endif
-        fault_inj_domain_dist.push(static_cast<int>(hpdcache_fault_injection::domain_e::CACHE_DAT),
-                                   80);
+        fault_inj_domain_dist.push(
+                static_cast<int>(hpdcache_fault_injection::domain_e::CACHE_DAT), 80);
         fault_inj_domain_rnd->set_mode(fault_inj_domain_dist);
 
         scv_bag<bool> fault_inj_double_dist;
-
-#if CONF_HPDCACHE_TEST_DOUBLE_FAULT_INJ
         fault_inj_double_dist.push(false, 95);
+#if CONF_HPDCACHE_TEST_DOUBLE_FAULT_INJ
         fault_inj_double_dist.push(true, 5);
-#else
-        fault_inj_double_dist.push(false, 100);
 #endif
         fault_inj_double_rnd->set_mode(fault_inj_double_dist);
 
         scv_bag<pair<int, int>> fault_inj_way_dist;
         fault_inj_way_dist.push(pair<int, int>(0, HPDCACHE_WAYS - 1), 100);
         fault_inj_way_rnd->set_mode(fault_inj_way_dist);
-#endif
     }
 
 private:
@@ -186,12 +183,10 @@ private:
     scv_smart_ptr<sc_bv<HPDCACHE_REQ_DATA_WIDTH>> size;
     scv_smart_ptr<bool> need_rsp_rnd;
 
-#if CONF_HPDCACHE_TEST_FAULT_INJ
     scv_smart_ptr<bool> fault_inj_rnd;
     scv_smart_ptr<int> fault_inj_way_rnd;
     scv_smart_ptr<int> fault_inj_domain_rnd;
     scv_smart_ptr<bool> fault_inj_double_rnd;
-#endif
 
     static constexpr unsigned int REQ_DATA_BYTES = HPDCACHE_REQ_DATA_WIDTH / 8;
     static constexpr unsigned int LOG2_REQ_DATA_BYTES = HPDCACHE_TEST_DEFS_LOG2(REQ_DATA_BYTES);
@@ -297,7 +292,6 @@ private:
             }
         }
 
-#if CONF_HPDCACHE_TEST_FAULT_INJ
         fault_inj_rnd->next();
         if (fault_inj_rnd->read()) {
             fault_inj_way_rnd->next();
@@ -315,7 +309,6 @@ private:
                 t->req_fault.fault_mask = 0x20;
             }
         }
-#endif
 
         return t;
     }

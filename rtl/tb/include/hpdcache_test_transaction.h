@@ -16,9 +16,7 @@
 #include <verilated.h>
 
 #include "hpdcache_test_defs.h"
-#if CONF_HPDCACHE_TEST_FAULT_INJ
 #include "hpdcache_fault_injection.h"
-#endif
 #include "transaction.h"
 
 using namespace sc_dt;
@@ -61,7 +59,6 @@ public:
         HPDCACHE_WR_POLICY_WT = 0b100
     };
 
-#if CONF_HPDCACHE_TEST_FAULT_INJ
     struct hpdcache_fault_injection_req
     {
         bool valid;
@@ -81,7 +78,6 @@ public:
             fault_mask = 0;
         }
     };
-#endif
 
     typedef std::shared_ptr<hpdcache_test_transaction_req> transaction_ptr;
 
@@ -99,9 +95,7 @@ public:
     bool req_io;
     hpdcache_wr_policy_hint_e req_wr_policy_hint;
     bool req_abort;
-#if CONF_HPDCACHE_TEST_FAULT_INJ
     hpdcache_fault_injection_req req_fault;
-#endif
 
     hpdcache_test_transaction_req()
     {
@@ -319,7 +313,6 @@ public:
             os << " / " << cmo_to_string(op);
         }
 
-#if CONF_HPDCACHE_TEST_FAULT_INJ
         if (req_fault.valid) {
             os << " / FAULT INJECTION / WAY = " << req_fault.way;
             if (req_fault.domain == hpdcache_fault_injection::domain_e::CACHE_DIR) {
@@ -329,7 +322,6 @@ public:
                 os << " / CACHE_DAT";
             }
         }
-#endif
 
         return os.str();
     }
