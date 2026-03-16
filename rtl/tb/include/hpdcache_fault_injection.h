@@ -53,10 +53,10 @@ private:
 
     svScope getScope(domain_e domain, int set, int way, int word = 0)
     {
-        int x, y;
         svScope ret = nullptr;
+#if HPDCACHE_DPI_ON
+        int x, y;
         switch (domain) {
-#if CONF_HPDCACHE_ECC_ENABLE
             case domain_e::CACHE_DIR:
                 x = getDir(way);
                 ret = dirScopes[x];
@@ -66,17 +66,17 @@ private:
                 y = getDatCol(word);
                 ret = datScopes[x][y];
                 break;
-#endif
             default:
                 break;
         }
+#endif
         return ret;
     }
 
 public:
     hpdcache_fault_injection()
     {
-#if CONF_HPDCACHE_ECC_ENABLE
+#if HPDCACHE_DPI_ON
         for (int w = 0; w < CONF_HPDCACHE_WAYS; w++) {
             char hier_name[256];
             snprintf(hier_name,
@@ -108,14 +108,14 @@ public:
                 datScopes[w][m] = scope;
             }
         }
-#endif
 
         assert((HPDCACHE_WORD_WIDTH == 64) || (HPDCACHE_WORD_WIDTH == 32));
+#endif
     }
 
     void injectDirFault(int set, int way, sc_bv<64> mask, int cycles = 0)
     {
-#if CONF_HPDCACHE_ECC_ENABLE
+#if HPDCACHE_DPI_ON
         //  dir entry bits: valid (1) + dirty (1) + fetch (1) + wback (1) + tag (tag width)
         static constexpr int DirBits = HPDCACHE_TAG_WIDTH + 4;
         static constexpr int ParBits = getParBits(DirBits);
@@ -142,7 +142,7 @@ public:
 
     void injectDatFault(int set, int way, int word, sc_bv<72> mask, int cycles = 0)
     {
-#if CONF_HPDCACHE_ECC_ENABLE
+#if HPDCACHE_DPI_ON
         static constexpr int ParBits = getParBits(CONF_HPDCACHE_WORD_WIDTH);
         static constexpr int WordBits = CONF_HPDCACHE_WORD_WIDTH + ParBits;
         static constexpr int RamBits = WordBits * CONF_HPDCACHE_DATA_WAYS_PER_RAM_WORD;
