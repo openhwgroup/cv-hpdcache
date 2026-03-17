@@ -70,8 +70,8 @@ done
 echo "Running non-regression testsuite with SEQUENCE=${sequence}"
 
 if [[ -n ${compile} && ${compile} == 1 ]] ; then
-    make clean ;
-    make build -j${njobs} CONFIG=${config}
+    make -s clean ;
+    make -s build -j${njobs} CONFIG=${config} ;
     if [[ $? -ne 0 ]] ; then
         echo "error: testbench compilation failed" ;
         exit 1 ;
@@ -82,16 +82,19 @@ i=1
 mkdir -p ${logdir}
 for s in $(head -n ${ntests} scripts/random_numbers.dat | tr '\n' ' ') ; do
     echo "[$i/${ntests}] Running sequence ${sequence} SEED=${s}" ; ((i++)) ;
-    make -s run SEQUENCE=${sequence} SEED=${s} NTRANSACTIONS=${ntrans} \
-            RUN_LOG=${logdir}/${sequence}_${s}.log LOG_LEVEL=${loglevel} \
-            COV=${coverage} CONFIG=${config} ;
+    make -s run_no_check SEQUENCE=${sequence} SEED=${s} \
+            NTRANSACTIONS=${ntrans} \
+            RUN_LOG=${logdir}/${sequence}_${s}.log \
+            LOG_LEVEL=${loglevel} \
+            COV=${coverage} \
+            CONFIG=${config} ;
 done
 
 PERL5LIB=./scripts/perl5 \
 ./scripts/scan_logs.pl -listwarnings -listerrors \
-    -pat scripts/scan_patterns/run_patterns.pat \
-    -att scripts/scan_patterns/run_attributes.pat \
-    -nowarn ${logdir}/${sequence}_*.log \
-    2>&1 | tee ${logdir}/${sequence}_nonreg.log.scan ;
+        -pat scripts/scan_patterns/run_patterns.pat \
+        -att scripts/scan_patterns/run_attributes.pat \
+        -nowarn ${logdir}/${sequence}_*.log \
+        2>&1 | tee ${logdir}/${sequence}_nonreg.log.scan ;
 
 exit ${PIPESTATUS[0]}
