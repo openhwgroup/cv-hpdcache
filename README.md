@@ -22,10 +22,10 @@ The HPDcache is an open-source High-Performance, Multi-requester, Out-of-Order L
 
 The HPDcache User Guide document can be found in the *docs* folder.
 It is written in reStructuredText format.
+You can find the most up-to-date version of the documentation in [the OpenHW ReadTheDocs server](https://openhw-group-cv-hpdcache.readthedocs-hosted.com/).
 
 If you need to compile the User Guide document, a dedicated *Makefile* is in the *docs* folder.
-
-You can find some pre-compiled User Guide documents (in both HTML or PDF) in [Releases](https://github.com/openhwgroup/cv-hpdcache/releases)
+You can find pre-compiled User Guide documents (in both HTML or PDF) in [Releases](https://github.com/openhwgroup/cv-hpdcache/releases)
 
 ## Contributing
 
