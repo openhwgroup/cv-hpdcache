@@ -110,33 +110,23 @@ VERILATOR_FLAGS     += -Wall -Wno-fatal \
                        --x-assign unique --x-initial unique
 
 ifneq ($(DISABLE_TRACE),1)
-$(info make: Tracing support enabled)
 VERILATOR_FLAGS += --trace --trace-structs
-else
-$(info make: Tracing support disabled)
 endif
 
 ifneq ($(DISABLE_ASSERT),1)
-$(info make: Assertions support enabled)
 VERILATOR_FLAGS += --assert
-else
-$(info make: Assertions support disabled)
 endif
 
 ifeq ($(PROF),1)
-$(info make: Profiling support enabled)
 VERILATOR_FLAGS += --prof-cfuncs -CFLAGS "-g -pg"
 else
-$(info make: Profiling support disabled)
 VERILATOR_FLAGS += -CFLAGS "-O3"
 endif
 
 ifeq ($(COV),1)
 $(shell mkdir -p $(COV_DIR))
-$(info make: Coverage support enabled)
 VERILATOR_FLAGS += --coverage
 else
-$(info make: Coverage support disabled)
 endif
 
 VERILATOR_FLAGS     += $(CONF_DEFINES)
@@ -169,13 +159,15 @@ export SC_COPYRIGHT_MESSAGE=DISABLE
 .PHONY: all
 all: help
 
-.PHONY: verilate build run run_clobber
+.PHONY: verilate build run run_no_check run_clobber
 verilate: $(VERILATE_LOG)
-build: verilate $(BUILD_LOG)
-run: build $(RUN_LOG)
-run_clobber: clean build run
+$(VERILATE_LOG): print_config
+build: $(VERILATE_LOG) $(BUILD_LOG)
+run: $(BUILD_LOG) $(RUN_LOG) check
+run_no_check: $(BUILD_LOG) $(RUN_LOG)
+run_clobber: clean $(BUILD_LOG) $(RUN_LOG) check
 
-.NOTPARALLEL: run build run_clobber
+.NOTPARALLEL: run run_no_check build run_clobber
 
 define help_message
 help: make [target] [arguments]
@@ -237,15 +229,17 @@ help:
 
 .PHONY: $(RUN_LOG)
 $(RUN_LOG):
-	$(Q)$(ECHO) "make: run (LOG: $@)"
+	$(Q)$(ECHO) "Running simulation... (LOG: $@)"
 	$(Q)$(MKDIR) $(dir $@)
 	$(Q)$(RM) $(TRACE_FILE)
 	$(Q)$(BUILD_DIR)/V$(DUT) $(VERILATOR_RUNFLAGS) >& $@
-	$(Q)$(ECHO) "RUN FINISHED" >> $@
+
+.PHONY: check
+check: $(RUN_LOG)
+	$(Q)$(ECHO) "Checking log... (LOG: $<)"
 	$(Q)$(SCANLOG) -pat scripts/scan_patterns/run_patterns.pat \
 	    -att scripts/scan_patterns/run_attributes.pat \
-	    -nowarn $@ 2>&1 | tee $@.scan ; \
-	    exit $${PIPESTATUS[0]}
+	    -nowarn $< 2>&1 | tee $<.scan ; exit $${PIPESTATUS[0]}
 
 .PHONY: debug
 debug: build
@@ -260,14 +254,14 @@ nonreg: nonregression
 nonregression:
 	$(Q)$(ECHO) "Running non-regression testsuite with SEQUENCE=$(SEQUENCE)..."
 	./scripts/run_nonregression.sh \
-		-s ${SEQUENCE} \
-		-n ${NTESTS} \
-		-t ${NTRANSACTIONS} \
-		-l ${LOG_DIR}/nonreg_${CONFIG_NAME}_${DATE_TIME} \
-		-c ${CONFIG} \
-		-d ${LOG_LEVEL} \
-		-f \
-                $(if $(filter 1,$(COV)),-e $(COV))
+	    -s ${SEQUENCE} \
+	    -n ${NTESTS} \
+	    -t ${NTRANSACTIONS} \
+	    -l ${LOG_DIR}/nonreg_${CONFIG_NAME}_${DATE_TIME} \
+	    -c ${CONFIG} \
+	    -d ${LOG_LEVEL} \
+	    -f \
+	    $(if $(filter 1,$(COV)),-e $(COV))
 
 .PHONY: cov
 cov: $(COV_MERGEFILE) $(COV_MERGEFILE).info
@@ -291,7 +285,7 @@ cov_html: cov $(COV_HTML_DIR)/index.html
 $(COV_HTML_DIR)/index.html: $(COV_MERGEFILE).info
 	genhtml --branch-coverage --function-coverage -o coverage_html $<
 
-$(VERILATE_LOG): print_config $(SVLOG_SOURCES) $(BUILD_DIR)/miniz.o $(TB_TOP).cpp
+$(VERILATE_LOG): $(SVLOG_SOURCES) $(BUILD_DIR)/miniz.o $(TB_TOP).cpp
 	$(Q)$(ECHO) "Verilating the RTL sources... (LOG: $@)"
 	$(Q)$(MKDIR) $(dir $@)
 	$(Q)$(VERILATOR) --sc $(VERILATOR_FLAGS) -Mdir $(BUILD_DIR) \
@@ -302,17 +296,15 @@ $(VERILATE_LOG): print_config $(SVLOG_SOURCES) $(BUILD_DIR)/miniz.o $(TB_TOP).cp
 	        --exe $(TB_TOP).cpp --top-module $(DUT) $(BUILD_DIR)/miniz.o >& $@
 	$(Q)$(ECHO) "VERILATE FINISHED" >> $@
 	$(Q)$(SCANLOG) -pat scripts/scan_patterns/verilate_patterns.pat \
-	        -nowarn $@ |& tee $@.scan
-	$(Q)$(ECHO) "Verilate done"
+	        -nowarn $@ |& tee $@.scan ; exit $${PIPESTATUS[0]}
 
-$(BUILD_LOG): print_config $(VERILATE_LOG) $(TB_TOP).cpp
-	$(Q)$(ECHO) "Build the testbench... (LOG: $@)"
+$(BUILD_LOG): $(TB_TOP).cpp
+	$(Q)$(ECHO) "Building the testbench... (LOG: $@)"
 	$(Q)$(MKDIR) $(dir $@)
-	$(Q)$(MAKE) -C $(BUILD_DIR) -f "V$(DUT).mk" "V$(DUT)" $(VERILATOR_MAKEFLAGS) >& $@
+	$(Q)$(MAKE) -s -C $(BUILD_DIR) -f "V$(DUT).mk" "V$(DUT)" $(VERILATOR_MAKEFLAGS) >& $@
 	$(Q)$(ECHO) "BUILD FINISHED" >> $@
 	$(Q)$(SCANLOG) -pat scripts/scan_patterns/build_patterns.pat \
-	        -nowarn $@ |& tee $@.scan
-	$(Q)$(ECHO) "Build done"
+	        -nowarn $@ |& tee $@.scan ; exit $${PIPESTATUS[0]}
 
 $(BUILD_DIR)/miniz.o: $(MINIZ_DIR)/miniz.c $(MINIZ_DIR)/miniz.h
 	$(Q)$(MKDIR) $(dir $@)
