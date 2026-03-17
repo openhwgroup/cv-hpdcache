@@ -48,7 +48,7 @@ List of features
 
 - Processes one request per cycle.
 
-- Any given requester can access 1 to 32 bytes of a cacheline per cycle.
+- Any given requester can access 1 to 64 bytes of a cacheline per cycle.
 
 - Reduced energy consumption by limiting the number of RAMs consulted per
   request.
