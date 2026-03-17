@@ -2,21 +2,21 @@
 
 ![HPDcache CI](https://github.com/openhwgroup/cv-hpdcache/actions/workflows/test.yml/badge.svg)
 
-The HPDcache is an open-source High-Performance, Multi-requester, Out-of-Order L1 Dcache for RISC-V cores and accelerators.
+The HPDcache is an open-source hardware High-Performance, Multi-requester, Out-of-Order L1 Dcache for RISC-V cores and accelerators.
 
 ## List of Features
 
-- Support for multiple outstanding requests per requester.
-- Support for multiple outstanding read and writes to memory.
-- Any given requester can access 1 to 64 bytes of a cacheline per cycle.
-- Non-allocate, write-through policy or allocate, write-back policy. Either one or both are supported simultaneously at cacheline granularity.
-- Hardware write-buffer to mask the latency of write acknowledgements from the memory system.
-- For address-overlapping transactions, the cache guarantees that these are committed in the order in which they are consumed from the requesters.
-- For non-address-overlapping transactions, the cache may execute them in an out-of-order fashion to improve performance.
-- Supports Cache Management Operations (CMOs): cache invalidation and prefetch operations, and memory fences for multi-core synchronisation.
-  Cache invalidation operations support the ones defined in the RISC-V CMO Standard.
-- Support for Atomic Memory Operations (AMOs) as defined in RISC-V's A extension.
-- Comply to the RISC-V Weak Memory Ordering (RVWMO) consistency model.
+- Support for multiple outstanding requests per requester
+- Support for multiple outstanding read and writes to memory
+- Any given requester can access 1 to 64 bytes of a cacheline per cycle
+- Non-allocate, write-through policy or allocate, write-back policy. Either one or both are supported simultaneously at cacheline granularity
+- Hardware write-buffer to mask the latency of write acknowledgements from the memory system
+- For address-overlapping transactions, the cache guarantees that these are committed in the order in which they are consumed from the requesters
+- For non-address-overlapping transactions, the cache may execute them in an out-of-order fashion to improve performance
+- Supports RISC-V Cache Management Operations (CMOs): cache invalidation and prefetch operations, and memory fences for multi-core synchronisation
+- Supports RISC-V Atomic Memory Operations (AMOs) as defined in RISC-V's A extension
+- Comply to the RISC-V Weak Memory Ordering (RVWMO) consistency model
+- Written in SystemVerilog at the RT level
 
 ## Documentation
 
