@@ -1,4 +1,4 @@
-# Verilator-compatible testbench for the HPDcache block
+# Verilator-Compatible Testbench for the HPDcache
 
 This is a Verilator-compatible (with SystemC) testbench for the HPDcache block.
 

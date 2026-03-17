@@ -4,6 +4,32 @@
 
 The HPDcache is an open-source High-Performance, Multi-requester, Out-of-Order L1 Dcache for RISC-V cores and accelerators.
 
+## List of Features
+
+- Support for multiple outstanding requests per requester.
+- Support for multiple outstanding read and writes to memory.
+- Any given requester can access 1 to 64 bytes of a cacheline per cycle.
+- Non-allocate, write-through policy or allocate, write-back policy. Either one or both are supported simultaneously at cacheline granularity.
+- Hardware write-buffer to mask the latency of write acknowledgements from the memory system.
+- For address-overlapping transactions, the cache guarantees that these are committed in the order in which they are consumed from the requesters.
+- For non-address-overlapping transactions, the cache may execute them in an out-of-order fashion to improve performance.
+- Supports Cache Management Operations (CMOs): cache invalidation and prefetch operations, and memory fences for multi-core synchronisation.
+  Cache invalidation operations support the ones defined in the RISC-V CMO Standard.
+- Support for Atomic Memory Operations (AMOs) as defined in RISC-V's A extension.
+- Comply to the RISC-V Weak Memory Ordering (RVWMO) consistency model.
+
+## Documentation
+
+The HPDcache User Guide document can be found in the *docs* folder.
+It is written in reStructuredText format.
+
+If you need to compile the User Guide document, a dedicated *Makefile* is in the *docs* folder.
+
+You can find some pre-compiled User Guide documents (in both HTML or PDF) in [Releases](https://github.com/openhwgroup/cv-hpdcache/releases)
+
+## Contributing
+
+Contributions are always welcomed. Please read the guidelines for contributions in [CONTRIBUTING](CONTRIBUTING.md).
 
 ## Directory Structure
 
@@ -45,17 +71,6 @@ The HPDcache is an open-source High-Performance, Multi-requester, Out-of-Order L
     <td>Third-party IPs maintained outside the repository</td>
   </tr>
 </table>
-
-
-## Documentation
-
-The HPDcache User Guide document can be found in the *docs* folder.
-It is written in reStructuredText format.
-
-If you need to compile the User Guide document, a dedicated *Makefile* is in the *docs* folder.
-
-You can find some pre-compiled User Guide documents (in both HTML or PDF) in [Releases](https://github.com/openhwgroup/cv-hpdcache/releases)
-
 
 ## Licensing
 
