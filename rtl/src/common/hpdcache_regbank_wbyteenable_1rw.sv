@@ -49,15 +49,20 @@ module hpdcache_regbank_wbyteenable_1rw
     /*
      *  Process to update or read the memory array
      */
-    always_ff @(posedge clk)
+    always_ff @(posedge clk or negedge rst_n)
     begin : mem_update_ff
-        if (cs == 1'b1) begin
-            if (we == 1'b1) begin
-                for (int i = 0; i < DATA_SIZE/8; i++) begin
-                    if (wbyteenable[i]) mem[addr][i*8 +: 8] <= wdata[i*8 +: 8];
+        if (!rst_n) begin
+            for (int i = 0; i < DEPTH; i++)
+                mem[i] <= '0;
+        end else begin
+            if (cs == 1'b1) begin
+                if (we == 1'b1) begin
+                    for (int i = 0; i < DATA_SIZE/8; i++) begin
+                        if (wbyteenable[i]) mem[addr][i*8 +: 8] <= wdata[i*8 +: 8];
+                    end
                 end
+                rdata <= mem[addr];
             end
-            rdata <= mem[addr];
         end
     end : mem_update_ff
 endmodule : hpdcache_regbank_wbyteenable_1rw

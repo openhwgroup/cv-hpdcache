@@ -654,15 +654,19 @@ import hpdcache_pkg::*;
         end
     end
 
-    always_ff @(posedge clk_i)
+    always_ff @(posedge clk_i or negedge rst_ni)
     begin : rtab_ff
-        for (int i = 0; i < N; i++) begin
-            //  Update the request array
-            //    A RTAB request is stored at allocation time, but can be modified during
-            //    a roll-back. Some fields such as the way_fetch are part of the RTAB request, and
-            //    may need to be modified when rolling it back
-            if (valid_set[i] | pop_rback_bv[i]) begin
-                req_q[i] <= alloc_req_i;
+        if (!rst_ni) begin
+            req_q <= '0;
+        end else begin
+            for (int i = 0; i < N; i++) begin
+                //  Update the request array
+                //    A RTAB request is stored at allocation time, but can be modified during
+                //    a roll-back. Some fields such as the way_fetch are part of the RTAB request, and
+                //    may need to be modified when rolling it back
+                if (valid_set[i] | pop_rback_bv[i]) begin
+                    req_q[i] <= alloc_req_i;
+                end
             end
         end
     end

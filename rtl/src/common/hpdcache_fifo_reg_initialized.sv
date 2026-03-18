@@ -109,7 +109,7 @@ module hpdcache_fifo_reg_initialized
 
     //  FIFO buffer memory management
     //  {{{
-    always_ff @(posedge clk_i)
+    always_ff @(posedge clk_i or negedge rst_ni)
     begin
         if (!rst_ni) begin
             fifo_mem_q <= initial_value_i;

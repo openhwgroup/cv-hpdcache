@@ -836,13 +836,20 @@ import hpdcache_pkg::*;
 
 //  Set cache request registers
 //  {{{
-    always_ff @(posedge clk_i)
+    always_ff @(posedge clk_i or negedge rst_ni)
     begin : req_data_ff
-        if (req_valid_i && req_ready_o) begin
-            req_data_q <= req_data_i;
-            req_be_q <= req_be_i;
-            req_sid_q <= req_sid_i;
-            req_tid_q <= req_tid_i;
+        if (!rst_ni) begin
+            req_data_q <= '0;
+            req_be_q <= '0;
+            req_sid_q <= '0;
+            req_tid_q <= '0;
+        end else begin
+            if (req_valid_i && req_ready_o) begin
+                req_data_q <= req_data_i;
+                req_be_q <= req_be_i;
+                req_sid_q <= req_sid_i;
+                req_tid_q <= req_tid_i;
+            end
         end
     end
 
@@ -887,22 +894,33 @@ import hpdcache_pkg::*;
         end
     end
 
-    always_ff @(posedge clk_i)
+    always_ff @(posedge clk_i or negedge rst_ni)
     begin : uc_amo_ff
-        lrsc_rsrv_addr_q <= lrsc_rsrv_addr_d;
-        uc_sc_retcode_q  <= uc_sc_retcode_d;
+        if (!rst_ni) begin
+            lrsc_rsrv_addr_q <= '0;
+            uc_sc_retcode_q  <= '0;
+        end else begin
+            lrsc_rsrv_addr_q <= lrsc_rsrv_addr_d;
+            uc_sc_retcode_q  <= uc_sc_retcode_d;
+        end
     end
 //  }}}
 
 //  Response registers
 //  {{{
-    always_ff @(posedge clk_i)
+    always_ff @(posedge clk_i or negedge rst_ni)
     begin
-        if (mem_resp_read_valid_i) begin
-            rsp_rdata_q <= rsp_rdata_d;
+        if (!rst_ni) begin
+            rsp_rdata_q <= '0;
+            mem_resp_write_valid_q <= '0;
+            mem_resp_read_valid_q  <= '0;
+        end else begin
+            if (mem_resp_read_valid_i) begin
+                rsp_rdata_q <= rsp_rdata_d;
+            end
+            mem_resp_write_valid_q <= mem_resp_write_valid_d;
+            mem_resp_read_valid_q  <= mem_resp_read_valid_d;
         end
-        mem_resp_write_valid_q <= mem_resp_write_valid_d;
-        mem_resp_read_valid_q  <= mem_resp_read_valid_d;
     end
 
     always_ff @(posedge clk_i or negedge rst_ni)

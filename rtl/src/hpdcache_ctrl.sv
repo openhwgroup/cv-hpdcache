@@ -864,10 +864,14 @@ import hpdcache_pkg::*;
 
     //  Pipeline stage 1 registers
     //  {{{
-    always_ff @(posedge clk_i)
+    always_ff @(posedge clk_i or negedge rst_ni)
     begin : st1_req_payload_ff
-        if (core_req_ready_o | st0_rtab_pop_try_ready) begin
-            st1_req_q <= st0_req;
+        if (!rst_ni) begin
+            st1_req_q <= '0;
+        end else begin
+            if (core_req_ready_o | st0_rtab_pop_try_ready) begin
+                st1_req_q <= st0_req;
+            end
         end
     end
 
@@ -887,34 +891,57 @@ import hpdcache_pkg::*;
 
     //  Pipeline stage 2 registers
     //  {{{
-    always_ff @(posedge clk_i)
+    always_ff @(posedge clk_i or negedge rst_ni)
     begin : st2_metadata_ff
-        if (st2_mshr_alloc_d) begin
-            st2_mshr_alloc_need_rsp_q    <= st2_mshr_alloc_need_rsp_d;
-            st2_mshr_alloc_addr_q        <= st1_req_addr;
-            st2_mshr_alloc_sid_q         <= st1_req.req.sid;
-            st2_mshr_alloc_tid_q         <= st1_req.req.tid;
-            st2_mshr_alloc_wdata_q       <= st1_req.req.wdata;
-            st2_mshr_alloc_be_q          <= st1_req.req.be;
-            st2_mshr_alloc_is_prefetch_q <= st1_req_is_cmo_prefetch;
-            st2_mshr_alloc_wback_q       <= st2_mshr_alloc_wback_d;
-            st2_mshr_alloc_dirty_q       <= st2_mshr_alloc_dirty_d;
-            st2_mshr_alloc_victim_way_q  <= st1_dir_victim_way;
-        end
+        if (!rst_ni) begin
+            st2_mshr_alloc_need_rsp_q    <= '0;
+            st2_mshr_alloc_addr_q        <= '0;
+            st2_mshr_alloc_sid_q         <= '0;
+            st2_mshr_alloc_tid_q         <= '0;
+            st2_mshr_alloc_wdata_q       <= '0;
+            st2_mshr_alloc_be_q          <= '0;
+            st2_mshr_alloc_is_prefetch_q <= '0;
+            st2_mshr_alloc_wback_q       <= '0;
+            st2_mshr_alloc_dirty_q       <= '0;
+            st2_mshr_alloc_victim_way_q  <= '0;
+            st2_flush_alloc_nline_q <= '0;
+            st2_flush_alloc_way_q   <= '0;
+            st2_dir_updt_tag_q    <= '0;
+            st2_dir_updt_set_q    <= '0;
+            st2_dir_updt_way_q    <= '0;
+            st2_dir_updt_valid_q  <= '0;
+            st2_dir_updt_wback_q  <= '0;
+            st2_dir_updt_dirty_q  <= '0;
+            st2_dir_updt_fetch_q  <= '0;
+        end else begin
+            if (st2_mshr_alloc_d) begin
+                st2_mshr_alloc_need_rsp_q    <= st2_mshr_alloc_need_rsp_d;
+                st2_mshr_alloc_addr_q        <= st1_req_addr;
+                st2_mshr_alloc_sid_q         <= st1_req.req.sid;
+                st2_mshr_alloc_tid_q         <= st1_req.req.tid;
+                st2_mshr_alloc_wdata_q       <= st1_req.req.wdata;
+                st2_mshr_alloc_be_q          <= st1_req.req.be;
+                st2_mshr_alloc_is_prefetch_q <= st1_req_is_cmo_prefetch;
+                st2_mshr_alloc_wback_q       <= st2_mshr_alloc_wback_d;
+                st2_mshr_alloc_dirty_q       <= st2_mshr_alloc_dirty_d;
+                st2_mshr_alloc_victim_way_q  <= st1_dir_victim_way;
+            end
 
-        if (st2_flush_alloc_d) begin
-            st2_flush_alloc_nline_q <= st1_dir_hit ? st1_req_nline   : st1_victim_nline;
-            st2_flush_alloc_way_q   <= st1_dir_hit ? st1_dir_hit_way : st1_dir_victim_way;
-        end
+            if (st2_flush_alloc_d) begin
+                st2_flush_alloc_nline_q <= st1_dir_hit ? st1_req_nline   : st1_victim_nline;
+                st2_flush_alloc_way_q   <= st1_dir_hit ? st1_dir_hit_way : st1_dir_victim_way;
+            end
 
-        if (st2_dir_updt_d) begin
-            st2_dir_updt_tag_q   <= st1_dir_hit ? st1_dir_hit_tag : st1_dir_victim_tag;
-            st2_dir_updt_set_q   <= st1_req_set;
-            st2_dir_updt_way_q   <= st1_dir_hit ? st1_dir_hit_way : st1_dir_victim_way;
-            st2_dir_updt_valid_q <= st2_dir_updt_valid_d;
-            st2_dir_updt_wback_q <= st2_dir_updt_wback_d;
-            st2_dir_updt_dirty_q <= st2_dir_updt_dirty_d;
-            st2_dir_updt_fetch_q <= st2_dir_updt_fetch_d;
+
+            if (st2_dir_updt_d) begin
+                st2_dir_updt_tag_q    <= st1_dir_hit ? st1_dir_hit_tag : st1_dir_victim_tag;
+                st2_dir_updt_set_q    <= st1_req_set;
+                st2_dir_updt_way_q    <= st1_dir_hit ? st1_dir_hit_way : st1_dir_victim_way;
+                st2_dir_updt_valid_q  <= st2_dir_updt_valid_d;
+                st2_dir_updt_wback_q  <= st2_dir_updt_wback_d;
+                st2_dir_updt_dirty_q  <= st2_dir_updt_dirty_d;
+                st2_dir_updt_fetch_q  <= st2_dir_updt_fetch_d;
+            end
         end
     end
 
@@ -960,9 +987,13 @@ import hpdcache_pkg::*;
         assign data_req_read_set = st1_req_set;
         assign data_req_read_size = st1_req.req.size;
         assign data_req_read_word = st1_req_word;
-        always_ff @(posedge clk_i)
+        always_ff @(posedge clk_i or negedge rst_ni)
         begin : data_req_read_way_ff
-            data_req_read_way <= st1_dir_hit_way;
+            if (!rst_ni) begin
+                data_req_read_way <= '0;
+            end else begin
+                data_req_read_way <= st1_dir_hit_way;
+            end
         end
     end
 

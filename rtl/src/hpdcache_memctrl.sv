@@ -1002,10 +1002,14 @@ import hpdcache_pkg::*;
             .data_o      (data_read_req_word)
         );
 
-        always_ff @(posedge clk_i)
+        always_ff @(posedge clk_i or negedge rst_ni)
         begin : data_req_read_word_ff
-            data_read_req_word_index_q <=
-                    data_req_read_word_i[HPDcacheCfg.reqWordIdxWidth +: DATA_WORD_IDX_WIDTH];
+            if (!rst_ni) begin
+                data_read_req_word_index_q <= '0;
+            end else begin
+                data_read_req_word_index_q <=
+                        data_req_read_word_i[HPDcacheCfg.reqWordIdxWidth +: DATA_WORD_IDX_WIDTH];
+            end
         end
     end
 
@@ -1028,13 +1032,18 @@ import hpdcache_pkg::*;
 
     //  Delay the accessed set for checking the tag from the directory in the
     //  next cycle (hit logic)
-    always_ff @(posedge clk_i)
+    always_ff @(posedge clk_i or negedge rst_ni)
     begin : req_read_ff
-        if (dir_match_i || dir_cmo_check_nline_i || dir_inval_check_i) begin
-            dir_req_set_q <= dir_addr;
-        end
-        if (dir_cmo_check_entry_i) begin
-            dir_req_way_q <= dir_cmo_check_entry_way_i;
+        if (!rst_ni) begin
+            dir_req_set_q <= '0;
+            dir_req_way_q <= '0;
+        end else begin
+            if (dir_match_i || dir_cmo_check_nline_i || dir_inval_check_i) begin
+                dir_req_set_q <= dir_addr;
+            end
+            if (dir_cmo_check_entry_i) begin
+                dir_req_way_q <= dir_cmo_check_entry_way_i;
+            end
         end
     end
     //  }}}
@@ -1054,13 +1063,17 @@ import hpdcache_pkg::*;
     logic                                        data_flush_read_q;
     logic [HPDcacheCfg.u.dataWaysPerRamWord-1:0] data_flush_read_way;
 
-    always_ff @(posedge clk_i)
+    always_ff @(posedge clk_i or negedge rst_ni)
     begin : data_flush_row_index_ff
-        if (data_flush_read_i || (HPDcacheCfg.u.eccEn && data_err_read_i)) begin
-            data_flush_row_index_q <= data_ram_row;
-        end
-        if (HPDcacheCfg.u.eccEn) begin
-            data_flush_read_q <= data_flush_read_i;
+        if (!rst_ni) begin
+            data_flush_row_index_q <= '0;
+        end else begin
+            if (data_flush_read_i || (HPDcacheCfg.u.eccEn && data_err_read_i)) begin
+                data_flush_row_index_q <= data_ram_row;
+            end
+            if (HPDcacheCfg.u.eccEn) begin
+                data_flush_read_q <= data_flush_read_i;
+            end
         end
     end
 

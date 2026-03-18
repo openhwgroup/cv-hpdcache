@@ -268,14 +268,20 @@ import hpdcache_pkg::*;
     //  }}}
 
     //  Buffers
-    always_ff @(posedge clk_i)
+    always_ff @(posedge clk_i or negedge rst_ni)
     begin : flush_dir_ff
-        if (flush_alloc) begin
-            flush_dir_q[flush_dir_free_ptr] <= '{
-                nline: flush_alloc_nline_i
-            };
-            flush_set_q <= flush_alloc_set;
-            flush_way_q <= flush_alloc_way_i;
+        if (!rst_ni) begin
+          flush_dir_q <= '0;
+          flush_set_q <= '0;
+          flush_way_q <= '0;
+        end else begin
+            if (flush_alloc) begin
+                flush_dir_q[flush_dir_free_ptr] <= '{
+                    nline: flush_alloc_nline_i
+                };
+                flush_set_q <= flush_alloc_set;
+                flush_way_q <= flush_alloc_way_i;
+            end
         end
     end
     //  }}}
