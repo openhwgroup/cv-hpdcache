@@ -353,6 +353,8 @@ import hpdcache_pkg::*;
     hpdcache_tag_t                             dir_inval_tag;
     hpdcache_set_t                             dir_inval_set;
     hpdcache_way_vector_t                      dir_inval_hit_way;
+
+    hpdcache_data_row_enable_t                 word_sel_rd, word_sel_wr;
     //  }}}
 
     //  Init FSM
@@ -920,8 +922,6 @@ import hpdcache_pkg::*;
         hpdcache_compute_data_ram_cs(data_req_write_size_i, data_req_write_word_i);
 
     assign rd_wr_conflict_o = |(word_sel_req_rd & word_sel_req_wr);
-
-    hpdcache_data_row_enable_t word_sel_rd, word_sel_wr;
 
     always_comb
     begin : data_ctrl_comb
