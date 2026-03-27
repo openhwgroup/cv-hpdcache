@@ -111,15 +111,15 @@ import hpdcache_pkg::*;
     typedef enum {
         SNOOP_IDLE,
         SNOOP_WAIT_FLUSH,
-        SNOOP_DATA_READ_FIRST,
-        SNOOP_DATA_READ_NEXT,
         SNOOP_DIR_UPDT
     } snoop_fsm_e;
+
     //  }}}
 
     //  Declaration of internal signals and registers
     //  {{{
     snoop_fsm_e snoop_fsm_q, snoop_fsm_d;
+    logic snoop_data_busy_q, snoop_data_busy_d;
 
     hpdcache_snoop_meta_t resp_wdata;
     logic                 resp_w;
@@ -149,6 +149,8 @@ import hpdcache_pkg::*;
     logic                  req_dir_fetch_q;
 
     logic data_eol;
+    logic snoop_data_read;
+
     //  Flush B received for the nline parked in SNOOP_WAIT_FLUSH
     logic flush_ack_match;
     assign flush_ack_match = flush_ack_i
@@ -160,24 +162,20 @@ import hpdcache_pkg::*;
 
     assign req_ready_o = &{
         snoop_fsm_q == SNOOP_IDLE,
+        snoop_data_busy_q == 1'b0,
         resp_wok,
         resp_data_wok
     };
 
     assign data_eol = (req_word_q == 0);
 
-    always_comb begin
+    always_comb begin : snoop_fsm_comb
 
         snoop_fsm_d = snoop_fsm_q;
-        req_word_d = req_word_q;
 
         resp_wdata = '0;
         resp_w = 1'b0;
 
-        resp_data_w = 1'b0;
-        resp_data_wlast = 1'b0;
-
-        data_read_o = 1'b0;
         dir_updt_o  = 1'b0;
 
         dir_updt_valid_o  = 1'b0;
@@ -185,6 +183,8 @@ import hpdcache_pkg::*;
         dir_updt_dirty_o  = 1'b0;
         dir_updt_shared_o = 1'b0;
         dir_updt_fetch_o  = 1'b0;
+
+        snoop_data_read = 1'b0;
 
         unique case (snoop_fsm_q)
             SNOOP_IDLE: begin
@@ -210,6 +210,7 @@ import hpdcache_pkg::*;
                     end else begin
                         // Cache hit
                         resp_w = 1'b1;
+                        snoop_fsm_d = req_op_i.is_read_once ? SNOOP_IDLE : SNOOP_DIR_UPDT;
                         unique case (1'b1)
                             req_op_i.is_read_clean,
                             req_op_i.is_read_not_shared_dirty,
@@ -220,7 +221,7 @@ import hpdcache_pkg::*;
                                 resp_wdata.pass_dirty    = 1'b0;
                                 resp_wdata.left_dirty    = req_dir_dirty_i;
                                 resp_wdata.data_transfer = 1'b1;
-                                snoop_fsm_d = SNOOP_DATA_READ_FIRST;
+                                snoop_data_read          = 1'b1;
                             end
 
                             req_op_i.is_read_unique: begin
@@ -229,7 +230,7 @@ import hpdcache_pkg::*;
                                 resp_wdata.pass_dirty    = req_dir_dirty_i;
                                 resp_wdata.left_dirty    = 1'b0;
                                 resp_wdata.data_transfer = 1'b1;
-                                snoop_fsm_d = SNOOP_DATA_READ_FIRST;
+                                snoop_data_read          = 1'b1;
                             end
 
                             req_op_i.is_clean_invalid: begin
@@ -238,11 +239,7 @@ import hpdcache_pkg::*;
                                 resp_wdata.pass_dirty    = req_dir_dirty_i;
                                 resp_wdata.left_dirty    = 1'b0;
                                 resp_wdata.data_transfer = req_dir_dirty_i;
-                                if (req_dir_dirty_i) begin
-                                    snoop_fsm_d = SNOOP_DATA_READ_FIRST;
-                                end else begin
-                                    snoop_fsm_d = SNOOP_DIR_UPDT;
-                                end
+                                snoop_data_read          = req_dir_dirty_i;
                             end
 
                             req_op_i.is_clean_shared: begin
@@ -251,11 +248,7 @@ import hpdcache_pkg::*;
                                 resp_wdata.pass_dirty    = req_dir_dirty_i;
                                 resp_wdata.left_dirty    = 1'b0;
                                 resp_wdata.data_transfer = req_dir_dirty_i;
-                                if (req_dir_dirty_i) begin
-                                    snoop_fsm_d = SNOOP_DATA_READ_FIRST;
-                                end else begin
-                                    snoop_fsm_d = SNOOP_DIR_UPDT;
-                                end
+                                snoop_data_read          = req_dir_dirty_i;
                             end
 
                             req_op_i.is_make_invalid: begin
@@ -264,7 +257,7 @@ import hpdcache_pkg::*;
                                 resp_wdata.pass_dirty    = 1'b0;
                                 resp_wdata.left_dirty    = 1'b0;
                                 resp_wdata.data_transfer = 1'b0;
-                                snoop_fsm_d = SNOOP_DIR_UPDT;
+                                snoop_data_read          = 1'b0;
                             end
 
                             default: begin
@@ -273,6 +266,7 @@ import hpdcache_pkg::*;
                                 resp_wdata.pass_dirty    = 1'b0;
                                 resp_wdata.left_dirty    = 1'b0;
                                 resp_wdata.data_transfer = 1'b0;
+                                snoop_data_read          = 1'b0;
                             end
                         endcase
                     end
@@ -285,6 +279,7 @@ import hpdcache_pkg::*;
             SNOOP_WAIT_FLUSH: begin
                 if (flush_ack_match) begin
                     resp_w = 1'b1;
+                    snoop_fsm_d = SNOOP_DIR_UPDT;
                     unique case (1'b1)
                         req_op_q.is_read_unique: begin
                             resp_wdata.was_unique    = !req_dir_shared_q;
@@ -292,7 +287,7 @@ import hpdcache_pkg::*;
                             resp_wdata.pass_dirty    = 1'b0;
                             resp_wdata.left_dirty    = 1'b0;
                             resp_wdata.data_transfer = 1'b1;
-                            snoop_fsm_d = SNOOP_DATA_READ_FIRST;
+                            snoop_data_read          = 1'b1;
                         end
 
                         req_op_q.is_clean_invalid,
@@ -302,7 +297,7 @@ import hpdcache_pkg::*;
                             resp_wdata.pass_dirty    = 1'b0;
                             resp_wdata.left_dirty    = 1'b0;
                             resp_wdata.data_transfer = 1'b0;
-                            snoop_fsm_d = SNOOP_DIR_UPDT;
+                            snoop_data_read          = 1'b0;
                         end
 
                         req_op_q.is_make_invalid: begin
@@ -311,7 +306,7 @@ import hpdcache_pkg::*;
                             resp_wdata.pass_dirty    = 1'b0;
                             resp_wdata.left_dirty    = 1'b0;
                             resp_wdata.data_transfer = 1'b0;
-                            snoop_fsm_d = SNOOP_DIR_UPDT;
+                            snoop_data_read          = 1'b0;
                         end
 
                         default: begin
@@ -320,26 +315,95 @@ import hpdcache_pkg::*;
                             resp_wdata.pass_dirty    = 1'b0;
                             resp_wdata.left_dirty    = 1'b0;
                             resp_wdata.data_transfer = 1'b0;
-                            snoop_fsm_d = SNOOP_IDLE;
+                            snoop_data_read          = 1'b0;
+                            snoop_fsm_d              = SNOOP_IDLE;
                         end
                     endcase
                 end
             end
 
-            SNOOP_DATA_READ_FIRST: begin
+            SNOOP_DIR_UPDT: begin
+                if (!snoop_data_busy_q || data_eol) begin
+                    snoop_fsm_d = SNOOP_IDLE;
+                    dir_updt_o = 1'b1;
+
+                    unique case (1'b1)
+                        req_op_q.is_read_clean,
+                        req_op_q.is_read_not_shared_dirty,
+                        req_op_q.is_read_shared: begin
+                            // A copy of the cacheline is kept
+                            dir_updt_valid_o  = 1'b1;
+                            // Keep unchanged the write-back bit
+                            dir_updt_wback_o  = req_dir_wback_q;
+                            // Keep unchanged the dirty bit
+                            dir_updt_dirty_o  = req_dir_dirty_q;
+                            // Make the cacheline shared
+                            dir_updt_shared_o = 1'b1;
+                            // Keep unchanged the fetch bit
+                            dir_updt_fetch_o  = req_dir_fetch_q;
+                        end
+
+                        req_op_q.is_read_unique,
+                        req_op_q.is_clean_invalid,
+                        req_op_q.is_make_invalid: begin
+                            // Invalidate the directory entry
+                            dir_updt_valid_o  = 1'b0;
+                            dir_updt_wback_o  = 1'b0;
+                            dir_updt_dirty_o  = 1'b0;
+                            dir_updt_shared_o = 1'b0;
+                            dir_updt_fetch_o  = 1'b0;
+                        end
+
+                        req_op_q.is_clean_shared: begin
+                            // A copy of the cacheline is kept
+                            dir_updt_valid_o  = 1'b1;
+                            // Keep unchanged the write-back bit
+                            dir_updt_wback_o  = req_dir_wback_q;
+                            // The dirty bit is cleared
+                            dir_updt_dirty_o  = 1'b0;
+                            // Keep unchanged the shared bit
+                            dir_updt_shared_o = req_dir_shared_q;
+                            // Keep unchanged the fetch bit
+                            dir_updt_fetch_o  = req_dir_fetch_q;
+                        end
+
+                        default: begin
+                            dir_updt_valid_o  = 1'b0;
+                            dir_updt_wback_o  = 1'b0;
+                            dir_updt_dirty_o  = 1'b0;
+                            dir_updt_shared_o = 1'b0;
+                            dir_updt_fetch_o  = 1'b0;
+                        end
+                    endcase
+                end
+            end
+        endcase
+    end
+
+    always_comb begin : snoop_data_comb
+        snoop_data_busy_d = snoop_data_busy_q;
+        req_word_d        = req_word_q;
+
+        resp_data_w = 1'b0;
+        resp_data_wlast = 1'b0;
+
+        data_read_o = 1'b0;
+
+        case (snoop_data_busy_q)
+            1'b0: begin
                 // First data read is always carried out
                 resp_data_w = 1'b0;
                 resp_data_wlast = 1'b0;
 
-                if (resp_data_wok) begin
+                // resp_data_wok = 1 is implicit as it is required to start
+                // serving a snoop transaction
+                if (snoop_data_read) begin
                     data_read_o = 1'b1;
                     req_word_d = req_word_q + hpdcache_word_t'(HPDcacheCfg.u.accessWords);
-                    snoop_fsm_d = SNOOP_DATA_READ_NEXT;
+                    snoop_data_busy_d = 1'b1;
                 end
-
             end
-
-            SNOOP_DATA_READ_NEXT: begin
+            1'b1: begin
                 // Subsequent data reads are carried out only if the cacheline requires more than one word
                 resp_data_w = 1'b1;
                 resp_data_wlast = data_eol;
@@ -347,66 +411,11 @@ import hpdcache_pkg::*;
                 if (resp_data_wok) begin
                     data_read_o = !data_eol;
                     if (data_eol) begin
-                        snoop_fsm_d = req_op_q.is_read_once ? SNOOP_IDLE : SNOOP_DIR_UPDT;
+                        snoop_data_busy_d = 1'b0;
                     end else begin
                         req_word_d = req_word_q + hpdcache_word_t'(HPDcacheCfg.u.accessWords);
                     end
                 end
-            end
-
-            SNOOP_DIR_UPDT: begin
-                // Update the directory based on the snoop operation
-                snoop_fsm_d = SNOOP_IDLE;
-                dir_updt_o = 1'b1;
-
-                unique case (1'b1)
-                    req_op_q.is_read_clean,
-                    req_op_q.is_read_not_shared_dirty,
-                    req_op_q.is_read_shared: begin
-                        // A copy of the cacheline is kept
-                        dir_updt_valid_o  = 1'b1;
-                        // Keep unchanged the write-back bit
-                        dir_updt_wback_o  = req_dir_wback_q;
-                        // Keep unchanged the dirty bit
-                        dir_updt_dirty_o  = req_dir_dirty_q;
-                        // Make the cacheline shared
-                        dir_updt_shared_o = 1'b1;
-                        // Keep unchanged the fetch bit
-                        dir_updt_fetch_o  = req_dir_fetch_q;
-                    end
-
-                    req_op_q.is_read_unique,
-                    req_op_q.is_clean_invalid,
-                    req_op_q.is_make_invalid: begin
-                        // Invalidate the directory entry
-                        dir_updt_valid_o  = 1'b0;
-                        dir_updt_wback_o  = 1'b0;
-                        dir_updt_dirty_o  = 1'b0;
-                        dir_updt_shared_o = 1'b0;
-                        dir_updt_fetch_o  = 1'b0;
-                    end
-
-                    req_op_q.is_clean_shared: begin
-                        // A copy of the cacheline is kept
-                        dir_updt_valid_o  = 1'b1;
-                        // Keep unchanged the write-back bit
-                        dir_updt_wback_o  = req_dir_wback_q;
-                        // The dirty bit is cleared
-                        dir_updt_dirty_o  = 1'b0;
-                        // Keep unchanged the shared bit
-                        dir_updt_shared_o = req_dir_shared_q;
-                        // Keep unchanged the fetch bit
-                        dir_updt_fetch_o  = req_dir_fetch_q;
-                    end
-
-                    default: begin
-                        dir_updt_valid_o  = 1'b0;
-                        dir_updt_wback_o  = 1'b0;
-                        dir_updt_dirty_o  = 1'b0;
-                        dir_updt_shared_o = 1'b0;
-                        dir_updt_fetch_o  = 1'b0;
-                    end
-                endcase
             end
         endcase
     end
@@ -414,9 +423,11 @@ import hpdcache_pkg::*;
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
             snoop_fsm_q <= SNOOP_IDLE;
+            snoop_data_busy_q <= 1'b0;
             req_word_q <= '0;
         end else begin
             snoop_fsm_q <= snoop_fsm_d;
+            snoop_data_busy_q <= snoop_data_busy_d;
             req_word_q <= req_word_d;
         end
     end
@@ -443,8 +454,8 @@ import hpdcache_pkg::*;
         end
     end
 
-    assign data_read_set_o  = req_set_q;
-    assign data_read_way_o  = req_way_q;
+    assign data_read_set_o  = snoop_fsm_q == SNOOP_IDLE ? req_set_i : req_set_q;
+    assign data_read_way_o  = snoop_fsm_q == SNOOP_IDLE ? req_way_i : req_way_q;
     assign data_read_word_o = req_word_q;
 
     assign dir_updt_set_o = req_set_q;
