@@ -866,9 +866,10 @@ import hpdcache_pkg::*;
         assign wbuf_rtab_not_ready           = 1'b0;
         assign mem_req_write_wbuf_valid      = 1'b0;
         assign mem_req_write_wbuf            = '{
-            mem_req_command: HPDCACHE_MEM_READ,
-            mem_req_atomic : HPDCACHE_MEM_ATOMIC_ADD,
-            default        : '0
+            mem_req_command  : HPDCACHE_MEM_READ,
+            mem_req_atomic   : HPDCACHE_MEM_ATOMIC_ADD,
+            mem_req_coherence: HPDCACHE_MEM_COHERENCE_WRITE_NO_SNOOP,
+            default          : '0
         };
         assign mem_req_write_wbuf_data_valid = 1'b0;
         assign mem_req_write_wbuf_data       = '0;
