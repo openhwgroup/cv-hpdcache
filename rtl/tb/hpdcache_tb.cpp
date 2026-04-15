@@ -158,6 +158,7 @@ public:
         hpdcache_test_agent_i->core_rsp_i(core_rsp);
         hpdcache_test_agent_i->sb_core_req_o(sb_core_req);
         hpdcache_test_agent_i->sb_core_resp_o(sb_core_resp);
+        hpdcache_test_agent_i->no_inflight_requests_i(no_inflight_requests);
 
         hpdcache_test_mem_resp_model_i->clk_i(clk_i);
         hpdcache_test_mem_resp_model_i->rst_ni(rst_ni);
@@ -223,6 +224,7 @@ public:
         hpdcache_test_scoreboard_i->evt_rtab_rollback_i(evt_rtab_rollback);
         hpdcache_test_scoreboard_i->evt_stall_refill_i(evt_stall_refill);
         hpdcache_test_scoreboard_i->evt_stall_i(evt_stall);
+        hpdcache_test_scoreboard_i->no_inflight_requests_o(no_inflight_requests);
 
         seq->set_max_transactions(this->max_trans);
         seq->set_mem_resp_model(hpdcache_test_mem_resp_model_i);
@@ -425,6 +427,8 @@ private:
     sc_core::sc_signal<bool> evt_rtab_rollback;
     sc_core::sc_signal<bool> evt_stall_refill;
     sc_core::sc_signal<bool> evt_stall;
+    
+    sc_core::sc_signal<bool> no_inflight_requests;
 
     sc_core::sc_signal<bool> wbuf_empty;
 
