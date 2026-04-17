@@ -498,15 +498,57 @@ import hpdcache_pkg::*;
                     end
 
                     else begin
-                        uc_req_valid_o = 1'b1;
-                        st1_nop        = 1'b1;
+                        // cache miss
+                        if(!cachedir_hit_i) begin
+                            uc_req_valid_o = 1'b1;
+                            st1_nop        = 1'b1;
+                            //  If the request comes from the replay table, free the
+                            //  corresponding RTAB entry
+                            st1_rtab_commit_o = st1_req_rtab_i;
 
-                        //  If the request comes from the replay table, free the
-                        //  corresponding RTAB entry
-                        st1_rtab_commit_o = st1_req_rtab_i;
-
-                        //  Performance event
-                        evt_uncached_req_o = 1'b1;
+                            //  Performance event
+                            evt_uncached_req_o = 1'b1;
+                        end
+                        // cache hit
+                        else begin
+                            st1_nop = 1'b1;
+                            // if the target cacheline is dirty, we need to flush it.
+                            if(st1_dir_hit_dirty_i) begin
+                                // flush controller is ready?
+                                if(!st1_flush_alloc_ready_i) begin
+                                    st1_rtab_alloc = 1'b1;
+                                    st1_rtab_flush_not_ready_o = 1'b1;
+                                end
+                                else begin
+                                    // replay table allocation
+                                    st1_rtab_alloc = 1'b1;
+                                    // allocate flush
+                                    st2_flush_alloc_o = 1'b1;
+                                    // update the cacheline for flush
+                                    st2_dir_updt_o = 1'b1;
+                                    st2_dir_updt_valid_o = 1'b0;
+                                    st2_dir_updt_wback_o = 1'b0;
+                                    st2_dir_updt_dirty_o = 1'b0;
+                                    st2_dir_updt_fetch_o = 1'b0;
+                                end
+                            end else begin
+                                // if the cacheline is being fetched?
+                                if(st1_dir_hit_fetch_i) begin
+                                    st1_rtab_alloc = 1'b1;
+                                    st1_rtab_dir_fetch_o = 1'b1;
+                                end
+                                else begin
+                                    uc_req_valid_o = 1'b1;
+                                    st1_rtab_commit_o = st1_req_rtab_i;
+                                    evt_uncached_req_o = 1'b1;
+                                    // Invalidate cache
+                                    st2_dir_updt_o = 1'b1;
+                                    st2_dir_updt_valid_o = 1'b0;
+                                    st2_dir_updt_wback_o = 1'b0;
+                                    st2_dir_updt_dirty_o = 1'b0;
+                                end
+                            end
+                        end
                     end
                 end
                 //  }}}
@@ -1189,20 +1231,22 @@ import hpdcache_pkg::*;
             //          removes the timing paths RAM-to-RAM between the cache
             //          directory and the data array.
             if ((core_req_ready_o | rtab_req_ready_o | scrub_req_ready_o)
-                && !st0_req_is_uncacheable_i
                 && !st0_req_is_error_i)
             begin
-                if (HPDcacheCfg.u.lowLatency) begin
-                    if (HPDcacheCfg.u.eccEn) begin
-                        st0_req_cachedata_read = st0_req_is_load_i
-                                               | st0_req_is_pstore
-                                               | st0_req_is_pamo;
+                // cacheable-only data read path
+                if(!st0_req_is_uncacheable_i) begin
+                    if (HPDcacheCfg.u.lowLatency) begin
+                        if (HPDcacheCfg.u.eccEn) begin
+                            st0_req_cachedata_read = st0_req_is_load_i
+                                                | st0_req_is_pstore
+                                                | st0_req_is_pamo;
 
-                        if (HPDcacheCfg.u.eccScrubberEn) begin
-                            st0_req_cachedata_read |= st0_req_is_scrub_i;
+                            if (HPDcacheCfg.u.eccScrubberEn) begin
+                                st0_req_cachedata_read |= st0_req_is_scrub_i;
+                            end
+                        end else begin
+                            st0_req_cachedata_read = st0_req_is_load_i;
                         end
-                    end else begin
-                        st0_req_cachedata_read = st0_req_is_load_i;
                     end
                 end
 
@@ -1211,7 +1255,9 @@ import hpdcache_pkg::*;
                     st0_req_is_store_i        |
                     st0_req_is_amo_i)
                 begin
-                    st0_req_mshr_check_o    = 1'b1;
+                    if(!st0_req_is_uncacheable_i) begin
+                        st0_req_mshr_check_o    = 1'b1;
+                    end
                     st0_req_cachedir_read_o = 1'b1;
                 end
 
