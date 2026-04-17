@@ -67,7 +67,6 @@ public:
     sc_in<bool> evt_rtab_rollback_i;
     sc_in<bool> evt_stall_refill_i;
     sc_in<bool> evt_stall_i;
-
     sc_out<bool> no_inflight_requests_o;
 
     hpdcache_test_scoreboard(sc_core::sc_module_name nm)
@@ -379,12 +378,11 @@ private:
     }
 
     void check_inflight_requests() {
-        const bool no_inflight =
-        inflight_mem_write_m.empty() &&
-        inflight_mem_read_m.empty() &&
-        inflight_m.empty();
+      const bool no_inflight = inflight_mem_write_m.empty() &&
+                               inflight_mem_read_m.empty() &&
+                               inflight_m.empty();
     
-        no_inflight_requests_o.write(no_inflight);        
+      no_inflight_requests_o.write(no_inflight);
     }
 
     static uint64_t align_to(uint64_t val, uint64_t align) { return (val / align) * align; }
