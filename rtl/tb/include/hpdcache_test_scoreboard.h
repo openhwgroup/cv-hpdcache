@@ -377,12 +377,13 @@ private:
         if (evt_stall_i.read()) evt_stall++;
     }
 
-    void check_inflight_requests() {
-      const bool no_inflight = inflight_mem_write_m.empty() &&
-                               inflight_mem_read_m.empty() &&
-                               inflight_m.empty();
-    
-      no_inflight_requests_o.write(no_inflight);
+    void check_inflight_requests()
+    {
+
+        const bool no_inflight =
+            inflight_mem_write_m.empty() && inflight_mem_read_m.empty() && inflight_m.empty();
+
+        no_inflight_requests_o.write(no_inflight);
     }
 
     static uint64_t align_to(uint64_t val, uint64_t align) { return (val / align) * align; }

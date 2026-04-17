@@ -181,7 +181,6 @@ private:
             wait();
         } while (!no_inflight_requests_i.read());
 
-
         Verilated::gotFinish(true);
     }
 

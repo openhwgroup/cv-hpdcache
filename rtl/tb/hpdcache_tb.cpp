@@ -427,7 +427,7 @@ private:
     sc_core::sc_signal<bool> evt_rtab_rollback;
     sc_core::sc_signal<bool> evt_stall_refill;
     sc_core::sc_signal<bool> evt_stall;
-    
+
     sc_core::sc_signal<bool> no_inflight_requests;
 
     sc_core::sc_signal<bool> wbuf_empty;
