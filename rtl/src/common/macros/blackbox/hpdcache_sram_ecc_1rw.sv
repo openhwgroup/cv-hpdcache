@@ -27,9 +27,9 @@
     output logic [NDATA-1:0][DATA_SIZE-1:0] rdata,
 
     input  logic                            err_inj_i,
-    input  logic [NDATA-1][DATA_SIZE-1:0]   err_inj_msk_i,
-    output logic [NDATA-1]                  err_cor_o,
-    output logic [NDATA-1]                  err_unc_o
+    input  logic [NDATA-1:0][DATA_SIZE-1:0] err_inj_msk_i,
+    output logic [NDATA-1:0]                err_cor_o,
+    output logic [NDATA-1:0]                err_unc_o
 );
 
 endmodule
