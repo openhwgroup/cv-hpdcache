@@ -113,6 +113,30 @@ import hpdcache_pkg::*;
         );
     end
 
+    //  -----------------------------------------------------------------------
+    //  Set-associative cache with random victim selection
+    else if (HPDcacheCfg.u.victimSel == HPDCACHE_VICTIM_CYCLIC)
+    begin : gen_cyclic_victim_sel
+        hpdcache_victim_cyclic #(
+            .HPDcacheCfg (HPDcacheCfg)
+        ) victim_cyclic_i(
+            .clk_i,
+            .rst_ni,
+
+            .updt_i,
+            .updt_set_i,
+            .updt_way_i,
+
+            .sel_victim_i,
+            .sel_dir_valid_i,
+            .sel_dir_wback_i,
+            .sel_dir_dirty_i,
+            .sel_dir_fetch_i,
+            .sel_victim_set_i,
+            .sel_victim_way_o
+        );
+    end
+
 `ifndef HPDCACHE_ASSERT_OFF
     initial victim_sel_assert:
             assert (HPDcacheCfg.u.victimSel inside {HPDCACHE_VICTIM_RANDOM, HPDCACHE_VICTIM_PLRU})
