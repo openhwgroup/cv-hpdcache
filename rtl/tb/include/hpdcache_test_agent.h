@@ -51,6 +51,8 @@ public:
     sc_in<bool> core_rsp_valid_i;
     sc_in<sc_bv<HPDCACHE_CORE_RSP_WIDTH>> core_rsp_i;
 
+    sc_in<bool> no_inflight_requests_i;
+
     sc_fifo_out<hpdcache_test_transaction_req> sb_core_req_o;
     sc_fifo_out<hpdcache_test_transaction_resp> sb_core_resp_o;
 
@@ -66,6 +68,7 @@ public:
       , core_rsp_i("core_rsp_i")
       , sb_core_req_o("sb_core_req_o")
       , sb_core_resp_o("sb_core_resp_o")
+      , no_inflight_requests_i("no_inflight_requests_i")
     {
         std::string driver_name;
 
@@ -87,6 +90,8 @@ public:
 
         driver->sb_core_req_o(sb_core_req_o);
         driver->sb_core_resp_o(sb_core_resp_o);
+
+        driver->no_inflight_requests_i(no_inflight_requests_i);
 
         driver->transaction_fifo_i(Agent::transaction_fifo);
         driver->transaction_ret_o(Agent::transaction_ret);
