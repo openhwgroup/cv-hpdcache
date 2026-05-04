@@ -37,8 +37,8 @@ module hpdcache_mux
     parameter  bit          ONE_HOT_SEL = 0,
 
     //  Compute the width of the selection signal
-    localparam int unsigned NINPUT_LOG2 = $clog2(NINPUT),
-    localparam int unsigned SEL_WIDTH   = ONE_HOT_SEL ? NINPUT : NINPUT_LOG2,
+    localparam int unsigned NINPUT_WIDTH = (NINPUT == 1) ? 1 : $clog2(NINPUT),
+    localparam int unsigned SEL_WIDTH    = ONE_HOT_SEL ? NINPUT : NINPUT_WIDTH,
 
     localparam type data_t = logic [DATA_WIDTH-1:0],
     localparam type sel_t  = logic [SEL_WIDTH-1:0]

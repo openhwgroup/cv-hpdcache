@@ -27,11 +27,11 @@ module hpdcache_to_l15 import hpdcache_pkg::*, l15_pkg::*;
 //  Parameters
 //  {{{
 #(
-    parameter hpdcache_uint          NumPorts        = 4,
-    parameter [$clog2(NumPorts)-1:0] IcachePort      = 0,
-    parameter [$clog2(NumPorts)-1:0] DcacheReadPort  = 1,
-    parameter [$clog2(NumPorts)-1:0] DcacheWritePort = 2,
-    parameter [$clog2(NumPorts)-1:0] DcacheAmoPort   = 3,
+    parameter hpdcache_uint                  NumPorts        = 4,
+    parameter [hpdcache_vbits(NumPorts)-1:0] IcachePort      = 0,
+    parameter [hpdcache_vbits(NumPorts)-1:0] DcacheReadPort  = 1,
+    parameter [hpdcache_vbits(NumPorts)-1:0] DcacheWritePort = 2,
+    parameter [hpdcache_vbits(NumPorts)-1:0] DcacheAmoPort   = 3,
 
     parameter bit              SwapEndianness = 1,
     parameter hpdcache_uint    HPDcacheMemDataWidth = 128,

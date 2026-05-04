@@ -134,7 +134,7 @@ import hpdcache_pkg::*;
 //  Definition of constants and types
 //  {{{
     localparam hpdcache_uint MEM_REQ_RATIO = HPDcacheCfg.u.memDataWidth/HPDcacheCfg.reqDataWidth;
-    localparam hpdcache_uint MEM_REQ_WORD_INDEX_WIDTH = $clog2(MEM_REQ_RATIO);
+    localparam hpdcache_uint MEM_REQ_WORD_INDEX_WIDTH = hpdcache_vbits(MEM_REQ_RATIO);
 
     typedef enum {
         UC_IDLE,
@@ -556,7 +556,7 @@ import hpdcache_pkg::*;
 //  AMO unit
 //  {{{
     if (HPDcacheCfg.reqDataWidth > 64) begin : gen_amo_data_width_gt_64
-        localparam hpdcache_uint AMO_WORD_INDEX_WIDTH = $clog2(HPDcacheCfg.reqDataWidth/64);
+        localparam hpdcache_uint AMO_WORD_INDEX_WIDTH = hpdcache_vbits(HPDcacheCfg.reqDataWidth/64);
         hpdcache_mux #(
             .NINPUT         (HPDcacheCfg.reqDataWidth/64),
             .DATA_WIDTH     (64),

@@ -265,8 +265,8 @@ import hpdcache_pkg::*;
 
     //  Definition of types and constants
     //  {{{
-    typedef logic [$clog2(HPDcacheCfg.u.rtabEntries)-1:0] rtab_ptr_t;
-    typedef logic [$clog2(HPDcacheCfg.u.rtabEntries):0]   rtab_cnt_t;
+    typedef logic [hpdcache_vbits(HPDcacheCfg.u.rtabEntries)-1:0] rtab_ptr_t;
+    typedef logic [hpdcache_vbits(HPDcacheCfg.u.rtabEntries):0]   rtab_cnt_t;
 
     //    Extended request type
     typedef struct packed {
@@ -1414,7 +1414,7 @@ import hpdcache_pkg::*;
             scrub_req_valid = 1'b0;
             scrub_req = '0;
             scrub_req.req.op = hpdcache_pkg::HPDCACHE_REQ_LOAD;
-            scrub_req.req.size = hpdcache_req_size_t'($clog2(HPDcacheCfg.accessBytes));
+            scrub_req.req.size = hpdcache_req_size_t'(hpdcache_vbits(HPDcacheCfg.accessBytes));
             scrub_req.req.pma.wr_policy_hint = hpdcache_pkg::HPDCACHE_WR_POLICY_AUTO;
             scrub_req.req.addr_offset[0 +: HPDcacheCfg.clOffsetWidth] =
                     cl_offset[0 +: HPDcacheCfg.clOffsetWidth];

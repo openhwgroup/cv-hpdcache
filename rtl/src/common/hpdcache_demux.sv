@@ -37,8 +37,8 @@ module hpdcache_demux
     parameter  bit          ONE_HOT_SEL = 0,
 
     //  Compute the width of the selection signal
-    localparam int unsigned NOUTPUT_LOG2 = $clog2(NOUTPUT),
-    localparam int unsigned SEL_WIDTH    = ONE_HOT_SEL ? NOUTPUT : NOUTPUT_LOG2,
+    localparam int unsigned NOUTPUT_WIDTH = (NOUTPUT == 1) ? 1 : $clog2(NOUTPUT),
+    localparam int unsigned SEL_WIDTH     = ONE_HOT_SEL ? NOUTPUT : NOUTPUT_WIDTH,
 
     localparam type data_t = logic [DATA_WIDTH-1:0],
     localparam type sel_t  = logic [SEL_WIDTH-1:0]

@@ -97,6 +97,10 @@ package hpdcache_pkg;
         return (x < y) ? x : y;
     endfunction
 
+    function automatic integer hpdcache_vbits(integer value);
+        return (value == 1) ? 1 : $clog2(value);
+    endfunction
+
     function automatic logic is_load(input hpdcache_req_op_t op);
         case (op)
             HPDCACHE_REQ_LOAD: return 1'b1;
@@ -485,26 +489,26 @@ package hpdcache_pkg;
         ret.u = p;
 
         ret.clWidth = p.clWords * p.wordWidth;
-        ret.clOffsetWidth = $clog2(ret.clWidth / 8);
-        ret.clWordIdxWidth = $clog2(p.clWords);
-        ret.wordByteIdxWidth = $clog2(p.wordWidth / 8);
-        ret.wayIndexWidth = (p.ways > 1) ? $clog2(p.ways) : 1;
-        ret.setWidth = $clog2(p.sets);
+        ret.clOffsetWidth = hpdcache_vbits(ret.clWidth / 8);
+        ret.clWordIdxWidth = hpdcache_vbits(p.clWords);
+        ret.wordByteIdxWidth = hpdcache_vbits(p.wordWidth / 8);
+        ret.wayIndexWidth = hpdcache_vbits(p.ways);
+        ret.setWidth = hpdcache_vbits(p.sets);
         ret.nlineWidth = p.paWidth - ret.clOffsetWidth;
         ret.tagWidth = ret.nlineWidth - ret.setWidth;
-        ret.reqWordIdxWidth = $clog2(p.reqWords);
+        ret.reqWordIdxWidth = hpdcache_vbits(p.reqWords);
         ret.reqOffsetWidth = p.paWidth - ret.tagWidth;
         ret.reqDataWidth = p.reqWords * p.wordWidth;
         ret.reqDataBytes = ret.reqDataWidth/8;
 
-        ret.mshrSetWidth = (p.mshrSets > 1) ? $clog2(p.mshrSets) : 1;
-        ret.mshrWayWidth = (p.mshrWays > 1) ? $clog2(p.mshrWays) : 1;
+        ret.mshrSetWidth = hpdcache_vbits(p.mshrSets);
+        ret.mshrWayWidth = hpdcache_vbits(p.mshrWays);
 
-        ret.cbufEntryWidth = (p.cbufEntries > 1) ? $clog2(p.cbufEntries) : 1;
+        ret.cbufEntryWidth = hpdcache_vbits(p.cbufEntries);
 
         ret.wbufDataWidth = ret.reqDataWidth*p.wbufWords;
-        ret.wbufDirPtrWidth = $clog2(p.wbufDirEntries);
-        ret.wbufDataPtrWidth = $clog2(p.wbufDataEntries);
+        ret.wbufDirPtrWidth = hpdcache_vbits(p.wbufDirEntries);
+        ret.wbufDataPtrWidth = hpdcache_vbits(p.wbufDataEntries);
 
         ret.accessWidth = p.accessWords * p.wordWidth;
         ret.accessBytes = ret.accessWidth/8;

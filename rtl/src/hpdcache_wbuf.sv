@@ -108,14 +108,14 @@ import hpdcache_pkg::*;
     localparam int unsigned WBUF_DIR_NENTRIES = HPDcacheCfg.u.wbufDirEntries;
     localparam int unsigned WBUF_DATA_NENTRIES = HPDcacheCfg.u.wbufDataEntries;
     localparam int unsigned WBUF_DATA_NWORDS = HPDcacheCfg.u.wbufWords;
-    localparam int unsigned WBUF_OFFSET_WIDTH = $clog2((WBUF_WORD_WIDTH/8)*WBUF_DATA_NWORDS);
+    localparam int unsigned WBUF_OFFSET_WIDTH = hpdcache_vbits((WBUF_WORD_WIDTH/8)*WBUF_DATA_NWORDS);
     localparam int unsigned WBUF_TAG_WIDTH = HPDcacheCfg.u.paWidth - WBUF_OFFSET_WIDTH;
-    localparam int unsigned WBUF_WORD_OFFSET = $clog2(WBUF_WORD_WIDTH/8);
+    localparam int unsigned WBUF_WORD_OFFSET = hpdcache_vbits(WBUF_WORD_WIDTH/8);
     localparam int          WBUF_SEND_FIFO_DEPTH = WBUF_DATA_NENTRIES;
     localparam int unsigned WBUF_READ_MATCH_WIDTH = HPDcacheCfg.nlineWidth;
     localparam int unsigned WBUF_MEM_DATA_RATIO = HPDcacheCfg.u.memDataWidth/
                                                   HPDcacheCfg.wbufDataWidth;
-    localparam int unsigned WBUF_MEM_DATA_WORD_INDEX_WIDTH = $clog2(WBUF_MEM_DATA_RATIO);
+    localparam int unsigned WBUF_MEM_DATA_WORD_INDEX_WIDTH = hpdcache_vbits(WBUF_MEM_DATA_RATIO);
 
     typedef wbuf_data_t [WBUF_DATA_NWORDS-1:0] wbuf_data_buf_t;
     typedef wbuf_be_t [WBUF_DATA_NWORDS-1:0] wbuf_be_buf_t;

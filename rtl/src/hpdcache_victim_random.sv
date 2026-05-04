@@ -31,7 +31,7 @@ import hpdcache_pkg::*;
 #(
     parameter hpdcache_cfg_t HPDcacheCfg = '0,
 
-    localparam type set_t        = logic [$clog2(HPDcacheCfg.u.sets)-1:0],
+    localparam type set_t        = logic [hpdcache_vbits(HPDcacheCfg.u.sets)-1:0],
     localparam type way_vector_t = logic [HPDcacheCfg.u.ways-1:0]
 )
     //  }}}

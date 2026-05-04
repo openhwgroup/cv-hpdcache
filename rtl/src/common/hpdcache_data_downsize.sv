@@ -58,8 +58,8 @@ import hpdcache_pkg::*;
     //  Local definitions
     //  {{{
     localparam int RD_WORDS = WR_WIDTH/RD_WIDTH;
-    localparam int PTR_WIDTH = $clog2(DEPTH);
-    localparam int WORDCNT_WIDTH = $clog2(RD_WORDS);
+    localparam int PTR_WIDTH = hpdcache_vbits(DEPTH);
+    localparam int WORDCNT_WIDTH = hpdcache_vbits(RD_WORDS);
     typedef logic [PTR_WIDTH-1:0]  bufptr_t;
     typedef logic [WORDCNT_WIDTH-1:0]  wordptr_t;
     typedef logic [PTR_WIDTH:0]  occupancy_t;
