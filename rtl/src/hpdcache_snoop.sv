@@ -197,7 +197,7 @@ import hpdcache_pkg::*;
                         resp_wdata.pass_dirty    = 1'b0;
                         resp_wdata.left_dirty    = 1'b0;
                         resp_wdata.data_transfer = 1'b0;
-                    end else if (req_dir_fetch_i && req_flush_pending_i
+                    end else if (req_flush_pending_i
                               && (   req_op_i.is_read_unique
                                   || req_op_i.is_clean_invalid
                                   || req_op_i.is_clean_shared
