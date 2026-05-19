@@ -351,7 +351,8 @@ import hpdcache_pkg::*;
                             dir_updt_wback_o  = 1'b0;
                             dir_updt_dirty_o  = 1'b0;
                             dir_updt_shared_o = 1'b0;
-                            dir_updt_fetch_o  = 1'b0;
+                            // Keep unchanged the fetch bit
+                            dir_updt_fetch_o  = req_dir_fetch_q;
                         end
 
                         req_op_q.is_clean_shared: begin
