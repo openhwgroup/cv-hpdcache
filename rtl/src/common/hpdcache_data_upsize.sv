@@ -31,6 +31,14 @@ import hpdcache_pkg::*;
 #(
     parameter int WR_WIDTH = 0,
     parameter int RD_WIDTH = 0,
+
+    /*  The actual number of words in the upsizer is computed as
+     *  FIFO_WORDS = DEPTH * (RD_WIDTH/WR_WIDTH)
+     *
+     *  The size of a word in this component is defined as the number of bytes
+     *  consumed by the reader at each read access
+     *  WORD_WIDTH = WR_WIDTH
+     */
     parameter int DEPTH    = 0,
 
     localparam type wdata_t = logic [WR_WIDTH-1:0],

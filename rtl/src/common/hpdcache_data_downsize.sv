@@ -31,6 +31,14 @@ import hpdcache_pkg::*;
 #(
     parameter int WR_WIDTH = 0,
     parameter int RD_WIDTH = 0,
+
+    /*  The actual number of words in the downsizer is computed as
+     *  FIFO_WORDS = DEPTH * (WR_WIDTH/RD_WIDTH)
+     *
+     *  The size of a word in this component is defined as the number of bytes
+     *  produced by the writer at each write access
+     *  WORD_WIDTH = RD_WIDTH
+     */
     parameter int DEPTH    = 0,
 
     localparam type wdata_t = logic [WR_WIDTH-1:0],
@@ -189,3 +197,4 @@ import hpdcache_pkg::*;
 //  }}}
 endmodule
 //  }}}
+// vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en : fdm=marker
