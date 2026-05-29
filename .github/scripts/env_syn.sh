@@ -18,8 +18,8 @@ export PARALLEL_JOBS=7
 mkdir -p ${ARCHIVE_DIR} ${BUILD_DIR} ;
 
 #  OSS-CAD-Suite env variables
-export OSS_CAD_SUITE_URL=https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2025-06-02/oss-cad-suite-linux-x64-20250602.tgz
-export OSS_CAD_SUITE_VER=2025-06-02
+export OSS_CAD_SUITE_VER=2026-05-29
+export OSS_CAD_SUITE_URL=https://github.com/YosysHQ/oss-cad-suite-build/releases/download/${OSS_CAD_SUITE_VER}/oss-cad-suite-linux-x64-${OSS_CAD_SUITE_VER//-/}.tgz
 export OSS_CAD_SUITE_ROOT=${BUILD_DIR}/oss-cad-suite
 
 if [[ -e ${OSS_CAD_SUITE_ROOT}/environment ]] ; then

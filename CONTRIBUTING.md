@@ -25,7 +25,7 @@ To do that, we invite you to follow the following steps:
    Please follow the corresponding instructions before creating a pull-request
 2. In some cases, it may be interesting to open an issue with the "question" tag to ask if someone is already working on the feature you would like to propose, or if the community would be interested in such feature
 3. If you modify the RTL or the testbench's C++ code, before creating the pull-request, you should run the provided smoke tests.
-   The provided ``smoke_tests.sh`` script does some code formatting checks (RTL and C++), and also runs some tests in the C++ testbench with different hardware configurations of the HPDcache.
+   The provided ``smoke_tests.sh`` script does some code formatting checks (RTL and C++), and also runs some tests in the C++ testbench with different hardware configurations of the HPDcache. This requires some tools and libraries to be installed locally. See section [How to run tests locally](#how-to-run-tests-locally) for instructions to install them.
 ```bash
 bash ./rtl/tb/scripts/smoke_tests.sh
 ```
@@ -42,6 +42,22 @@ You can rerun the failing test locally to debug the issue.
 
 You can go into the ``rtl/tb`` directory if you want to run other tests or if you want to debug any issues found during the execution of smoke tests.
 Please read the testbench's [README.md](rtl/tb/README.md) to see how to do that.
+
+You will need to install some tools and libraries locally in order to be able to run the testbench (namely Verilator and SystemC).
+You can use the following procedure to do so:
+```bash
+source .github/scripts/env.sh
+bash .github/scripts/install_systemc.sh
+bash .github/scripts/install_verilator.sh
+```
+
+These tools have some pre-requisites, that you can install using the following if your machine is running on Ubuntu:
+```bash
+bash .github/scripts/install_deps_ubuntu.sh
+```
+
+Otherwise, for convenience, we provide a [default.nix](https://github.com/openhwgroup/cv-hpdcache/blob/master/default.nix) file that you use with the [Nix](https://nixos.org/) package manager to install all pre-requisites within a nix-shell.
+Once in the nix-shell, you can run the scripts in .github/scripts as described above to install the required tools and libraries.
 
 ## Code Conventions
 

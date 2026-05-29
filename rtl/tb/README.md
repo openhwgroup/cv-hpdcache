@@ -23,6 +23,9 @@ This testbench requires the following tools and libraries pre-installed:
 
 Please follow the corresponding installation instructions for those packages to
 install them in your system prior to the execution of this testbench.
+Alternatively, you can also follow the instructions in the
+[CONTRIBUTING.md](https://github.com/openhwgroup/cv-hpdcache/blob/master/CONTRIBUTING.md)
+file to install these tools and libraries with the provided scripts.
 
 You need to set the following environment variables (bash: `$ export`, csh: `$ setenv`):
 
@@ -30,6 +33,12 @@ You need to set the following environment variables (bash: `$ export`, csh: `$ s
   (e.g. `$ export SYSTEMC_LIBDIR=<systemc-install-dir>/lib-linux64`)
 - Add the bin/ subdirectory of the Verilator installation into your PATH
   (e.g. `$ export PATH=<verilator-install-dir>/bin:${PATH}`)
+
+If you installed the tools using the instructions in
+[CONTRIBUTING.md](https://github.com/openhwgroup/cv-hpdcache/blob/master/CONTRIBUTING.md),
+then you can set above environment variables by sourcing the
+[.github/scripts/env.sh](https://github.com/openhwgroup/cv-hpdcache/blob/master/.github/scripts/env.sh)
+file.
 
 In addition to above packages, the C++ code of this testbench is and shall be
 formatted using the clang-format tool. The .clang-format file contains the
