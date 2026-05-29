@@ -555,7 +555,7 @@ import hpdcache_pkg::*;
                 refill_way = refill_way_q;
 
                 //  Write the new entry in the cache directory
-                refill_write_dir_o  = ~refill_failed_sc_q;
+                refill_write_dir_o  = 1'b1;
 
                 //  Update the victim selection. Only in the following cases:
                 //  - There is no error in response and no snoop transaction squashed the MSHR AND
@@ -643,9 +643,9 @@ import hpdcache_pkg::*;
     //  In case of error in the refill response or a refill discarded due to snooping,
     //  invalidate pre-allocated cache directory entry
     assign refill_dir_entry_o = '{
-        valid   : ~(refill_is_error_o | refill_discard_q),
-        wback   : ~(refill_is_error_o | refill_discard_q) & refill_wback_q,
-        dirty   : ~(refill_is_error_o | refill_discard_q) & (refill_dirty_q  | refill_fifo_resp_meta_rdata.is_dirty),
+        valid   : ~(refill_is_error_o | refill_discard_q | refill_failed_sc_q),
+        wback   : ~(refill_is_error_o | refill_discard_q | refill_failed_sc_q) & refill_wback_q,
+        dirty   : ~(refill_is_error_o | refill_discard_q | refill_failed_sc_q) & (refill_dirty_q  | refill_fifo_resp_meta_rdata.is_dirty),
         shared  : ~(refill_is_error_o | refill_discard_q | refill_inval_q) & (refill_shared_q | refill_fifo_resp_meta_rdata.is_shared),
         fetch   : 1'b0,
         tag     : refill_tag_q,
