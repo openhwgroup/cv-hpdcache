@@ -143,6 +143,7 @@ import hpdcache_pkg::*;
     hpdcache_set_t         req_set_q;
     hpdcache_tag_t         req_tag_q;
     hpdcache_way_vector_t  req_way_q;
+    logic                  req_dir_valid_q;
     logic                  req_dir_wback_q;
     logic                  req_dir_dirty_q;
     logic                  req_dir_shared_q;
@@ -189,8 +190,9 @@ import hpdcache_pkg::*;
         unique case (snoop_fsm_q)
             SNOOP_IDLE: begin
                 if (req_valid_i && req_ready_o) begin
-                    if (!req_dir_valid_i) begin
-                        // Cache miss
+                    if (!req_dir_valid_i && !req_flush_pending_i) begin
+                        // Cache miss: no copy and no writeback in flight, so
+                        // memory is authoritative.
                         resp_w = 1'b1;
                         resp_wdata.was_unique    = 1'b0;
                         resp_wdata.is_shared     = 1'b0;
@@ -198,14 +200,19 @@ import hpdcache_pkg::*;
                         resp_wdata.left_dirty    = 1'b0;
                         resp_wdata.data_transfer = 1'b0;
                     end else if (req_flush_pending_i
-                              && (   req_op_i.is_read_unique
+                              && (   !req_dir_valid_i
+                                  || req_op_i.is_read_unique
                                   || req_op_i.is_clean_invalid
                                   || req_op_i.is_clean_shared
                                   || req_op_i.is_make_invalid)) begin
-                        //  If fetch is set, a WriteBack is in-flight (AW sent, B pending).
-                        //  Per ACE §C5-225, stall until B is received before responding
-                        //  to snoops that grant write permission or trigger a memory write.
-                        //  Pure read snoops are exempt as they do neither.
+                        //  A WriteBack is in-flight (AW sent, B pending). Stall
+                        //  until B if we cannot answer correctly now: the line is
+                        //  mid-eviction (invalid in dir, dirty data still in flight
+                        //  to memory, so answering "miss" would expose stale memory),
+                        //  or the snoop grants write permission / triggers a memory
+                        //  write. Reads on a still-valid line are answered from SRAM
+                        //  below. ACE permits stalling a snoop while a same-line
+                        //  WriteBack is in progress (IHI0022E C14.1).
                         snoop_fsm_d = SNOOP_WAIT_FLUSH;
                     end else begin
                         // Cache hit
@@ -279,46 +286,53 @@ import hpdcache_pkg::*;
             SNOOP_WAIT_FLUSH: begin
                 if (flush_ack_match) begin
                     resp_w = 1'b1;
-                    snoop_fsm_d = SNOOP_DIR_UPDT;
-                    unique case (1'b1)
-                        req_op_q.is_read_unique: begin
-                            resp_wdata.was_unique    = !req_dir_shared_q;
-                            resp_wdata.is_shared     = 1'b0;
-                            resp_wdata.pass_dirty    = 1'b0;
-                            resp_wdata.left_dirty    = 1'b0;
-                            resp_wdata.data_transfer = 1'b1;
-                            snoop_data_read          = 1'b1;
-                        end
+                    //  Parked while the line was evicting (invalid in dir): after B
+                    //  memory is authoritative, so answer as a plain miss (resp_wdata
+                    //  defaults to 0) with no SRAM read and no dir update.
+                    if (!req_dir_valid_q) begin
+                        snoop_fsm_d = SNOOP_IDLE;
+                    end else begin
+                        snoop_fsm_d = SNOOP_DIR_UPDT;
+                        unique case (1'b1)
+                            req_op_q.is_read_unique: begin
+                                resp_wdata.was_unique    = !req_dir_shared_q;
+                                resp_wdata.is_shared     = 1'b0;
+                                resp_wdata.pass_dirty    = 1'b0;
+                                resp_wdata.left_dirty    = 1'b0;
+                                resp_wdata.data_transfer = 1'b1;
+                                snoop_data_read          = 1'b1;
+                            end
 
-                        req_op_q.is_clean_invalid,
-                        req_op_q.is_clean_shared: begin
-                            resp_wdata.was_unique    = !req_dir_shared_q;
-                            resp_wdata.is_shared     = req_op_q.is_clean_shared;
-                            resp_wdata.pass_dirty    = 1'b0;
-                            resp_wdata.left_dirty    = 1'b0;
-                            resp_wdata.data_transfer = 1'b0;
-                            snoop_data_read          = 1'b0;
-                        end
+                            req_op_q.is_clean_invalid,
+                            req_op_q.is_clean_shared: begin
+                                resp_wdata.was_unique    = !req_dir_shared_q;
+                                resp_wdata.is_shared     = req_op_q.is_clean_shared;
+                                resp_wdata.pass_dirty    = 1'b0;
+                                resp_wdata.left_dirty    = 1'b0;
+                                resp_wdata.data_transfer = 1'b0;
+                                snoop_data_read          = 1'b0;
+                            end
 
-                        req_op_q.is_make_invalid: begin
-                            resp_wdata.was_unique    = !req_dir_shared_q;
-                            resp_wdata.is_shared     = 1'b0;
-                            resp_wdata.pass_dirty    = 1'b0;
-                            resp_wdata.left_dirty    = 1'b0;
-                            resp_wdata.data_transfer = 1'b0;
-                            snoop_data_read          = 1'b0;
-                        end
+                            req_op_q.is_make_invalid: begin
+                                resp_wdata.was_unique    = !req_dir_shared_q;
+                                resp_wdata.is_shared     = 1'b0;
+                                resp_wdata.pass_dirty    = 1'b0;
+                                resp_wdata.left_dirty    = 1'b0;
+                                resp_wdata.data_transfer = 1'b0;
+                                snoop_data_read          = 1'b0;
+                            end
 
-                        default: begin
-                            resp_wdata.was_unique    = 1'b0;
-                            resp_wdata.is_shared     = 1'b0;
-                            resp_wdata.pass_dirty    = 1'b0;
-                            resp_wdata.left_dirty    = 1'b0;
-                            resp_wdata.data_transfer = 1'b0;
-                            snoop_data_read          = 1'b0;
-                            snoop_fsm_d              = SNOOP_IDLE;
-                        end
-                    endcase
+                            default: begin
+                                resp_wdata.was_unique    = 1'b0;
+                                resp_wdata.is_shared     = 1'b0;
+                                resp_wdata.pass_dirty    = 1'b0;
+                                resp_wdata.left_dirty    = 1'b0;
+                                resp_wdata.data_transfer = 1'b0;
+                                snoop_data_read          = 1'b0;
+                                snoop_fsm_d              = SNOOP_IDLE;
+                            end
+                        endcase
+                    end
                 end
             end
 
@@ -436,6 +450,7 @@ import hpdcache_pkg::*;
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
             req_op_q <= '0;
+            req_dir_valid_q <= 1'b0;
             req_dir_wback_q <= 1'b0;
             req_dir_dirty_q <= 1'b0;
             req_dir_shared_q <= 1'b0;
@@ -445,6 +460,7 @@ import hpdcache_pkg::*;
             req_tag_q <= '0;
         end else if (req_valid_i && req_ready_o) begin
             req_op_q <= req_op_i;
+            req_dir_valid_q <= req_dir_valid_i;
             req_dir_wback_q <= req_dir_wback_i;
             req_dir_dirty_q <= req_dir_dirty_i;
             req_dir_shared_q <= req_dir_shared_i;
