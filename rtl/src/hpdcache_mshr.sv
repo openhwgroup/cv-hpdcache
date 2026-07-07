@@ -81,7 +81,6 @@ import hpdcache_pkg::*;
     output mshr_way_t             alloc_way_o,
 
     //  Snoop interface
-    input  logic                  make_shared_i,
     input  logic                  make_inval_i,
 
     //  Acknowledge interface
@@ -101,8 +100,7 @@ import hpdcache_pkg::*;
     output logic                  ack_dirty_o,
     output mshr_op_t              ack_op_o,
     output cbuf_id_t              ack_cbuf_id_o,
-    output logic                  ack_make_inval_o,
-    output logic                  ack_make_shared_o
+    output logic                  ack_make_inval_o
 );
     //  }}}
 
@@ -157,8 +155,6 @@ import hpdcache_pkg::*;
     mshr_set_t  mshr_addr;
     logic check;
 
-    logic          [HPDcacheCfg.u.mshrSets*HPDcacheCfg.u.mshrWays-1:0] mshr_make_shared_q;
-    logic [HPDcacheCfg.u.mshrSets*HPDcacheCfg.u.mshrWays-1:0] mshr_make_shared_set, mshr_make_shared_rst;
     logic          [HPDcacheCfg.u.mshrSets*HPDcacheCfg.u.mshrWays-1:0] mshr_make_inval_q;
     logic [HPDcacheCfg.u.mshrSets*HPDcacheCfg.u.mshrWays-1:0] mshr_make_inval_set, mshr_make_inval_rst;
     //  }}}
@@ -270,8 +266,6 @@ import hpdcache_pkg::*;
     always_comb
     begin : mshr_make_comb
         for (hpdcache_uint i = 0; i < HPDcacheCfg.u.mshrSets*HPDcacheCfg.u.mshrWays; i++) begin
-            mshr_make_shared_rst[i] = (i ==   mshr_ack_slot) ? ack_i         : 1'b0;
-            mshr_make_shared_set[i] = (i == mshr_check_slot) ? make_shared_i : 1'b0;
             mshr_make_inval_rst[i]  = (i ==   mshr_ack_slot) ? ack_i         : 1'b0;
             mshr_make_inval_set[i]  = (i == mshr_check_slot) ? make_inval_i  : 1'b0;
         end
@@ -296,7 +290,6 @@ import hpdcache_pkg::*;
     always_ff @(posedge clk_i) begin
         if (ack_i) begin
             ack_make_inval_o  <= mshr_make_inval_q[mshr_ack_slot];
-            ack_make_shared_o <= mshr_make_shared_q[mshr_ack_slot];
         end
     end
     //  }}}
@@ -338,13 +331,11 @@ import hpdcache_pkg::*;
     begin : mshr_ff_set
         if (!rst_ni) begin
             mshr_valid_q <= '0;
-            mshr_make_shared_q <= '0;
             mshr_make_inval_q <= '0;
             ack_way_q <= '0;
             check_cache_set_q <= '0;
         end else begin
             mshr_valid_q <= (~mshr_valid_q & mshr_valid_set) | (mshr_valid_q & ~mshr_valid_rst);
-            mshr_make_shared_q <= (~mshr_make_shared_q & mshr_make_shared_set) | (mshr_make_shared_q & ~mshr_make_shared_rst);
             mshr_make_inval_q <= (~mshr_make_inval_q & mshr_make_inval_set) | (mshr_make_inval_q & ~mshr_make_inval_rst);
             if (ack_i) ack_way_q <= ack_way_i;
             if (check) check_cache_set_q <= check_set_i;

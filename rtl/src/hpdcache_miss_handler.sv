@@ -82,7 +82,6 @@ import hpdcache_pkg::*;
     input  hpdcache_req_offset_t  mshr_check_offset_i,
     input  hpdcache_nline_t       mshr_check_nline_i,
     output logic                  mshr_check_hit_o,
-    input  logic                  mshr_make_shared_i,
     input  logic                  mshr_make_inval_i,
     //      }}}
 
@@ -221,7 +220,6 @@ import hpdcache_pkg::*;
     logic                    refill_discard_q, refill_discard_d;
     logic                    refill_inval;
     logic                    refill_inval_q, refill_inval_d;
-    logic                    refill_shared_q;
     logic                    refill_is_atomic;
     logic                    refill_failed_sc;
     logic                    refill_failed_sc_q, refill_failed_sc_d;
@@ -268,7 +266,6 @@ import hpdcache_pkg::*;
     hpdcache_req_data_t      mshr_ack_wdata;
     hpdcache_req_be_t        mshr_ack_be;
     logic                    mshr_ack_make_inval;
-    logic                    mshr_ack_make_shared;
     logic                    mshr_empty;
 
     hpdcache_mem_coherence_e mem_req_coherence_q, mem_req_coherence_d;
@@ -646,7 +643,7 @@ import hpdcache_pkg::*;
         valid   : ~(refill_is_error_o | refill_discard_q | refill_failed_sc_q),
         wback   : ~(refill_is_error_o | refill_discard_q | refill_failed_sc_q) & refill_wback_q,
         dirty   : ~(refill_is_error_o | refill_discard_q | refill_failed_sc_q) & (refill_dirty_q  | refill_fifo_resp_meta_rdata.is_dirty),
-        shared  : ~(refill_is_error_o | refill_discard_q | refill_inval_q) & (refill_shared_q | refill_fifo_resp_meta_rdata.is_shared),
+        shared  : ~(refill_is_error_o | refill_discard_q | refill_inval_q) & refill_fifo_resp_meta_rdata.is_shared,
         fetch   : 1'b0,
         tag     : refill_tag_q,
         default :'0
@@ -828,7 +825,6 @@ import hpdcache_pkg::*;
             refill_dirty_wdata_q <= mshr_ack_wdata;
             refill_dirty_be_q <= mshr_ack_be;
             refill_core_rsp_word_q <= mshr_ack_word;
-            refill_shared_q <= mshr_ack_make_shared;
             refill_discard_q <= refill_discard_d;
             refill_inval_q <= refill_inval_d;
             refill_failed_sc_q <= refill_failed_sc_d;
@@ -867,7 +863,6 @@ import hpdcache_pkg::*;
         .check_set_i              (mshr_check_set),
         .check_tag_i              (mshr_check_tag),
         .hit_o                    (mshr_check_hit_o),
-        .make_shared_i            (mshr_make_shared_i),
         .make_inval_i             (mshr_make_inval_i),
         .alloc_i                  (mshr_alloc),
         .alloc_cs_i               (mshr_alloc_cs),
@@ -901,8 +896,7 @@ import hpdcache_pkg::*;
         .ack_dirty_o              (mshr_ack_dirty),
         .ack_op_o                 (mshr_ack_op),
         .ack_cbuf_id_o            (mshr_ack_cbuf_id),
-        .ack_make_inval_o         (mshr_ack_make_inval),
-        .ack_make_shared_o        (mshr_ack_make_shared)
+        .ack_make_inval_o         (mshr_ack_make_inval)
     );
 
     hpdcache_1hot_to_binary #(.N(HPDcacheCfg.u.ways)) victim_way_encoder_i(

@@ -95,7 +95,6 @@ import hpdcache_pkg::*;
     output hpdcache_req_offset_t  st0_mshr_check_offset_o,
     output hpdcache_nline_t       st1_mshr_check_nline_o,
     input  logic                  st1_mshr_hit_i,
-    output logic                  st1_mshr_make_shared_o,
     output logic                  st1_mshr_make_inval_o,
     input  logic                  st1_mshr_alloc_ready_i,
     input  logic                  st1_mshr_alloc_full_i,
@@ -440,7 +439,6 @@ import hpdcache_pkg::*;
     logic                    st1_req_is_cmo_fence;
     logic                    st1_req_is_cmo_prefetch;
     logic                    st1_req_is_snoop;
-    logic                    st1_req_is_snoop_make_shared;
     logic                    st1_req_is_snoop_make_inval;
     logic                    st1_req_is_snoop_clean_inval;
     logic                    st1_req_is_snoop_read_unique;
@@ -654,8 +652,6 @@ import hpdcache_pkg::*;
     assign st1_req_is_cmo_fence         =           is_cmo_fence(st1_req.op);
     assign st1_req_is_cmo_prefetch      =        is_cmo_prefetch(st1_req.op);
     assign st1_req_is_snoop             =               is_snoop(st1_req.op);
-    //  make_shared: any snoop operation transitioning the cache line to shared
-    assign st1_req_is_snoop_make_shared =   is_snoop_make_shared(st1_req.op);
     //  make_invalid: any snoop operation transitioning the cache line to invalid
     assign st1_req_is_snoop_make_inval  =    is_snoop_make_inval(st1_req.op);
     assign st1_req_is_snoop_clean_inval = is_snoop_clean_invalid(st1_req.op);
@@ -718,7 +714,6 @@ import hpdcache_pkg::*;
         .st1_req_is_cmo_fence_i             (st1_req_is_cmo_fence),
         .st1_req_is_cmo_prefetch_i          (st1_req_is_cmo_prefetch),
         .st1_req_is_snoop_i                 (st1_req_is_snoop),
-        .st1_req_is_snoop_make_shared_i     (st1_req_is_snoop_make_shared),
         .st1_req_is_snoop_make_inval_i      (st1_req_is_snoop_make_inval),
         .st1_req_wr_wt_i                    (st1_req_wr_wt),
         .st1_req_wr_wb_i                    (st1_req_wr_wb),
@@ -804,7 +799,6 @@ import hpdcache_pkg::*;
         .st1_mshr_hit_i                     (st1_mshr_hit_i),
         .st1_mshr_full_i                    (st1_mshr_alloc_full_i),
         .st1_mshr_cbuf_full_i               (st1_mshr_alloc_cbuf_full_i),
-        .st1_mshr_make_shared_o             (st1_mshr_make_shared_o),
         .st1_mshr_make_inval_o              (st1_mshr_make_inval_o),
 
         .refill_busy_i,

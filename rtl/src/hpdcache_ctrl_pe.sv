@@ -91,7 +91,6 @@ import hpdcache_pkg::*;
     input  logic                   st1_req_is_cmo_fence_i,
     input  logic                   st1_req_is_cmo_prefetch_i,
     input  logic                   st1_req_is_snoop_i,
-    input  logic                   st1_req_is_snoop_make_shared_i,
     input  logic                   st1_req_is_snoop_make_inval_i,
     input  logic                   st1_req_wr_wt_i,
     input  logic                   st1_req_wr_wb_i,
@@ -118,7 +117,6 @@ import hpdcache_pkg::*;
     input  logic                   st1_mshr_hit_i,
     input  logic                   st1_mshr_full_i,
     input  logic                   st1_mshr_cbuf_full_i,
-    output logic                   st1_mshr_make_shared_o,
     output logic                   st1_mshr_make_inval_o,
     input  logic                   st1_no_pend_trans_i,
     //   }}}
@@ -369,7 +367,6 @@ import hpdcache_pkg::*;
         st1_rsp_error_o                     = 1'b0;
         st1_rsp_aborted_o                   = 1'b0;
 
-        st1_mshr_make_shared_o              = 1'b0;
         st1_mshr_make_inval_o               = 1'b0;
 
         st2_mshr_alloc_o                    = st2_mshr_alloc_i;
@@ -579,7 +576,6 @@ import hpdcache_pkg::*;
 
                         if (st1_mshr_hit_i) begin
                             // Update hit MSHR
-                            st1_mshr_make_shared_o = st1_req_is_snoop_make_shared_i;
                             st1_mshr_make_inval_o  = st1_req_is_snoop_make_inval_i;
                         end
                     end

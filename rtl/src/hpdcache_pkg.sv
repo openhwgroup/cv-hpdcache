@@ -325,14 +325,6 @@ package hpdcache_pkg;
         return (op == HPDCACHE_REQ_SNOOP_READ_CLEAN);
     endfunction
 
-    function automatic logic is_snoop_make_shared(input hpdcache_req_op_t op);
-        return (op inside {
-            HPDCACHE_REQ_SNOOP_READ_CLEAN,
-            HPDCACHE_REQ_SNOOP_READ_NOT_SHARED_DIRTY,
-            HPDCACHE_REQ_SNOOP_READ_SHARED
-        });
-    endfunction
-
     function automatic logic is_snoop_make_inval(input hpdcache_req_op_t op);
         return (op inside {
             HPDCACHE_REQ_SNOOP_CLEAN_INVALID,
