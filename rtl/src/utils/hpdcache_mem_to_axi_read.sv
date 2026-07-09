@@ -26,6 +26,7 @@
 module hpdcache_mem_to_axi_read
 import hpdcache_pkg::*;
 #(
+    parameter bit  aceEn = 1'b0,
     parameter type hpdcache_mem_req_t    = logic,
     parameter type hpdcache_mem_resp_r_t = logic,
     parameter type ar_chan_t = logic,
@@ -93,33 +94,39 @@ import hpdcache_pkg::*;
             resp_o.mem_resp_r_data  = axi_r_i.data,
             resp_o.mem_resp_r_last  = axi_r_i.last;
 
-    ace_pkg::arsnoop_t snoop;
-    ace_pkg::axdomain_t domain;
+    if (aceEn) begin : gen_ace_ar
+        ace_pkg::arsnoop_t  snoop;
+        ace_pkg::axdomain_t domain;
 
-    always_comb begin : snoop_comb
-        case (req_i.mem_req_coherence)
-            HPDCACHE_MEM_COHERENCE_READ_NO_SNOOP: snoop = ace_pkg::ReadNoSnoop;
-            HPDCACHE_MEM_COHERENCE_READ_SHARED:   snoop = ace_pkg::ReadShared;
-            HPDCACHE_MEM_COHERENCE_READ_CLEAN:    snoop = ace_pkg::ReadClean;
-            HPDCACHE_MEM_COHERENCE_READ_UNIQUE:   snoop = ace_pkg::ReadUnique;
-            HPDCACHE_MEM_COHERENCE_CLEAN_UNIQUE:  snoop = ace_pkg::CleanUnique;
-            default:                              snoop = ace_pkg::ReadNoSnoop;
-        endcase
+        always_comb begin : snoop_comb
+            case (req_i.mem_req_coherence)
+                HPDCACHE_MEM_COHERENCE_READ_NO_SNOOP: snoop = ace_pkg::ReadNoSnoop;
+                HPDCACHE_MEM_COHERENCE_READ_SHARED:   snoop = ace_pkg::ReadShared;
+                HPDCACHE_MEM_COHERENCE_READ_CLEAN:    snoop = ace_pkg::ReadClean;
+                HPDCACHE_MEM_COHERENCE_READ_UNIQUE:   snoop = ace_pkg::ReadUnique;
+                HPDCACHE_MEM_COHERENCE_CLEAN_UNIQUE:  snoop = ace_pkg::CleanUnique;
+                default:                              snoop = ace_pkg::ReadNoSnoop;
+            endcase
+        end
+
+        always_comb begin : domain_comb
+            case (req_i.mem_req_coherence)
+                HPDCACHE_MEM_COHERENCE_READ_NO_SNOOP: domain = ace_pkg::NonShareable;
+                default:                              domain = ace_pkg::InnerShareable;
+            endcase
+        end
+
+        assign axi_ar_o.snoop  = snoop,
+               axi_ar_o.bar    = '0,
+               axi_ar_o.domain = domain;
+
+        assign resp_o.mem_resp_r_dirty  = axi_r_i.resp[ace_pkg::RESP_IS_DIRTY];
+        assign resp_o.mem_resp_r_shared = axi_r_i.resp[ace_pkg::RESP_IS_SHARED];
+    end else begin : gen_no_ace_ar
+        assign resp_o.mem_resp_r_dirty  = 1'b0;
+        assign resp_o.mem_resp_r_shared = 1'b0;
     end
 
-    always_comb begin : domain_comb
-        case (req_i.mem_req_coherence)
-            HPDCACHE_MEM_COHERENCE_READ_NO_SNOOP: domain = ace_pkg::NonShareable;
-            default:                              domain = ace_pkg::InnerShareable;
-        endcase
-    end
-
-    assign axi_ar_o.snoop  = snoop,
-           axi_ar_o.bar    = '0,
-           axi_ar_o.domain = domain;
-
-    assign resp_o.mem_resp_r_dirty     = axi_r_i.resp[ace_pkg::RESP_IS_DIRTY];
-    assign resp_o.mem_resp_r_shared    = axi_r_i.resp[ace_pkg::RESP_IS_SHARED];
     assign resp_o.mem_resp_r_is_atomic = axi_r_i.resp[axi_pkg::RespWidth-1:0] == axi_pkg::RESP_EXOKAY;
 
 endmodule
