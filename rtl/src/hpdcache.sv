@@ -1170,20 +1170,28 @@ import hpdcache_pkg::*;
     //      1111...1111  -> Uncached writes
     //      1xxx...xxxx  -> Flush writes (where at least one x is 0)
     //      0xxx...xxxx  -> Write buffer writes
+    //
+    //      If only one write policy is implemented (write-through or write-back),
+    //      the ID space is split into 2 segments:
+    //      1111...1111  -> Uncached writes
+    //      xxxx...xxxx  -> Flush/Write buffer writes (where at least one x is 0)
     function automatic hpdcache_mem_req_t hpdcache_req_write_sel_id(
         hpdcache_mem_req_t req, int kind
     );
-        //  Request from the write buffer
-        unique if (kind == 0) begin
-            req.mem_req_id = {1'b0, req.mem_req_id[0 +: HPDcacheCfg.u.memIdWidth-1]};
-        end
-        //  Request from the flush controller
-        else if (kind == 1) begin
-            req.mem_req_id = {1'b1, req.mem_req_id[0 +: HPDcacheCfg.u.memIdWidth-1]};
-        end
         //  Request from the uncached controller
-        else if (kind == 2) begin
+        if (kind == 2) begin
             req.mem_req_id = '1;
+            return req;
+        end
+
+        if (HPDcacheCfg.u.wtEn && HPDcacheCfg.u.wbEn) begin
+            unique case (kind)
+                //  Request from the write buffer
+                0: req.mem_req_id = {1'b0, req.mem_req_id[0 +: HPDcacheCfg.u.memIdWidth-1]};
+
+                //  Request from the flush controller
+                1: req.mem_req_id = {1'b1, req.mem_req_id[0 +: HPDcacheCfg.u.memIdWidth-1]};
+            endcase
         end
         return req;
     endfunction
@@ -1191,19 +1199,35 @@ import hpdcache_pkg::*;
     function automatic hpdcache_mem_resp_w_t hpdcache_resp_write_sel_id(
         hpdcache_mem_resp_w_t resp, int kind
     );
-        //  Response to the write buffer
-        unique if (kind == 0) begin
-            resp.mem_resp_w_id = {1'b0, resp.mem_resp_w_id[0 +: HPDcacheCfg.u.memIdWidth-1]};
-        end
-        //  Response to the flush controller
-        else if (kind == 1) begin
-            resp.mem_resp_w_id = {1'b0, resp.mem_resp_w_id[0 +: HPDcacheCfg.u.memIdWidth-1]};
-        end
         //  Response to the uncached controller
-        else if (kind == 2) begin
+        if (kind == 2) begin
             resp.mem_resp_w_id = '1;
+            return resp;
+        end
+
+        //  Response to the write buffer or to the flush controller
+        if (HPDcacheCfg.u.wtEn && HPDcacheCfg.u.wbEn) begin
+            resp.mem_resp_w_id = {1'b0, resp.mem_resp_w_id[0 +: HPDcacheCfg.u.memIdWidth-1]};
         end
         return resp;
+    endfunction
+
+    function automatic int hpdcache_resp_write_kind(
+        hpdcache_mem_id_t resp_id
+    );
+        //  Response to the uncached controller
+        if (resp_id == {HPDcacheCfg.u.memIdWidth{1'b1}}) begin
+            return 2;
+        end
+
+        //  Response to the write buffer or to the flush controller
+        if (HPDcacheCfg.u.wtEn && !HPDcacheCfg.u.wbEn) begin
+            return 0;
+        end
+        if (!HPDcacheCfg.u.wtEn && HPDcacheCfg.u.wbEn) begin
+            return 1;
+        end
+        return (resp_id[HPDcacheCfg.u.memIdWidth-1] == 1'b1) ? 1 : 0;
     endfunction
 
     assign mem_req_write_wbuf_ready        = arb_mem_req_write_ready[0];
@@ -1263,16 +1287,20 @@ import hpdcache_pkg::*;
         mem_resp_write_uc_valid = 1'b0;
         mem_resp_write_ready_o = 1'b0;
         if (mem_resp_write_valid_i) begin
-            if (mem_resp_write_i.mem_resp_w_id == {HPDcacheCfg.u.memIdWidth{1'b1}}) begin
-                mem_resp_write_uc_valid = 1'b1;
-                mem_resp_write_ready_o = mem_resp_write_uc_ready;
-            end else if (mem_resp_write_i.mem_resp_w_id[HPDcacheCfg.u.memIdWidth-1]) begin
-                mem_resp_write_flush_valid = 1'b1;
-                mem_resp_write_ready_o = mem_resp_write_flush_ready;
-            end else begin
-                mem_resp_write_wbuf_valid = 1'b1;
-                mem_resp_write_ready_o = mem_resp_write_wbuf_ready;
-            end
+            unique case (hpdcache_resp_write_kind(mem_resp_write_i.mem_resp_w_id))
+                0: begin
+                    mem_resp_write_wbuf_valid = 1'b1;
+                    mem_resp_write_ready_o = mem_resp_write_wbuf_ready;
+                end
+                1: begin
+                    mem_resp_write_flush_valid = 1'b1;
+                    mem_resp_write_ready_o = mem_resp_write_flush_ready;
+                end
+                2: begin
+                    mem_resp_write_uc_valid = 1'b1;
+                    mem_resp_write_ready_o = mem_resp_write_uc_ready;
+                end
+            endcase
         end
     end
 
@@ -1310,9 +1338,25 @@ import hpdcache_pkg::*;
     begin : gen_mem_id_mshr_width_assertion
         $fatal(1, "insufficient ID bits on the mem interface to transport reads");
     end
-    if (HPDcacheCfg.u.wtEn && (2**(HPDcacheCfg.u.memIdWidth - 1) < HPDcacheCfg.u.wbufDirEntries))
-    begin : gen_mem_id_wbuf_width_assertion
-        $fatal(1, "insufficient ID bits on the mem interface to transport writes");
+    if (HPDcacheCfg.u.wtEn && HPDcacheCfg.u.wbEn &&
+        (2**(HPDcacheCfg.u.memIdWidth - 1) < HPDcacheCfg.u.wbufDirEntries))
+    begin : gen_wt_wb_mem_id_wbuf_width_assertion
+        $fatal(1, "insufficient ID bits on the mem interface to transport wbuf writes");
+    end
+    if (HPDcacheCfg.u.wtEn && !HPDcacheCfg.u.wbEn &&
+        ((2**HPDcacheCfg.u.memIdWidth - 1) < HPDcacheCfg.u.wbufDirEntries))
+    begin : gen_wt_mem_id_wbuf_width_assertion
+        $fatal(1, "insufficient ID bits on the mem interface to transport wbuf writes");
+    end
+    if (HPDcacheCfg.u.wtEn && HPDcacheCfg.u.wbEn &&
+        ((2**(HPDcacheCfg.u.memIdWidth - 1) - 1) < HPDcacheCfg.u.flushEntries))
+    begin : gen_wt_wb_mem_id_flush_width_assertion
+        $fatal(1, "insufficient ID bits on the mem interface to transport flush writes");
+    end
+    if (!HPDcacheCfg.u.wtEn && HPDcacheCfg.u.wbEn &&
+        ((2**HPDcacheCfg.u.memIdWidth - 1) < HPDcacheCfg.u.flushEntries))
+    begin : gen_wb_mem_id_flush_width_assertion
+        $fatal(1, "insufficient ID bits on the mem interface to transport flush writes");
     end
     if (HPDcacheCfg.u.wtEn && (HPDcacheCfg.wbufDataWidth > HPDcacheCfg.u.memDataWidth))
     begin : gen_mem_data_wbuf_width_assertion
@@ -1328,6 +1372,9 @@ import hpdcache_pkg::*;
     end
     if (!HPDcacheCfg.u.lowLatency && HPDcacheCfg.u.eccEn) begin : gen_latency_and_ecc_assertion
         $fatal(1, "ECC only supported in lowLatency mode");
+    end
+    if (HPDcacheCfg.u.reqSrcIdWidth < $clog2(HPDcacheCfg.u.nRequesters)) begin : gen_sid_assertion
+        $fatal(1, "insufficient Source ID bits to identify all requesters");
     end
 `endif
     // }}}
