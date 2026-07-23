@@ -203,6 +203,7 @@ module hpdcache_wrapper
       .evt_cache_dir_cor_err_o( /* unused */),
       .evt_cache_dat_unc_err_o( /* unused */),
       .evt_cache_dat_cor_err_o( /* unused */),
+      .evt_scrub_complete_o  (  /* unused */),
       .evt_uncached_req_o    (  /* unused */),
       .evt_cmo_req_o         (  /* unused */),
       .evt_write_req_o       (  /* unused */),

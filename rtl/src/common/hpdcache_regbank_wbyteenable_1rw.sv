@@ -52,8 +52,10 @@ module hpdcache_regbank_wbyteenable_1rw
     always_ff @(posedge clk or negedge rst_n)
     begin : mem_update_ff
         if (!rst_n) begin
-            for (int i = 0; i < DEPTH; i++)
+            for (int i = 0; i < DEPTH; i++) begin
                 mem[i] <= '0;
+            end
+            rdata <= '0;
         end else begin
             if (cs == 1'b1) begin
                 if (we == 1'b1) begin
