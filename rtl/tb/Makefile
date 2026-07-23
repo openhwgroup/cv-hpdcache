@@ -165,7 +165,7 @@ $(VERILATE_LOG): print_config
 build: $(VERILATE_LOG) $(BUILD_LOG)
 run: $(BUILD_LOG) $(RUN_LOG) check
 run_no_check: $(BUILD_LOG) $(RUN_LOG)
-run_clobber: clean $(BUILD_LOG) $(RUN_LOG) check
+run_clobber: clean $(VERILATE_LOG) $(BUILD_LOG) $(RUN_LOG) check
 
 .NOTPARALLEL: run run_no_check build run_clobber
 
