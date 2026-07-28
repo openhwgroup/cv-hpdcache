@@ -541,11 +541,12 @@ import hpdcache_pkg::*;
                                     uc_req_valid_o = 1'b1;
                                     st1_rtab_commit_o = st1_req_rtab_i;
                                     evt_uncached_req_o = 1'b1;
-                                    // Invalidate cache
+                                    // invalidate the cacheline
                                     st2_dir_updt_o = 1'b1;
                                     st2_dir_updt_valid_o = 1'b0;
                                     st2_dir_updt_wback_o = 1'b0;
                                     st2_dir_updt_dirty_o = 1'b0;
+                                    st2_dir_updt_fetch_o = 1'b0;
                                 end
                             end
                         end
