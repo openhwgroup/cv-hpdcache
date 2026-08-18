@@ -15,29 +15,37 @@ LINT_DIR=$(readlink -f ${SCRIPT_DIR}/../../lint)
 NTRANS=$((16*1024))
 NTESTS=8
 SEQUENCES=(random)
-USER_ARGS=$*
 CONFIGS=(configs/directmap_config.mk
          configs/embedded_config.mk
          configs/hpc_config.mk
          configs/default_config.mk)
 
-(
+DO_LINT=1
+if [[ $1 == '--no-lint' ]] ; then
+    DO_LINT=0
+    shift
+fi
+USER_ARGS=$*
+
+if [[ ${DO_LINT} == 1 ]] ; then
     cd ${TEST_DIR}
     printf "Checking formatting of testbench C++ sources in ${TEST_DIR}\n"
     ./scripts/check_format_tb.sh
-)
-ret=$?
-if [[ ${ret} != 0 ]] ; then
-    printf "FAILURE: there are formatting issues in C++ testbench files\n"
-    exit 1 ;
+    ret=$?
+    if [[ ${ret} != 0 ]] ; then
+        printf "FAILURE: there are formatting issues in C++ testbench files\n"
+        exit 1 ;
+    fi
 fi
 
 for c in ${CONFIGS[@]} ; do
-    make -s -C ${LINT_DIR} verible-lint
-    ret=$?
-    if [[ ${ret} != 0 ]] ; then
-        printf "FAILURE: there are linting errors\n"
-        exit 1 ;
+    if [[ ${DO_LINT} == 1 ]] ; then
+        make -s -C ${LINT_DIR} verible-lint
+        ret=$?
+        if [[ ${ret} != 0 ]] ; then
+            printf "FAILURE: there are linting errors\n"
+            exit 1 ;
+        fi
     fi
 
     for s in ${SEQUENCES[@]} ; do
