@@ -447,10 +447,10 @@ import hpdcache_pkg::*;
     //  {{{
     if (HPDcacheCfg.u.wtEn && HPDcacheCfg.u.wbEn) begin : gen_cfg_default_wt_wb
         assign cfg_default_wb = cfg_default_wb_i;
-    end else if (HPDcacheCfg.u.wtEn) begin : gen_cfg_default_wt
-        assign cfg_default_wb = 1'b0;
     end else if (HPDcacheCfg.u.wbEn) begin : gen_cfg_default_wb
         assign cfg_default_wb = 1'b1;
+    end else begin : gen_cfg_default_wt
+        assign cfg_default_wb = 1'b0;
     end
 
     hpdcache_ctrl #(
@@ -1366,9 +1366,6 @@ import hpdcache_pkg::*;
         (2**(HPDcacheCfg.u.memIdWidth - 1) < (HPDcacheCfg.u.flushEntries + 1)))
     begin : gen_mem_id_flush_width_assertion
         $fatal(1, "insufficient ID bits on the mem interface to transport flushes");
-    end
-    if (!HPDcacheCfg.u.wtEn && !HPDcacheCfg.u.wbEn) begin : gen_write_policy_assertion
-        $fatal(1, "the cache shall be configured to support WT, WB or both");
     end
     if (!HPDcacheCfg.u.lowLatency && HPDcacheCfg.u.eccEn) begin : gen_latency_and_ecc_assertion
         $fatal(1, "ECC only supported in lowLatency mode");
