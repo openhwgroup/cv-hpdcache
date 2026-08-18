@@ -229,6 +229,11 @@ import hpdcache_pkg::*;
 );
     // }}}
 
+    //  Definition of constants
+    //  {{{
+    localparam bit WRITE_AMO_SUPPORTED = HPDcacheCfg.u.wtEn || HPDcacheCfg.u.wbEn;
+    //  }}}
+
     //  Definition of internal signals
     //  {{{
     logic  st1_fence;
@@ -614,7 +619,7 @@ import hpdcache_pkg::*;
 
                     //  AMO cacheable request
                     //  {{{
-                    if (st1_req_is_amo_i && !st1_err_o) begin
+                    if (WRITE_AMO_SUPPORTED && st1_req_is_amo_i && !st1_err_o) begin
                         //  There are pending transactions which must be completed and the
                         //  request is not being replayed.
                         //  When an AMO request is replayed, it is guaranteed that there
@@ -846,7 +851,7 @@ import hpdcache_pkg::*;
 
                     //  Store cacheable request
                     //  {{{
-                    if (st1_req_is_store_i && !st1_err_o) begin
+                    if (WRITE_AMO_SUPPORTED && st1_req_is_store_i && !st1_err_o) begin
                         //  Add a NOP in the pipeline when: Replaying a request, the cache cannot
                         //  accept a request from the core the next cycle. It can however accept
                         //  a new request from the replay table
