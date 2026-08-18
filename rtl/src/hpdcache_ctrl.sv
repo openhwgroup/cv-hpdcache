@@ -1784,6 +1784,18 @@ import hpdcache_pkg::*;
     assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
         st2_mshr_alloc_q |-> $onehot(st2_mshr_alloc_victim_way_q)) else
             $error("ctrl: no victim way selected during MSHR allocation");
+
+    //  Check that there are no write requests on read-only configuration
+    assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
+            (core_req_valid_i && st0_req_is_store)
+            |-> (HPDcacheCfg.u.wtEn || HPDcacheCfg.u.wbEn)) else
+                $error("ctrl: unexpected store request on read-only configuration");
+
+    //  Check that there are no atomic requests on read-only configuration
+    assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
+            (core_req_valid_i && st0_req_is_amo)
+            |-> (HPDcacheCfg.u.wtEn || HPDcacheCfg.u.wbEn)) else
+                $error("ctrl: unexpected amo on read-only configuration");
 `endif
     //  }}}
 endmodule
