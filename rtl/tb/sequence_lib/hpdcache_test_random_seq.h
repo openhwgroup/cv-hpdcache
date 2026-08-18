@@ -78,8 +78,12 @@ public:
 
         hpdcache_test_sequence::op_distribution.push(
             hpdcache_test_transaction_req::HPDCACHE_REQ_LOAD, 400);
+
+#if (CONF_HPDCACHE_WT_ENABLE || CONF_HPDCACHE_WB_ENABLE)
         hpdcache_test_sequence::op_distribution.push(
             hpdcache_test_transaction_req::HPDCACHE_REQ_STORE, 350);
+#endif
+
         hpdcache_test_sequence::op_distribution.push(
             hpdcache_test_transaction_req::HPDCACHE_REQ_CMO_FENCE, 10);
         hpdcache_test_sequence::op_distribution.push(
@@ -100,8 +104,12 @@ public:
 
         hpdcache_test_sequence::op_amo_distribution.push(
             hpdcache_test_transaction_req::HPDCACHE_REQ_LOAD, 800);
+
+#if (CONF_HPDCACHE_WT_ENABLE || CONF_HPDCACHE_WB_ENABLE)
         hpdcache_test_sequence::op_amo_distribution.push(
             hpdcache_test_transaction_req::HPDCACHE_REQ_STORE, 600);
+#endif
+
         hpdcache_test_sequence::op_amo_distribution.push(
             hpdcache_test_transaction_req::HPDCACHE_REQ_CMO_FENCE, 10);
         hpdcache_test_sequence::op_amo_distribution.push(
@@ -118,6 +126,8 @@ public:
             hpdcache_test_transaction_req::HPDCACHE_REQ_CMO_FLUSH_INVAL_NLINE, 10);
         hpdcache_test_sequence::op_amo_distribution.push(
             hpdcache_test_transaction_req::HPDCACHE_REQ_CMO_FLUSH_INVAL_ALL, 1);
+
+#if (CONF_HPDCACHE_WT_ENABLE || CONF_HPDCACHE_WB_ENABLE)
         hpdcache_test_sequence::op_amo_distribution.push(
             hpdcache_test_transaction_req::HPDCACHE_REQ_AMO_LR, 4);
         hpdcache_test_sequence::op_amo_distribution.push(
@@ -140,6 +150,7 @@ public:
             hpdcache_test_transaction_req::HPDCACHE_REQ_AMO_MIN, 4);
         hpdcache_test_sequence::op_amo_distribution.push(
             hpdcache_test_transaction_req::HPDCACHE_REQ_AMO_MINU, 4);
+#endif
         hpdcache_test_sequence::op_amo->set_mode(op_amo_distribution);
 
         scv_bag<bool> need_rsp_dist;
