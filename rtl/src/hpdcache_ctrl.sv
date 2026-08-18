@@ -171,7 +171,6 @@ import hpdcache_pkg::*;
     output logic                  uc_req_need_rsp_o,
     output hpdcache_way_vector_t  uc_req_dir_hit_way_o,
     output hpdcache_req_data_t    uc_req_old_data_o,
-    input  logic                  uc_wbuf_flush_all_i,
     input  logic                  uc_data_amo_write_i,
     input  logic                  uc_data_amo_write_enable_i,
     input  hpdcache_set_t         uc_data_amo_write_set_i,
@@ -186,7 +185,6 @@ import hpdcache_pkg::*;
 
     //      Cache Management Operation (CMO)
     input  logic                  cmo_busy_i,
-    input  logic                  cmo_wait_i,
     output logic                  cmo_req_valid_o,
     output hpdcache_cmoh_op_t     cmo_req_op_o,
     output hpdcache_req_addr_t    cmo_req_addr_o,
@@ -200,7 +198,6 @@ import hpdcache_pkg::*;
     output logic                  cmo_valid_set_en_o,
     output hpdcache_set_t         cmo_valid_min_set_o,
     output hpdcache_set_t         cmo_valid_max_set_o,
-    input  logic                  cmo_wbuf_flush_all_i,
     input  logic                  cmo_flush_all_i,
     input  logic                  cmo_inval_all_i,
     input  logic                  cmo_dir_check_nline_i,
@@ -432,6 +429,7 @@ import hpdcache_pkg::*;
     logic                    st1_rtab_check;
     logic                    st1_rtab_check_hit;
     logic                    st1_no_pend_trans;
+    logic                    st1_wbuf_flush_all;
 
     logic                    scrub_req_valid;
     logic                    scrub_req_ready;
@@ -726,13 +724,13 @@ import hpdcache_pkg::*;
         .wbuf_read_hit_i,
         .wbuf_write_uncacheable_o,
         .wbuf_read_flush_hit_o,
+        .wbuf_flush_all_o                   (st1_wbuf_flush_all),
 
         .uc_busy_i,
         .uc_req_valid_o,
         .uc_core_rsp_ready_o,
 
         .cmo_busy_i,
-        .cmo_wait_i,
         .cmo_req_valid_o,
         .cmo_core_rsp_ready_o,
 
@@ -1151,7 +1149,7 @@ import hpdcache_pkg::*;
     assign wbuf_write_addr_o = st1_req_addr;
     assign wbuf_write_data_o = st1_req.req.wdata;
     assign wbuf_write_be_o   = st1_req.req.be;
-    assign wbuf_flush_all_o  = cmo_wbuf_flush_all_i | uc_wbuf_flush_all_i | wbuf_flush_i;
+    assign wbuf_flush_all_o  = st1_wbuf_flush_all | wbuf_flush_i;
     //  }}}
 
     //  Miss handler outputs
