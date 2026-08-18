@@ -491,7 +491,7 @@ import hpdcache_pkg::*;
 
     always_comb
     begin : dir_ctrl_comb
-        unique case (1'b1)
+        case (1'b1)
             //  Cache directory initialization
             ~init_q: begin
                 dir_addr    = init_set_q;
@@ -1137,7 +1137,8 @@ import hpdcache_pkg::*;
     end
 
     concurrent_dir_access_assert: assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
-            $onehot0({dir_match_i,
+            $onehot0({~init_q,
+                      dir_match_i,
                       dir_refill_i,
                       dir_inval_check_i,
                       dir_inval_write_i,
