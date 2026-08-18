@@ -4,19 +4,6 @@
  *  Copyright 2025 Inria, Universite Grenoble-Alpes, TIMA
  *
  *  SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
- *
- *  Licensed under the Solderpad Hardware License v 2.1 (the “License”); you
- *  may not use this file except in compliance with the License, or, at your
- *  option, the Apache License version 2.0. You may obtain a copy of the
- *  License at
- *
- *  https://solderpad.org/licenses/SHL-2.1/
- *
- *  Unless required by applicable law or agreed to in writing, any work
- *  distributed under the License is distributed on an “AS IS” BASIS, WITHOUT
- *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- *  License for the specific language governing permissions and limitations
- *  under the License.
  */
 /*
  *  Authors       : Cesar Fuguet
@@ -51,14 +38,6 @@ import hpdcache_pkg::*;
     input  logic                  clk_i,
     input  logic                  rst_ni,
 
-    //  Global control signals
-    //  {{{
-    input  logic                  wbuf_empty_i,
-    input  logic                  mshr_empty_i,
-    input  logic                  rtab_empty_i,
-    input  logic                  ctrl_empty_i,
-    //  }}}
-
     //  Request interface
     //  {{{
     input  logic                  req_valid_i,
@@ -69,7 +48,6 @@ import hpdcache_pkg::*;
     input  hpdcache_req_sid_t     req_sid_i,
     input  hpdcache_req_tid_t     req_tid_i,
     input  logic                  req_need_rsp_i,
-    output logic                  req_wait_o,
     //  }}}
 
     //  Dirty/Valid tracking interface
@@ -89,11 +67,6 @@ import hpdcache_pkg::*;
     input  logic                  core_rsp_ready_i,
     output logic                  core_rsp_valid_o,
     output hpdcache_rsp_t         core_rsp_o,
-    //  }}}
-
-    //  Write Buffer Interface
-    //  {{{
-    output logic                  wbuf_flush_all_o,
     //  }}}
 
     //  Cache Directory Interface
@@ -138,8 +111,6 @@ import hpdcache_pkg::*;
 //  {{{
     typedef enum {
         CMOH_IDLE = 0,
-        CMOH_FENCE_WAIT_WBUF_RTAB_EMPTY,
-        CMOH_WAIT_MSHR_RTAB_EMPTY,
         CMOH_INVAL_CHECK_NLINE,
         CMOH_INVAL_SET,
         CMOH_FLUSH_ALL_FIRST,
@@ -207,9 +178,6 @@ import hpdcache_pkg::*;
     assign cmoh_set   =  cmoh_nline[0                         +: HPDcacheCfg.setWidth];
     assign cmoh_tag   =  cmoh_nline[HPDcacheCfg.setWidth      +: HPDcacheCfg.tagWidth];
 
-    assign req_wait_o  = (cmoh_fsm_q == CMOH_FENCE_WAIT_WBUF_RTAB_EMPTY) |
-                         (cmoh_fsm_q == CMOH_WAIT_MSHR_RTAB_EMPTY);
-
     assign cmoh_dir_check_nline_hit = |dir_check_nline_hit_way_i;
 
     assign core_rsp = '{
@@ -258,8 +226,6 @@ import hpdcache_pkg::*;
         dir_updt_fetch_o = 1'b0;
         dir_updt_tag_o   = '0;
 
-        wbuf_flush_all_o = 1'b0;
-
         cmoh_flush_req_set = '0;
         cmoh_flush_req_way = '0;
         cmoh_flush_req_tag = '0;
@@ -279,93 +245,71 @@ import hpdcache_pkg::*;
 
                 if (req_valid_i && req_ready_o) begin
                     core_rsp_w = req_need_rsp_i;
+                    cmoh_op_d = req_op_i;
+                    cmoh_addr_d = req_addr_i;
+                    cmoh_way_reset = 1'b1;
 
                     unique case (1'b1)
                         req_op_i.is_fence: begin
-                            //  request to the write buffer to send all open entries
-                            wbuf_flush_all_o = rtab_empty_i;
-
-                            //  then wait for the write buffer to be empty
-                            if (!rtab_empty_i || !wbuf_empty_i) begin
-                                cmoh_fsm_d = CMOH_FENCE_WAIT_WBUF_RTAB_EMPTY;
+                            core_rsp_send_d = core_rsp_w;
+                            cmoh_fsm_d = CMOH_IDLE;
+                        end
+                        req_op_i.is_inval_by_nline: begin
+                            if (valid_set_en_i) begin
+                                cmoh_fsm_d = CMOH_INVAL_CHECK_NLINE;
                             end else begin
-                                core_rsp_send_d = req_need_rsp_i;
+                                core_rsp_send_d = core_rsp_w;
+                                cmoh_fsm_d = CMOH_IDLE;
                             end
                         end
-
-                        req_op_i.is_inval_by_nline,
-                        req_op_i.is_inval_all,
-                        req_op_i.is_flush_by_nline,
-                        req_op_i.is_flush_all,
-                        req_op_i.is_flush_inval_by_nline,
+                        req_op_i.is_inval_all: begin
+                            if (valid_set_en_i) begin
+                                cmoh_inval_set_reset = 1'b1;
+                                cmoh_fsm_d = CMOH_INVAL_SET;
+                            end else begin
+                                core_rsp_send_d = core_rsp_w;
+                                cmoh_fsm_d = CMOH_IDLE;
+                            end
+                        end
+                        req_op_i.is_flush_by_nline: begin
+                            if (dirty_set_en_i) begin
+                                cmoh_flush_req_inval_d = 1'b0;
+                                cmoh_fsm_d = CMOH_FLUSH_NLINE_FIRST;
+                            end else begin
+                                core_rsp_send_d = core_rsp_w;
+                                cmoh_fsm_d = CMOH_IDLE;
+                            end
+                        end
+                        req_op_i.is_flush_all: begin
+                            if (dirty_set_en_i) begin
+                                cmoh_flush_set_reset = 1'b1;
+                                cmoh_flush_req_inval_d = 1'b0;
+                                cmoh_fsm_d = CMOH_FLUSH_ALL_FIRST;
+                            end else begin
+                                core_rsp_send_d = core_rsp_w;
+                                cmoh_fsm_d = CMOH_IDLE;
+                            end
+                        end
+                        req_op_i.is_flush_inval_by_nline: begin
+                            if (valid_set_en_i) begin
+                                cmoh_flush_req_inval_d = 1'b1;
+                                cmoh_fsm_d = CMOH_FLUSH_NLINE_FIRST;
+                            end else begin
+                                core_rsp_send_d = core_rsp_w;
+                                cmoh_fsm_d = CMOH_IDLE;
+                            end
+                        end
                         req_op_i.is_flush_inval_all: begin
-                            cmoh_op_d = req_op_i;
-                            cmoh_addr_d = req_addr_i;
-                            cmoh_way_reset = 1'b1;
-                            cmoh_fsm_d = CMOH_WAIT_MSHR_RTAB_EMPTY;
+                            if (valid_set_en_i) begin
+                                cmoh_inval_set_reset = 1'b1;
+                                cmoh_flush_req_inval_d = 1'b1;
+                                cmoh_fsm_d = CMOH_FLUSH_ALL_FIRST;
+                            end else begin
+                                core_rsp_send_d = core_rsp_w;
+                                cmoh_fsm_d = CMOH_IDLE;
+                            end
                         end
                     endcase
-                end
-            end
-            CMOH_FENCE_WAIT_WBUF_RTAB_EMPTY: begin
-                wbuf_flush_all_o = rtab_empty_i;
-                if (wbuf_empty_i && rtab_empty_i) begin
-                    core_rsp_send_d = core_rsp_rok;
-                    cmoh_fsm_d = CMOH_IDLE;
-                end
-            end
-            CMOH_WAIT_MSHR_RTAB_EMPTY: begin
-                if (mshr_empty_i && rtab_empty_i && ctrl_empty_i) begin
-                    unique if (cmoh_op_q.is_inval_by_nline) begin
-                        if (valid_set_en_i) begin
-                            cmoh_fsm_d = CMOH_INVAL_CHECK_NLINE;
-                        end else begin
-                            core_rsp_send_d = core_rsp_rok;
-                            cmoh_fsm_d = CMOH_IDLE;
-                        end
-                    end else if (cmoh_op_q.is_inval_all) begin
-                        if (valid_set_en_i) begin
-                            cmoh_inval_set_reset = 1'b1;
-                            cmoh_fsm_d = CMOH_INVAL_SET;
-                        end else begin
-                            core_rsp_send_d = core_rsp_rok;
-                            cmoh_fsm_d = CMOH_IDLE;
-                        end
-                    end else if (cmoh_op_q.is_flush_by_nline) begin
-                        if (dirty_set_en_i) begin
-                            cmoh_flush_req_inval_d = 1'b0;
-                            cmoh_fsm_d = CMOH_FLUSH_NLINE_FIRST;
-                        end else begin
-                            core_rsp_send_d = core_rsp_rok;
-                            cmoh_fsm_d = CMOH_IDLE;
-                        end
-                    end else if (cmoh_op_q.is_flush_all) begin
-                        if (dirty_set_en_i) begin
-                            cmoh_flush_set_reset = 1'b1;
-                            cmoh_flush_req_inval_d = 1'b0;
-                            cmoh_fsm_d = CMOH_FLUSH_ALL_FIRST;
-                        end else begin
-                            core_rsp_send_d = core_rsp_rok;
-                            cmoh_fsm_d = CMOH_IDLE;
-                        end
-                    end else if (cmoh_op_q.is_flush_inval_by_nline) begin
-                        if (valid_set_en_i) begin
-                            cmoh_flush_req_inval_d = 1'b1;
-                            cmoh_fsm_d = CMOH_FLUSH_NLINE_FIRST;
-                        end else begin
-                            core_rsp_send_d = core_rsp_rok;
-                            cmoh_fsm_d = CMOH_IDLE;
-                        end
-                    end else if (cmoh_op_q.is_flush_inval_all) begin
-                        if (valid_set_en_i) begin
-                            cmoh_inval_set_reset = 1'b1;
-                            cmoh_flush_req_inval_d = 1'b1;
-                            cmoh_fsm_d = CMOH_FLUSH_ALL_FIRST;
-                        end else begin
-                            core_rsp_send_d = core_rsp_rok;
-                            cmoh_fsm_d = CMOH_IDLE;
-                        end
-                    end
                 end
             end
             CMOH_INVAL_CHECK_NLINE: begin
@@ -678,5 +622,5 @@ import hpdcache_pkg::*;
                     $error("cmo_handler: new request received while busy");
 `endif
 //  }}}
-
 endmodule
+// vim: ts=4 : sts=4 : sw=4 : et : tw=100 : spell : spelllang=en : fdm=marker

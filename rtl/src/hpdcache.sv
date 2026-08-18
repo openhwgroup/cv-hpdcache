@@ -254,7 +254,6 @@ import hpdcache_pkg::*;
     logic                  uc_req_need_rsp;
     hpdcache_way_vector_t  uc_req_dir_hit_way;
     hpdcache_req_data_t    uc_req_old_data;
-    logic                  uc_wbuf_flush_all;
     logic                  uc_data_amo_write;
     logic                  uc_data_amo_write_enable;
     hpdcache_set_t         uc_data_amo_write_set;
@@ -284,7 +283,6 @@ import hpdcache_pkg::*;
     logic                  cmo_valid_set_en;
     hpdcache_set_t         cmo_valid_min_set;
     hpdcache_set_t         cmo_valid_max_set;
-    logic                  cmo_wbuf_flush_all;
     logic                  cmo_flush_all;
     logic                  cmo_inval_all;
     logic                  cmo_dir_check_nline;
@@ -308,7 +306,6 @@ import hpdcache_pkg::*;
     logic                  cmo_dir_updt_dirty;
     logic                  cmo_dir_updt_fetch;
     hpdcache_tag_t         cmo_dir_updt_tag;
-    logic                  cmo_wait;
     logic                  cmo_flush_alloc;
     hpdcache_nline_t       cmo_flush_alloc_nline;
     hpdcache_way_vector_t  cmo_flush_alloc_way;
@@ -586,7 +583,6 @@ import hpdcache_pkg::*;
         .uc_req_need_rsp_o                  (uc_req_need_rsp),
         .uc_req_dir_hit_way_o               (uc_req_dir_hit_way),
         .uc_req_old_data_o                  (uc_req_old_data),
-        .uc_wbuf_flush_all_i                (uc_wbuf_flush_all),
         .uc_data_amo_write_i                (uc_data_amo_write),
         .uc_data_amo_write_enable_i         (uc_data_amo_write_enable),
         .uc_data_amo_write_set_i            (uc_data_amo_write_set),
@@ -600,7 +596,6 @@ import hpdcache_pkg::*;
         .uc_core_rsp_i                      (uc_core_rsp),
 
         .cmo_busy_i                         (~cmo_ready),
-        .cmo_wait_i                         (cmo_wait),
         .cmo_req_valid_o                    (cmo_req_valid),
         .cmo_req_op_o                       (cmo_req_op),
         .cmo_req_addr_o                     (cmo_req_addr),
@@ -614,7 +609,6 @@ import hpdcache_pkg::*;
         .cmo_valid_set_en_o                 (cmo_valid_set_en),
         .cmo_valid_min_set_o                (cmo_valid_min_set),
         .cmo_valid_max_set_o                (cmo_valid_max_set),
-        .cmo_wbuf_flush_all_i               (cmo_wbuf_flush_all),
         .cmo_flush_all_i                    (cmo_flush_all),
         .cmo_inval_all_i                    (cmo_inval_all),
         .cmo_dir_check_nline_i              (cmo_dir_check_nline),
@@ -878,8 +872,6 @@ import hpdcache_pkg::*;
         .req_hit_way_i                 (uc_req_dir_hit_way),
         .req_old_data_i                (uc_req_old_data),
 
-        .wbuf_flush_all_o              (uc_wbuf_flush_all),
-
         .data_amo_write_o              (uc_data_amo_write),
         .data_amo_write_enable_o       (uc_data_amo_write_enable),
         .data_amo_write_set_o          (uc_data_amo_write_set),
@@ -944,11 +936,6 @@ import hpdcache_pkg::*;
         .clk_i,
         .rst_ni,
 
-        .wbuf_empty_i                  (wbuf_empty_o),
-        .mshr_empty_i                  (miss_mshr_empty),
-        .rtab_empty_i                  (rtab_empty),
-        .ctrl_empty_i                  (ctrl_empty),
-
         .req_valid_i                   (cmo_req_valid),
         .req_ready_o                   (cmo_ready),
         .req_op_i                      (cmo_req_op),
@@ -957,7 +944,6 @@ import hpdcache_pkg::*;
         .req_sid_i                     (cmo_req_sid),
         .req_tid_i                     (cmo_req_tid),
         .req_need_rsp_i                (cmo_req_need_rsp),
-        .req_wait_o                    (cmo_wait),
 
         .dirty_set_en_i                (cmo_dirty_set_en),
         .dirty_min_set_i               (cmo_dirty_min_set),
@@ -971,8 +957,6 @@ import hpdcache_pkg::*;
         .core_rsp_ready_i              (cmo_core_rsp_ready),
         .core_rsp_valid_o              (cmo_core_rsp_valid),
         .core_rsp_o                    (cmo_core_rsp),
-
-        .wbuf_flush_all_o              (cmo_wbuf_flush_all),
 
         .dir_check_nline_o             (cmo_dir_check_nline),
         .dir_check_nline_set_o         (cmo_dir_check_nline_set),

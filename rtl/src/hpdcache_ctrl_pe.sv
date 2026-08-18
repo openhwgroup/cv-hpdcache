@@ -178,6 +178,7 @@ import hpdcache_pkg::*;
     output logic                   wbuf_write_valid_o,
     output logic                   wbuf_write_uncacheable_o,
     output logic                   wbuf_read_flush_hit_o,
+    output logic                   wbuf_flush_all_o,
     //   }}}
 
     //   Flush controller
@@ -197,7 +198,6 @@ import hpdcache_pkg::*;
     //   Cache Management Operation (CMO)
     //   {{{
     input  logic                   cmo_busy_i,
-    input  logic                   cmo_wait_i,
     output logic                   cmo_req_valid_o,
     output logic                   cmo_core_rsp_ready_o,
     //   }}}
@@ -304,6 +304,7 @@ import hpdcache_pkg::*;
         wbuf_write_valid_o                  = 1'b0;
         wbuf_read_flush_hit_o               = 1'b0;
         wbuf_write_uncacheable_o            = 1'b0; // unused
+        wbuf_flush_all_o                    = 1'b0;
 
         core_req_ready_o                    = 1'b0;
         scrub_req_ready_o                   = 1'b0;
@@ -482,11 +483,27 @@ import hpdcache_pkg::*;
                          st1_req_is_cmo_flush_i ||
                          st1_req_is_cmo_fence_i)
                 begin
-                    cmo_req_valid_o = 1'b1;
-                    st1_nop         = 1'b1;
+                    //  There are pending transactions which must be completed and the
+                    //  request is not being replayed.
+                    //  When a CMO request is replayed, it is guaranteed
+                    //  that there is no other pending transaction.
+                    if (!st1_no_pend_trans_i && !st1_req_rtab_i) begin
+                        wbuf_flush_all_o = 1'b1;
+                        st1_rtab_alloc = 1'b1;
+                        st1_nop = 1'b1;
+                    end
+                    //  Process the CMO (when no pending transaction)
+                    else begin
+                        cmo_req_valid_o = 1'b1;
+                        st1_nop         = 1'b1;
 
-                    //  Performance event
-                    evt_cmo_req_o = 1'b1;
+                        //  If the request comes from the replay table, free the
+                        //  corresponding RTAB entry
+                        st1_rtab_commit_o = st1_req_rtab_i;
+
+                        //  Performance event
+                        evt_cmo_req_o = 1'b1;
+                    end
                 end
                 //  }}}
 
@@ -498,15 +515,17 @@ import hpdcache_pkg::*;
                     //  When an uncacheable request is replayed, it is guaranteed
                     //  that there is no other pending transaction.
                     if (!st1_no_pend_trans_i && !st1_req_rtab_i) begin
+                        wbuf_flush_all_o = 1'b1;
                         st1_rtab_alloc = 1'b1;
                         st1_nop = 1'b1;
                     end
-
+                    //  Process the unc request (when no pending transaction)
                     else begin
                         // cache miss
                         if(!cachedir_hit_i) begin
                             uc_req_valid_o = 1'b1;
                             st1_nop        = 1'b1;
+
                             //  If the request comes from the replay table, free the
                             //  corresponding RTAB entry
                             st1_rtab_commit_o = st1_req_rtab_i;
@@ -625,6 +644,7 @@ import hpdcache_pkg::*;
                         //  When an AMO request is replayed, it is guaranteed that there
                         //  is no other pending transaction.
                         if (!st1_no_pend_trans_i && !st1_req_rtab_i) begin
+                            wbuf_flush_all_o = 1'b1;
                             st1_rtab_alloc = 1'b1;
                             st1_nop = 1'b1;
                         end
@@ -1216,12 +1236,12 @@ import hpdcache_pkg::*;
 
             rtab_req_ready_o = rtab_req_valid_i
                                & ~refill_req_valid_i
-                               & (~cmo_busy_i | cmo_wait_i)
+                               & ~cmo_busy_i
                                & ~err_busy_i
                                & ~nop;
 
             refill_req_ready_o = refill_req_valid_i
-                                 & (~cmo_busy_i | cmo_wait_i)
+                                 & ~cmo_busy_i
                                  & (~err_busy_i | err_wait_i)
                                  & ~st1_req_valid_i
                                  & ~(st2_mshr_alloc_i | st2_dir_updt_i);
