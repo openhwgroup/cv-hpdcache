@@ -88,10 +88,14 @@ public:
             hpdcache_test_transaction_req::HPDCACHE_REQ_CMO_FENCE, 10);
         hpdcache_test_sequence::op_distribution.push(
             hpdcache_test_transaction_req::HPDCACHE_REQ_CMO_PREFETCH, 10);
-        //        hpdcache_test_sequence::op_distribution.push(hpdcache_test_transaction_req::HPDCACHE_REQ_CMO_INVAL_NLINE,
-        //        15);
-        //        hpdcache_test_sequence::op_distribution.push(hpdcache_test_transaction_req::HPDCACHE_REQ_CMO_INVAL_ALL,
-        //        15);
+
+#if !defined(CONF_HPDCACHE_WB_ENABLE) || (CONF_HPDCACHE_WB_ENABLE == 0)
+        hpdcache_test_sequence::op_distribution.push(
+            hpdcache_test_transaction_req::HPDCACHE_REQ_CMO_INVAL_NLINE, 15);
+        hpdcache_test_sequence::op_distribution.push(
+            hpdcache_test_transaction_req::HPDCACHE_REQ_CMO_INVAL_ALL, 15);
+#endif
+
         hpdcache_test_sequence::op_distribution.push(
             hpdcache_test_transaction_req::HPDCACHE_REQ_CMO_FLUSH_NLINE, 10);
         hpdcache_test_sequence::op_distribution.push(
