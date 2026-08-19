@@ -402,14 +402,14 @@ import hpdcache_pkg::*;
                     i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.st1_req_valid_i &&
                     i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.st1_req_is_store_i &&
                     i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.st1_req_is_partial_i &&
-                    i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.cachedir_hit_i &&
+                    i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.st1_dir_hit_i &&
                     i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.st1_req_cachedata_write_enable_o);
         partial_amo_hit_cover: cover property (
             @(posedge clk_i) disable iff (rst_ni !== 1'b1)
                     i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.st1_req_valid_i &&
                     i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.st1_req_is_amo_i &&
                     i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.st1_req_is_partial_i &&
-                    i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.cachedir_hit_i &&
+                    i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.st1_dir_hit_i &&
                     i_hpdcache.hpdcache_ctrl_i.hpdcache_ctrl_pe_i.uc_req_valid_o);
     end
 `endif

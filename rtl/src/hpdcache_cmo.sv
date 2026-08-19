@@ -44,7 +44,6 @@ import hpdcache_pkg::*;
     output logic                  req_ready_o,
     input  hpdcache_cmoh_op_t     req_op_i,
     input  hpdcache_req_addr_t    req_addr_i,
-    input  hpdcache_req_data_t    req_wdata_i/*unused*/,
     input  hpdcache_req_sid_t     req_sid_i,
     input  hpdcache_req_tid_t     req_tid_i,
     input  logic                  req_need_rsp_i,
@@ -71,13 +70,6 @@ import hpdcache_pkg::*;
 
     //  Cache Directory Interface
     //  {{{
-    output logic                  dir_check_nline_o,
-    output hpdcache_set_t         dir_check_nline_set_o,
-    output hpdcache_tag_t         dir_check_nline_tag_o,
-    input  hpdcache_way_vector_t  dir_check_nline_hit_way_i,
-    input  logic                  dir_check_nline_wback_i,
-    input  logic                  dir_check_nline_dirty_i,
-
     output logic                  dir_check_entry_o,
     output hpdcache_set_t         dir_check_entry_set_o,
     output hpdcache_way_vector_t  dir_check_entry_way_o,
@@ -111,13 +103,10 @@ import hpdcache_pkg::*;
 //  {{{
     typedef enum {
         CMOH_IDLE = 0,
-        CMOH_INVAL_CHECK_NLINE,
         CMOH_INVAL_SET,
         CMOH_FLUSH_ALL_FIRST,
         CMOH_FLUSH_ALL_NEXT,
-        CMOH_FLUSH_ALL_LAST,
-        CMOH_FLUSH_NLINE_FIRST,
-        CMOH_FLUSH_NLINE_NEXT
+        CMOH_FLUSH_ALL_LAST
     } hpdcache_cmoh_fsm_t;
 //  }}}
 
@@ -134,10 +123,6 @@ import hpdcache_pkg::*;
     hpdcache_way_vector_t cmoh_flush_req_way_q, cmoh_flush_req_way_d;
     logic                 cmoh_flush_req_inval_q, cmoh_flush_req_inval_d;
 
-    logic                 cmoh_dir_check_nline_hit;
-    hpdcache_nline_t      cmoh_nline;
-    hpdcache_set_t        cmoh_set;
-    hpdcache_tag_t        cmoh_tag;
     logic                 cmoh_flush_req_w;
     logic                 cmoh_flush_req_wok;
     hpdcache_set_t        cmoh_flush_req_set;
@@ -174,12 +159,6 @@ import hpdcache_pkg::*;
 
 //  CMO request handler FSM
 //  {{{
-    assign cmoh_nline = cmoh_addr_q[HPDcacheCfg.clOffsetWidth +: HPDcacheCfg.nlineWidth];
-    assign cmoh_set   =  cmoh_nline[0                         +: HPDcacheCfg.setWidth];
-    assign cmoh_tag   =  cmoh_nline[HPDcacheCfg.setWidth      +: HPDcacheCfg.tagWidth];
-
-    assign cmoh_dir_check_nline_hit = |dir_check_nline_hit_way_i;
-
     assign core_rsp = '{
         rdata: '0,
         sid: req_sid_i,
@@ -187,6 +166,8 @@ import hpdcache_pkg::*;
         error: 1'b0,
         aborted: 1'b0
     };
+
+    assign req_ready_o = (cmoh_fsm_q == CMOH_IDLE) && (!core_rsp_rok || core_rsp_r);
 
     always_comb
     begin : cmoh_fsm_comb
@@ -210,9 +191,6 @@ import hpdcache_pkg::*;
         flush_all_o = 1'b0;
         inval_all_o = 1'b0;
 
-        dir_check_nline_o     = 1'b0;
-        dir_check_nline_set_o = cmoh_set;
-        dir_check_nline_tag_o = cmoh_tag;
         dir_check_entry_o     = 1'b0;
         dir_check_entry_set_o = cmoh_set_q;
         dir_check_entry_way_o = cmoh_way_q;
@@ -233,12 +211,8 @@ import hpdcache_pkg::*;
         core_rsp_w      = 1'b0;
         core_rsp_send_d = core_rsp_send_q;
 
-        req_ready_o = 1'b0;
-
         unique case (cmoh_fsm_q)
             CMOH_IDLE: begin
-                req_ready_o = ~core_rsp_rok | core_rsp_r;
-
                 if (core_rsp_r) begin
                     core_rsp_send_d = 1'b0;
                 end
@@ -250,31 +224,10 @@ import hpdcache_pkg::*;
                     cmoh_way_reset = 1'b1;
 
                     unique case (1'b1)
-                        req_op_i.is_fence: begin
-                            core_rsp_send_d = core_rsp_w;
-                            cmoh_fsm_d = CMOH_IDLE;
-                        end
-                        req_op_i.is_inval_by_nline: begin
-                            if (valid_set_en_i) begin
-                                cmoh_fsm_d = CMOH_INVAL_CHECK_NLINE;
-                            end else begin
-                                core_rsp_send_d = core_rsp_w;
-                                cmoh_fsm_d = CMOH_IDLE;
-                            end
-                        end
                         req_op_i.is_inval_all: begin
                             if (valid_set_en_i) begin
                                 cmoh_inval_set_reset = 1'b1;
                                 cmoh_fsm_d = CMOH_INVAL_SET;
-                            end else begin
-                                core_rsp_send_d = core_rsp_w;
-                                cmoh_fsm_d = CMOH_IDLE;
-                            end
-                        end
-                        req_op_i.is_flush_by_nline: begin
-                            if (dirty_set_en_i) begin
-                                cmoh_flush_req_inval_d = 1'b0;
-                                cmoh_fsm_d = CMOH_FLUSH_NLINE_FIRST;
                             end else begin
                                 core_rsp_send_d = core_rsp_w;
                                 cmoh_fsm_d = CMOH_IDLE;
@@ -285,15 +238,6 @@ import hpdcache_pkg::*;
                                 cmoh_flush_set_reset = 1'b1;
                                 cmoh_flush_req_inval_d = 1'b0;
                                 cmoh_fsm_d = CMOH_FLUSH_ALL_FIRST;
-                            end else begin
-                                core_rsp_send_d = core_rsp_w;
-                                cmoh_fsm_d = CMOH_IDLE;
-                            end
-                        end
-                        req_op_i.is_flush_inval_by_nline: begin
-                            if (valid_set_en_i) begin
-                                cmoh_flush_req_inval_d = 1'b1;
-                                cmoh_fsm_d = CMOH_FLUSH_NLINE_FIRST;
                             end else begin
                                 core_rsp_send_d = core_rsp_w;
                                 cmoh_fsm_d = CMOH_IDLE;
@@ -312,52 +256,21 @@ import hpdcache_pkg::*;
                     endcase
                 end
             end
-            CMOH_INVAL_CHECK_NLINE: begin
-                dir_check_nline_o = 1'b1;
-                cmoh_fsm_d = CMOH_INVAL_SET;
-            end
             CMOH_INVAL_SET: begin
-                unique case (1'b1)
-                    //  The CMO requests the invalidation of a given cacheline (or flush with
-                    //  invalidation when the cache does not support WB policy)
-                    cmoh_op_q.is_inval_by_nline,
-                    cmoh_op_q.is_flush_inval_by_nline: begin
-                        /* FIXME this adds a DIR to DIR timing path. We should probably delay the
-                         *       invalidation of one cycle to ease the timing closure */
-                        dir_updt_o       = cmoh_dir_check_nline_hit;
-                        dir_updt_set_o   = cmoh_set;
-                        dir_updt_way_o   = dir_check_nline_hit_way_i;
-                        dir_updt_valid_o = 1'b0;
-                        dir_updt_wback_o = 1'b0;
-                        dir_updt_dirty_o = 1'b0;
-                        dir_updt_fetch_o = 1'b0;
-                        dir_updt_tag_o   = '0;
-
-                        core_rsp_send_d = core_rsp_rok;
-                        cmoh_fsm_d      = CMOH_IDLE;
-                    end
-
-                    //  The CMO requests a full invalidation (or flush with invalidation when the
-                    //  cache does not support WB policy)
-                    cmoh_op_q.is_inval_all,
-                    cmoh_op_q.is_flush_inval_all:
-                    begin
-                        dir_updt_o       = 1'b1;
-                        dir_updt_set_o   = cmoh_set_q;
-                        dir_updt_way_o   = {HPDcacheCfg.u.ways{1'b1}};
-                        dir_updt_valid_o = 1'b0;
-                        dir_updt_wback_o = 1'b0;
-                        dir_updt_dirty_o = 1'b0;
-                        dir_updt_fetch_o = 1'b0;
-                        dir_updt_tag_o   = '0;
-                        cmoh_set_incr    = 1'b1;
-                        if (cmoh_set_last) begin
-                            inval_all_o = 1'b1;
-                            core_rsp_send_d = core_rsp_rok;
-                            cmoh_fsm_d = CMOH_IDLE;
-                        end
-                    end
-                endcase
+                dir_updt_o       = 1'b1;
+                dir_updt_set_o   = cmoh_set_q;
+                dir_updt_way_o   = {HPDcacheCfg.u.ways{1'b1}};
+                dir_updt_valid_o = 1'b0;
+                dir_updt_wback_o = 1'b0;
+                dir_updt_dirty_o = 1'b0;
+                dir_updt_fetch_o = 1'b0;
+                dir_updt_tag_o   = '0;
+                cmoh_set_incr    = 1'b1;
+                if (cmoh_set_last) begin
+                    inval_all_o = 1'b1;
+                    core_rsp_send_d = core_rsp_rok;
+                    cmoh_fsm_d = CMOH_IDLE;
+                end
             end
             CMOH_FLUSH_ALL_FIRST: begin
                 if (HPDcacheCfg.u.wbEn) begin
@@ -434,44 +347,6 @@ import hpdcache_pkg::*;
                 if (flush_empty_i && !flush_alloc_o) begin
                     flush_all_o = 1'b1;
                     inval_all_o = cmoh_flush_req_inval_q;
-                    core_rsp_send_d = core_rsp_rok;
-                    cmoh_fsm_d = CMOH_IDLE;
-                end
-            end
-            CMOH_FLUSH_NLINE_FIRST: begin
-                if (HPDcacheCfg.u.wbEn) begin
-                    if (cmoh_flush_req_wok) begin
-                        dir_check_nline_o = 1'b1;
-                        cmoh_flush_req_valid_d = 1'b1;
-                        cmoh_fsm_d = CMOH_FLUSH_NLINE_NEXT;
-                    end
-                end else if (cmoh_flush_req_inval_q) begin
-                    cmoh_fsm_d = CMOH_INVAL_CHECK_NLINE;
-                end else begin
-                    core_rsp_send_d = core_rsp_rok;
-                    cmoh_fsm_d = CMOH_IDLE;
-                end
-            end
-            CMOH_FLUSH_NLINE_NEXT: begin
-                cmoh_flush_req_valid_d = 1'b0;
-                if (cmoh_flush_req_valid_q) begin
-                    /* FIXME this adds a DIR to DIR timing path. We should probably delay the
-                     *       invalidation of one cycle to ease the timing closure */
-                    dir_updt_o       = cmoh_dir_check_nline_hit;
-                    dir_updt_set_o   = cmoh_set;
-                    dir_updt_way_o   = dir_check_nline_hit_way_i;
-                    dir_updt_valid_o = ~cmoh_flush_req_inval_q;
-                    dir_updt_wback_o = ~cmoh_flush_req_inval_q & dir_check_nline_wback_i;
-                    dir_updt_dirty_o = 1'b0;
-                    dir_updt_fetch_o = 1'b0;
-                    dir_updt_tag_o   = cmoh_tag;
-                    cmoh_flush_req_set = cmoh_set;
-                    cmoh_flush_req_tag = cmoh_tag;
-                    cmoh_flush_req_way = dir_check_nline_hit_way_i;
-                end
-
-                //  Make sure that all requests have been processed
-                if (flush_empty_i && !flush_alloc_o) begin
                     core_rsp_send_d = core_rsp_rok;
                     cmoh_fsm_d = CMOH_IDLE;
                 end
@@ -564,12 +439,9 @@ import hpdcache_pkg::*;
         begin : cmoh_flush_req_w_comb
             cmoh_flush_req_w = 1'b0;
             if (cmoh_flush_req_valid_q) begin
-                unique case (cmoh_fsm_q)
-                    CMOH_FLUSH_ALL_NEXT, CMOH_FLUSH_ALL_LAST:
-                        cmoh_flush_req_w = dir_check_entry_valid_i & dir_check_entry_dirty_i;
-                    CMOH_FLUSH_NLINE_NEXT:
-                        cmoh_flush_req_w = cmoh_dir_check_nline_hit & dir_check_nline_dirty_i;
-                endcase
+                if (cmoh_fsm_q inside {CMOH_FLUSH_ALL_NEXT, CMOH_FLUSH_ALL_LAST}) begin
+                    cmoh_flush_req_w = dir_check_entry_valid_i & dir_check_entry_dirty_i;
+                end
             end
         end
 
@@ -608,12 +480,8 @@ import hpdcache_pkg::*;
 //  {{{
 `ifndef HPDCACHE_ASSERT_OFF
     assert property (@(posedge clk_i) disable iff (rst_ni !== 1'b1)
-            req_valid_i -> $onehot({req_op_i.is_fence,
-                                    req_op_i.is_inval_by_nline,
-                                    req_op_i.is_inval_all,
-                                    req_op_i.is_flush_by_nline,
+            req_valid_i -> $onehot({req_op_i.is_inval_all,
                                     req_op_i.is_flush_all,
-                                    req_op_i.is_flush_inval_by_nline,
                                     req_op_i.is_flush_inval_all})) else
                     $error("cmo_handler: invalid request");
 

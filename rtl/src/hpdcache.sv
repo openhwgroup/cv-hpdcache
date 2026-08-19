@@ -275,7 +275,6 @@ import hpdcache_pkg::*;
     hpdcache_req_addr_t    cmo_req_addr;
     hpdcache_req_sid_t     cmo_req_sid;
     hpdcache_req_tid_t     cmo_req_tid;
-    hpdcache_req_data_t    cmo_req_wdata;
     logic                  cmo_req_need_rsp;
     logic                  cmo_dirty_set_en;
     hpdcache_set_t         cmo_dirty_min_set;
@@ -285,12 +284,6 @@ import hpdcache_pkg::*;
     hpdcache_set_t         cmo_valid_max_set;
     logic                  cmo_flush_all;
     logic                  cmo_inval_all;
-    logic                  cmo_dir_check_nline;
-    hpdcache_set_t         cmo_dir_check_nline_set;
-    hpdcache_tag_t         cmo_dir_check_nline_tag;
-    hpdcache_way_vector_t  cmo_dir_check_nline_hit_way;
-    logic                  cmo_dir_check_nline_wback;
-    logic                  cmo_dir_check_nline_dirty;
     logic                  cmo_dir_check_entry;
     hpdcache_set_t         cmo_dir_check_entry_set;
     hpdcache_way_vector_t  cmo_dir_check_entry_way;
@@ -490,8 +483,6 @@ import hpdcache_pkg::*;
 
         .wbuf_flush_i,
 
-        .cachedir_hit_o                     (/* unused */),
-
         .st0_mshr_check_o                   (miss_mshr_check),
         .st0_mshr_check_offset_o            (miss_mshr_check_offset),
         .st1_mshr_check_nline_o             (miss_mshr_check_nline),
@@ -599,7 +590,6 @@ import hpdcache_pkg::*;
         .cmo_req_valid_o                    (cmo_req_valid),
         .cmo_req_op_o                       (cmo_req_op),
         .cmo_req_addr_o                     (cmo_req_addr),
-        .cmo_req_wdata_o                    (cmo_req_wdata),
         .cmo_req_sid_o                      (cmo_req_sid),
         .cmo_req_tid_o                      (cmo_req_tid),
         .cmo_req_need_rsp_o                 (cmo_req_need_rsp),
@@ -611,12 +601,6 @@ import hpdcache_pkg::*;
         .cmo_valid_max_set_o                (cmo_valid_max_set),
         .cmo_flush_all_i                    (cmo_flush_all),
         .cmo_inval_all_i                    (cmo_inval_all),
-        .cmo_dir_check_nline_i              (cmo_dir_check_nline),
-        .cmo_dir_check_nline_set_i          (cmo_dir_check_nline_set),
-        .cmo_dir_check_nline_tag_i          (cmo_dir_check_nline_tag),
-        .cmo_dir_check_nline_hit_way_o      (cmo_dir_check_nline_hit_way),
-        .cmo_dir_check_nline_wback_o        (cmo_dir_check_nline_wback),
-        .cmo_dir_check_nline_dirty_o        (cmo_dir_check_nline_dirty),
         .cmo_dir_check_entry_i              (cmo_dir_check_entry),
         .cmo_dir_check_entry_set_i          (cmo_dir_check_entry_set),
         .cmo_dir_check_entry_way_i          (cmo_dir_check_entry_way),
@@ -940,7 +924,6 @@ import hpdcache_pkg::*;
         .req_ready_o                   (cmo_ready),
         .req_op_i                      (cmo_req_op),
         .req_addr_i                    (cmo_req_addr),
-        .req_wdata_i                   (cmo_req_wdata),
         .req_sid_i                     (cmo_req_sid),
         .req_tid_i                     (cmo_req_tid),
         .req_need_rsp_i                (cmo_req_need_rsp),
@@ -958,12 +941,6 @@ import hpdcache_pkg::*;
         .core_rsp_valid_o              (cmo_core_rsp_valid),
         .core_rsp_o                    (cmo_core_rsp),
 
-        .dir_check_nline_o             (cmo_dir_check_nline),
-        .dir_check_nline_set_o         (cmo_dir_check_nline_set),
-        .dir_check_nline_tag_o         (cmo_dir_check_nline_tag),
-        .dir_check_nline_hit_way_i     (cmo_dir_check_nline_hit_way),
-        .dir_check_nline_wback_i       (cmo_dir_check_nline_wback),
-        .dir_check_nline_dirty_i       (cmo_dir_check_nline_dirty),
 
         .dir_check_entry_o             (cmo_dir_check_entry),
         .dir_check_entry_set_o         (cmo_dir_check_entry_set),
