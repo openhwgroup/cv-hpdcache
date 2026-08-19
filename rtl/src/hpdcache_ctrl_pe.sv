@@ -50,6 +50,7 @@ import hpdcache_pkg::*;
     input  logic                   st0_req_is_amo_i,
     input  logic                   st0_req_is_cmo_fence_i,
     input  logic                   st0_req_is_cmo_inval_i,
+    input  logic                   st0_req_is_cmo_flush_i,
     input  logic                   st0_req_is_cmo_prefetch_i,
     input  logic                   st0_req_is_partial_i,
     output logic                   st0_req_mshr_check_o,
@@ -68,13 +69,17 @@ import hpdcache_pkg::*;
     input  logic                   st1_req_is_store_i,
     input  logic                   st1_req_is_amo_i,
     input  logic                   st1_req_is_cmo_inval_i,
+    input  logic                   st1_req_is_cmo_inval_nline_i,
     input  logic                   st1_req_is_cmo_flush_i,
+    input  logic                   st1_req_is_cmo_flush_nline_i,
+    input  logic                   st1_req_is_cmo_flush_inval_nline_i,
     input  logic                   st1_req_is_cmo_fence_i,
     input  logic                   st1_req_is_cmo_prefetch_i,
     input  logic                   st1_req_is_partial_i,
     input  logic                   st1_req_wr_wt_i,
     input  logic                   st1_req_wr_wb_i,
     input  logic                   st1_req_wr_auto_i,
+    input  logic                   st1_dir_hit_i,
     input  logic                   st1_dir_hit_wback_i,
     input  logic                   st1_dir_hit_dirty_i,
     input  logic                   st1_dir_hit_fetch_i,
@@ -161,7 +166,6 @@ import hpdcache_pkg::*;
 
     //   Cache directory
     //   {{{
-    input  logic                   cachedir_hit_i,
     input  logic                   cachedir_init_ready_i,
     //   }}}
 
@@ -491,11 +495,68 @@ import hpdcache_pkg::*;
                         wbuf_flush_all_o = 1'b1;
                         st1_rtab_alloc = 1'b1;
                         st1_nop = 1'b1;
-                    end
-                    //  Process the CMO (when no pending transaction)
-                    else begin
-                        cmo_req_valid_o = 1'b1;
-                        st1_nop         = 1'b1;
+                    end else begin
+                        //  Process fence CMO
+                        //  CMOs are only executed when there is no pending transaction (see above).
+                        //  Hence, the fence can be responded (if needed) when processed. No further
+                        //  treatment required.
+                        if (st1_req_is_cmo_fence_i) begin
+                            //  Acknowledge the core (if needed)
+                            st1_rsp_valid_o = st1_req_need_rsp_i;
+                        end
+                        //  Process inval cacheline CMO
+                        else if (st1_req_is_cmo_inval_nline_i) begin
+                            //  Invalidate the cacheline on cache hit
+                            st2_dir_updt_o       = st1_dir_hit_i;
+                            st2_dir_updt_valid_o = 1'b0;
+                            st2_dir_updt_wback_o = 1'b0;
+                            st2_dir_updt_dirty_o = 1'b0;
+                            st2_dir_updt_fetch_o = 1'b0;
+
+                            //  Acknowledge the core (if needed)
+                            st1_rsp_valid_o = st1_req_need_rsp_i;
+
+                            st1_nop = 1'b1;
+                        end
+                        //  Process flush cacheline CMO
+                        else if (st1_req_is_cmo_flush_nline_i) begin
+                            // allocate flush if there is a hit and the cacheline is dirty
+                            st2_flush_alloc_o = st1_dir_hit_dirty_i;
+
+                            // update the cacheline for flush
+                            st2_dir_updt_o = st1_dir_hit_dirty_i;
+                            st2_dir_updt_valid_o = 1'b1;
+                            st2_dir_updt_wback_o = 1'b1;
+                            st2_dir_updt_dirty_o = 1'b0;
+                            st2_dir_updt_fetch_o = 1'b0;
+
+                            //  Acknowledge the core (if needed)
+                            st1_rsp_valid_o = st1_req_need_rsp_i;
+
+                            st1_nop = 1'b1;
+                        end
+                        //  Process flush cacheline CMO
+                        else if (st1_req_is_cmo_flush_inval_nline_i) begin
+                            // allocate flush if there is a hit and the cacheline is dirty
+                            st2_flush_alloc_o = st1_dir_hit_dirty_i;
+
+                            // update the cacheline for flush
+                            st2_dir_updt_o = st1_dir_hit_i;
+                            st2_dir_updt_valid_o = 1'b0;
+                            st2_dir_updt_wback_o = 1'b0;
+                            st2_dir_updt_dirty_o = 1'b0;
+                            st2_dir_updt_fetch_o = 1'b0;
+
+                            //  Acknowledge the core (if needed)
+                            st1_rsp_valid_o = st1_req_need_rsp_i;
+
+                            st1_nop = 1'b1;
+                        end
+                        //  Process inval all and flush all CMO
+                        else begin
+                            cmo_req_valid_o = 1'b1;
+                            st1_nop         = 1'b1;
+                        end
 
                         //  If the request comes from the replay table, free the
                         //  corresponding RTAB entry
@@ -522,7 +583,7 @@ import hpdcache_pkg::*;
                     //  Process the unc request (when no pending transaction)
                     else begin
                         // cache miss
-                        if(!cachedir_hit_i) begin
+                        if(!st1_dir_hit_i) begin
                             uc_req_valid_o = 1'b1;
                             st1_nop        = 1'b1;
 
@@ -539,6 +600,8 @@ import hpdcache_pkg::*;
                             // if the target cacheline is dirty, we need to flush it.
                             if(st1_dir_hit_dirty_i) begin
                                 // flush controller is ready?
+                                // FIXME: this shall not happen as uncacheable requests are only
+                                //        process when there is no pending transactions
                                 if(!st1_flush_alloc_ready_i) begin
                                     st1_rtab_alloc = 1'b1;
                                     st1_rtab_flush_not_ready_o = 1'b1;
@@ -557,6 +620,8 @@ import hpdcache_pkg::*;
                                 end
                             end else begin
                                 // if the cacheline is being fetched?
+                                // FIXME: this shall not happen as uncacheable requests are only
+                                //        process when there is no pending transactions
                                 if(st1_dir_hit_fetch_i) begin
                                     st1_rtab_alloc = 1'b1;
                                     st1_rtab_dir_fetch_o = 1'b1;
@@ -653,7 +718,7 @@ import hpdcache_pkg::*;
                         else begin
                             st1_nop = 1'b1;
 
-                            if (cachedir_hit_i) begin
+                            if (st1_dir_hit_i) begin
                                 //  When the hit cacheline is dirty, flush its data to the memory
                                 st2_flush_alloc_o = st1_dir_hit_dirty_i;
 
@@ -698,7 +763,7 @@ import hpdcache_pkg::*;
                     begin
                         //  Cache miss
                         //  {{{
-                        if (!cachedir_hit_i) begin
+                        if (!st1_dir_hit_i) begin
                             //  A cache miss inserts a nop into the pipeline
                             st1_nop = 1'b1;
 
@@ -931,7 +996,7 @@ import hpdcache_pkg::*;
 
                         //  Cache miss
                         //  {{{
-                        else if (!cachedir_hit_i) begin
+                        else if (!st1_dir_hit_i) begin
                             //  Write is write-back
                             //  {{{
                             if (st1_req_wr_wb_i || (st1_req_wr_auto_i && cfg_default_wb_i))
@@ -1278,6 +1343,8 @@ import hpdcache_pkg::*;
 
                 if (st0_req_is_load_i         |
                     st0_req_is_cmo_prefetch_i |
+                    st0_req_is_cmo_inval_i    |
+                    st0_req_is_cmo_flush_i    |
                     st0_req_is_store_i        |
                     st0_req_is_amo_i)
                 begin

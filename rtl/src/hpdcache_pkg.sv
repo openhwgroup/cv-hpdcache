@@ -336,13 +336,9 @@ package hpdcache_pkg;
     //  Definition of constants and types for the CMO request handler (CMOH)
     //  {{{
     typedef struct packed {
-        logic is_flush_inval_by_nline;
         logic is_flush_inval_all;
-        logic is_flush_by_nline;
         logic is_flush_all;
-        logic is_inval_by_nline;
         logic is_inval_all;
-        logic is_fence;
     } hpdcache_cmoh_op_t;
     //  }}}
 
