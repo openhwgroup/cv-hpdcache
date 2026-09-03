@@ -156,6 +156,7 @@ import hpdcache_pkg::*;
                 HPDCACHE_MEM_COHERENCE_WRITE_UNIQUE:   snoop = ace_pkg::WriteUnique;
                 HPDCACHE_MEM_COHERENCE_WRITE_BACK:     snoop = ace_pkg::WriteBack;
                 HPDCACHE_MEM_COHERENCE_EVICT:          snoop = ace_pkg::Evict;
+                HPDCACHE_MEM_COHERENCE_WRITE_CLEAN:    snoop = ace_pkg::WriteClean;
                 default:                               snoop = ace_pkg::WriteNoSnoop;
             endcase
         end

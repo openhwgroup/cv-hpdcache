@@ -143,6 +143,7 @@ import hpdcache_pkg::*;
     input  logic                  flush_alloc_ready_i,
     output hpdcache_nline_t       flush_alloc_nline_o,
     output hpdcache_way_vector_t  flush_alloc_way_o,
+    output logic                  flush_alloc_evict_o,
     input  logic                  flush_data_read_i,
     input  hpdcache_set_t         flush_data_read_set_i,
     input  hpdcache_word_t        flush_data_read_word_i,
@@ -360,6 +361,7 @@ import hpdcache_pkg::*;
     hpdcache_way_vector_t    st2_mshr_alloc_victim_way_q;
 
     logic                    st2_flush_alloc_q, st2_flush_alloc_d;
+    logic                    st2_flush_alloc_evict_q, st2_flush_alloc_evict_d;
     hpdcache_nline_t         st2_flush_alloc_nline_q;
     hpdcache_way_vector_t    st2_flush_alloc_way_q;
 
@@ -771,6 +773,8 @@ import hpdcache_pkg::*;
         .st1_flush_alloc_ready_i            (flush_alloc_ready_i),
         .st2_flush_alloc_i                  (st2_flush_alloc_q),
         .st2_flush_alloc_o                  (st2_flush_alloc_d),
+        .st2_flush_alloc_evict_i            (st2_flush_alloc_evict_q),
+        .st2_flush_alloc_evict_o            (st2_flush_alloc_evict_d),
 
         .rtab_full_i                        (rtab_full),
         .rtab_fence_i                       (rtab_fence),
@@ -1000,6 +1004,7 @@ import hpdcache_pkg::*;
         if (st2_flush_alloc_d) begin
             st2_flush_alloc_nline_q <= st1_dir_hit ? st1_req_nline   : st1_victim_nline;
             st2_flush_alloc_way_q   <= st1_dir_hit ? st1_dir_hit_way : st1_dir_victim_way;
+            st2_flush_alloc_evict_q <= st2_flush_alloc_evict_d;
         end
 
         if (st2_dir_updt_d) begin
@@ -1456,6 +1461,7 @@ import hpdcache_pkg::*;
     assign flush_alloc_o       = st2_flush_alloc_q;
     assign flush_alloc_nline_o = st2_flush_alloc_nline_q;
     assign flush_alloc_way_o   = st2_flush_alloc_way_q;
+    assign flush_alloc_evict_o = st2_flush_alloc_evict_q;
     //  }}}
 
     //  Snoop handler outputs

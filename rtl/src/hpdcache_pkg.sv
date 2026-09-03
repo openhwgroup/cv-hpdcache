@@ -384,7 +384,8 @@ package hpdcache_pkg;
         HPDCACHE_MEM_COHERENCE_WRITE_NO_SNOOP = 4'h5,
         HPDCACHE_MEM_COHERENCE_WRITE_UNIQUE   = 4'h6,
         HPDCACHE_MEM_COHERENCE_WRITE_BACK     = 4'h7,
-        HPDCACHE_MEM_COHERENCE_EVICT          = 4'h8
+        HPDCACHE_MEM_COHERENCE_EVICT          = 4'h8,
+        HPDCACHE_MEM_COHERENCE_WRITE_CLEAN    = 4'h9
     } hpdcache_mem_coherence_e;
 
     function automatic hpdcache_mem_size_t get_hpdcache_mem_size(int unsigned bytes);

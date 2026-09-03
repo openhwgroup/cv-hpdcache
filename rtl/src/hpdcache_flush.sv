@@ -72,6 +72,7 @@ import hpdcache_pkg::*;
     output logic                  flush_alloc_ready_o,
     input  hpdcache_nline_t       flush_alloc_nline_i,
     input  hpdcache_way_vector_t  flush_alloc_way_i,
+    input  logic                  flush_alloc_evict_i,
     //      }}}
 
     //      CACHE DATA interface
@@ -317,7 +318,9 @@ import hpdcache_pkg::*;
         mem_req_command: HPDCACHE_MEM_WRITE,
         mem_req_atomic: HPDCACHE_MEM_ATOMIC_ADD, /* NOP */
         mem_req_cacheable: 1'b1,
-        mem_req_coherence: HPDCACHE_MEM_COHERENCE_WRITE_BACK // TODO: Support EVICT if a snoop filter is present
+        //  A flush that keeps the line must not de-allocate it in a snoop filter
+        mem_req_coherence: flush_alloc_evict_i ? HPDCACHE_MEM_COHERENCE_WRITE_BACK
+                                               : HPDCACHE_MEM_COHERENCE_WRITE_CLEAN
     };
     hpdcache_fifo_reg #(
         .FIFO_DEPTH     (2),

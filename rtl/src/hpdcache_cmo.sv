@@ -133,7 +133,8 @@ import hpdcache_pkg::*;
     output logic                  flush_alloc_o,
     input  logic                  flush_alloc_ready_i,
     output hpdcache_nline_t       flush_alloc_nline_o,
-    output hpdcache_way_vector_t  flush_alloc_way_o
+    output hpdcache_way_vector_t  flush_alloc_way_o,
+    output logic                  flush_alloc_evict_o
     // }}}
 );
 //  }}}
@@ -611,6 +612,7 @@ import hpdcache_pkg::*;
     typedef struct packed {
         hpdcache_nline_t      nline;
         hpdcache_way_vector_t way;
+        logic                 evict;
     } cmoh_flush_req_t;
 
     if (HPDcacheCfg.u.wbEn) begin : gen_cmo_flush_fifo
@@ -630,8 +632,9 @@ import hpdcache_pkg::*;
         end
 
         assign cmoh_flush_req_wdata = '{
-            nline: {cmoh_flush_req_tag, cmoh_flush_req_set},
-            way  :  cmoh_flush_req_way
+            nline : {cmoh_flush_req_tag, cmoh_flush_req_set},
+            way   :  cmoh_flush_req_way,
+            evict : cmoh_flush_req_inval_q
         };
 
         hpdcache_fifo_reg #(
@@ -651,12 +654,14 @@ import hpdcache_pkg::*;
 
         assign flush_alloc_nline_o = cmoh_flush_req_rdata.nline;
         assign flush_alloc_way_o   = cmoh_flush_req_rdata.way;
+        assign flush_alloc_evict_o = cmoh_flush_req_rdata.evict;
     end else begin : gen_cmo_no_flush_fifo
         assign cmoh_flush_req_w    = 1'b0;
         assign cmoh_flush_req_wok  = 1'b1;
         assign flush_alloc_o       = 1'b0;
         assign flush_alloc_nline_o = '0;
         assign flush_alloc_way_o   = '0;
+        assign flush_alloc_evict_o = 1'b0;
     end
 //  }}}
 
