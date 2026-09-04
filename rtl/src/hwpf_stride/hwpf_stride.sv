@@ -157,6 +157,7 @@ import hpdcache_pkg::*;
         if (!rst_ni) begin
             csr_base_q <= '0;
             csr_param_q <= '0;
+            csr_throttle_q <= '0;
             shadow_base_q <= '0;
             shadow_param_q <= '0;
             shadow_throttle_q <= '0;
