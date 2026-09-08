@@ -362,7 +362,9 @@ import hpdcache_pkg::*;
             1'b0: begin
                 init_d      = (hpdcache_uint'(init_set_q) == (HPDcacheCfg.u.sets - 1));
                 init_set_d  = init_set_q + 1;
-                init_dir_cs = '1;
+                if (rst_ni) begin
+                    init_dir_cs = '1;
+                end
             end
 
             1'b1: begin
