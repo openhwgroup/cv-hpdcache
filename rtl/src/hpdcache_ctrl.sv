@@ -504,7 +504,9 @@ import hpdcache_pkg::*;
     end
 
     //     Decode operation in stage 0
-    assign st0_req_is_uncacheable  = st0_req.req.pma.uncacheable;
+    assign st0_req_is_uncacheable  = ~cfg_enable_i ? 1'b1 :
+                                     st0_req_is_cmo_prefetch ? 1'b0 :
+                                     st0_req.req.pma.uncacheable;
     assign st0_req_is_load         = is_load(st0_req.req.op) & ~st0_req.err_scrubbing;
     assign st0_req_is_scrub        = is_load(st0_req.req.op) &  st0_req.err_scrubbing;
     assign st0_req_is_store        = is_store(st0_req.req.op);
@@ -555,7 +557,9 @@ import hpdcache_pkg::*;
     //         previous cycle (stage 0). Useful in case of TLB miss for example
     assign st1_req_abort = core_req_abort_i & ~st1_req.req.phys_indexed;
 
-    assign st1_req_is_uncacheable = ~cfg_enable_i | st1_req.req.pma.uncacheable;
+    assign st1_req_is_uncacheable = ~cfg_enable_i ? 1'b1 :
+                                    st1_req_is_cmo_prefetch ? 1'b0 :
+                                    st1_req.req.pma.uncacheable;
 
     assign st1_req_is_load  = is_load(st1_req.req.op) & ~st1_req.err_scrubbing;
     assign st1_req_is_store = is_store(st1_req.req.op);
