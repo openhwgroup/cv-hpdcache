@@ -504,7 +504,8 @@ import hpdcache_pkg::*;
     end
 
     //     Decode operation in stage 0
-    assign st0_req_is_uncacheable  = ~cfg_enable_i ? 1'b1 :
+    assign st0_req_is_uncacheable  = st0_req.err_scrubbing ? 1'b0 :
+                                     ~cfg_enable_i ? 1'b1 :
                                      st0_req_is_cmo_prefetch ? 1'b0 :
                                      st0_req.req.pma.uncacheable;
     assign st0_req_is_load         = is_load(st0_req.req.op) & ~st0_req.err_scrubbing;
