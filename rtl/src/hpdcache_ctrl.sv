@@ -1176,7 +1176,7 @@ import hpdcache_pkg::*;
 
     //  Uncacheable request handler outputs
     //  {{{
-    assign uc_lrsc_snoop_o           = st1_req_valid_q & st1_req_is_store;
+    assign uc_lrsc_snoop_o           = st1_req_valid_q & st1_req_is_store & ~st1_req_abort;
     assign uc_lrsc_snoop_addr_o      = st1_req_addr;
     assign uc_lrsc_snoop_size_o      = st1_req.req.size;
     assign uc_req_addr_o             = st1_req_addr;
