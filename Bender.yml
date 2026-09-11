@@ -4,7 +4,7 @@ package:
     - "César Fuguet <cesar.fuguet@univ-grenoble-alpes.fr>"
 
 dependencies:
-  axi: { git: "https://github.com/pulp-platform/axi.git", version: 0.39.8 }
+  axi: { git: "https://github.com/pulp-platform/axi.git", version: 0.39.8, target: hpdcache_axi }
 
 export_include_dirs:
   - rtl/include
@@ -17,8 +17,6 @@ sources:
   - rtl/src/utils/hpdcache_mem_req_read_arbiter.sv
   - rtl/src/utils/hpdcache_mem_req_write_arbiter.sv
   - rtl/src/utils/hpdcache_mem_resp_demux.sv
-  - rtl/src/utils/hpdcache_mem_to_axi_read.sv
-  - rtl/src/utils/hpdcache_mem_to_axi_write.sv
   - rtl/src/common/hpdcache_demux.sv
   - rtl/src/common/hpdcache_lfsr.sv
   - rtl/src/common/hpdcache_sync_buffer.sv
@@ -60,3 +58,8 @@ sources:
   - rtl/src/hpdcache_victim_random.sv
   - rtl/src/hpdcache_victim_sel.sv
   - rtl/src/hpdcache_wbuf.sv
+
+  - target: hpdcache_axi
+    files:
+      - rtl/src/utils/hpdcache_mem_to_axi_read.sv
+      - rtl/src/utils/hpdcache_mem_to_axi_write.sv
